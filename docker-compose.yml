@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:18-alpine
+    container_name: trfc_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Mkb606605
+      POSTGRES_DB: trfc_db
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    networks:
+      - trfc_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: trfc_backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:Mkb606605@postgres:5432/trfc_db
+      JWT_SECRET: dev_jwt_secret_key_for_development_only
+      MPESA_CONSUMER_KEY: ${MPESA_CONSUMER_KEY}
+      MPESA_CONSUMER_SECRET: ${MPESA_CONSUMER_SECRET}
+      MPESA_PASSKEY: ${MPESA_PASSKEY}
+      MPESA_PARTY_A: ${MPESA_PARTY_A}
+      MPESA_SHORT_CODE: ${MPESA_SHORT_CODE}
+      MPESA_INITIATOR_NAME: ${MPESA_INITIATOR_NAME}
+      MPESA_INITIATOR_PASSWORD: ${MPESA_INITIATOR_PASSWORD}
+      CALLBACK_URL: http://localhost:3000/api/payments/callback
+      API_BASE_URL: http://localhost:3000
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./server/src:/app/src
+      - ./server/logs:/app/logs
+    networks:
+      - trfc_network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Frontend React App
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: trfc_frontend
+    depends_on:
+      - backend
+    environment:
+      VITE_API_BASE_URL: http://localhost:3001
+      VITE_APP_NAME: TRFC
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./client/src:/app/src
+      - ./client/public:/app/public
+    networks:
+      - trfc_network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  trfc_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local

@@ -1,0 +1,12 @@
+import { Router } from 'express';
+import { getGallery, uploadMedia, updateMedia, deleteMedia } from '../controllers/galleryController.js';
+import { authMiddleware, adminMiddleware } from '../middleware/auth.js';
+
+const router = Router();
+
+router.get('/', getGallery);
+router.post('/', authMiddleware, adminMiddleware, uploadMedia);
+router.put('/:id', authMiddleware, adminMiddleware, updateMedia);
+router.delete('/:id', authMiddleware, adminMiddleware, deleteMedia);
+
+export default router;

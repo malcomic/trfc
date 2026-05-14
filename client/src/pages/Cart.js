@@ -1,0 +1,14 @@
+import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
+import { Link } from 'react-router-dom';
+import { useCart } from '../store/cartStore';
+export default function Cart() {
+    const { items, removeItem, updateQuantity, getTotal } = useCart();
+    const total = getTotal();
+    const handleQuantityChange = (productId, newQuantity) => {
+        if (newQuantity < 1)
+            return;
+        updateQuantity(productId, newQuantity);
+    };
+    return (_jsx("div", { className: "min-h-screen py-12 px-4", children: _jsxs("div", { className: "max-w-4xl mx-auto", children: [_jsx("h1", { className: "text-4xl font-bold mb-8", children: "Shopping Cart" }), items.length === 0 ? (_jsxs("div", { className: "text-center py-12", children: [_jsx("p", { className: "text-gray-600 mb-4", children: "Your cart is empty" }), _jsx(Link, { to: "/shop", className: "text-primary font-semibold hover:underline", children: "Continue Shopping" })] })) : (_jsxs(_Fragment, { children: [_jsx("div", { className: "space-y-4 mb-8", children: items.map((item) => (_jsxs("div", { className: "bg-white rounded-lg shadow p-4 flex justify-between items-center", children: [_jsxs("div", { className: "flex-1", children: [_jsx("h3", { className: "font-semibold text-lg", children: item.product.name }), _jsxs("p", { className: "text-gray-600", children: ["KES ", item.product.price] })] }), _jsxs("div", { className: "flex items-center gap-2", children: [_jsx("button", { onClick: () => handleQuantityChange(item.product.id, item.quantity - 1), className: "px-2 py-1 bg-gray-200 rounded hover:bg-gray-300", children: "-" }), _jsx("span", { className: "w-8 text-center font-semibold", children: item.quantity }), _jsx("button", { onClick: () => handleQuantityChange(item.product.id, item.quantity + 1), className: "px-2 py-1 bg-gray-200 rounded hover:bg-gray-300", children: "+" })] }), _jsxs("p", { className: "w-24 text-right font-semibold", children: ["KES ", (item.product.price * item.quantity).toFixed(2)] }), _jsx("button", { onClick: () => removeItem(item.product.id), className: "ml-4 text-red-500 hover:text-red-700 font-bold", children: "\u2715" })] }, item.product.id))) }), _jsxs("div", { className: "bg-light rounded-lg p-6 mb-6", children: [_jsxs("div", { className: "flex justify-between items-center text-2xl font-bold mb-6", children: [_jsx("span", { children: "Total:" }), _jsxs("span", { className: "text-primary", children: ["KES ", total.toFixed(2)] })] }), _jsx(Link, { to: "/checkout", className: "block w-full bg-primary text-white text-center py-3 rounded-lg font-semibold hover:bg-opacity-90 transition", children: "Proceed to Checkout" })] })] }))] }) }));
+}
+//# sourceMappingURL=Cart.js.map
