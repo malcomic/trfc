@@ -2,7 +2,10 @@ import { jsx as _jsx, Fragment as _Fragment } from "react/jsx-runtime";
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 export default function PrivateRoute({ children, role }) {
-    const { token, user } = useAuth();
+    const { token, user, isLoading } = useAuth();
+    if (isLoading) {
+        return _jsx("div", { className: "flex items-center justify-center h-screen", children: "Loading..." });
+    }
     if (!token) {
         return _jsx(Navigate, { to: "/login" });
     }

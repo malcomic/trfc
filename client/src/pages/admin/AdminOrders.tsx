@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Eye } from 'lucide-react'
-import api from '../../api/index'
+import { getOrdersForAdmin } from '../../api/admin/orders'
+import AdminLayout from '../../components/AdminLayout'
 
 interface OrderItem {
   product_id: string
@@ -36,8 +37,8 @@ export default function AdminOrders() {
   const fetchOrders = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/orders')
-      setOrders(Array.isArray(response.data) ? response.data : [])
+      const response = await getOrdersForAdmin()
+      setOrders(Array.isArray(response) ? response : [])
     } catch (err: any) {
       setError('Failed to fetch orders')
       console.error(err)
@@ -64,30 +65,34 @@ export default function AdminOrders() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'paid':
-        return 'bg-green-100 text-green-800'
+        return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800'
+        return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
       case 'failed':
-        return 'bg-red-100 text-red-800'
+        return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
     }
   }
 
   if (loading) {
-    return <div className="text-lg text-gray-600">Loading orders...</div>
+    return (
+      <AdminLayout>
+        <div className="text-lg text-gray-600 dark:text-gray-400">Loading orders...</div>
+      </AdminLayout>
+    )
   }
 
   return (
-    <div>
+    <AdminLayout>
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-800">Orders</h1>
+        <h1 className="text-4xl font-bold text-gray-800 dark:text-white">Orders</h1>
         <div className="flex items-center gap-2">
-          <label className="text-sm font-semibold">Filter by Status:</label>
+          <label className="text-sm font-semibold text-gray-900 dark:text-gray-100">Filter by Status:</label>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-[#E8401C] dark:focus:border-[#FF4500] bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           >
             <option value="all">All Orders</option>
             <option value="paid">Paid</option>
@@ -98,38 +103,38 @@ export default function AdminOrders() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-6">
           {error}
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-100 border-b">
+            <thead className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Order ID</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Amount</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Payment Status</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">M-Pesa Receipt</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Phone</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Date</th>
-                <th className="px-6 py-3 text-center text-sm font-semibold">Actions</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Order ID</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Amount</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Payment Status</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">M-Pesa Receipt</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Phone</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Date</th>
+                <th className="px-6 py-3 text-center text-sm font-semibold text-gray-900 dark:text-gray-100">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-gray-600">
+                  <td colSpan={7} className="px-6 py-8 text-center text-gray-600 dark:text-gray-400">
                     No orders found
                   </td>
                 </tr>
               ) : (
                 filteredOrders.map((order) => (
-                  <tr key={order.id} className="border-b hover:bg-gray-50">
+                  <tr key={order.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-900 dark:text-gray-100">
                     <td className="px-6 py-4 font-mono text-sm">{order.id.slice(0, 8)}</td>
                     <td className="px-6 py-4 font-semibold">
-                      KES {order.total_amount.toFixed(2)}
+                      KES {(Number(order.total_amount) || 0).toFixed(2)}
                     </td>
                     <td className="px-6 py-4">
                       <span
@@ -144,7 +149,7 @@ export default function AdminOrders() {
                       {order.mpesa_receipt ? (
                         <span title={order.mpesa_receipt}>{order.mpesa_receipt}</span>
                       ) : (
-                        <span className="text-gray-400">—</span>
+                        <span className="text-gray-400 dark:text-gray-500">—</span>
                       )}
                     </td>
                     <td className="px-6 py-4">{order.phone || '—'}</td>
@@ -154,7 +159,7 @@ export default function AdminOrders() {
                     <td className="px-6 py-4 text-center">
                       <button
                         onClick={() => openModal(order)}
-                        className="inline-flex items-center gap-2 px-3 py-1 text-primary hover:bg-primary hover:text-white rounded transition"
+                        className="inline-flex items-center gap-2 px-3 py-1 text-[#E8401C] dark:text-[#FF4500] hover:bg-[#E8401C] dark:hover:bg-[#FF4500] hover:text-white dark:hover:text-white rounded transition"
                         title="View details"
                       >
                         <Eye className="w-4 h-4" />
@@ -171,40 +176,40 @@ export default function AdminOrders() {
       {/* Order Details Modal */}
       {showModal && selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full max-h-96 overflow-y-auto">
-            <div className="sticky top-0 bg-gray-100 border-b px-6 py-4 flex justify-between items-center">
-              <h2 className="text-xl font-bold">Order Details</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-2xl max-w-2xl w-full max-h-96 overflow-y-auto">
+            <div className="sticky top-0 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 px-6 py-4 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Order Details</h2>
               <button
                 onClick={closeModal}
-                className="text-gray-600 hover:text-gray-900 text-2xl"
+                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-2xl"
               >
                 ×
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6 text-gray-900 dark:text-gray-100">
               {/* Order Info */}
               <div>
                 <h3 className="text-lg font-semibold mb-3">Order Information</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-gray-600">Order ID</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Order ID</p>
                     <p className="font-mono font-semibold">{selectedOrder.id}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Date</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Date</p>
                     <p className="font-semibold">
                       {new Date(selectedOrder.created_at).toLocaleDateString()}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Total Amount</p>
-                    <p className="text-xl font-bold text-primary">
-                      KES {selectedOrder.total_amount.toFixed(2)}
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Total Amount</p>
+                    <p className="text-xl font-bold text-[#E8401C] dark:text-[#FF4500]">
+                      KES {(Number(selectedOrder.total_amount) || 0).toFixed(2)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Payment Status</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Payment Status</p>
                     <span
                       className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(
                         selectedOrder.payment_status
@@ -221,11 +226,11 @@ export default function AdminOrders() {
                 <h3 className="text-lg font-semibold mb-3">Customer Information</h3>
                 <div className="space-y-3">
                   <div>
-                    <p className="text-sm text-gray-600">Phone Number</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Phone Number</p>
                     <p className="font-semibold">{selectedOrder.phone || '—'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Delivery Address</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Delivery Address</p>
                     <p className="font-semibold">{selectedOrder.delivery_address || '—'}</p>
                   </div>
                 </div>
@@ -237,13 +242,13 @@ export default function AdminOrders() {
                 <div className="space-y-3">
                   {selectedOrder.mpesa_receipt && (
                     <div>
-                      <p className="text-sm text-gray-600">M-Pesa Receipt</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">M-Pesa Receipt</p>
                       <p className="font-mono font-semibold">{selectedOrder.mpesa_receipt}</p>
                     </div>
                   )}
                   {selectedOrder.checkout_request_id && (
                     <div>
-                      <p className="text-sm text-gray-600">Checkout Request ID</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Checkout Request ID</p>
                       <p className="font-mono text-sm">{selectedOrder.checkout_request_id}</p>
                     </div>
                   )}
@@ -254,7 +259,7 @@ export default function AdminOrders() {
               {selectedOrder.items && selectedOrder.items.length > 0 && (
                 <div>
                   <h3 className="text-lg font-semibold mb-3">Order Items</h3>
-                  <div className="bg-gray-50 rounded p-3 text-sm space-y-2">
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded p-3 text-sm space-y-2">
                     {selectedOrder.items.map((item, idx) => (
                       <div key={idx} className="flex justify-between">
                         <span>
@@ -270,10 +275,10 @@ export default function AdminOrders() {
               )}
             </div>
 
-            <div className="bg-gray-100 border-t px-6 py-4 flex justify-end gap-3">
+            <div className="bg-gray-100 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 px-6 py-4 flex justify-end gap-3">
               <button
                 onClick={closeModal}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-semibold"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 font-semibold text-gray-900 dark:text-gray-100"
               >
                 Close
               </button>
@@ -281,6 +286,6 @@ export default function AdminOrders() {
           </div>
         </div>
       )}
-    </div>
+    </AdminLayout>
   )
 }

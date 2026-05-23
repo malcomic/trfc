@@ -22,7 +22,9 @@ api.interceptors.response.use((response) => response, async (error) => {
             if (!refreshToken) {
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
-                window.location.href = '/login';
+                const user = localStorage.getItem('user');
+                const isAdmin = user ? JSON.parse(user).role === 'admin' : false;
+                window.location.href = isAdmin ? '/admin/login' : '/login';
                 return Promise.reject(error);
             }
             const response = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
@@ -36,7 +38,8 @@ api.interceptors.response.use((response) => response, async (error) => {
             localStorage.removeItem('token');
             localStorage.removeItem('refreshToken');
             localStorage.removeItem('user');
-            window.location.href = '/login';
+            const currentUrl = window.location.pathname;
+            window.location.href = currentUrl.includes('/admin') ? '/admin/login' : '/login';
             return Promise.reject(refreshError);
         }
     }

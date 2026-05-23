@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { loginUser } from '../api/auth'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 
 export default function AdminLogin() {
@@ -11,11 +11,11 @@ export default function AdminLogin() {
   const navigate = useNavigate()
   const { login, user } = useAuth()
 
-  // Redirect if already logged in as admin
-  if (user && user.role === 'admin') {
-    navigate('/admin')
-    return null
-  }
+  useEffect(() => {
+    if (user && user.role === 'admin') {
+      navigate('/admin')
+    }
+  }, [user, navigate])
 
   const onSubmit = async (data: any) => {
     try {

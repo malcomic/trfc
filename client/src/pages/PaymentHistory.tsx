@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getPaymentHistory, PaymentHistoryItem } from '../api/payments'
-import { Calendar, DollarSign, Download, Eye, Loader, AlertCircle } from 'lucide-react'
+import { Calendar, DollarSign, Download, Eye, Loader, AlertCircle, FileText } from 'lucide-react'
+import { downloadReceiptAsText, downloadReceiptAsCSV } from '../utils/receiptGenerator'
 
 export default function PaymentHistory() {
   const [payments, setPayments] = useState<PaymentHistoryItem[]>([])
@@ -72,30 +73,15 @@ export default function PaymentHistory() {
   }
 
   const downloadReceipt = (payment: PaymentHistoryItem) => {
-    const receiptContent = `
-TRFC - Payment Receipt
-================================
-Date: ${new Date(payment.created_at).toLocaleDateString()}
-Type: ${getTypeLabel(payment.type)}
-Status: ${payment.payment_status.toUpperCase()}
+    downloadReceiptAsText(payment)
+  }
 
-Amount: KES ${payment.amount ? payment.amount.toFixed(2) : 'N/A'}
-${payment.mpesa_receipt ? `M-Pesa Receipt: ${payment.mpesa_receipt}` : ''}
-${payment.checkout_request_id ? `Reference: ${payment.checkout_request_id}` : ''}
-
-Thank you for your transaction!
-    `
-
-    const element = document.createElement('a')
-    element.setAttribute(
-      'href',
-      'data:text/plain;charset=utf-8,' + encodeURIComponent(receiptContent)
-    )
-    element.setAttribute('download', `receipt-${payment.id}.txt`)
-    element.style.display = 'none'
-    document.body.appendChild(element)
-    element.click()
-    document.body.removeChild(element)
+  const downloadAllAsCSV = () => {
+    if (filteredPayments.length === 0) {
+      alert('No payments to export')
+      return
+    }
+    downloadReceiptAsCSV(filteredPayments)
   }
 
   if (loading) {
@@ -129,7 +115,7 @@ Thank you for your transaction!
 
         {/* Filters */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-semibold mb-2">Payment Type</label>
               <select
@@ -155,6 +141,16 @@ Thank you for your transaction!
                 <option value="pending">Pending</option>
                 <option value="failed">Failed</option>
               </select>
+            </div>
+            <div className="flex items-end">
+              <button
+                onClick={downloadAllAsCSV}
+                disabled={filteredPayments.length === 0}
+                className="w-full bg-primary text-white px-4 py-2 rounded hover:bg-opacity-90 disabled:bg-gray-400 font-semibold flex items-center justify-center gap-2"
+              >
+                <FileText className="w-4 h-4" />
+                Export as CSV
+              </button>
             </div>
           </div>
         </div>

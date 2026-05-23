@@ -10,12 +10,60 @@
   box-sizing: border-box;
 }
 
+:root {
+  /* Light mode colors */
+  --bg-primary: #F9F7F4;
+  --bg-secondary: #FFFFFF;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --border-color: #E0E0E0;
+  --accent-primary: #E8401C;
+  --accent-secondary: #FF7A1A;
+  /* Extended color palette for components */
+  --fire: #E8401C;
+  --ember: #D84F20;
+  --night: #F5F5F5;
+  --ink: #FFFFFF;
+  --ash: #F0F0F0;
+  --smoke: #E8E8E8;
+  --chalk: #333333;
+  --fog: #666666;
+  --mist: #D0D0D0;
+  --white: #FFFFFF;
+  --gold: #C9A84C;
+}
+
+html.dark {
+  /* Dark mode colors */
+  --bg-primary: #1A1A1A;
+  --bg-secondary: #111111;
+  --text-primary: #F5F2EE;
+  --text-secondary: #B0B0B0;
+  --border-color: #2E2E2E;
+  --accent-primary: #FF4500;
+  --accent-secondary: #FF7A1A;
+  /* Extended color palette for components */
+  --fire: #FF4500;
+  --ember: #FF7A1A;
+  --night: #0A0A0A;
+  --ink: #111111;
+  --ash: #1C1C1C;
+  --smoke: #2E2E2E;
+  --chalk: #F5F2EE;
+  --fog: #6B6B6B;
+  --mist: #3D3D3D;
+  --white: #FFFFFF;
+  --gold: #C9A84C;
+}
+
 body {
   font-family: 'Inter', system-ui, sans-serif;
-  color: #333333;
-  background-color: #F9F7F4;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  transition: background-color 300ms ease, color 300ms ease;
 }
 
 html {
   scroll-behavior: smooth;
 }
+

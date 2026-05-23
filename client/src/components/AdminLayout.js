@@ -1,10 +1,12 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Package, Image, ShoppingCart, Users } from 'lucide-react';
+import { LayoutDashboard, Calendar, Package, Image, ShoppingCart, Users, BarChart3, FileText } from 'lucide-react';
 export default function AdminLayout({ children }) {
     const location = useLocation();
     const navItems = [
         { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+        { path: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
+        { path: '/admin/reports', label: 'Reports', icon: FileText },
         { path: '/admin/events', label: 'Events', icon: Calendar },
         { path: '/admin/products', label: 'Products', icon: Package },
         { path: '/admin/gallery', label: 'Gallery', icon: Image },

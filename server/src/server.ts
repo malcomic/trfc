@@ -1,7 +1,10 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import multer from 'multer';
 import pool from './config/db.js';
+
+export { pool };
 
 // Routes
 import authRoutes from './routes/auth.js';
@@ -13,11 +16,13 @@ import paymentsRoutes from './routes/payments.js';
 import testimonialsRoutes from './routes/testimonials.js';
 import galleryRoutes from './routes/gallery.js';
 import equipmentRoutes from './routes/equipment.js';
+import analyticsRoutes from './routes/analytics.js';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 app.use(cors());
 app.use(express.json());
@@ -37,7 +42,8 @@ app.use('/api/orders', ordersRoutes);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/testimonials', testimonialsRoutes);
-app.use('/api/gallery', galleryRoutes);
+app.use('/api/gallery', upload.single('file'), galleryRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Start server
 const startServer = async () => {

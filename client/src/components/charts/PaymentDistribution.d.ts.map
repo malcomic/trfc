@@ -1,0 +1,1 @@
+{"version":3,"file":"PaymentDistribution.d.ts","sourceRoot":"","sources":["PaymentDistribution.tsx"],"names":[],"mappings":"AAEA,UAAU,wBAAwB;IAChC,IAAI,EAAE,KAAK,CAAC;QACV,cAAc,EAAE,MAAM,CAAA;QACtB,KAAK,EAAE,MAAM,CAAA;KACd,CAAC,CAAA;CACH;AAQD,MAAM,CAAC,OAAO,UAAU,mBAAmB,CAAC,EAAE,IAAI,EAAE,EAAE,wBAAwB,2CAoC7E"}

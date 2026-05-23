@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { query } from '../config/db.js';
+import { uploadToCloudinary } from '../utils/cloudinary.js';
 
 export const getGallery = async (req: Request, res: Response) => {
   try {
@@ -24,6 +25,20 @@ export const uploadMedia = async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to upload media' });
+  }
+};
+
+export const uploadFile = async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file provided' });
+    }
+
+    const url = await uploadToCloudinary(req.file.buffer, 'trfc_gallery');
+    res.json({ url, media_type: req.body.media_type || 'image' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to upload file' });
   }
 };
 

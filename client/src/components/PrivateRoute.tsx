@@ -7,7 +7,11 @@ interface PrivateRouteProps {
 }
 
 export default function PrivateRoute({ children, role }: PrivateRouteProps) {
-  const { token, user } = useAuth()
+  const { token, user, isLoading } = useAuth()
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>
+  }
 
   if (!token) {
     return <Navigate to="/login" />

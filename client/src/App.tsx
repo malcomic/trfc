@@ -12,7 +12,11 @@ import Checkout from './pages/Checkout'
 import Register from './pages/Register'
 import Login from './pages/Login'
 import AdminLogin from './pages/AdminLogin'
+import Gallery from './pages/Gallery'
+import Programs from './pages/Programs'
 import AdminDashboard from './pages/admin/AdminDashboard'
+import AdminAnalytics from './pages/AdminAnalytics'
+import AdminReports from './pages/AdminReports'
 import AdminEvents from './pages/admin/AdminEvents'
 import AdminProducts from './pages/admin/AdminProducts'
 import AdminGallery from './pages/admin/AdminGallery'
@@ -36,6 +40,8 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/events" element={<Events />} />
             <Route path="/events/:id" element={<EventDetail />} />
+            <Route path="/gallery" element={<Gallery />} />
+            <Route path="/programs" element={<Programs />} />
             <Route path="/shop" element={<Shop />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<Checkout />} />
@@ -50,6 +56,26 @@ function App() {
                 <PrivateRoute role="admin">
                   <AdminLayout>
                     <AdminDashboard />
+                  </AdminLayout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/admin/analytics"
+              element={
+                <PrivateRoute role="admin">
+                  <AdminLayout>
+                    <AdminAnalytics />
+                  </AdminLayout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/admin/reports"
+              element={
+                <PrivateRoute role="admin">
+                  <AdminLayout>
+                    <AdminReports />
                   </AdminLayout>
                 </PrivateRoute>
               }

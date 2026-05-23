@@ -17,11 +17,27 @@ export default function AdminGallery() {
   const [error, setError] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const { register, handleSubmit, reset, formState: { errors }, setValue } = useForm()
+  const [uploading, setUploading] = useState(false)
+  const [filePreview, setFilePreview] = useState<string | null>(null)
+  const { register, handleSubmit, reset, formState: { errors }, setValue, watch } = useForm()
+  const fileInput = watch('file')
 
   useEffect(() => {
     fetchGallery()
   }, [])
+
+  useEffect(() => {
+    if (fileInput && fileInput.length > 0) {
+      const file = fileInput[0]
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setFilePreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    } else {
+      setFilePreview(null)
+    }
+  }, [fileInput])
 
   const fetchGallery = async () => {
     try {
@@ -45,24 +61,56 @@ export default function AdminGallery() {
 
   const onSubmit = async (data: any) => {
     try {
+      setUploading(true)
+      setError('')
       if (editingId) {
         await updateMedia(editingId, {
           caption: data.caption,
           media_type: data.media_type,
         })
       } else {
+        let mediaUrl = data.media_url
+        if (data.file && data.file.length > 0) {
+          const file = data.file[0]
+          const formData = new FormData()
+          formData.append('file', file)
+          formData.append('media_type', data.media_type || 'image')
+
+          const response = await fetch('http://localhost:5000/api/gallery/upload', {
+            method: 'POST',
+            body: formData,
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          })
+          const result = await response.json()
+          if (!response.ok) {
+            throw new Error(result.error || 'Upload failed')
+          }
+          mediaUrl = result.url
+        }
+
+        if (!mediaUrl) {
+          setError('Please provide either a file or URL')
+          setUploading(false)
+          return
+        }
+
         await uploadMedia({
-          media_url: data.media_url,
+          media_url: mediaUrl,
           media_type: data.media_type || 'image',
           caption: data.caption,
         })
       }
       setShowModal(false)
       setEditingId(null)
+      setFilePreview(null)
       reset()
       fetchGallery()
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to process request')
+      setError(err.message || 'Failed to process request')
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -89,6 +137,7 @@ export default function AdminGallery() {
         <button
           onClick={() => {
             setEditingId(null)
+            setFilePreview(null)
             reset()
             setShowModal(true)
           }}
@@ -165,6 +214,7 @@ export default function AdminGallery() {
                 onClick={() => {
                   setShowModal(false)
                   setEditingId(null)
+                  setFilePreview(null)
                   reset()
                 }}
                 className="text-gray-500 hover:text-gray-700"
@@ -175,15 +225,34 @@ export default function AdminGallery() {
 
             <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
               {!editingId && (
-                <div>
-                  <label className="block text-sm font-semibold mb-1">Media URL *</label>
-                  <input
-                    type="url"
-                    {...register('media_url', { required: !editingId ? 'Media URL is required' : false })}
-                    placeholder="https://example.com/image.jpg"
-                    className="w-full border rounded-lg px-3 py-2"
-                  />
-                  {errors.media_url && <span className="text-red-600 text-sm">{errors.media_url.message as string}</span>}
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-sm font-semibold mb-1">Upload Image *</label>
+                    <input
+                      type="file"
+                      accept="image/*,video/*"
+                      {...register('file')}
+                      className="w-full border rounded-lg px-3 py-2"
+                    />
+                    {filePreview && (
+                      <div className="mt-2 relative w-full h-32 bg-gray-100 rounded-lg overflow-hidden">
+                        <img src={filePreview} alt="Preview" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="text-center text-gray-500 text-sm">OR</div>
+
+                  <div>
+                    <label className="block text-sm font-semibold mb-1">Media URL</label>
+                    <input
+                      type="url"
+                      {...register('media_url')}
+                      placeholder="https://example.com/image.jpg"
+                      className="w-full border rounded-lg px-3 py-2"
+                    />
+                    {errors.media_url && <span className="text-red-600 text-sm">{errors.media_url.message as string}</span>}
+                  </div>
                 </div>
               )}
 
@@ -214,6 +283,7 @@ export default function AdminGallery() {
                   onClick={() => {
                     setShowModal(false)
                     setEditingId(null)
+                    setFilePreview(null)
                     reset()
                   }}
                   className="px-4 py-2 text-gray-700 border rounded-lg hover:bg-gray-50"
@@ -222,9 +292,10 @@ export default function AdminGallery() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90"
+                  disabled={uploading}
+                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90 disabled:opacity-50"
                 >
-                  {editingId ? 'Update' : 'Upload'}
+                  {uploading ? 'Uploading...' : editingId ? 'Update' : 'Upload'}
                 </button>
               </div>
             </form>

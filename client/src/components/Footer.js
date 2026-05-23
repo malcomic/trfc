@@ -1,10 +1,332 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { Mail, Phone, MapPin } from 'lucide-react';
+import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
+import { Mail, Phone, MapPin, ArrowUpRight, Heart, MessageCircle, Users, Play } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useEffect, useRef } from 'react';
+const footerStyles = `
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;600&family=Barlow+Condensed:wght@500;700;900&display=swap');
+
+  .trfc-footer {
+    --fire: #FF4500;
+    --ember: #FF7A1A;
+    --night: #0A0A0A;
+    --ink: #111111;
+    --ash: #1C1C1C;
+    --smoke: #2A2A2A;
+    --chalk: #F5F2EE;
+    --fog: #6B6B6B;
+    --mist: #3D3D3D;
+    background: var(--night);
+    position: relative;
+    overflow: hidden;
+    font-family: 'Barlow', sans-serif;
+  }
+
+  /* Giant ghost word behind everything */
+  .trfc-footer__watermark {
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(120px, 18vw, 280px);
+    color: rgba(255, 69, 0, 0.04);
+    letter-spacing: -4px;
+    white-space: nowrap;
+    pointer-events: none;
+    user-select: none;
+    line-height: 1;
+  }
+
+  /* Top fire-line divider */
+  .trfc-footer__topbar {
+    height: 3px;
+    background: linear-gradient(90deg, transparent 0%, var(--fire) 30%, var(--ember) 60%, transparent 100%);
+  }
+
+  /* Brand column */
+  .trfc-footer__brand-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 72px;
+    color: var(--chalk);
+    line-height: 1;
+    letter-spacing: 2px;
+  }
+  .trfc-footer__brand-name span {
+    color: var(--fire);
+  }
+  .trfc-footer__brand-tagline {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 500;
+    font-size: 12px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--fog);
+    margin-top: 4px;
+    margin-bottom: 20px;
+  }
+  .trfc-footer__brand-desc {
+    font-size: 14px;
+    line-height: 1.75;
+    color: var(--fog);
+    max-width: 240px;
+  }
+
+  /* Social icons */
+  .trfc-footer__socials {
+    display: flex;
+    gap: 10px;
+    margin-top: 28px;
+  }
+  .trfc-footer__social-btn {
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--mist);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--fog);
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+    cursor: pointer;
+    text-decoration: none;
+    clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+  }
+  .trfc-footer__social-btn:hover {
+    border-color: var(--fire);
+    color: var(--fire);
+    background: rgba(255,69,0,0.08);
+  }
+
+  /* Column headings */
+  .trfc-footer__col-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--fire);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .trfc-footer__col-label::before {
+    content: '';
+    display: inline-block;
+    width: 16px;
+    height: 2px;
+    background: var(--fire);
+    flex-shrink: 0;
+  }
+
+  /* Nav links */
+  .trfc-footer__nav-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: 0.5px;
+    color: rgba(245,242,238,0.55);
+    text-decoration: none;
+    transition: color 0.2s, padding-left 0.2s;
+  }
+  .trfc-footer__nav-link:last-child { border-bottom: none; }
+  .trfc-footer__nav-link:hover {
+    color: var(--chalk);
+    padding-left: 6px;
+  }
+  .trfc-footer__nav-link:hover .trfc-footer__link-arrow {
+    color: var(--fire);
+    opacity: 1;
+  }
+  .trfc-footer__link-arrow {
+    opacity: 0;
+    color: var(--fire);
+    transition: opacity 0.2s;
+    flex-shrink: 0;
+  }
+
+  /* Contact rows */
+  .trfc-footer__contact-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .trfc-footer__contact-row:last-child { border-bottom: none; }
+  .trfc-footer__contact-icon {
+    width: 34px;
+    height: 34px;
+    background: rgba(255,69,0,0.1);
+    border: 1px solid rgba(255,69,0,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--fire);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .trfc-footer__contact-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--fog);
+    margin-bottom: 2px;
+  }
+  .trfc-footer__contact-value {
+    font-size: 14px;
+    color: rgba(245,242,238,0.7);
+    font-weight: 600;
+  }
+
+  /* Admin panel */
+  .trfc-footer__admin-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 0;
+    font-size: 13px;
+    color: rgba(245,242,238,0.4);
+    text-decoration: none;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    transition: color 0.2s, gap 0.2s;
+  }
+  .trfc-footer__admin-link:last-child { border-bottom: none; }
+  .trfc-footer__admin-link::before {
+    content: '';
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--mist);
+    flex-shrink: 0;
+    transition: background 0.2s;
+  }
+  .trfc-footer__admin-link:hover { color: var(--fire); gap: 12px; }
+  .trfc-footer__admin-link:hover::before { background: var(--fire); }
+
+  /* Bottom bar */
+  .trfc-footer__bottom {
+    border-top: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 0;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .trfc-footer__bottom-copy {
+    font-size: 12px;
+    color: var(--fog);
+    letter-spacing: 0.5px;
+  }
+  .trfc-footer__bottom-copy strong {
+    color: var(--fire);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px;
+    letter-spacing: 2px;
+  }
+  .trfc-footer__bottom-links {
+    display: flex;
+    gap: 20px;
+  }
+  .trfc-footer__bottom-link {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--fog);
+    text-decoration: none;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    transition: color 0.2s;
+  }
+  .trfc-footer__bottom-link:hover { color: var(--fire); }
+
+  /* Vertical rule between columns */
+  .trfc-footer__vr {
+    width: 1px;
+    background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.07) 30%, rgba(255,255,255,0.07) 70%, transparent);
+    align-self: stretch;
+    display: none;
+  }
+  @media (min-width: 1024px) { .trfc-footer__vr { display: block; } }
+
+  @media (max-width: 768px) {
+    .trfc-footer__brand-name { font-size: 56px; }
+    .trfc-footer__grid { grid-template-columns: 1fr 1fr !important; }
+  }
+  @media (max-width: 480px) {
+    .trfc-footer__grid { grid-template-columns: 1fr !important; }
+  }
+`;
 export default function Footer() {
     const { user } = useAuth();
     const isAdmin = user && user.role === 'admin';
-    return (_jsxs("footer", { className: "bg-dark text-white mt-16", children: [_jsxs("div", { className: "max-w-7xl mx-auto px-4 py-12 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8", children: [_jsxs("div", { children: [_jsx("h3", { className: "text-primary font-bold text-lg mb-4", children: "TRFC" }), _jsx("p", { className: "text-gray-300", children: "Thika Road Fitness Community - Building a stronger community together." })] }), _jsxs("div", { children: [_jsx("h4", { className: "font-semibold mb-4", children: "Quick Links" }), _jsxs("ul", { className: "space-y-2 text-gray-300", children: [_jsx("li", { children: _jsx(Link, { to: "/events", className: "hover:text-primary transition", children: "Events" }) }), _jsx("li", { children: _jsx(Link, { to: "/shop", className: "hover:text-primary transition", children: "Shop" }) }), _jsx("li", { children: _jsx("a", { href: "#", className: "hover:text-primary transition", children: "Contact" }) }), _jsx("li", { children: _jsx(Link, { to: "/admin/login", className: "hover:text-primary transition", children: "Admin Login" }) })] })] }), _jsxs("div", { children: [_jsx("h4", { className: "font-semibold mb-4", children: "Contact" }), _jsxs("div", { className: "space-y-2 text-gray-300", children: [_jsxs("div", { className: "flex items-center gap-2", children: [_jsx(Mail, { size: 18 }), _jsx("span", { children: "info@trfc.ke" })] }), _jsxs("div", { className: "flex items-center gap-2", children: [_jsx(Phone, { size: 18 }), _jsx("span", { children: "+254 712 345 678" })] }), _jsxs("div", { className: "flex items-center gap-2", children: [_jsx(MapPin, { size: 18 }), _jsx("span", { children: "Thika Road, Nairobi" })] })] })] }), isAdmin && (_jsxs("div", { children: [_jsx("h4", { className: "font-semibold mb-4 text-primary", children: "Admin Panel" }), _jsxs("ul", { className: "space-y-2 text-gray-300", children: [_jsx("li", { children: _jsx(Link, { to: "/admin", className: "hover:text-primary transition", children: "Dashboard" }) }), _jsx("li", { children: _jsx(Link, { to: "/admin/events", className: "hover:text-primary transition", children: "Manage Events" }) }), _jsx("li", { children: _jsx(Link, { to: "/admin/products", className: "hover:text-primary transition", children: "Manage Products" }) }), _jsx("li", { children: _jsx(Link, { to: "/admin/gallery", className: "hover:text-primary transition", children: "Manage Gallery" }) }), _jsx("li", { children: _jsx(Link, { to: "/admin/orders", className: "hover:text-primary transition", children: "View Orders" }) }), _jsx("li", { children: _jsx(Link, { to: "/admin/users", className: "hover:text-primary transition", children: "Manage Users" }) })] })] }))] }), _jsx("div", { className: "border-t border-gray-700 py-6 text-center text-gray-400", children: _jsx("p", { children: "\u00A9 2024 TRFC. All rights reserved." }) })] }));
+    const styleRef = useRef(null);
+    useEffect(() => {
+        if (document.getElementById('trfc-footer-styles'))
+            return;
+        const el = document.createElement('style');
+        el.id = 'trfc-footer-styles';
+        el.textContent = footerStyles;
+        document.head.appendChild(el);
+        styleRef.current = el;
+        return () => {
+            const existing = document.getElementById('trfc-footer-styles');
+            if (existing)
+                document.head.removeChild(existing);
+        };
+    }, []);
+    const quickLinks = [
+        { to: '/events', label: 'Events' },
+        { to: '/programs', label: 'Programs' },
+        { to: '/gallery', label: 'Gallery' },
+        { to: '/shop', label: 'Shop Merch' },
+        { to: '/register', label: 'Join the Community' },
+        { to: '/admin/login', label: 'Admin Login' },
+    ];
+    const adminLinks = [
+        { to: '/admin', label: 'Dashboard' },
+        { to: '/admin/events', label: 'Manage Events' },
+        { to: '/admin/products', label: 'Manage Products' },
+        { to: '/admin/gallery', label: 'Manage Gallery' },
+        { to: '/admin/orders', label: 'View Orders' },
+        { to: '/admin/users', label: 'Manage Users' },
+    ];
+    const contacts = [
+        { icon: _jsx(Mail, { size: 15 }), label: 'Email', value: 'info@trfc.ke', href: 'mailto:info@trfc.ke' },
+        { icon: _jsx(Phone, { size: 15 }), label: 'Phone', value: '+254 712 345 678', href: 'tel:+254712345678' },
+        { icon: _jsx(MapPin, { size: 15 }), label: 'Location', value: 'Thika Road, Nairobi', href: '#' },
+    ];
+    const socials = [
+        { icon: _jsx(Heart, { size: 16 }), href: '#', label: 'Instagram' },
+        { icon: _jsx(MessageCircle, { size: 16 }), href: '#', label: 'Twitter' },
+        { icon: _jsx(Users, { size: 16 }), href: '#', label: 'Facebook' },
+        { icon: _jsx(Play, { size: 16 }), href: '#', label: 'YouTube' },
+    ];
+    return (_jsxs("footer", { className: "trfc-footer", children: [_jsx("div", { className: "trfc-footer__topbar" }), _jsx("div", { className: "trfc-footer__watermark", "aria-hidden": "true", children: "THIKA ROAD FC" }), _jsxs("div", { style: { maxWidth: '1200px', margin: '0 auto', padding: '64px 6% 0', position: 'relative', zIndex: 1 }, children: [_jsxs("div", { className: "trfc-footer__grid", style: {
+                            display: 'grid',
+                            gridTemplateColumns: isAdmin ? '1.4fr 1px 1fr 1px 1fr 1px 1fr' : '1.4fr 1px 1fr 1px 1.2fr',
+                            gap: '0 40px',
+                            paddingBottom: '56px',
+                        }, children: [_jsxs("div", { children: [_jsxs("div", { className: "trfc-footer__brand-name", children: ["TH", _jsx("span", { children: "I" }), "KA", _jsx("br", {}), "ROAD", _jsx("br", {}), "FC"] }), _jsx("p", { className: "trfc-footer__brand-tagline", children: "Nairobi \u00B7 Est. 2019" }), _jsx("p", { className: "trfc-footer__brand-desc", children: "Building Nairobi's strongest running community \u2014 one kilometre, one race, one sunrise at a time." }), _jsx("div", { className: "trfc-footer__socials", children: socials.map((s) => (_jsx("a", { href: s.href, "aria-label": s.label, className: "trfc-footer__social-btn", children: s.icon }, s.label))) })] }), _jsx("div", { className: "trfc-footer__vr" }), _jsxs("div", { children: [_jsx("div", { className: "trfc-footer__col-label", children: "Navigation" }), _jsx("nav", { children: quickLinks.map((l) => (_jsxs(Link, { to: l.to, className: "trfc-footer__nav-link", children: [l.label, _jsx(ArrowUpRight, { size: 14, className: "trfc-footer__link-arrow" })] }, l.to))) })] }), _jsx("div", { className: "trfc-footer__vr" }), _jsxs("div", { children: [_jsx("div", { className: "trfc-footer__col-label", children: "Get In Touch" }), contacts.map((c) => (_jsx("a", { href: c.href, style: { textDecoration: 'none' }, children: _jsxs("div", { className: "trfc-footer__contact-row", children: [_jsx("div", { className: "trfc-footer__contact-icon", children: c.icon }), _jsxs("div", { children: [_jsx("div", { className: "trfc-footer__contact-label", children: c.label }), _jsx("div", { className: "trfc-footer__contact-value", children: c.value })] })] }) }, c.label))), _jsxs("div", { style: { marginTop: '28px', padding: '18px', background: 'rgba(255,69,0,0.06)', border: '1px solid rgba(255,69,0,0.15)' }, children: [_jsx("p", { style: { fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, fontSize: '13px', letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--chalk)', marginBottom: '12px' }, children: "Stay in the loop" }), _jsxs("div", { style: { display: 'flex', gap: '0' }, children: [_jsx("input", { type: "email", placeholder: "your@email.com", style: {
+                                                            flex: 1, background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)',
+                                                            borderRight: 'none', padding: '9px 12px', color: 'var(--chalk)',
+                                                            fontSize: '13px', fontFamily: 'Barlow, sans-serif', outline: 'none',
+                                                            minWidth: 0,
+                                                        } }), _jsx("button", { style: {
+                                                            background: 'var(--fire)', border: 'none', color: 'white',
+                                                            padding: '9px 14px', cursor: 'pointer', fontFamily: 'Barlow Condensed, sans-serif',
+                                                            fontWeight: 700, fontSize: '12px', letterSpacing: '1px', textTransform: 'uppercase',
+                                                            transition: 'background 0.2s', flexShrink: 0,
+                                                        }, onMouseEnter: (e) => (e.currentTarget.style.background = '#FF7A1A'), onMouseLeave: (e) => (e.currentTarget.style.background = 'var(--fire)'), children: "Join" })] })] })] }), isAdmin && (_jsxs(_Fragment, { children: [_jsx("div", { className: "trfc-footer__vr" }), _jsxs("div", { children: [_jsx("div", { className: "trfc-footer__col-label", style: { color: '#C9A84C' }, children: _jsxs("span", { style: { display: 'flex', alignItems: 'center', gap: '8px' }, children: [_jsx("svg", { width: "10", height: "10", viewBox: "0 0 10 10", fill: "currentColor", children: _jsx("polygon", { points: "5,0 10,10 0,10" }) }), "Admin Panel"] }) }), adminLinks.map((l) => (_jsx(Link, { to: l.to, className: "trfc-footer__admin-link", children: l.label }, l.to)))] })] }))] }), _jsxs("div", { className: "trfc-footer__bottom", children: [_jsxs("p", { className: "trfc-footer__bottom-copy", children: ["\u00A9 ", new Date().getFullYear(), " ", _jsx("strong", { children: "TRFC" }), " \u00B7 Thika Road Fitness Community \u00B7 Nairobi, Kenya"] }), _jsxs("div", { className: "trfc-footer__bottom-links", children: [_jsx("a", { href: "#", className: "trfc-footer__bottom-link", children: "Privacy" }), _jsx("a", { href: "#", className: "trfc-footer__bottom-link", children: "Terms" }), _jsx("a", { href: "#", className: "trfc-footer__bottom-link", children: "Sitemap" })] })] })] })] }));
 }
 //# sourceMappingURL=Footer.js.map

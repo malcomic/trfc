@@ -51,39 +51,77 @@ export async function initiateSTKPush(req: Request, res: Response) {
     }
 
     const token = await getMPesaToken()
-    const stkResponse: STKPushResponse = await mpesaInitiateStkPush(
-      phone,
-      amount,
-      accountReference,
-      `TRFC Payment for ${accountReference}`,
-      token
-    )
+    let stkResponse: STKPushResponse
+    let retryCount = 0
+    const maxRetries = 2
 
-    logSTKInitiation(phone, amount, orderId, ticketId, equipmentHireId, stkResponse.ResponseCode, null)
+    while (retryCount <= maxRetries) {
+      try {
+        stkResponse = await Promise.race([
+          mpesaInitiateStkPush(
+            phone,
+            amount,
+            accountReference,
+            `TRFC Payment for ${accountReference}`,
+            token
+          ),
+          new Promise<STKPushResponse>((_, reject) =>
+            setTimeout(
+              () => reject(new Error('STK Push request timeout')),
+              30000
+            )
+          ),
+        ])
+        break
+      } catch (error: any) {
+        retryCount++
+        if (retryCount > maxRetries) {
+          throw error
+        }
+        if (error.message !== 'STK Push request timeout') {
+          throw error
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000 * retryCount))
+      }
+    }
 
-    if (stkResponse.ResponseCode !== '0') {
-      logError('STK_PUSH_FAILED', stkResponse.ResponseCode, {
+    logSTKInitiation(phone, amount, orderId, ticketId, equipmentHireId, stkResponse!.ResponseCode, null)
+
+    if (stkResponse!.ResponseCode !== '0') {
+      logError('STK_PUSH_FAILED', stkResponse!.ResponseCode, {
         phone,
         amount,
         accountReference,
-        customerMessage: stkResponse.CustomerMessage,
+        customerMessage: stkResponse!.CustomerMessage,
       })
       return res.status(400).json({
-        error: stkResponse.CustomerMessage,
-        responseCode: stkResponse.ResponseCode,
+        error: stkResponse!.CustomerMessage || 'Failed to initiate payment. Please try again.',
+        responseCode: stkResponse!.ResponseCode,
       })
     }
 
     res.json({
-      checkoutRequestId: stkResponse.CheckoutRequestID,
-      merchantRequestId: stkResponse.MerchantRequestID,
-      responseCode: stkResponse.ResponseCode,
-      customerMessage: stkResponse.CustomerMessage,
+      checkoutRequestId: stkResponse!.CheckoutRequestID,
+      merchantRequestId: stkResponse!.MerchantRequestID,
+      responseCode: stkResponse!.ResponseCode,
+      customerMessage: stkResponse!.CustomerMessage,
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error initiating STK push:', error)
     logError('STK_PUSH_EXCEPTION', String(error), { phone: req.body.phone })
-    res.status(500).json({ error: 'Failed to initiate payment' })
+
+    let errorMessage = 'Failed to initiate payment'
+    if (error.message === 'STK Push request timeout') {
+      errorMessage = 'Payment request timeout. M-Pesa service is currently busy. Please try again.'
+    } else if (error.response?.status === 401) {
+      errorMessage = 'Authentication failed with M-Pesa service. Please try again.'
+    } else if (error.response?.status === 503) {
+      errorMessage = 'M-Pesa service is temporarily unavailable. Please try again later.'
+    } else if (error.code === 'ECONNREFUSED') {
+      errorMessage = 'Unable to connect to M-Pesa service. Please check your internet connection and try again.'
+    }
+
+    res.status(500).json({ error: errorMessage })
   }
 }
 
