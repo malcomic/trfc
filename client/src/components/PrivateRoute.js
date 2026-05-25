@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 export default function PrivateRoute({ children, role }) {
     const { token, user, isLoading } = useAuth();
     if (isLoading) {
-        return _jsx("div", { className: "flex items-center justify-center h-screen", children: "Loading..." });
+        return _jsx("div", { className: "flex items-center justify-center h-screen bg-white dark:bg-[#1C1C1C] text-gray-900 dark:text-white", children: "Loading..." });
     }
     if (!token) {
         return _jsx(Navigate, { to: "/login" });

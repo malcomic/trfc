@@ -1,267 +1,6 @@
 import { Event } from '../types'
 import { MapPin, Clock, Users, ChevronRight } from 'lucide-react'
 
-const cardStyles = `
-  .trfc-ecard {
-    --fire: #FF4500;
-    --ember: #FF7A1A;
-    --night: #0A0A0A;
-    --ash: #1C1C1C;
-    --smoke: #2A2A2A;
-    --chalk: #F5F2EE;
-    --fog: #6B6B6B;
-    --mist: #2E2E2E;
-    --success: #30D158;
-    font-family: 'Barlow', 'Barlow Condensed', sans-serif;
-    background: var(--ash);
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-  }
-
-  /* Image */
-  .trfc-ecard__img-wrap {
-    position: relative;
-    overflow: hidden;
-    height: 200px;
-    background: var(--smoke);
-    flex-shrink: 0;
-  }
-  .trfc-ecard__img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-    filter: brightness(0.78) saturate(0.85);
-    transition: transform 0.5s cubic-bezier(0.16,1,0.3,1), filter 0.3s;
-  }
-  .trfc-ecard:hover .trfc-ecard__img {
-    transform: scale(1.06);
-    filter: brightness(0.92) saturate(1);
-  }
-  .trfc-ecard__img-gradient {
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 55%;
-    background: linear-gradient(to top, rgba(10,10,10,0.75), transparent);
-    pointer-events: none;
-  }
-  /* No-image placeholder */
-  .trfc-ecard__img-placeholder {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--smoke);
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 48px;
-    color: rgba(255,69,0,0.12);
-    letter-spacing: 2px;
-    user-select: none;
-  }
-
-  /* Date badge — top-left of image */
-  .trfc-ecard__date-badge {
-    position: absolute;
-    top: 12px; left: 12px;
-    background: rgba(10,10,10,0.85);
-    backdrop-filter: blur(6px);
-    border: 1px solid rgba(255,255,255,0.08);
-    padding: 7px 11px;
-    text-align: center;
-    min-width: 48px;
-    clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
-    z-index: 2;
-  }
-  .trfc-ecard__date-day {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 24px;
-    color: var(--fire);
-    line-height: 1;
-    display: block;
-  }
-  .trfc-ecard__date-mon {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 700;
-    font-size: 9px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--fog);
-    display: block;
-    margin-top: 1px;
-  }
-
-  /* Category tag — top-right */
-  .trfc-ecard__tag {
-    position: absolute;
-    top: 12px; right: 12px;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 900;
-    font-size: 9px;
-    letter-spacing: 2.5px;
-    text-transform: uppercase;
-    padding: 4px 9px;
-    background: var(--fire);
-    color: white;
-    z-index: 2;
-  }
-
-  /* Free badge */
-  .trfc-ecard__free-badge {
-    position: absolute;
-    top: 12px; right: 12px;
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 14px;
-    letter-spacing: 1px;
-    padding: 4px 10px;
-    background: var(--success);
-    color: white;
-    z-index: 2;
-  }
-
-  /* Body */
-  .trfc-ecard__body {
-    padding: 18px 18px 20px;
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    gap: 0;
-    border-top: 1px solid rgba(255,255,255,0.04);
-  }
-
-  .trfc-ecard__title {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 700;
-    font-size: 18px;
-    letter-spacing: 0.3px;
-    color: var(--chalk);
-    line-height: 1.2;
-    margin-bottom: 10px;
-  }
-
-  /* Meta rows */
-  .trfc-ecard__meta {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-bottom: 14px;
-  }
-  .trfc-ecard__meta-row {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-size: 12px;
-    color: var(--fog);
-    font-family: 'Barlow', sans-serif;
-    line-height: 1;
-  }
-  .trfc-ecard__meta-row svg { color: var(--fire); flex-shrink: 0; }
-
-  /* Description */
-  .trfc-ecard__desc {
-    font-size: 13px;
-    color: rgba(245,242,238,0.45);
-    line-height: 1.65;
-    margin-bottom: 16px;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  /* Footer */
-  .trfc-ecard__footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-top: 14px;
-    border-top: 1px solid rgba(255,255,255,0.05);
-    margin-top: auto;
-  }
-  .trfc-ecard__price {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 28px;
-    color: var(--fire);
-    letter-spacing: 1px;
-    line-height: 1;
-  }
-  .trfc-ecard__price-label {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 9px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--fog);
-    margin-top: 2px;
-  }
-  .trfc-ecard__cta {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 700;
-    font-size: 11px;
-    letter-spacing: 2.5px;
-    text-transform: uppercase;
-    color: var(--fire);
-    transition: gap 0.2s, color 0.2s;
-    border: 1px solid rgba(255,69,0,0.25);
-    padding: 7px 12px;
-    clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
-    transition: background 0.2s, color 0.2s;
-    cursor: pointer;
-    background: rgba(255,69,0,0.06);
-  }
-  .trfc-ecard:hover .trfc-ecard__cta {
-    background: var(--fire);
-    color: white;
-    border-color: var(--fire);
-  }
-
-  /* Left accent line on hover */
-  .trfc-ecard::before {
-    content: '';
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 2px;
-    background: var(--fire);
-    transform: scaleY(0);
-    transform-origin: bottom;
-    transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
-    z-index: 3;
-  }
-  .trfc-ecard:hover::before { transform: scaleY(1); }
-
-  /* Slots indicator */
-  .trfc-ecard__slots {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 700;
-    font-size: 10px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-bottom: 12px;
-  }
-  .trfc-ecard__slots-bar {
-    flex: 1;
-    height: 3px;
-    background: var(--mist);
-    overflow: hidden;
-    max-width: 80px;
-  }
-  .trfc-ecard__slots-fill {
-    height: 100%;
-    background: var(--fire);
-    transition: width 0.4s ease;
-  }
-  .trfc-ecard__slots-text { color: var(--fog); }
-  .trfc-ecard__slots-text.urgent { color: var(--fire); }
-`
-
 function formatDate(dateStr?: string) {
   if (!dateStr) return { day: null, mon: null }
   const d = new Date(dateStr)
@@ -272,20 +11,7 @@ function formatDate(dateStr?: string) {
   }
 }
 
-// Inject styles once globally
-let stylesInjected = false
-function ensureStyles() {
-  if (stylesInjected || document.getElementById('trfc-ecard-styles')) return
-  const el = document.createElement('style')
-  el.id = 'trfc-ecard-styles'
-  el.textContent = cardStyles
-  document.head.appendChild(el)
-  stylesInjected = true
-}
-
 export default function EventCard({ event }: { event: Event }) {
-  ensureStyles()
-
   const ev = event as any
   const { day, mon } = formatDate(ev.date || ev.start_date || ev.event_date)
   const isFree = !ev.price || Number(ev.price) === 0
@@ -294,61 +20,61 @@ export default function EventCard({ event }: { event: Event }) {
   const slotsUrgent = slots !== null && slots <= 10
 
   return (
-    <div className="trfc-ecard">
+    <div className="bg-ash dark:bg-ash relative overflow-hidden flex flex-col h-full font-barlow">
       {/* Image */}
-      <div className="trfc-ecard__img-wrap">
+      <div className="relative overflow-hidden h-56 bg-smoke dark:bg-smoke flex-shrink-0">
         {ev.image_url ? (
           <>
             <img
               src={ev.image_url}
               alt={ev.title}
-              className="trfc-ecard__img"
+              className="w-full h-full object-cover brightness-75 saturate-[0.85] transition-all duration-500 ease-out group-hover:scale-[1.06] group-hover:brightness-90 group-hover:saturate-100"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none'
               }}
             />
-            <div className="trfc-ecard__img-gradient" />
+            <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black/75 to-transparent pointer-events-none" />
           </>
         ) : (
-          <div className="trfc-ecard__img-placeholder">TRFC</div>
+          <div className="w-full h-full flex items-center justify-center bg-smoke dark:bg-smoke font-bebas text-5xl text-fire/10 letter-spacing-wider select-none">TRFC</div>
         )}
 
         {/* Date badge */}
         {day && (
-          <div className="trfc-ecard__date-badge">
-            <span className="trfc-ecard__date-day">{day}</span>
-            <span className="trfc-ecard__date-mon">{mon}</span>
+          <div className="absolute top-3 left-3 bg-night/85 backdrop-blur-sm border border-white/10 p-2 text-center min-w-12 clip-angled-sm z-10">
+            <span className="font-bebas text-2xl text-fire leading-none block">{day}</span>
+            <span className="font-barlow-condensed font-bold text-xs letter-spacing-wider text-fog leading-none block mt-0.5">{mon}</span>
           </div>
         )}
 
         {/* Tag or Free badge */}
         {isFree ? (
-          <span className="trfc-ecard__free-badge">FREE</span>
+          <span className="absolute top-3 right-3 font-bebas text-sm letter-spacing-wider px-2.5 py-1 bg-success text-white z-10">FREE</span>
         ) : ev.category ? (
-          <span className="trfc-ecard__tag">{ev.category}</span>
+          <span className="absolute top-3 right-3 font-barlow-condensed font-black text-xs letter-spacing-wider text-transform-uppercase px-2 py-1 bg-fire text-white z-10">{ev.category}</span>
         ) : null}
       </div>
 
       {/* Body */}
-      <div className="trfc-ecard__body">
-        <h3 className="trfc-ecard__title">{ev.title}</h3>
+      <div className="px-4.5 pt-4.5 pb-5 flex flex-col flex-1 gap-0 border-t border-white/5">
+        <h3 className="font-barlow-condensed font-bold text-lg letter-spacing-wide text-chalk leading-tight mb-2.5">{ev.title}</h3>
 
-        <div className="trfc-ecard__meta">
+        <div className="flex flex-col gap-1.5 mb-3.5">
           {ev.location && (
-            <div className="trfc-ecard__meta-row">
-              <MapPin size={11} />
+            <div className="flex items-center gap-1.75 text-sm text-fog font-barlow leading-none">
+              <MapPin size={11} className="text-fire flex-shrink-0" />
               <span>{ev.location}</span>
             </div>
           )}
           {(ev.time || ev.start_time) && (
-            <div className="trfc-ecard__meta-row">
-              <Clock size={11} />
+            <div className="flex items-center gap-1.75 text-sm text-fog font-barlow leading-none">
+              <Clock size={11} className="text-fire flex-shrink-0" />
               <span>{ev.time || ev.start_time}</span>
             </div>
           )}
           {ev.capacity && (
-            <div className="trfc-ecard__meta-row">
-              <Users size={11} />
+            <div className="flex items-center gap-1.75 text-sm text-fog font-barlow leading-none">
+              <Users size={11} className="text-fire flex-shrink-0" />
               <span>{ev.registered_count || 0} / {ev.capacity} registered</span>
             </div>
           )}
@@ -356,30 +82,30 @@ export default function EventCard({ event }: { event: Event }) {
 
         {/* Description */}
         {ev.description && (
-          <p className="trfc-ecard__desc">{ev.description}</p>
+          <p className="text-sm text-chalk/45 leading-relaxed mb-4 line-clamp-2">{ev.description}</p>
         )}
 
         {/* Slots bar */}
         {slots !== null && (
-          <div className="trfc-ecard__slots">
-            <div className="trfc-ecard__slots-bar">
-              <div className="trfc-ecard__slots-fill" style={{ width: `${slotsPercent}%` }} />
+          <div className="flex items-center gap-1.5 font-barlow-condensed font-bold text-xs letter-spacing-wider text-transform-uppercase mb-3">
+            <div className="flex-1 h-0.75 bg-mist overflow-hidden max-w-20">
+              <div className="h-full bg-fire transition-all duration-400 ease" style={{ width: `${slotsPercent}%` }} />
             </div>
-            <span className={`trfc-ecard__slots-text${slotsUrgent ? ' urgent' : ''}`}>
+            <span className={`${slotsUrgent ? 'text-fire' : 'text-fog'}`}>
               {slots === 0 ? 'Full' : `${slots} slot${slots !== 1 ? 's' : ''} left`}
             </span>
           </div>
         )}
 
         {/* Footer */}
-        <div className="trfc-ecard__footer">
+        <div className="flex items-center justify-between pt-3.5 border-t border-white/5 mt-auto">
           <div>
-            <div className="trfc-ecard__price">
+            <div className="font-bebas text-2xl text-fire letter-spacing-wider leading-none">
               {isFree ? 'FREE' : `KES ${Number(ev.price).toLocaleString()}`}
             </div>
-            <div className="trfc-ecard__price-label">Entry Fee</div>
+            <div className="font-barlow-condensed text-xs letter-spacing-wider text-transform-uppercase text-fog mt-0.5">Entry Fee</div>
           </div>
-          <div className="trfc-ecard__cta">
+          <div className="flex items-center gap-1.25 font-barlow-condensed font-bold text-xs letter-spacing-wider text-transform-uppercase text-fire border border-fire/25 px-3 py-1.75 clip-angled-sm transition-all duration-200 bg-fire/5 hover:bg-fire hover:text-white cursor-pointer">
             Register <ChevronRight size={12} />
           </div>
         </div>

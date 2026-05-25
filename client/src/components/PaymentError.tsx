@@ -14,8 +14,8 @@ export default function PaymentError({
   phone,
 }: PaymentErrorProps) {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-lg max-w-md w-full">
+    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center p-4 z-50">
+      <div className="bg-white dark:bg-[#1C1C1C] rounded-lg shadow-lg max-w-md w-full">
         {/* Header */}
         <div className="bg-red-600 text-white p-6 rounded-t-lg">
           <div className="flex items-center gap-3">
@@ -27,14 +27,14 @@ export default function PaymentError({
         {/* Content */}
         <div className="p-6 space-y-4">
           {/* Error Message */}
-          <div className="bg-red-50 border border-red-200 rounded p-4">
-            <p className="text-red-800 text-sm">{error}</p>
+          <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded p-4">
+            <p className="text-red-800 dark:text-red-400 text-sm">{error}</p>
           </div>
 
           {/* Possible Reasons */}
-          <div className="bg-gray-50 p-4 rounded">
-            <p className="font-semibold text-sm text-gray-800 mb-2">Possible reasons:</p>
-            <ul className="text-xs text-gray-700 space-y-1">
+          <div className="bg-gray-50 dark:bg-[#2A2A2A] p-4 rounded">
+            <p className="font-semibold text-sm text-gray-800 dark:text-gray-200 mb-2">Possible reasons:</p>
+            <ul className="text-xs text-gray-700 dark:text-gray-400 space-y-1">
               <li>• Insufficient M-Pesa balance</li>
               <li>• Incorrect M-Pesa PIN entered</li>
               <li>• Payment request expired</li>
@@ -45,8 +45,8 @@ export default function PaymentError({
 
           {/* Phone Number Info */}
           {phone && (
-            <div className="bg-blue-50 border border-blue-200 rounded p-4">
-              <p className="text-xs text-blue-800 flex items-center gap-2">
+            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded p-4">
+              <p className="text-xs text-blue-800 dark:text-blue-400 flex items-center gap-2">
                 <Phone className="w-4 h-4" />
                 Payment was requested on: <span className="font-mono font-semibold">{phone}</span>
               </p>
@@ -55,7 +55,7 @@ export default function PaymentError({
         </div>
 
         {/* Actions */}
-        <div className="bg-gray-100 border-t px-6 py-4 space-y-2">
+        <div className="bg-gray-100 dark:bg-[#2A2A2A] border-t dark:border-gray-700 px-6 py-4 space-y-2">
           {onRetry && (
             <button
               onClick={onRetry}
@@ -69,7 +69,7 @@ export default function PaymentError({
           {onContactSupport && (
             <button
               onClick={onContactSupport}
-              className="w-full border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 font-semibold"
+              className="w-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-[#2A2A2A] font-semibold"
             >
               Contact Support
             </button>

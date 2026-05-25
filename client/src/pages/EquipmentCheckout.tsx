@@ -83,7 +83,7 @@ export default function EquipmentCheckout() {
   const today = new Date().toISOString().split('T')[0]
 
   return (
-    <div className="min-h-screen py-12 px-4 bg-gray-50">
+    <div className="min-h-screen py-12 px-4 bg-gray-50 dark:bg-gray-900">
       <div className="max-w-2xl mx-auto">
         <div className="mb-6">
           <button
@@ -92,8 +92,8 @@ export default function EquipmentCheckout() {
           >
             ← Back to Equipment
           </button>
-          <h1 className="text-3xl font-bold mb-2">Book Equipment</h1>
-          <p className="text-gray-600 capitalize">
+          <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-white">Book Equipment</h1>
+          <p className="text-gray-600 dark:text-gray-400 capitalize">
             {packageType} Rental Package - KES {pricePerDay}/day
           </p>
         </div>
@@ -101,66 +101,66 @@ export default function EquipmentCheckout() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Booking Form */}
           <form onSubmit={handleSubmit(onSubmit)} className="md:col-span-2">
-            <div className="bg-white rounded-lg shadow p-6 space-y-4">
-              <h2 className="text-xl font-bold mb-4">Booking Details</h2>
+            <div className="bg-white dark:bg-[#1C1C1C] rounded-lg shadow p-6 space-y-4">
+              <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Booking Details</h2>
 
               <div>
-                <label className="block text-sm font-semibold mb-2">Equipment Name</label>
+                <label className="block text-sm font-semibold mb-2 text-gray-900 dark:text-white">Equipment Name</label>
                 <input
                   {...register('equipmentName', {
                     required: 'Equipment name is required',
                   })}
                   type="text"
                   placeholder="e.g., Dumbbells, Treadmill"
-                  className="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:border-primary"
+                  className="w-full border border-gray-300 dark:border-gray-700 rounded px-4 py-2 bg-white dark:bg-[#2A2A2A] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-primary"
                 />
                 {errors.equipmentName && (
-                  <p className="text-red-600 text-sm mt-1">{errors.equipmentName.message}</p>
+                  <p className="text-red-600 dark:text-red-400 text-sm mt-1">{errors.equipmentName.message}</p>
                 )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold mb-2">Hire Date</label>
+                  <label className="block text-sm font-semibold mb-2 text-gray-900 dark:text-white">Hire Date</label>
                   <div className="relative">
-                    <Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                    <Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400 dark:text-gray-500" />
                     <input
                       {...register('hireDate', {
                         required: 'Hire date is required',
                       })}
                       type="date"
                       min={today}
-                      className="w-full border border-gray-300 rounded px-4 py-2 pl-10 focus:outline-none focus:border-primary"
+                      className="w-full border border-gray-300 dark:border-gray-700 rounded px-4 py-2 pl-10 bg-white dark:bg-[#2A2A2A] text-gray-900 dark:text-white focus:outline-none focus:border-primary"
                     />
                   </div>
                   {errors.hireDate && (
-                    <p className="text-red-600 text-sm mt-1">{errors.hireDate.message}</p>
+                    <p className="text-red-600 dark:text-red-400 text-sm mt-1">{errors.hireDate.message}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold mb-2">Return Date</label>
+                  <label className="block text-sm font-semibold mb-2 text-gray-900 dark:text-white">Return Date</label>
                   <div className="relative">
-                    <Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                    <Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400 dark:text-gray-500" />
                     <input
                       {...register('returnDate', {
                         required: 'Return date is required',
                       })}
                       type="date"
                       min={hireDate || today}
-                      className="w-full border border-gray-300 rounded px-4 py-2 pl-10 focus:outline-none focus:border-primary"
+                      className="w-full border border-gray-300 dark:border-gray-700 rounded px-4 py-2 pl-10 bg-white dark:bg-[#2A2A2A] text-gray-900 dark:text-white focus:outline-none focus:border-primary"
                     />
                   </div>
                   {errors.returnDate && (
-                    <p className="text-red-600 text-sm mt-1">{errors.returnDate.message}</p>
+                    <p className="text-red-600 dark:text-red-400 text-sm mt-1">{errors.returnDate.message}</p>
                   )}
                 </div>
               </div>
 
-              <h2 className="text-xl font-bold mt-6 mb-4">Payment Details</h2>
+              <h2 className="text-xl font-bold mt-6 mb-4 text-gray-900 dark:text-white">Payment Details</h2>
 
               <div>
-                <label className="block text-sm font-semibold mb-2">
+                <label className="block text-sm font-semibold mb-2 text-gray-900 dark:text-white">
                   Phone Number (254XXXXXXXXX)
                 </label>
                 <input
@@ -173,17 +173,17 @@ export default function EquipmentCheckout() {
                   })}
                   type="text"
                   placeholder="254712345678"
-                  className="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:border-primary"
+                  className="w-full border border-gray-300 dark:border-gray-700 rounded px-4 py-2 bg-white dark:bg-[#2A2A2A] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-primary"
                 />
                 {errors.phone && (
-                  <p className="text-red-600 text-sm mt-1">{errors.phone.message}</p>
+                  <p className="text-red-600 dark:text-red-400 text-sm mt-1">{errors.phone.message}</p>
                 )}
               </div>
 
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded p-4 flex gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-red-700 text-sm">{error}</p>
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-4 flex gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-red-700 dark:text-red-400 text-sm">{error}</p>
                 </div>
               )}
 
@@ -206,22 +206,22 @@ export default function EquipmentCheckout() {
 
           {/* Order Summary Sidebar */}
           <div className="md:col-span-1">
-            <div className="bg-white rounded-lg shadow p-6 sticky top-4">
-              <h3 className="text-lg font-bold mb-4">Booking Summary</h3>
+            <div className="bg-white dark:bg-[#1C1C1C] rounded-lg shadow p-6 sticky top-4">
+              <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Booking Summary</h3>
 
-              <div className="space-y-2 mb-4 pb-4 border-b">
+              <div className="space-y-2 mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex justify-between text-sm">
-                  <span>Package Type</span>
-                  <span className="font-semibold capitalize">{packageType}</span>
+                  <span className="text-gray-700 dark:text-gray-300">Package Type</span>
+                  <span className="font-semibold capitalize text-gray-900 dark:text-white">{packageType}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>Daily Rate</span>
-                  <span className="font-semibold">KES {pricePerDay.toLocaleString()}</span>
+                  <span className="text-gray-700 dark:text-gray-300">Daily Rate</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">KES {pricePerDay.toLocaleString()}</span>
                 </div>
                 {days > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span>Number of Days</span>
-                    <span className="font-semibold">{days}</span>
+                    <span className="text-gray-700 dark:text-gray-300">Number of Days</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">{days}</span>
                   </div>
                 )}
               </div>
@@ -229,11 +229,11 @@ export default function EquipmentCheckout() {
               {totalPrice > 0 && (
                 <>
                   <div className="flex justify-between text-lg font-bold mb-6">
-                    <span>Total Cost</span>
+                    <span className="text-gray-900 dark:text-white">Total Cost</span>
                     <span className="text-primary">KES {totalPrice.toLocaleString()}</span>
                   </div>
 
-                  <div className="bg-blue-50 p-3 rounded text-xs text-blue-700 space-y-2">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded text-xs text-blue-700 dark:text-blue-400 space-y-2">
                     <p>
                       <strong>Rental Period:</strong>
                     </p>
@@ -244,7 +244,7 @@ export default function EquipmentCheckout() {
               )}
 
               {totalPrice === 0 && (
-                <p className="text-gray-600 text-sm text-center py-4">
+                <p className="text-gray-600 dark:text-gray-400 text-sm text-center py-4">
                   Select hire and return dates to see total cost
                 </p>
               )}

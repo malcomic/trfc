@@ -1,392 +1,9 @@
 import { useForm } from 'react-hook-form'
 import { useNavigate, Link } from 'react-router-dom'
 import { loginUser } from '../api/auth'
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react'
-
-const loginStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:ital,wght@0,400;0,600;1,400&family=Barlow+Condensed:wght@500;700;900&display=swap');
-
-  .trfc-login {
-    --fire: #FF4500;
-    --ember: #FF7A1A;
-    --night: #0A0A0A;
-    --ink: #111111;
-    --ash: #1C1C1C;
-    --smoke: #2A2A2A;
-    --chalk: #F5F2EE;
-    --fog: #6B6B6B;
-    --mist: #2E2E2E;
-    --danger: #FF3B30;
-    min-height: 100vh;
-    background: var(--night);
-    display: flex;
-    font-family: 'Barlow', sans-serif;
-    position: relative;
-    overflow: hidden;
-  }
-
-  /* ── Animated background grid ── */
-  .trfc-login__bg-grid {
-    position: absolute;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(255,69,0,0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,69,0,0.04) 1px, transparent 1px);
-    background-size: 60px 60px;
-    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
-    pointer-events: none;
-  }
-
-  /* ── Glow orbs ── */
-  .trfc-login__orb {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(100px);
-    pointer-events: none;
-  }
-  .trfc-login__orb--1 {
-    width: 500px; height: 500px;
-    background: rgba(255,69,0,0.12);
-    top: -150px; right: -100px;
-  }
-  .trfc-login__orb--2 {
-    width: 300px; height: 300px;
-    background: rgba(255,122,26,0.07);
-    bottom: -80px; left: -60px;
-  }
-
-  /* ── Left panel (branding) ── */
-  .trfc-login__left {
-    flex: 1;
-    display: none;
-    flex-direction: column;
-    justify-content: space-between;
-    padding: 56px 64px;
-    position: relative;
-    z-index: 1;
-    border-right: 1px solid rgba(255,255,255,0.04);
-  }
-  @media (min-width: 960px) { .trfc-login__left { display: flex; } }
-
-  .trfc-login__big-word {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(80px, 9vw, 140px);
-    line-height: 0.9;
-    color: var(--chalk);
-    letter-spacing: -1px;
-  }
-  .trfc-login__big-word em {
-    font-style: normal;
-    color: transparent;
-    -webkit-text-stroke: 2px var(--fire);
-  }
-
-  .trfc-login__left-tagline {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 500;
-    font-size: 14px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--fog);
-    margin-top: 20px;
-  }
-
-  .trfc-login__left-stats {
-    display: flex;
-    gap: 40px;
-  }
-  .trfc-login__left-stat-val {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 44px;
-    color: var(--fire);
-    line-height: 1;
-  }
-  .trfc-login__left-stat-label {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 700;
-    font-size: 11px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--fog);
-    margin-top: 4px;
-  }
-
-  .trfc-login__left-quote {
-    font-style: italic;
-    font-size: 15px;
-    color: rgba(245,242,238,0.35);
-    line-height: 1.7;
-    border-left: 2px solid var(--fire);
-    padding-left: 18px;
-    max-width: 340px;
-  }
-
-  /* ── Right panel (form) ── */
-  .trfc-login__right {
-    width: 100%;
-    max-width: 520px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 48px 40px;
-    position: relative;
-    z-index: 1;
-  }
-  @media (min-width: 960px) { .trfc-login__right { padding: 64px 56px; } }
-
-  /* Mobile logo */
-  .trfc-login__mobile-logo {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 36px;
-    color: var(--chalk);
-    letter-spacing: 3px;
-    margin-bottom: 40px;
-    display: block;
-  }
-  .trfc-login__mobile-logo span { color: var(--fire); }
-  @media (min-width: 960px) { .trfc-login__mobile-logo { display: none; } }
-
-  /* Section label */
-  .trfc-login__eyebrow {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 700;
-    font-size: 11px;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    color: var(--fire);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 14px;
-  }
-  .trfc-login__eyebrow::before {
-    content: '';
-    display: block;
-    width: 20px;
-    height: 2px;
-    background: var(--fire);
-  }
-
-  .trfc-login__title {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(48px, 6vw, 72px);
-    color: var(--chalk);
-    line-height: 0.95;
-    margin-bottom: 10px;
-    letter-spacing: 0.5px;
-  }
-  .trfc-login__subtitle {
-    font-size: 15px;
-    color: var(--fog);
-    margin-bottom: 40px;
-    line-height: 1.6;
-  }
-
-  /* Error alert */
-  .trfc-login__error {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    background: rgba(255,59,48,0.08);
-    border: 1px solid rgba(255,59,48,0.25);
-    border-left: 3px solid var(--danger);
-    padding: 14px 16px;
-    margin-bottom: 28px;
-    font-size: 14px;
-    color: #FF6B65;
-    animation: fadeUp 0.3s ease;
-  }
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  /* Form field */
-  .trfc-login__field {
-    margin-bottom: 20px;
-  }
-  .trfc-login__label {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 700;
-    font-size: 11px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: rgba(245,242,238,0.45);
-    margin-bottom: 10px;
-    display: block;
-  }
-  .trfc-login__input-wrap {
-    position: relative;
-  }
-  .trfc-login__input-icon {
-    position: absolute;
-    left: 16px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--fog);
-    pointer-events: none;
-    transition: color 0.2s;
-  }
-  .trfc-login__input {
-    width: 100%;
-    background: var(--ash);
-    border: 1px solid rgba(255,255,255,0.07);
-    color: var(--chalk);
-    font-family: 'Barlow', sans-serif;
-    font-size: 15px;
-    padding: 14px 16px 14px 46px;
-    outline: none;
-    transition: border-color 0.2s, background 0.2s;
-    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
-    -webkit-appearance: none;
-  }
-  .trfc-login__input::placeholder { color: var(--fog); }
-  .trfc-login__input:focus {
-    border-color: rgba(255,69,0,0.5);
-    background: rgba(28,28,28,0.8);
-  }
-  .trfc-login__input:focus + .trfc-login__input-focus-line {
-    transform: scaleX(1);
-  }
-  .trfc-login__input-wrap:focus-within .trfc-login__input-icon {
-    color: var(--fire);
-  }
-  .trfc-login__input-focus-line {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--fire), var(--ember));
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
-  }
-  .trfc-login__field-error {
-    font-size: 12px;
-    color: var(--danger);
-    margin-top: 6px;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 700;
-    letter-spacing: 1px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .trfc-login__field-error::before {
-    content: '!';
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: var(--danger);
-    color: white;
-    font-size: 9px;
-    font-weight: 900;
-  }
-
-  /* Forgot password */
-  .trfc-login__forgot {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: -8px;
-    margin-bottom: 8px;
-  }
-  .trfc-login__forgot a {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 700;
-    font-size: 11px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--fog);
-    text-decoration: none;
-    transition: color 0.2s;
-  }
-  .trfc-login__forgot a:hover { color: var(--fire); }
-
-  /* Submit button */
-  .trfc-login__submit {
-    width: 100%;
-    margin-top: 28px;
-    background: var(--fire);
-    border: none;
-    color: white;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 900;
-    font-size: 15px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    padding: 16px 32px;
-    cursor: pointer;
-    clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
-    transition: background 0.2s, transform 0.15s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    position: relative;
-    overflow: hidden;
-  }
-  .trfc-login__submit:hover:not(:disabled) { background: var(--ember); transform: scale(1.02); }
-  .trfc-login__submit:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
-
-  /* Loading shimmer on button */
-  .trfc-login__submit.loading::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 50%, transparent 100%);
-    animation: shimmer 1.2s ease infinite;
-  }
-  @keyframes shimmer {
-    from { transform: translateX(-100%); }
-    to   { transform: translateX(100%); }
-  }
-
-  /* Divider */
-  .trfc-login__divider {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin: 28px 0;
-  }
-  .trfc-login__divider-line {
-    flex: 1;
-    height: 1px;
-    background: rgba(255,255,255,0.06);
-  }
-  .trfc-login__divider-text {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 11px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--fog);
-  }
-
-  /* Register CTA */
-  .trfc-login__register-cta {
-    text-align: center;
-    font-size: 14px;
-    color: var(--fog);
-  }
-  .trfc-login__register-link {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 900;
-    font-size: 14px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--fire);
-    text-decoration: none;
-    border-bottom: 1px solid rgba(255,69,0,0.3);
-    padding-bottom: 1px;
-    transition: border-color 0.2s, color 0.2s;
-  }
-  .trfc-login__register-link:hover { color: var(--ember); border-color: var(--ember); }
-`
 
 export default function Login() {
   const { register, handleSubmit, formState: { errors } } = useForm()
@@ -394,20 +11,6 @@ export default function Login() {
   const [errorMessage, setErrorMessage] = useState('')
   const navigate = useNavigate()
   const { login } = useAuth()
-  const styleRef = useRef<HTMLStyleElement | null>(null)
-
-  useEffect(() => {
-    if (document.getElementById('trfc-login-styles')) return
-    const el = document.createElement('style')
-    el.id = 'trfc-login-styles'
-    el.textContent = loginStyles
-    document.head.appendChild(el)
-    styleRef.current = el
-    return () => {
-      const existing = document.getElementById('trfc-login-styles')
-      if (existing) document.head.removeChild(existing)
-    }
-  }, [])
 
   const onSubmit = async (data: any) => {
     try {
@@ -425,114 +28,116 @@ export default function Login() {
   }
 
   return (
-    <div className="trfc-login">
+    <div className="min-h-screen bg-night flex font-barlow relative overflow-hidden">
       {/* Background decoration */}
-      <div className="trfc-login__bg-grid" />
-      <div className="trfc-login__orb trfc-login__orb--1" />
-      <div className="trfc-login__orb trfc-login__orb--2" />
+      <div className="absolute inset-0 bg-gradient-lines pointer-events-none" />
+      <div className="absolute top-0 right-0 w-96 h-96 bg-fire/15 rounded-full blur-3xl pointer-events-none" style={{ transform: 'translate(100px, -150px)' }} />
+      <div className="absolute bottom-0 left-0 w-72 h-72 bg-ember/10 rounded-full blur-3xl pointer-events-none" style={{ transform: 'translate(-60px, 80px)' }} />
 
       {/* ── Left branding panel ── */}
-      <div className="trfc-login__left">
-        <Link to="/" style={{ textDecoration: 'none' }}>
-          <div className="trfc-login__big-word">
-            TH<em>I</em>KA<br />ROAD<br /><em>FC</em>
+      <div className="flex-1 hidden md:flex flex-col justify-between p-16 relative z-10 border-r border-white/5">
+        <Link to="/" className="text-decoration-none">
+          <div className="font-bebas text-7xl leading-tight text-chalk letter-spacing-tighter">
+            TH<em className="not-italic text-transparent" style={{ WebkitTextStroke: '2px #FF4500' }}>I</em>KA<br />ROAD<br /><em className="not-italic text-transparent" style={{ WebkitTextStroke: '2px #FF4500' }}>FC</em>
           </div>
-          <p className="trfc-login__left-tagline">Nairobi · Est. 2019</p>
+          <p className="font-barlow-condensed font-medium text-sm letter-spacing-widest text-transform-uppercase text-fog mt-5">Nairobi · Est. 2019</p>
         </Link>
 
-        <div className="trfc-login__left-stats">
+        <div className="flex gap-10">
           {[
             { val: '500+', label: 'Members' },
             { val: '50+',  label: 'Events' },
             { val: '5 Yrs', label: 'Running' },
           ].map((s) => (
             <div key={s.label}>
-              <div className="trfc-login__left-stat-val">{s.val}</div>
-              <div className="trfc-login__left-stat-label">{s.label}</div>
+              <div className="font-bebas text-5xl text-fire leading-none">{s.val}</div>
+              <div className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fog mt-1">{s.label}</div>
             </div>
           ))}
         </div>
 
-        <p className="trfc-login__left-quote">
+        <p className="italic text-sm text-chalk/35 leading-loose border-l-2 border-fire pl-4.5 max-w-64">
           "Every kilometre is a conversation between who you were and who you're becoming."
         </p>
       </div>
 
       {/* ── Right form panel ── */}
-      <div className="trfc-login__right">
+      <div className="w-full md:max-w-96 flex flex-col justify-center p-12 md:p-16 relative z-10">
         {/* Mobile-only logo */}
-        <Link to="/" className="trfc-login__mobile-logo">
-          TR<span>F</span>C
+        <Link to="/" className="font-bebas text-3xl text-chalk letter-spacing-widest mb-10 block text-decoration-none md:hidden">
+          TR<span className="text-fire">F</span>C
         </Link>
 
-        <div className="trfc-login__eyebrow">Member Access</div>
+        <div className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fire flex items-center gap-2 mb-3.5 before:w-5 before:h-0.5 before:bg-fire before:inline-block before:flex-shrink-0">
+          Member Access
+        </div>
 
-        <h1 className="trfc-login__title">
+        <h1 className="font-bebas text-5xl text-chalk leading-tight mb-2.5 letter-spacing-tighter">
           WELCOME<br />BACK
         </h1>
-        <p className="trfc-login__subtitle">
+        <p className="text-sm text-fog leading-loose mb-10">
           Sign in to access events, track your progress, and connect with the community.
         </p>
 
         {/* Error message */}
         {errorMessage && (
-          <div className="trfc-login__error" role="alert">
-            <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+          <div className="flex items-start gap-2.5 bg-red-500/10 border border-red-500/25 border-l-4 border-l-red-500 px-4 py-3.5 mb-7 text-sm text-red-600 dark:text-red-400 animate-fadeUp" role="alert">
+            <AlertCircle size={16} className="flex-shrink-0 mt-0.25" />
             <span>{errorMessage}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           {/* Email */}
-          <div className="trfc-login__field">
-            <label className="trfc-login__label" htmlFor="login-email">Email Address</label>
-            <div className="trfc-login__input-wrap">
-              <span className="trfc-login__input-icon"><Mail size={15} /></span>
+          <div className="mb-5">
+            <label className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-chalk/45 mb-2.5 block" htmlFor="login-email">Email Address</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-fog pointer-events-none transition-colors duration-200"><Mail size={15} /></span>
               <input
                 id="login-email"
                 type="email"
-                className="trfc-login__input"
+                className="w-full bg-ash border border-white/10 text-chalk font-barlow text-base px-4 py-3.5 pl-12 outline-none transition-all duration-200 focus:border-fire/50 focus:bg-ash/80 clip-angled group-focus-within:text-fire"
                 placeholder="you@example.com"
                 autoComplete="email"
                 {...register('email', { required: 'Email is required' })}
               />
-              <div className="trfc-login__input-focus-line" />
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-fire to-ember scale-x-0 origin-left transition-transform duration-300" />
             </div>
             {errors.email && (
-              <p className="trfc-login__field-error">{errors.email.message as string}</p>
+              <p className="text-xs text-red-500 mt-1.5 font-barlow-condensed font-bold letter-spacing-tighter flex items-center gap-1"><span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-red-500 text-white text-xs font-black">!</span>{errors.email.message as string}</p>
             )}
           </div>
 
           {/* Password */}
-          <div className="trfc-login__field">
-            <label className="trfc-login__label" htmlFor="login-password">Password</label>
-            <div className="trfc-login__input-wrap">
-              <span className="trfc-login__input-icon"><Lock size={15} /></span>
+          <div className="mb-2">
+            <label className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-chalk/45 mb-2.5 block" htmlFor="login-password">Password</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-fog pointer-events-none transition-colors duration-200"><Lock size={15} /></span>
               <input
                 id="login-password"
                 type="password"
-                className="trfc-login__input"
+                className="w-full bg-ash border border-white/10 text-chalk font-barlow text-base px-4 py-3.5 pl-12 outline-none transition-all duration-200 focus:border-fire/50 focus:bg-ash/80 clip-angled"
                 placeholder="••••••••"
                 autoComplete="current-password"
                 {...register('password', { required: 'Password is required' })}
               />
-              <div className="trfc-login__input-focus-line" />
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-fire to-ember scale-x-0 origin-left transition-transform duration-300" />
             </div>
             {errors.password && (
-              <p className="trfc-login__field-error">{errors.password.message as string}</p>
+              <p className="text-xs text-red-500 mt-1.5 font-barlow-condensed font-bold letter-spacing-tighter flex items-center gap-1"><span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-red-500 text-white text-xs font-black">!</span>{errors.password.message as string}</p>
             )}
           </div>
 
           {/* Forgot password */}
-          <div className="trfc-login__forgot">
-            <a href="#">Forgot password?</a>
+          <div className="flex justify-end mb-2">
+            <a href="#" className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fog text-decoration-none transition-colors duration-200 hover:text-fire">Forgot password?</a>
           </div>
 
           {/* Submit */}
           <button
             type="submit"
             disabled={loading}
-            className={`trfc-login__submit${loading ? ' loading' : ''}`}
+            className={`w-full mt-7 bg-fire border-0 text-white font-barlow-condensed font-black text-base letter-spacing-widest text-transform-uppercase px-8 py-4 cursor-pointer clip-angled transition-all duration-200 flex items-center justify-center gap-2.5 relative overflow-hidden disabled:opacity-55 disabled:cursor-not-allowed disabled:transform-none hover:bg-ember hover:scale-105 ${loading ? 'loading' : ''}`}
           >
             {loading ? (
               <>Signing in...</>
@@ -542,18 +147,36 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="trfc-login__divider">
-          <div className="trfc-login__divider-line" />
-          <span className="trfc-login__divider-text">New to TRFC?</span>
-          <div className="trfc-login__divider-line" />
+        <div className="flex items-center gap-3.5 my-7">
+          <div className="flex-1 h-px bg-white/10" />
+          <span className="font-barlow-condensed text-xs letter-spacing-widest text-transform-uppercase text-fog">New to TRFC?</span>
+          <div className="flex-1 h-px bg-white/10" />
         </div>
 
-        <p className="trfc-login__register-cta">
-          <Link to="/register" className="trfc-login__register-link">
+        <p className="text-center text-sm text-fog">
+          <Link to="/register" className="font-barlow-condensed font-black text-base letter-spacing-widest text-transform-uppercase text-fire text-decoration-none border-b border-fire/30 pb-0.25 transition-all duration-200 hover:text-ember hover:border-ember">
             Create a free account →
           </Link>
         </p>
       </div>
+
+      {/* Keyframes */}
+      <style>{`
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(2px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeUp {
+          animation: fadeUp 0.3s ease;
+        }
+        .bg-gradient-lines {
+          background-image:
+            linear-gradient(rgba(255,69,0,0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,69,0,0.04) 1px, transparent 1px);
+          background-size: 60px 60px;
+          mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
+        }
+      `}</style>
     </div>
   )
 }

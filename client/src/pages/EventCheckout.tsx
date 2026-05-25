@@ -93,10 +93,10 @@ export default function EventCheckout() {
 
   if (loading) {
     return (
-      <div className="min-h-screen py-12 px-4 flex items-center justify-center">
+      <div className="min-h-screen py-12 px-4 flex items-center justify-center bg-white dark:bg-[#1C1C1C]">
         <div className="text-center">
           <Loader className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-gray-600">Loading event...</p>
+          <p className="text-gray-600 dark:text-gray-400">Loading event...</p>
         </div>
       </div>
     )
@@ -104,16 +104,16 @@ export default function EventCheckout() {
 
   if (error && !event) {
     return (
-      <div className="min-h-screen py-12 px-4">
+      <div className="min-h-screen py-12 px-4 bg-white dark:bg-[#1C1C1C]">
         <div className="max-w-2xl mx-auto">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 flex gap-4">
-            <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0" />
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 flex gap-4">
+            <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0" />
             <div>
-              <h3 className="text-lg font-semibold text-red-800 mb-2">Error</h3>
-              <p className="text-red-700 mb-4">{error}</p>
+              <h3 className="text-lg font-semibold text-red-800 dark:text-red-300 mb-2">Error</h3>
+              <p className="text-red-700 dark:text-red-400 mb-4">{error}</p>
               <button
                 onClick={() => navigate('/events')}
-                className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+                className="bg-red-600 dark:bg-red-700 text-white px-4 py-2 rounded hover:bg-red-700 dark:hover:bg-red-800"
               >
                 Back to Events
               </button>
@@ -126,16 +126,16 @@ export default function EventCheckout() {
 
   if (!event) {
     return (
-      <div className="min-h-screen py-12 px-4">
+      <div className="min-h-screen py-12 px-4 bg-white dark:bg-[#1C1C1C]">
         <div className="max-w-2xl mx-auto text-center">
-          <p className="text-gray-600">Event not found</p>
+          <p className="text-gray-600 dark:text-gray-400">Event not found</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen py-12 px-4 bg-gray-50">
+    <div className="min-h-screen py-12 px-4 bg-gray-50 dark:bg-gray-900">
       <div className="max-w-2xl mx-auto">
         <div className="mb-6">
           <button
@@ -144,19 +144,19 @@ export default function EventCheckout() {
           >
             ← Back to Event
           </button>
-          <h1 className="text-3xl font-bold mb-2">Buy Tickets</h1>
-          <p className="text-gray-600">{event.title}</p>
+          <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-white">Buy Tickets</h1>
+          <p className="text-gray-600 dark:text-gray-400">{event.title}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Event Summary */}
           <div className="md:col-span-2">
-            <div className="bg-white rounded-lg shadow p-6 mb-6">
-              <h2 className="text-xl font-bold mb-4">Event Details</h2>
+            <div className="bg-white dark:bg-[#1C1C1C] rounded-lg shadow p-6 mb-6">
+              <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Event Details</h2>
               <div className="space-y-3 text-sm mb-6">
                 <div>
-                  <p className="text-gray-600">Date & Time</p>
-                  <p className="font-semibold">
+                  <p className="text-gray-600 dark:text-gray-400">Date & Time</p>
+                  <p className="font-semibold text-gray-900 dark:text-white">
                     {new Date(event.event_date).toLocaleDateString('en-US', {
                       weekday: 'long',
                       year: 'numeric',
@@ -168,26 +168,26 @@ export default function EventCheckout() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-gray-600">Location</p>
-                  <p className="font-semibold">{event.location}</p>
+                  <p className="text-gray-600 dark:text-gray-400">Location</p>
+                  <p className="font-semibold text-gray-900 dark:text-white">{event.location}</p>
                 </div>
                 <div>
-                  <p className="text-gray-600">Price per Ticket</p>
+                  <p className="text-gray-600 dark:text-gray-400">Price per Ticket</p>
                   <p className="font-semibold text-lg text-primary">
                     KES {Number(event.price).toFixed(2)}
                   </p>
                 </div>
               </div>
-              <p className="text-sm text-gray-600">{event.description}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{event.description}</p>
             </div>
 
             {/* Ticket Form */}
-            <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold mb-4">Your Information</h2>
+            <form onSubmit={handleSubmit(onSubmit)} className="bg-white dark:bg-[#1C1C1C] rounded-lg shadow p-6">
+              <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Your Information</h2>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold mb-2">
+                  <label className="block text-sm font-semibold mb-2 text-gray-900 dark:text-white">
                     Number of Tickets
                   </label>
                   <select
@@ -196,7 +196,7 @@ export default function EventCheckout() {
                       min: { value: 1, message: 'At least 1 ticket required' },
                       max: { value: 10, message: 'Maximum 10 tickets per order' },
                     })}
-                    className="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:border-primary"
+                    className="w-full border border-gray-300 dark:border-gray-700 rounded px-4 py-2 bg-white dark:bg-[#2A2A2A] text-gray-900 dark:text-white focus:outline-none focus:border-primary"
                   >
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                       <option key={num} value={num}>
@@ -210,7 +210,7 @@ export default function EventCheckout() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold mb-2">
+                  <label className="block text-sm font-semibold mb-2 text-gray-900 dark:text-white">
                     Phone Number (254XXXXXXXXX)
                   </label>
                   <input
@@ -223,17 +223,17 @@ export default function EventCheckout() {
                     })}
                     type="text"
                     placeholder="254712345678"
-                    className="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:border-primary"
+                    className="w-full border border-gray-300 dark:border-gray-700 rounded px-4 py-2 bg-white dark:bg-[#2A2A2A] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-primary"
                   />
                   {errors.phone && (
-                    <p className="text-red-600 text-sm mt-1">{errors.phone.message}</p>
+                    <p className="text-red-600 dark:text-red-400 text-sm mt-1">{errors.phone.message}</p>
                   )}
                 </div>
 
                 {error && (
-                  <div className="bg-red-50 border border-red-200 rounded p-3 flex gap-3">
-                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                    <p className="text-red-700 text-sm">{error}</p>
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-3 flex gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                    <p className="text-red-700 dark:text-red-400 text-sm">{error}</p>
                   </div>
                 )}
 
@@ -257,25 +257,25 @@ export default function EventCheckout() {
 
           {/* Order Summary Sidebar */}
           <div className="md:col-span-1">
-            <div className="bg-white rounded-lg shadow p-6 sticky top-4">
-              <h3 className="text-lg font-bold mb-4">Order Summary</h3>
-              <div className="space-y-2 mb-4 pb-4 border-b">
+            <div className="bg-white dark:bg-[#1C1C1C] rounded-lg shadow p-6 sticky top-4">
+              <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Order Summary</h3>
+              <div className="space-y-2 mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex justify-between text-sm">
-                  <span>{quantity} ticket(s)</span>
-                  <span className="font-semibold">
+                  <span className="text-gray-700 dark:text-gray-300">{quantity} ticket(s)</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">
                     KES {(Number(event.price) * Number(quantity)).toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>Convenience Fee</span>
-                  <span>Free</span>
+                  <span className="text-gray-700 dark:text-gray-300">Convenience Fee</span>
+                  <span className="text-gray-700 dark:text-gray-300">Free</span>
                 </div>
               </div>
               <div className="flex justify-between text-lg font-bold mb-6">
-                <span>Total</span>
+                <span className="text-gray-900 dark:text-white">Total</span>
                 <span className="text-primary">KES {totalPrice.toFixed(2)}</span>
               </div>
-              <p className="text-xs text-gray-600 bg-gray-50 p-3 rounded">
+              <p className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-3 rounded">
                 ℹ️ After clicking "Complete Purchase", an M-Pesa prompt will appear on your
                 phone. Enter your M-Pesa PIN to complete the payment.
               </p>

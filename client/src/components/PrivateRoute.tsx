@@ -10,7 +10,7 @@ export default function PrivateRoute({ children, role }: PrivateRouteProps) {
   const { token, user, isLoading } = useAuth()
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>
+    return <div className="flex items-center justify-center h-screen bg-white dark:bg-[#1C1C1C] text-gray-900 dark:text-white">Loading...</div>
   }
 
   if (!token) {

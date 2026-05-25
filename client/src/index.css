@@ -1,69 +1,37 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bebas+Neue&family=Barlow:ital,wght@0,400;0,600;0,700;1,400&family=Barlow+Condensed:wght@500;700;900&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-:root {
-  /* Light mode colors */
-  --bg-primary: #F9F7F4;
-  --bg-secondary: #FFFFFF;
-  --text-primary: #333333;
-  --text-secondary: #666666;
-  --border-color: #E0E0E0;
-  --accent-primary: #E8401C;
-  --accent-secondary: #FF7A1A;
-  /* Extended color palette for components */
-  --fire: #E8401C;
-  --ember: #D84F20;
-  --night: #F5F5F5;
-  --ink: #FFFFFF;
-  --ash: #F0F0F0;
-  --smoke: #E8E8E8;
-  --chalk: #333333;
-  --fog: #666666;
-  --mist: #D0D0D0;
-  --white: #FFFFFF;
-  --gold: #C9A84C;
-}
-
-html.dark {
-  /* Dark mode colors */
-  --bg-primary: #1A1A1A;
-  --bg-secondary: #111111;
-  --text-primary: #F5F2EE;
-  --text-secondary: #B0B0B0;
-  --border-color: #2E2E2E;
-  --accent-primary: #FF4500;
-  --accent-secondary: #FF7A1A;
-  /* Extended color palette for components */
-  --fire: #FF4500;
-  --ember: #FF7A1A;
-  --night: #0A0A0A;
-  --ink: #111111;
-  --ash: #1C1C1C;
-  --smoke: #2E2E2E;
-  --chalk: #F5F2EE;
-  --fog: #6B6B6B;
-  --mist: #3D3D3D;
-  --white: #FFFFFF;
-  --gold: #C9A84C;
-}
-
-body {
-  font-family: 'Inter', system-ui, sans-serif;
-  color: var(--text-primary);
-  background-color: var(--bg-primary);
-  transition: background-color 300ms ease, color 300ms ease;
-}
-
 html {
   scroll-behavior: smooth;
 }
 
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+@layer utilities {
+  .clip-angled {
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  }
+  .clip-angled-sm {
+    clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+  }
+  .clip-angled-lg {
+    clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+  }
+  .noise-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    animation: grain 8s steps(10) infinite;
+  }
+  .diagonal-divider {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 30%);
+  }
+}

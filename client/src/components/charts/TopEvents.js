@@ -5,6 +5,6 @@ export default function TopEvents({ data }) {
                         backgroundColor: '#ffffff',
                         border: '1px solid #e5e7eb',
                         borderRadius: '8px',
-                    }, formatter: (value) => `${value} tickets` }), _jsx(Legend, {}), _jsx(Bar, { dataKey: "ticketsSold", fill: "#E8401C", name: "Tickets Sold", radius: [8, 8, 0, 0] })] }) }));
+                    }, formatter: (value) => `${value} tickets` }), _jsx(Legend, {}), _jsx(Bar, { dataKey: "ticketsSold", fill: "#FF4500", name: "Tickets Sold", radius: [8, 8, 0, 0] })] }) }));
 }
 //# sourceMappingURL=TopEvents.js.map

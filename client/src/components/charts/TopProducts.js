@@ -5,6 +5,6 @@ export default function TopProducts({ data }) {
                         backgroundColor: '#ffffff',
                         border: '1px solid #e5e7eb',
                         borderRadius: '8px',
-                    }, formatter: (value) => `KES ${value.toLocaleString()}` }), _jsx(Legend, {}), _jsx(Bar, { dataKey: "revenue", fill: "#E8401C", name: "Revenue", radius: [8, 8, 0, 0] })] }) }));
+                    }, formatter: (value) => `KES ${value.toLocaleString()}` }), _jsx(Legend, {}), _jsx(Bar, { dataKey: "revenue", fill: "#FF4500", name: "Revenue", radius: [8, 8, 0, 0] })] }) }));
 }
 //# sourceMappingURL=TopProducts.js.map

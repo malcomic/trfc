@@ -33,25 +33,25 @@ export default function EquipmentHire() {
 
   if (loading) {
     return (
-      <div className="min-h-screen py-12 px-4 flex items-center justify-center">
+      <div className="min-h-screen py-12 px-4 flex items-center justify-center bg-white dark:bg-[#1C1C1C]">
         <div className="text-center">
           <Loader className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-gray-600">Loading equipment packages...</p>
+          <p className="text-gray-600 dark:text-gray-400">Loading equipment packages...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen py-12 px-4">
+    <div className="min-h-screen py-12 px-4 bg-white dark:bg-[#1C1C1C]">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-4xl font-bold mb-2">Equipment Hire</h1>
-        <p className="text-gray-600 mb-12">
+        <h1 className="text-4xl font-bold mb-2 text-gray-900 dark:text-white">Equipment Hire</h1>
+        <p className="text-gray-600 dark:text-gray-400 mb-12">
           Rent gym equipment at affordable rates. Choose your rental period.
         </p>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8 text-red-700">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-8 text-red-700 dark:text-red-400">
             {error}
           </div>
         )}
@@ -60,15 +60,15 @@ export default function EquipmentHire() {
           {packages.map((pkg) => (
             <div
               key={pkg.packageType}
-              className="bg-white rounded-lg shadow hover:shadow-lg transition p-6 flex flex-col"
+              className="bg-white dark:bg-[#1C1C1C] rounded-lg shadow hover:shadow-lg transition p-6 flex flex-col border border-gray-200 dark:border-gray-700"
             >
-              <h3 className="text-2xl font-bold mb-2 capitalize">{pkg.packageType}</h3>
-              <p className="text-gray-600 text-sm mb-6">{pkg.description}</p>
+              <h3 className="text-2xl font-bold mb-2 capitalize text-gray-900 dark:text-white">{pkg.packageType}</h3>
+              <p className="text-gray-600 dark:text-gray-400 text-sm mb-6">{pkg.description}</p>
 
               <div className="mb-6 flex-grow">
                 <div className="text-3xl font-bold text-primary">
                   KES {pkg.price.toLocaleString()}
-                  <span className="text-sm text-gray-600 font-normal">/day</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400 font-normal">/day</span>
                 </div>
               </div>
 
@@ -87,9 +87,9 @@ export default function EquipmentHire() {
           ))}
         </div>
 
-        <div className="mt-12 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h2 className="text-xl font-bold mb-3">How It Works</h2>
-          <ol className="space-y-2 text-sm text-gray-700">
+        <div className="mt-12 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
+          <h2 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">How It Works</h2>
+          <ol className="space-y-2 text-sm text-gray-700 dark:text-gray-400">
             <li>
               <strong>1. Choose Package:</strong> Select a rental period (daily, weekly, or
               monthly)

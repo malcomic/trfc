@@ -40,9 +40,9 @@ export default function RevenueChart({ data }: RevenueChartProps) {
         <Line
           type="monotone"
           dataKey="revenue"
-          stroke="#E8401C"
+          stroke="#FF4500"
           strokeWidth={2}
-          dot={{ fill: '#E8401C', r: 4 }}
+          dot={{ fill: '#FF4500', r: 4 }}
           activeDot={{ r: 6 }}
           name="Daily Revenue"
         />

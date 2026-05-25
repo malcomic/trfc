@@ -16,12 +16,12 @@ export default function AdminLayout({ children }) {
     const isActive = (path) => {
         return location.pathname === path || location.pathname.startsWith(path + '/');
     };
-    return (_jsxs("div", { className: "flex min-h-screen bg-gray-100", children: [_jsxs("aside", { className: "w-64 bg-dark text-white shadow-lg", children: [_jsx("div", { className: "p-6 border-b border-gray-700", children: _jsx("h1", { className: "text-2xl font-bold text-primary", children: "TRFC Admin" }) }), _jsx("nav", { className: "p-4 space-y-2", children: navItems.map((item) => {
+    return (_jsxs("div", { className: "flex min-h-screen bg-white dark:bg-gray-900", children: [_jsxs("aside", { className: "w-64 bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-lg dark:shadow-xl", children: [_jsx("div", { className: "p-6 border-b border-gray-200 dark:border-gray-700", children: _jsx("h1", { className: "text-2xl font-bold text-[#E8401C] dark:text-[#FF4500]", children: "TRFC Admin" }) }), _jsx("nav", { className: "p-4 space-y-2", children: navItems.map((item) => {
                             const Icon = item.icon;
                             const active = isActive(item.path);
                             return (_jsxs(Link, { to: item.path, className: `flex items-center gap-3 px-4 py-3 rounded-lg transition ${active
-                                    ? 'bg-primary text-white'
-                                    : 'text-gray-300 hover:bg-dark-200'}`, children: [_jsx(Icon, { size: 20 }), _jsx("span", { children: item.label })] }, item.path));
-                        }) })] }), _jsx("main", { className: "flex-1 overflow-auto", children: _jsx("div", { className: "p-8", children: children }) })] }));
+                                    ? 'bg-[#E8401C] dark:bg-[#FF4500] text-white'
+                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`, children: [_jsx(Icon, { size: 20 }), _jsx("span", { children: item.label })] }, item.path));
+                        }) })] }), _jsx("main", { className: "flex-1 overflow-auto bg-gray-50 dark:bg-gray-950", children: _jsx("div", { className: "p-8", children: children }) })] }));
 }
 //# sourceMappingURL=AdminLayout.js.map

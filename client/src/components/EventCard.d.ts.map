@@ -1,1 +1,1 @@
-{"version":3,"file":"EventCard.d.ts","sourceRoot":"","sources":["EventCard.tsx"],"names":[],"mappings":"AAAA,OAAO,EAAE,KAAK,EAAE,MAAM,UAAU,CAAA;AA6RhC,MAAM,CAAC,OAAO,UAAU,SAAS,CAAC,EAAE,KAAK,EAAE,EAAE;IAAE,KAAK,EAAE,KAAK,CAAA;CAAE,2CAuG5D"}
+{"version":3,"file":"EventCard.d.ts","sourceRoot":"","sources":["EventCard.tsx"],"names":[],"mappings":"AAAA,OAAO,EAAE,KAAK,EAAE,MAAM,UAAU,CAAA;AAahC,MAAM,CAAC,OAAO,UAAU,SAAS,CAAC,EAAE,KAAK,EAAE,EAAE;IAAE,KAAK,EAAE,KAAK,CAAA;CAAE,2CAqG5D"}
