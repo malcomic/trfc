@@ -5,8 +5,9 @@ export const getOrders = async () => {
   return response.data;
 };
 
-export const getOrderById = async (id: string) => {
-  const response = await api.get(`/orders/${id}`);
+export const getOrderById = async (id: string, phone?: string) => {
+  const params = phone ? { phone } : undefined;
+  const response = await api.get(`/orders/${id}`, { params });
   return response.data;
 };
 

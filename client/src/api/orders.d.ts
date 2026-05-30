@@ -1,5 +1,5 @@
 export declare const getOrders: () => Promise<any>;
-export declare const getOrderById: (id: string) => Promise<any>;
+export declare const getOrderById: (id: string, phone?: string) => Promise<any>;
 export declare const createOrder: (data: {
     items: any[];
     total_amount: number;

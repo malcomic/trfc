@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { Trash2, Plus, X, Edit } from 'lucide-react'
-import { getGallery, uploadMedia, updateMedia, deleteMedia } from '../../api/admin/gallery'
+import { getGallery, uploadGalleryFile, uploadMedia, updateMedia, deleteMedia } from '../../api/admin/gallery'
+import AdminConfirmDialog from '../../components/AdminConfirmDialog'
 
 interface GalleryItem {
   id: string
@@ -9,6 +10,31 @@ interface GalleryItem {
   media_type?: string
   caption?: string
   uploaded_at: string
+}
+
+function GalleryMedia({ item }: { item: GalleryItem }) {
+  if (item.media_type === 'video') {
+    return (
+      <video
+        src={item.media_url}
+        className="w-full h-full object-cover"
+        controls
+        onError={(e) => {
+          (e.target as HTMLVideoElement).style.display = 'none'
+        }}
+      />
+    )
+  }
+  return (
+    <img
+      src={item.media_url}
+      alt={item.caption || 'Gallery item'}
+      className="w-full h-full object-cover"
+      onError={(e) => {
+        (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x200?text=Invalid+URL'
+      }}
+    />
+  )
 }
 
 export default function AdminGallery() {
@@ -19,7 +45,8 @@ export default function AdminGallery() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [filePreview, setFilePreview] = useState<string | null>(null)
-  const { register, handleSubmit, reset, formState: { errors }, setValue, watch } = useForm()
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const { register, handleSubmit, reset, setValue, watch } = useForm()
   const fileInput = watch('file')
 
   useEffect(() => {
@@ -76,17 +103,7 @@ export default function AdminGallery() {
           formData.append('file', file)
           formData.append('media_type', data.media_type || 'image')
 
-          const response = await fetch('http://localhost:5000/api/gallery/upload', {
-            method: 'POST',
-            body: formData,
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
-          })
-          const result = await response.json()
-          if (!response.ok) {
-            throw new Error(result.error || 'Upload failed')
-          }
+          const result = await uploadGalleryFile(formData)
           mediaUrl = result.url
         }
 
@@ -108,32 +125,33 @@ export default function AdminGallery() {
       reset()
       fetchGallery()
     } catch (err: any) {
-      setError(err.message || 'Failed to process request')
+      setError(err.response?.data?.error || err.message || 'Failed to process request')
     } finally {
       setUploading(false)
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this media?')) {
-      try {
-        await deleteMedia(id)
-        fetchGallery()
-      } catch (err: any) {
-        setError('Failed to delete media')
-        console.error(err)
-      }
+  const confirmDelete = async () => {
+    if (!deleteId) return
+    try {
+      await deleteMedia(deleteId)
+      fetchGallery()
+    } catch (err: any) {
+      setError('Failed to delete media')
+      console.error(err)
+    } finally {
+      setDeleteId(null)
     }
   }
 
   if (loading) {
-    return <div className="text-lg text-gray-600">Loading gallery...</div>
+    return <div className="text-lg text-gray-600 dark:text-gray-400">Loading gallery...</div>
   }
 
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-800">Gallery Manager</h1>
+        <h1 className="text-4xl font-bold text-gray-800 dark:text-white">Gallery</h1>
         <button
           onClick={() => {
             setEditingId(null)
@@ -141,7 +159,7 @@ export default function AdminGallery() {
             reset()
             setShowModal(true)
           }}
-          className="flex items-center gap-2 bg-primary text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition"
+          className="flex items-center gap-2 bg-primary dark:bg-primary-dark text-white px-6 py-2 rounded-lg hover:opacity-90 transition"
         >
           <Plus size={20} />
           Upload Media
@@ -149,17 +167,17 @@ export default function AdminGallery() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-6">
           {error}
         </div>
       )}
 
       {items.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-12 text-center">
-          <p className="text-gray-600 text-lg">No media in gallery yet</p>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-12 text-center">
+          <p className="text-gray-600 dark:text-gray-400 text-lg">No media in gallery yet</p>
           <button
             onClick={() => setShowModal(true)}
-            className="mt-4 bg-primary text-white px-6 py-2 rounded-lg hover:bg-opacity-90"
+            className="mt-4 bg-primary dark:bg-primary-dark text-white px-6 py-2 rounded-lg hover:opacity-90"
           >
             Upload First Media
           </button>
@@ -167,16 +185,9 @@ export default function AdminGallery() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {items.map((item) => (
-            <div key={item.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition">
-              <div className="relative w-full h-48 bg-gray-100 overflow-hidden">
-                <img
-                  src={item.media_url}
-                  alt={item.caption || 'Gallery item'}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x200?text=Invalid+URL'
-                  }}
-                />
+            <div key={item.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg overflow-hidden hover:shadow-lg transition">
+              <div className="relative w-full h-48 bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                <GalleryMedia item={item} />
                 <div className="absolute top-2 right-2 flex gap-2">
                   <button
                     onClick={() => handleEdit(item)}
@@ -185,7 +196,7 @@ export default function AdminGallery() {
                     <Edit size={16} />
                   </button>
                   <button
-                    onClick={() => handleDelete(item.id)}
+                    onClick={() => setDeleteId(item.id)}
                     className="bg-red-600 text-white p-2 rounded-lg hover:bg-red-700 transition"
                   >
                     <Trash2 size={16} />
@@ -194,9 +205,9 @@ export default function AdminGallery() {
               </div>
               <div className="p-4">
                 {item.caption && (
-                  <p className="text-sm text-gray-700 mb-2">{item.caption}</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">{item.caption}</p>
                 )}
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   {item.media_type || 'image'} • {new Date(item.uploaded_at).toLocaleDateString()}
                 </p>
               </div>
@@ -207,9 +218,9 @@ export default function AdminGallery() {
 
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full">
-            <div className="p-6 border-b flex justify-between items-center">
-              <h2 className="text-2xl font-bold">{editingId ? 'Edit Media' : 'Upload Media'}</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full max-h-[85vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{editingId ? 'Edit Media' : 'Upload Media'}</h2>
               <button
                 onClick={() => {
                   setShowModal(false)
@@ -217,7 +228,7 @@ export default function AdminGallery() {
                   setFilePreview(null)
                   reset()
                 }}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
               >
                 <X size={24} />
               </button>
@@ -227,40 +238,39 @@ export default function AdminGallery() {
               {!editingId && (
                 <div className="space-y-2">
                   <div>
-                    <label className="block text-sm font-semibold mb-1">Upload Image *</label>
+                    <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Upload File</label>
                     <input
                       type="file"
                       accept="image/*,video/*"
                       {...register('file')}
-                      className="w-full border rounded-lg px-3 py-2"
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
                     {filePreview && (
-                      <div className="mt-2 relative w-full h-32 bg-gray-100 rounded-lg overflow-hidden">
+                      <div className="mt-2 relative w-full h-32 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
                         <img src={filePreview} alt="Preview" className="w-full h-full object-cover" />
                       </div>
                     )}
                   </div>
 
-                  <div className="text-center text-gray-500 text-sm">OR</div>
+                  <div className="text-center text-gray-500 dark:text-gray-400 text-sm">OR</div>
 
                   <div>
-                    <label className="block text-sm font-semibold mb-1">Media URL</label>
+                    <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Media URL</label>
                     <input
                       type="url"
                       {...register('media_url')}
                       placeholder="https://example.com/image.jpg"
-                      className="w-full border rounded-lg px-3 py-2"
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
-                    {errors.media_url && <span className="text-red-600 text-sm">{errors.media_url.message as string}</span>}
                   </div>
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-semibold mb-1">Media Type</label>
+                <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Media Type</label>
                 <select
                   {...register('media_type')}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 >
                   <option value="image">Image</option>
                   <option value="video">Video</option>
@@ -268,11 +278,11 @@ export default function AdminGallery() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold mb-1">Caption</label>
+                <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Caption</label>
                 <textarea
                   {...register('caption')}
                   placeholder="Optional caption for this media"
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   rows={3}
                 />
               </div>
@@ -286,14 +296,14 @@ export default function AdminGallery() {
                     setFilePreview(null)
                     reset()
                   }}
-                  className="px-4 py-2 text-gray-700 border rounded-lg hover:bg-gray-50"
+                  className="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={uploading}
-                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90 disabled:opacity-50"
+                  className="px-4 py-2 bg-primary dark:bg-primary-dark text-white rounded-lg hover:opacity-90 disabled:opacity-50"
                 >
                   {uploading ? 'Uploading...' : editingId ? 'Update' : 'Upload'}
                 </button>
@@ -302,6 +312,16 @@ export default function AdminGallery() {
           </div>
         </div>
       )}
+
+      <AdminConfirmDialog
+        open={deleteId !== null}
+        title="Delete media"
+        message="Are you sure you want to delete this media item?"
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteId(null)}
+      />
     </div>
   )
 }

@@ -13,6 +13,18 @@ export const getTestimonials = async (req: Request, res: Response) => {
   }
 };
 
+export const getPendingTestimonials = async (req: Request, res: Response) => {
+  try {
+    const result = await query(
+      'SELECT * FROM testimonials WHERE is_approved = false ORDER BY created_at DESC'
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch pending testimonials' });
+  }
+};
+
 export const createTestimonial = async (req: Request, res: Response) => {
   try {
     const { member_name, message, rating } = req.body;

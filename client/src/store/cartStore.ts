@@ -17,6 +17,9 @@ export const useCart = create<CartStore>((set, get) => ({
   })(),
 
   addItem: (product, quantity) => {
+    if ((product as { category?: string }).category === 'event') {
+      return
+    }
     set((state): Partial<CartStore> => {
       const existing = state.items.find((item) => item.product.id === product.id)
       const newItems = existing

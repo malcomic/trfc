@@ -1,27 +1,43 @@
 import { Mail, Phone, MapPin, ArrowUpRight, Heart, MessageCircle, Users, Play } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useState } from 'react'
+import { ToastStack, ToastMessage } from './Toast'
 
 export default function Footer() {
   const { user } = useAuth()
   const isAdmin = user && user.role === 'admin'
+  const [toasts, setToasts] = useState<ToastMessage[]>([])
+
+  const showNewsletterToast = () => {
+    const id = Date.now()
+    setToasts((t) => [...t, { id, type: 'info', title: 'Coming soon', message: 'Newsletter signup is not available yet.' }])
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3000)
+  }
 
   const quickLinks = [
     { to: '/events', label: 'Events' },
     { to: '/programs', label: 'Programs' },
+    { to: '/equipment', label: 'Equipment' },
     { to: '/gallery', label: 'Gallery' },
     { to: '/shop', label: 'Shop Merch' },
+    { to: '/testimonials', label: 'Testimonials' },
+    { to: '/contact', label: 'Contact' },
     { to: '/register', label: 'Join the Community' },
-    { to: '/admin/login', label: 'Admin Login' },
+    ...(isAdmin ? [] : [{ to: '/admin/login', label: 'Admin Login' }]),
   ]
 
   const adminLinks = [
     { to: '/admin', label: 'Dashboard' },
-    { to: '/admin/events', label: 'Manage Events' },
-    { to: '/admin/products', label: 'Manage Products' },
-    { to: '/admin/gallery', label: 'Manage Gallery' },
-    { to: '/admin/orders', label: 'View Orders' },
-    { to: '/admin/users', label: 'Manage Users' },
+    { to: '/admin/analytics', label: 'Analytics' },
+    { to: '/admin/reports', label: 'Reports' },
+    { to: '/admin/events', label: 'Events' },
+    { to: '/admin/products', label: 'Products' },
+    { to: '/admin/gallery', label: 'Gallery' },
+    { to: '/admin/orders', label: 'Orders' },
+    { to: '/admin/users', label: 'Users' },
+    { to: '/admin/testimonials', label: 'Testimonials' },
+    { to: '/admin/equipment', label: 'Equipment' },
   ]
 
   const contacts = [
@@ -129,7 +145,7 @@ export default function Footer() {
                   placeholder="your@email.com"
                   className="flex-1 bg-black/40 border border-white/10 border-r-0 px-3 py-2 text-chalk text-xs font-barlow outline-none transition-all duration-200 focus:border-fire/35 min-w-0"
                 />
-                <button className="bg-fire border border-fire text-white px-3.5 py-2 cursor-pointer font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase transition-all duration-200 hover:bg-ember flex-shrink-0">
+                <button type="button" onClick={showNewsletterToast} className="bg-fire border border-fire text-white px-3.5 py-2 cursor-pointer font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase transition-all duration-200 hover:bg-ember flex-shrink-0">
                   Join
                 </button>
               </div>
@@ -163,12 +179,13 @@ export default function Footer() {
             © {new Date().getFullYear()} <strong className="text-fire font-bebas text-sm letter-spacing-widest">TRFC</strong> · Thika Road Fitness Community · Nairobi, Kenya
           </p>
           <div className="flex gap-5">
-            <a href="#" className="text-xs letter-spacing-widest text-transform-uppercase text-fog text-decoration-none font-barlow-condensed font-bold transition-all duration-200 hover:text-fire">Privacy</a>
-            <a href="#" className="text-xs letter-spacing-widest text-transform-uppercase text-fog text-decoration-none font-barlow-condensed font-bold transition-all duration-200 hover:text-fire">Terms</a>
-            <a href="#" className="text-xs letter-spacing-widest text-transform-uppercase text-fog text-decoration-none font-barlow-condensed font-bold transition-all duration-200 hover:text-fire">Sitemap</a>
+            <a href="/contact" className="text-xs letter-spacing-widest text-transform-uppercase text-fog text-decoration-none font-barlow-condensed font-bold transition-all duration-200 hover:text-fire">Privacy</a>
+            <a href="/contact" className="text-xs letter-spacing-widest text-transform-uppercase text-fog text-decoration-none font-barlow-condensed font-bold transition-all duration-200 hover:text-fire">Terms</a>
+            <Link to="/contact" className="text-xs letter-spacing-widest text-transform-uppercase text-fog text-decoration-none font-barlow-condensed font-bold transition-all duration-200 hover:text-fire">Contact</Link>
           </div>
         </div>
       </div>
+      <ToastStack toasts={toasts} onDismiss={(id) => setToasts((t) => t.filter((x) => x.id !== id))} />
     </footer>
   )
 }

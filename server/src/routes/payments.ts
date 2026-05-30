@@ -5,7 +5,7 @@ import {
   queryPaymentStatus,
   getPaymentHistory,
 } from '../controllers/paymentsController.js'
-import { authMiddleware } from '../middleware/auth.js'
+import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth.js'
 import { validatePaymentRequest } from '../middleware/paymentValidation.js'
 import {
   validateWebhookSignature,
@@ -15,7 +15,7 @@ import {
 
 const router = Router()
 
-router.post('/mpesa/stkpush', authMiddleware, validatePaymentRequest, initiateSTKPush)
+router.post('/mpesa/stkpush', optionalAuthMiddleware, validatePaymentRequest, initiateSTKPush)
 
 router.post(
   '/mpesa/callback',
@@ -25,7 +25,7 @@ router.post(
   handleCallback
 )
 
-router.get('/status/:checkoutRequestId', authMiddleware, queryPaymentStatus)
+router.get('/status/:checkoutRequestId', optionalAuthMiddleware, queryPaymentStatus)
 
 router.get('/history', authMiddleware, getPaymentHistory)
 

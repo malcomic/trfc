@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Loader, AlertCircle, Download, Trash2, Plus } from 'lucide-react'
 import Papa from 'papaparse'
-import AdminLayout from '../components/AdminLayout'
 import {
   getAnalyticsSummary,
   getRevenueTimeline,
@@ -9,7 +8,7 @@ import {
   getTopProducts,
   getTopEvents,
   getUserStats,
-  getOrderStats
+  getOrderStats,
 } from '../api/analytics'
 
 interface ReportConfig {
@@ -117,10 +116,10 @@ export default function AdminReports() {
     }
   }
 
-  const downloadCSV = (reportData: any, reportName: string) => {
+  const downloadCSV = (reportData: any, name: string) => {
     const rows: any[] = []
 
-    rows.push([`Report: ${reportName}`])
+    rows.push([`Report: ${name}`])
     rows.push([`Generated: ${new Date().toLocaleString()}`])
     rows.push([])
 
@@ -128,6 +127,15 @@ export default function AdminReports() {
       rows.push(['SUMMARY METRICS'])
       Object.entries(reportData.summary).forEach(([key, value]) => {
         rows.push([key, value])
+      })
+      rows.push([])
+    }
+
+    if (reportData.revenue) {
+      rows.push(['REVENUE TIMELINE'])
+      rows.push(['Date', 'Revenue', 'Orders'])
+      reportData.revenue.forEach((row: any) => {
+        rows.push([row.date, row.revenue, row.orders])
       })
       rows.push([])
     }
@@ -158,172 +166,190 @@ export default function AdminReports() {
       rows.push([])
     }
 
+    if (reportData.users) {
+      rows.push(['USER STATISTICS'])
+      Object.entries(reportData.users).forEach(([key, value]) => {
+        rows.push([key, value])
+      })
+      rows.push([])
+    }
+
+    if (reportData.orders) {
+      rows.push(['ORDER STATISTICS'])
+      Object.entries(reportData.orders).forEach(([key, value]) => {
+        rows.push([key, value])
+      })
+      rows.push([])
+    }
+
     const csv = Papa.unparse(rows)
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${reportName}-${new Date().toISOString().split('T')[0]}.csv`
+    a.download = `${name}-${new Date().toISOString().split('T')[0]}.csv`
     a.click()
     window.URL.revokeObjectURL(url)
   }
 
   const deleteReport = (id: string) => {
-    const updated = reports.filter(r => r.id !== id)
+    const updated = reports.filter((r) => r.id !== id)
     setReports(updated)
     localStorage.setItem('savedReports', JSON.stringify(updated))
   }
 
   return (
-    <AdminLayout>
-      <div className="space-y-8">
-        <div>
-          <h1 className="text-4xl font-bold mb-2">Advanced Reports</h1>
-          <p className="text-gray-600">Create and manage custom analytics reports</p>
-        </div>
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-            <p className="text-red-700">{error}</p>
-          </div>
-        )}
-
-        {/* Report Builder */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-2xl font-bold mb-6">Create New Report</h2>
-
-          <div className="mb-6">
-            <label className="block text-sm font-semibold mb-2">Report Name</label>
-            <input
-              type="text"
-              value={reportName}
-              onChange={(e) => setReportName(e.target.value)}
-              placeholder="e.g., Monthly Revenue Report"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-sm font-semibold mb-3">Date Range</label>
-            <div className="flex gap-3">
-              {['7', '30', '90'].map((range) => (
-                <button
-                  key={range}
-                  onClick={() => setDateRange(range as '7' | '30' | '90')}
-                  className={`px-4 py-2 rounded transition ${
-                    dateRange === range
-                      ? 'bg-primary text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  Last {range} days
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-sm font-semibold mb-3">Metrics to Include</label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {Object.entries(selectedMetrics).map(([key, checked]) => (
-                <label key={key} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={(e) =>
-                      setSelectedMetrics({
-                        ...selectedMetrics,
-                        [key]: e.target.checked,
-                      })
-                    }
-                    className="w-4 h-4 rounded"
-                  />
-                  <span className="capitalize text-sm font-medium">
-                    {key === 'summary' && 'Summary Metrics'}
-                    {key === 'revenue' && 'Revenue Timeline'}
-                    {key === 'payments' && 'Payment Stats'}
-                    {key === 'products' && 'Top Products'}
-                    {key === 'events' && 'Top Events'}
-                    {key === 'users' && 'User Stats'}
-                    {key === 'orders' && 'Order Stats'}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={() => generateReport()}
-              disabled={loading}
-              className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-            >
-              {loading ? <Loader className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-              Generate & Download
-            </button>
-            <button
-              onClick={saveReport}
-              disabled={loading}
-              className="flex items-center gap-2 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition disabled:opacity-50"
-            >
-              <Plus className="w-4 h-4" />
-              Save Report Template
-            </button>
-          </div>
-        </div>
-
-        {/* Saved Reports */}
-        {reports.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-2xl font-bold mb-6">Saved Report Templates</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="text-left px-4 py-3 font-semibold">Report Name</th>
-                    <th className="text-left px-4 py-3 font-semibold">Created</th>
-                    <th className="text-left px-4 py-3 font-semibold">Date Range</th>
-                    <th className="text-left px-4 py-3 font-semibold">Metrics</th>
-                    <th className="text-right px-4 py-3 font-semibold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reports.map((report) => (
-                    <tr key={report.id} className="border-b hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium">{report.name}</td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {new Date(report.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">Last {report.dateRange} days</td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {Object.values(report.metrics).filter(Boolean).length}/7
-                      </td>
-                      <td className="text-right px-4 py-3">
-                        <div className="flex gap-2 justify-end">
-                          <button
-                            onClick={() => generateReport(report)}
-                            disabled={loading}
-                            className="text-blue-600 hover:text-blue-700 disabled:opacity-50"
-                          >
-                            <Download className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => deleteReport(report.id)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-4xl font-bold mb-2 text-gray-800 dark:text-white">Reports</h1>
+        <p className="text-gray-600 dark:text-gray-400">Create and manage custom analytics reports</p>
       </div>
-    </AdminLayout>
+
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+          <p className="text-red-700 dark:text-red-400">{error}</p>
+        </div>
+      )}
+
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-lg p-6">
+        <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Create New Report</h2>
+
+        <div className="mb-6">
+          <label className="block text-sm font-semibold mb-2 text-gray-900 dark:text-gray-100">Report Name</label>
+          <input
+            type="text"
+            value={reportName}
+            onChange={(e) => setReportName(e.target.value)}
+            placeholder="e.g., Monthly Revenue Report"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          />
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-sm font-semibold mb-3 text-gray-900 dark:text-gray-100">Date Range</label>
+          <div className="flex gap-3">
+            {['7', '30', '90'].map((range) => (
+              <button
+                key={range}
+                onClick={() => setDateRange(range as '7' | '30' | '90')}
+                className={`px-4 py-2 rounded transition ${
+                  dateRange === range
+                    ? 'bg-primary dark:bg-primary-dark text-white'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+              >
+                Last {range} days
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-sm font-semibold mb-3 text-gray-900 dark:text-gray-100">Metrics to Include</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Object.entries(selectedMetrics).map(([key, checked]) => (
+              <label
+                key={key}
+                className="flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) =>
+                    setSelectedMetrics({
+                      ...selectedMetrics,
+                      [key]: e.target.checked,
+                    })
+                  }
+                  className="w-4 h-4 rounded"
+                />
+                <span className="capitalize text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {key === 'summary' && 'Summary Metrics'}
+                  {key === 'revenue' && 'Revenue Timeline'}
+                  {key === 'payments' && 'Payment Stats'}
+                  {key === 'products' && 'Top Products'}
+                  {key === 'events' && 'Top Events'}
+                  {key === 'users' && 'User Stats'}
+                  {key === 'orders' && 'Order Stats'}
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={() => generateReport()}
+            disabled={loading}
+            className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+          >
+            {loading ? <Loader className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Generate & Download
+          </button>
+          <button
+            onClick={saveReport}
+            disabled={loading}
+            className="flex items-center gap-2 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+          >
+            <Plus className="w-4 h-4" />
+            Save Report Template
+          </button>
+        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
+          Templates are saved in this browser only.
+        </p>
+      </div>
+
+      {reports.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-lg p-6">
+          <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Saved Report Templates</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
+                <tr>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Report Name</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Created</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Date Range</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Metrics</th>
+                  <th className="text-right px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reports.map((report) => (
+                  <tr key={report.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{report.name}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                      {new Date(report.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400">Last {report.dateRange} days</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                      {Object.values(report.metrics).filter(Boolean).length}/7
+                    </td>
+                    <td className="text-right px-4 py-3">
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          onClick={() => generateReport(report)}
+                          disabled={loading}
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-700 disabled:opacity-50"
+                        >
+                          <Download className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => deleteReport(report.id)}
+                          className="text-red-600 dark:text-red-400 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

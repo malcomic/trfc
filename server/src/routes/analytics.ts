@@ -1,7 +1,6 @@
 import { Router } from 'express'
 import { analyticsController } from '../controllers/analyticsController'
-import { authMiddleware } from '../middleware/auth'
-import { adminMiddleware } from '../middleware/adminMiddleware'
+import { authMiddleware, adminMiddleware } from '../middleware/auth'
 
 const router = Router()
 

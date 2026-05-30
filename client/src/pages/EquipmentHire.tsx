@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getAvailableEquipment } from '../api/equipment'
-import { ArrowRight, Loader } from 'lucide-react'
+import { ArrowRight, Loader, AlertCircle } from 'lucide-react'
 
 interface Equipment {
   packageType: string
@@ -22,7 +22,6 @@ export default function EquipmentHire() {
         const data = await getAvailableEquipment()
         setPackages(data)
       } catch (err: any) {
-        console.error('Error fetching equipment:', err)
         setError(err.response?.data?.error || 'Failed to load equipment packages')
       } finally {
         setLoading(false)
@@ -33,80 +32,44 @@ export default function EquipmentHire() {
 
   if (loading) {
     return (
-      <div className="min-h-screen py-12 px-4 flex items-center justify-center bg-white dark:bg-[#1C1C1C]">
-        <div className="text-center">
-          <Loader className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Loading equipment packages...</p>
-        </div>
+      <div className="min-h-screen bg-night text-chalk flex items-center justify-center">
+        <Loader className="w-12 h-12 animate-spin text-fire" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen py-12 px-4 bg-white dark:bg-[#1C1C1C]">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-4xl font-bold mb-2 text-gray-900 dark:text-white">Equipment Hire</h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-12">
-          Rent gym equipment at affordable rates. Choose your rental period.
-        </p>
+    <div className="min-h-screen bg-night text-chalk font-barlow">
+      <section className="bg-ink border-b border-white/5 px-[6%] pt-14 pb-11">
+        <div className="max-w-5xl mx-auto">
+          <h1 className="font-bebas text-5xl">EQUIPMENT <span className="text-fire">HIRE</span></h1>
+          <p className="text-fog mt-2">Rent gym equipment at affordable rates</p>
+        </div>
+      </section>
 
+      <div className="max-w-5xl mx-auto px-[6%] py-10 pb-20">
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-8 text-red-700 dark:text-red-400">
-            {error}
+          <div className="bg-red-500/10 border border-red-500/20 p-4 mb-8 flex gap-3 text-red-300 text-sm">
+            <AlertCircle size={18} className="flex-shrink-0" /> {error}
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {packages.map((pkg) => (
-            <div
-              key={pkg.packageType}
-              className="bg-white dark:bg-[#1C1C1C] rounded-lg shadow hover:shadow-lg transition p-6 flex flex-col border border-gray-200 dark:border-gray-700"
-            >
-              <h3 className="text-2xl font-bold mb-2 capitalize text-gray-900 dark:text-white">{pkg.packageType}</h3>
-              <p className="text-gray-600 dark:text-gray-400 text-sm mb-6">{pkg.description}</p>
-
-              <div className="mb-6 flex-grow">
-                <div className="text-3xl font-bold text-primary">
-                  KES {pkg.price.toLocaleString()}
-                  <span className="text-sm text-gray-600 dark:text-gray-400 font-normal">/day</span>
-                </div>
-              </div>
-
+            <div key={pkg.packageType} className="bg-ash border border-white/5 p-6 flex flex-col hover:border-fire/30 transition">
+              <h3 className="font-barlow-condensed font-bold text-2xl capitalize mb-2">{pkg.packageType}</h3>
+              <p className="text-fog text-sm mb-6 flex-1">{pkg.description}</p>
+              <p className="font-bebas text-3xl text-fire mb-6">
+                KES {pkg.price.toLocaleString()}<span className="text-sm text-fog font-barlow">/day</span>
+              </p>
               <button
-                onClick={() =>
-                  navigate('/equipment-checkout', {
-                    state: { packageType: pkg.packageType, pricePerDay: pkg.price },
-                  })
-                }
-                className="bg-primary text-white py-3 rounded-lg hover:bg-opacity-90 font-semibold flex items-center justify-center gap-2"
+                onClick={() => navigate('/equipment/checkout', { state: { packageType: pkg.packageType, pricePerDay: pkg.price } })}
+                className="w-full bg-fire text-white py-3 clip-angled font-barlow-condensed font-black text-sm letter-spacing-widest text-transform-uppercase hover:bg-ember flex items-center justify-center gap-2"
               >
-                Book Now
-                <ArrowRight className="w-4 h-4" />
+                Book Now <ArrowRight size={16} />
               </button>
             </div>
           ))}
-        </div>
-
-        <div className="mt-12 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
-          <h2 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">How It Works</h2>
-          <ol className="space-y-2 text-sm text-gray-700 dark:text-gray-400">
-            <li>
-              <strong>1. Choose Package:</strong> Select a rental period (daily, weekly, or
-              monthly)
-            </li>
-            <li>
-              <strong>2. Select Dates:</strong> Pick your hire and return dates
-            </li>
-            <li>
-              <strong>3. Confirm Details:</strong> Review the total cost and equipment details
-            </li>
-            <li>
-              <strong>4. Pay with M-Pesa:</strong> Complete payment securely
-            </li>
-            <li>
-              <strong>5. Collect Equipment:</strong> Collect your equipment at our location
-            </li>
-          </ol>
         </div>
       </div>
     </div>

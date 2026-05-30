@@ -11,4 +11,6 @@ export declare const getTopEvents: (params: {
 }) => Promise<any>;
 export declare const getUserStats: () => Promise<any>;
 export declare const getOrderStats: () => Promise<any>;
+export declare const getEquipmentStats: () => Promise<any>;
+export declare const getEventAttendance: () => Promise<any>;
 //# sourceMappingURL=analytics.d.ts.map

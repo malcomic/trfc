@@ -1,1 +1,1 @@
-{"version":3,"file":"ProductCard.d.ts","sourceRoot":"","sources":["ProductCard.tsx"],"names":[],"mappings":"AAAA,OAAO,EAAE,OAAO,EAAE,MAAM,UAAU,CAAA;AAGlC,MAAM,CAAC,OAAO,UAAU,WAAW,CAAC,EAAE,OAAO,EAAE,EAAE;IAAE,OAAO,EAAE,OAAO,CAAA;CAAE,2CAsGpE"}
+{"version":3,"file":"ProductCard.d.ts","sourceRoot":"","sources":["ProductCard.tsx"],"names":[],"mappings":"AAAA,OAAO,EAAE,OAAO,EAAE,MAAM,UAAU,CAAA;AAGlC,MAAM,CAAC,OAAO,UAAU,WAAW,CAAC,EAAE,OAAO,EAAE,OAAgB,EAAE,EAAE;IAAE,OAAO,EAAE,OAAO,CAAC;IAAC,OAAO,CAAC,EAAE,MAAM,GAAG,SAAS,CAAA;CAAE,2CAoHpH"}

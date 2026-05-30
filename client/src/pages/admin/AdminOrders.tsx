@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Eye } from 'lucide-react'
-import { getOrdersForAdmin } from '../../api/admin/orders'
-import AdminLayout from '../../components/AdminLayout'
+import { getOrdersForAdmin, updateOrderStatus } from '../../api/admin/orders'
 
 interface OrderItem {
   product_id: string
+  product_name?: string
   quantity: number
   unit_price: number
 }
@@ -29,6 +29,9 @@ export default function AdminOrders() {
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [showModal, setShowModal] = useState(false)
+  const [editStatus, setEditStatus] = useState('')
+  const [editReceipt, setEditReceipt] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     fetchOrders()
@@ -54,12 +57,33 @@ export default function AdminOrders() {
 
   const openModal = (order: Order) => {
     setSelectedOrder(order)
+    setEditStatus(order.payment_status)
+    setEditReceipt(order.mpesa_receipt || '')
     setShowModal(true)
   }
 
   const closeModal = () => {
     setShowModal(false)
     setSelectedOrder(null)
+  }
+
+  const handleSaveStatus = async () => {
+    if (!selectedOrder) return
+    try {
+      setSaving(true)
+      setError('')
+      const updated = await updateOrderStatus(selectedOrder.id, {
+        payment_status: editStatus,
+        mpesa_receipt: editReceipt || undefined,
+      })
+      setOrders(orders.map((o) => (o.id === selectedOrder.id ? { ...o, ...updated } : o)))
+      setSelectedOrder({ ...selectedOrder, ...updated })
+    } catch (err: any) {
+      setError('Failed to update order status')
+      console.error(err)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -76,15 +100,11 @@ export default function AdminOrders() {
   }
 
   if (loading) {
-    return (
-      <AdminLayout>
-        <div className="text-lg text-gray-600 dark:text-gray-400">Loading orders...</div>
-      </AdminLayout>
-    )
+    return <div className="text-lg text-gray-600 dark:text-gray-400">Loading orders...</div>
   }
 
   return (
-    <AdminLayout>
+    <div>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-4xl font-bold text-gray-800 dark:text-white">Orders</h1>
         <div className="flex items-center gap-2">
@@ -92,7 +112,7 @@ export default function AdminOrders() {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-[#E8401C] dark:focus:border-[#FF4500] bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-primary dark:focus:border-primary-dark bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           >
             <option value="all">All Orders</option>
             <option value="paid">Paid</option>
@@ -131,7 +151,10 @@ export default function AdminOrders() {
                 </tr>
               ) : (
                 filteredOrders.map((order) => (
-                  <tr key={order.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-900 dark:text-gray-100">
+                  <tr
+                    key={order.id}
+                    className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-900 dark:text-gray-100"
+                  >
                     <td className="px-6 py-4 font-mono text-sm">{order.id.slice(0, 8)}</td>
                     <td className="px-6 py-4 font-semibold">
                       KES {(Number(order.total_amount) || 0).toFixed(2)}
@@ -159,7 +182,7 @@ export default function AdminOrders() {
                     <td className="px-6 py-4 text-center">
                       <button
                         onClick={() => openModal(order)}
-                        className="inline-flex items-center gap-2 px-3 py-1 text-[#E8401C] dark:text-[#FF4500] hover:bg-[#E8401C] dark:hover:bg-[#FF4500] hover:text-white dark:hover:text-white rounded transition"
+                        className="inline-flex items-center gap-2 px-3 py-1 text-primary dark:text-primary-dark hover:bg-primary dark:hover:bg-primary-dark hover:text-white rounded transition"
                         title="View details"
                       >
                         <Eye className="w-4 h-4" />
@@ -173,10 +196,9 @@ export default function AdminOrders() {
         </div>
       </div>
 
-      {/* Order Details Modal */}
       {showModal && selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-2xl max-w-2xl w-full max-h-96 overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto">
             <div className="sticky top-0 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 px-6 py-4 flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">Order Details</h2>
               <button
@@ -188,7 +210,6 @@ export default function AdminOrders() {
             </div>
 
             <div className="p-6 space-y-6 text-gray-900 dark:text-gray-100">
-              {/* Order Info */}
               <div>
                 <h3 className="text-lg font-semibold mb-3">Order Information</h3>
                 <div className="grid grid-cols-2 gap-4">
@@ -204,24 +225,13 @@ export default function AdminOrders() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">Total Amount</p>
-                    <p className="text-xl font-bold text-[#E8401C] dark:text-[#FF4500]">
+                    <p className="text-xl font-bold text-primary dark:text-primary-dark">
                       KES {(Number(selectedOrder.total_amount) || 0).toFixed(2)}
                     </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Payment Status</p>
-                    <span
-                      className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(
-                        selectedOrder.payment_status
-                      )}`}
-                    >
-                      {selectedOrder.payment_status.toUpperCase()}
-                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Customer Info */}
               <div>
                 <h3 className="text-lg font-semibold mb-3">Customer Information</h3>
                 <div className="space-y-3">
@@ -236,16 +246,31 @@ export default function AdminOrders() {
                 </div>
               </div>
 
-              {/* Payment Info */}
               <div>
-                <h3 className="text-lg font-semibold mb-3">Payment Information</h3>
+                <h3 className="text-lg font-semibold mb-3">Update Payment</h3>
                 <div className="space-y-3">
-                  {selectedOrder.mpesa_receipt && (
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">M-Pesa Receipt</p>
-                      <p className="font-mono font-semibold">{selectedOrder.mpesa_receipt}</p>
-                    </div>
-                  )}
+                  <div>
+                    <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Payment Status</label>
+                    <select
+                      value={editStatus}
+                      onChange={(e) => setEditStatus(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    >
+                      <option value="paid">Paid</option>
+                      <option value="pending">Pending</option>
+                      <option value="failed">Failed</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">M-Pesa Receipt</label>
+                    <input
+                      type="text"
+                      value={editReceipt}
+                      onChange={(e) => setEditReceipt(e.target.value)}
+                      placeholder="Optional receipt number"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    />
+                  </div>
                   {selectedOrder.checkout_request_id && (
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">Checkout Request ID</p>
@@ -255,7 +280,6 @@ export default function AdminOrders() {
                 </div>
               </div>
 
-              {/* Order Items (if available) */}
               {selectedOrder.items && selectedOrder.items.length > 0 && (
                 <div>
                   <h3 className="text-lg font-semibold mb-3">Order Items</h3>
@@ -263,10 +287,10 @@ export default function AdminOrders() {
                     {selectedOrder.items.map((item, idx) => (
                       <div key={idx} className="flex justify-between">
                         <span>
-                          Product {idx + 1} x {item.quantity}
+                          {item.product_name || 'Unknown product'} x {item.quantity}
                         </span>
                         <span className="font-semibold">
-                          KES {(item.unit_price * item.quantity).toFixed(2)}
+                          KES {(Number(item.unit_price) * item.quantity).toFixed(2)}
                         </span>
                       </div>
                     ))}
@@ -282,10 +306,17 @@ export default function AdminOrders() {
               >
                 Close
               </button>
+              <button
+                onClick={handleSaveStatus}
+                disabled={saving}
+                className="px-4 py-2 bg-primary dark:bg-primary-dark text-white rounded-lg hover:opacity-90 font-semibold disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
             </div>
           </div>
         </div>
       )}
-    </AdminLayout>
+    </div>
   )
 }

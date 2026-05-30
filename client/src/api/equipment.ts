@@ -1,7 +1,8 @@
 import api from './index'
+import { initiateSTKPush } from './payments'
 
 export const getAvailableEquipment = async () => {
-  const response = await api.get('/equipment')
+  const response = await api.get('/equipment/available/packages')
   return response.data
 }
 
@@ -10,8 +11,15 @@ export const createEquipmentHireRequest = async (data: {
   packageType: string
   hireDate: string
   returnDate: string
+  phone: string
 }) => {
-  const response = await api.post('/equipment-hire', data)
+  const response = await api.post('/equipment/hire', data)
+  return response.data
+}
+
+export const getEquipmentHireById = async (id: string, phone?: string) => {
+  const params = phone ? { phone } : undefined
+  const response = await api.get(`/equipment/hire/${id}`, { params })
   return response.data
 }
 
@@ -20,6 +28,9 @@ export const initiateEquipmentPayment = async (data: {
   amount: number
   equipmentHireId: string
 }) => {
-  const response = await api.post('/equipment-payment', data)
-  return response.data
+  return initiateSTKPush({
+    phone: data.phone,
+    amount: data.amount,
+    equipmentHireId: data.equipmentHireId,
+  })
 }

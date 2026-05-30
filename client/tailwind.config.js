@@ -7,6 +7,10 @@ export default {
   theme: {
     extend: {
       colors: {
+        primary: {
+          DEFAULT: '#E8401C',
+          dark: '#FF4500',
+        },
         fire: {
           DEFAULT: '#FF4500',
           light: '#FF4500',
@@ -97,5 +101,9 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    function ({ addVariant }) {
+      addVariant('light', 'html:not(.dark) &')
+    },
+  ],
 }

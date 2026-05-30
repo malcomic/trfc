@@ -1,12 +1,26 @@
 import { Product } from '../types'
 import { Tag, Package } from 'lucide-react'
 
-export default function ProductCard({ product }: { product: Product }) {
+export default function ProductCard({ product, variant = 'full' }: { product: Product; variant?: 'full' | 'compact' }) {
   const prod = product as any
   const isNew = prod.created_at
     ? Date.now() - new Date(prod.created_at).getTime() < 1000 * 60 * 60 * 24 * 14
     : false
   const isSoldOut = prod.stock === 0
+
+  if (variant === 'compact') {
+    return (
+      <>
+        <h3 className="font-barlow-condensed font-bold text-[17px] tracking-wide text-chalk leading-snug">{prod.name}</h3>
+        {prod.description && (
+          <p className="text-xs text-fog leading-relaxed line-clamp-2">{prod.description}</p>
+        )}
+        {typeof prod.stock === 'number' && prod.stock > 0 && prod.stock <= 5 && (
+          <p className="font-barlow-condensed font-bold text-[10px] tracking-wider uppercase text-fire">Only {prod.stock} left</p>
+        )}
+      </>
+    )
+  }
 
   return (
     <div className="group relative flex flex-col h-full bg-white dark:bg-[#1C1C1C] border border-gray-200 dark:border-gray-800 hover:border-[rgba(255,69,0,0.3)] dark:hover:border-[rgba(255,69,0,0.3)] transition-all duration-300 hover:-translate-y-1">

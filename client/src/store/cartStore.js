@@ -5,6 +5,9 @@ export const useCart = create((set, get) => ({
         return saved ? JSON.parse(saved) : [];
     })(),
     addItem: (product, quantity) => {
+        if (product.category === 'event') {
+            return;
+        }
         set((state) => {
             const existing = state.items.find((item) => item.product.id === product.id);
             const newItems = existing

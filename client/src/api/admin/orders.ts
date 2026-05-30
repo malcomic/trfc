@@ -12,7 +12,7 @@ export const getOrderById = async (id: string) => {
 
 export const updateOrderStatus = async (
   id: string,
-  data: { payment_status: string }
+  data: { payment_status: string; mpesa_receipt?: string }
 ) => {
   const response = await api.put(`/orders/${id}`, data);
   return response.data;

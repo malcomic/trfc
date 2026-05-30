@@ -41,6 +41,7 @@ export default function EquipmentCheckout() {
                 packageType: packageType,
                 hireDate: data.hireDate,
                 returnDate: data.returnDate,
+                phone: data.phone,
             });
             // Initiate payment
             const paymentResponse = await initiateEquipmentPayment({
@@ -49,10 +50,9 @@ export default function EquipmentCheckout() {
                 equipmentHireId: hireRequest.id,
             });
             if (paymentResponse.checkoutRequestId) {
-                alert('M-Pesa prompt sent to your phone. Enter your PIN to complete payment.');
-                navigate(`/hire-confirmation/${paymentResponse.checkoutRequestId}`, {
+                navigate(`/hire-confirmation/${hireRequest.id}`, {
                     state: {
-                        hireId: hireRequest.id,
+                        checkoutRequestId: paymentResponse.checkoutRequestId,
                         equipmentName: data.equipmentName,
                         hireDate: data.hireDate,
                         returnDate: data.returnDate,

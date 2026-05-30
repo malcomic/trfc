@@ -1,4 +1,5 @@
 export declare const getGallery: () => Promise<any>;
+export declare const uploadGalleryFile: (formData: FormData) => Promise<any>;
 export declare const uploadMedia: (data: {
     media_url: string;
     media_type?: string;

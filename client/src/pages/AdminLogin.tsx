@@ -1,5 +1,5 @@
 import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { loginUser } from '../api/auth'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
@@ -91,7 +91,7 @@ export default function AdminLogin() {
 
           <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
             <p className="text-center text-gray-600 dark:text-gray-400 text-sm">
-              Need member login? <a href="/login" className="text-primary font-semibold hover:underline">Click here</a>
+              Need member login? <Link to="/login" className="text-primary font-semibold hover:underline">Click here</Link>
             </p>
           </div>
         </div>

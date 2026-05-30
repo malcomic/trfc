@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { Trash2, Edit2, Plus } from 'lucide-react'
 import { getProductsForAdmin, createProduct, updateProduct, deleteProduct } from '../../api/admin/products'
-import AdminLayout from '../../components/AdminLayout'
+import AdminConfirmDialog from '../../components/AdminConfirmDialog'
 
 interface Product {
   id: string
@@ -21,6 +21,7 @@ export default function AdminProducts() {
   const [error, setError] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
   const { register, handleSubmit, reset, formState: { errors } } = useForm()
 
   useEffect(() => {
@@ -65,15 +66,16 @@ export default function AdminProducts() {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
-      try {
-        await deleteProduct(id)
-        fetchProducts()
-      } catch (err: any) {
-        setError('Failed to delete product')
-        console.error(err)
-      }
+  const confirmDelete = async () => {
+    if (!deleteId) return
+    try {
+      await deleteProduct(deleteId)
+      fetchProducts()
+    } catch (err: any) {
+      setError('Failed to delete product')
+      console.error(err)
+    } finally {
+      setDeleteId(null)
     }
   }
 
@@ -84,24 +86,20 @@ export default function AdminProducts() {
   }
 
   if (loading) {
-    return (
-      <AdminLayout>
-        <div className="text-lg text-gray-600 dark:text-gray-400">Loading products...</div>
-      </AdminLayout>
-    )
+    return <div className="text-lg text-gray-600 dark:text-gray-400">Loading products...</div>
   }
 
   return (
-    <AdminLayout>
+    <div>
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 dark:text-white">Manage Products</h1>
+        <h1 className="text-4xl font-bold text-gray-800 dark:text-white">Products</h1>
         <button
           onClick={() => {
             setEditingId(null)
             reset()
             setShowModal(true)
           }}
-          className="flex items-center gap-2 bg-[#E8401C] dark:bg-[#FF4500] text-white px-6 py-2 rounded-lg hover:bg-opacity-90 dark:hover:bg-opacity-90 transition"
+          className="flex items-center gap-2 bg-primary dark:bg-primary-dark text-white px-6 py-2 rounded-lg hover:opacity-90 transition"
         >
           <Plus size={20} />
           New Product
@@ -150,7 +148,7 @@ export default function AdminProducts() {
                     <Edit2 size={18} />
                   </button>
                   <button
-                    onClick={() => handleDelete(product.id)}
+                    onClick={() => setDeleteId(product.id)}
                     className="flex items-center gap-1 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
                   >
                     <Trash2 size={18} />
@@ -164,7 +162,7 @@ export default function AdminProducts() {
 
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full max-h-96 overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full max-h-[85vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{editingId ? 'Edit Product' : 'New Product'}</h2>
             </div>
@@ -256,7 +254,7 @@ export default function AdminProducts() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#E8401C] dark:bg-[#FF4500] text-white rounded-lg hover:bg-opacity-90 dark:hover:bg-opacity-90"
+                  className="px-4 py-2 bg-primary dark:bg-primary-dark text-white rounded-lg hover:opacity-90"
                 >
                   {editingId ? 'Update' : 'Create'}
                 </button>
@@ -265,6 +263,16 @@ export default function AdminProducts() {
           </div>
         </div>
       )}
-    </AdminLayout>
+
+      <AdminConfirmDialog
+        open={deleteId !== null}
+        title="Delete product"
+        message="Are you sure you want to delete this product? This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteId(null)}
+      />
+    </div>
   )
 }

@@ -1,9 +1,8 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { ShoppingCart } from 'lucide-react';
+import { MapPin, Clock, Users, AlertCircle, Minus, Plus, Ticket } from 'lucide-react';
 import { getEventById } from '../api/events';
-import { useCart } from '../store/cartStore';
 export default function EventDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -11,7 +10,6 @@ export default function EventDetail() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [quantity, setQuantity] = useState(1);
-    const { addItem } = useCart();
     useEffect(() => {
         if (id)
             fetchEvent();
@@ -19,6 +17,7 @@ export default function EventDetail() {
     const fetchEvent = async () => {
         try {
             setLoading(true);
+            setError('');
             const data = await getEventById(id);
             setEvent(data);
         }
@@ -30,42 +29,21 @@ export default function EventDetail() {
             setLoading(false);
         }
     };
-    const handleAddToCart = () => {
-        if (!event)
-            return;
-        const eventAsProduct = {
-            id: event.id,
-            name: event.title,
-            description: event.description,
-            price: event.price,
-            stock: event.capacity || 0,
-            category: 'event',
-            image_url: event.image_url
-        };
-        addItem(eventAsProduct, quantity);
-        alert(`Added ${quantity} ticket(s) to cart!`);
-        navigate('/cart');
-    };
-    if (loading)
-        return _jsx("div", { className: "min-h-screen py-12 text-center text-gray-600", children: "Loading..." });
-    if (!event || error)
-        return (_jsx("div", { className: "min-h-screen py-12 text-center", children: error ? (_jsx("div", { className: "text-red-600", children: error })) : (_jsx("div", { className: "text-gray-600", children: "Event not found" })) }));
-    const eventDate = event.event_date ? new Date(event.event_date) : null;
+    if (loading) {
+        return (_jsx("div", { className: "min-h-screen bg-night text-chalk font-barlow", children: _jsxs("div", { className: "max-w-4xl mx-auto px-6 py-16", children: [_jsx("div", { className: "h-96 bg-smoke animate-pulse mb-8" }), _jsx("div", { className: "h-8 bg-smoke animate-pulse w-2/3 mb-4" }), _jsx("div", { className: "h-4 bg-smoke animate-pulse w-full mb-2" }), _jsx("div", { className: "h-4 bg-smoke animate-pulse w-4/5" })] }) }));
+    }
+    if (!event || error) {
+        return (_jsx("div", { className: "min-h-screen bg-night text-chalk font-barlow py-16 px-6", children: _jsx("div", { className: "max-w-2xl mx-auto", children: _jsxs("div", { className: "bg-red-500/10 border border-red-500/20 border-l-4 border-l-red-500 p-6 flex gap-4", children: [_jsx(AlertCircle, { className: "w-6 h-6 text-red-400 flex-shrink-0" }), _jsxs("div", { children: [_jsx("p", { className: "text-red-300 mb-4", children: error || 'Event not found' }), _jsx("button", { onClick: () => (error ? fetchEvent() : navigate('/events')), className: "bg-fire text-white px-4 py-2 clip-angled-sm mr-3", children: error ? 'Retry' : 'Back to Events' })] })] }) }) }));
+    }
+    const ev = event;
+    const eventDate = ev.event_date ? new Date(ev.event_date) : null;
     const formattedDate = eventDate
-        ? eventDate.toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-        })
+        ? eventDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
         : 'Date TBA';
     const formattedTime = eventDate
-        ? eventDate.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true,
-        })
+        ? eventDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
         : '';
-    return (_jsx("div", { className: "min-h-screen py-12 px-4", children: _jsxs("div", { className: "max-w-4xl mx-auto", children: [_jsx("img", { src: event.image_url || 'https://via.placeholder.com/600', alt: event.title, className: "w-full h-96 object-cover rounded-2xl mb-8" }), _jsx("h1", { className: "text-4xl font-bold mb-4", children: event.title }), _jsx("p", { className: "text-gray-600 mb-8", children: event.description }), _jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 mb-8", children: [_jsxs("div", { className: "bg-light rounded-lg p-6", children: [_jsx("p", { className: "text-gray-600 text-sm mb-2", children: "Location" }), _jsx("p", { className: "font-semibold text-lg", children: event.location })] }), _jsxs("div", { className: "bg-light rounded-lg p-6", children: [_jsx("p", { className: "text-gray-600 text-sm mb-2", children: "Date & Time" }), _jsx("p", { className: "font-semibold text-lg", children: formattedDate }), formattedTime && _jsx("p", { className: "text-gray-600", children: formattedTime })] })] }), _jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 mb-8", children: [_jsxs("div", { className: "bg-light rounded-lg p-6", children: [_jsx("p", { className: "text-gray-600 text-sm mb-2", children: "Price per Ticket" }), _jsxs("p", { className: "font-bold text-3xl text-primary", children: ["KES ", event.price] })] }), _jsxs("div", { className: "bg-light rounded-lg p-6", children: [_jsx("p", { className: "text-gray-600 text-sm mb-2", children: "Capacity" }), _jsxs("p", { className: "font-semibold text-lg", children: [event.capacity, " tickets available"] })] })] }), _jsxs("div", { className: "bg-white rounded-lg shadow-md p-6 mb-8", children: [_jsxs("div", { className: "mb-6", children: [_jsx("label", { className: "block text-sm font-semibold mb-2", children: "Number of Tickets" }), _jsxs("div", { className: "flex items-center gap-4", children: [_jsx("button", { onClick: () => setQuantity(Math.max(1, quantity - 1)), className: "px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 font-semibold", children: "-" }), _jsx("span", { className: "text-2xl font-bold w-12 text-center", children: quantity }), _jsx("button", { onClick: () => setQuantity(quantity + 1), className: "px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 font-semibold", children: "+" })] })] }), _jsxs("div", { className: "mb-6 text-lg", children: [_jsx("span", { className: "text-gray-600", children: "Total: " }), _jsxs("span", { className: "font-bold text-2xl text-primary", children: ["KES ", (event.price * quantity).toFixed(2)] })] }), _jsxs("button", { onClick: handleAddToCart, className: "w-full bg-primary text-white px-8 py-3 rounded-lg font-semibold hover:bg-opacity-90 transition flex items-center justify-center gap-2 mb-4", children: [_jsx(ShoppingCart, { size: 20 }), "Add ", quantity, " Ticket", quantity > 1 ? 's' : '', " to Cart"] }), _jsx("button", { className: "w-full bg-gray-800 text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-700 transition", children: "Pay with M-Pesa" })] })] }) }));
+    const isFree = !ev.price || Number(ev.price) === 0;
+    return (_jsxs("div", { className: "min-h-screen bg-night text-chalk font-barlow", children: [_jsx("section", { className: "bg-ink border-b border-white/5 px-[6%] pt-14 pb-8", children: _jsxs("div", { className: "max-w-4xl mx-auto", children: [_jsx("button", { onClick: () => navigate('/events'), className: "text-fire text-sm mb-4 bg-transparent border-0 cursor-pointer font-barlow-condensed font-bold hover:underline", children: "\u2190 Back to Events" }), _jsx("h1", { className: "font-bebas text-5xl leading-tight", children: ev.title })] }) }), _jsxs("div", { className: "max-w-4xl mx-auto px-[6%] py-10 pb-20", children: [_jsx("img", { src: ev.image_url || 'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=800&q=80', alt: ev.title, className: "w-full h-80 object-cover brightness-85 clip-angled mb-8" }), _jsx("p", { className: "text-fog mb-8 leading-relaxed", children: ev.description }), _jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4 mb-8", children: [_jsxs("div", { className: "bg-ash border border-white/5 p-5 flex items-start gap-3", children: [_jsx(MapPin, { size: 18, className: "text-fire flex-shrink-0 mt-0.5" }), _jsxs("div", { children: [_jsx("p", { className: "text-xs text-fog uppercase letter-spacing-widest mb-1", children: "Location" }), _jsx("p", { className: "font-semibold", children: ev.location })] })] }), _jsxs("div", { className: "bg-ash border border-white/5 p-5 flex items-start gap-3", children: [_jsx(Clock, { size: 18, className: "text-fire flex-shrink-0 mt-0.5" }), _jsxs("div", { children: [_jsx("p", { className: "text-xs text-fog uppercase letter-spacing-widest mb-1", children: "Date & Time" }), _jsx("p", { className: "font-semibold", children: formattedDate }), formattedTime && _jsx("p", { className: "text-fog text-sm", children: formattedTime })] })] }), _jsxs("div", { className: "bg-ash border border-white/5 p-5 flex items-start gap-3", children: [_jsx(Ticket, { size: 18, className: "text-fire flex-shrink-0 mt-0.5" }), _jsxs("div", { children: [_jsx("p", { className: "text-xs text-fog uppercase letter-spacing-widest mb-1", children: "Price" }), _jsx("p", { className: "font-bebas text-3xl text-fire", children: isFree ? 'FREE' : `KES ${Number(ev.price).toLocaleString()}` })] })] }), ev.capacity && (_jsxs("div", { className: "bg-ash border border-white/5 p-5 flex items-start gap-3", children: [_jsx(Users, { size: 18, className: "text-fire flex-shrink-0 mt-0.5" }), _jsxs("div", { children: [_jsx("p", { className: "text-xs text-fog uppercase letter-spacing-widest mb-1", children: "Capacity" }), _jsxs("p", { className: "font-semibold", children: [ev.capacity, " spots"] })] })] }))] }), _jsxs("div", { className: "bg-ash border border-white/5 p-6", children: [_jsx("label", { className: "block font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-fire mb-4", children: "Number of Tickets" }), _jsxs("div", { className: "flex items-center gap-4 mb-6", children: [_jsx("button", { onClick: () => setQuantity(Math.max(1, quantity - 1)), className: "w-10 h-10 bg-smoke border border-white/10 flex items-center justify-center hover:bg-fire hover:text-white transition", children: _jsx(Minus, { size: 16 }) }), _jsx("span", { className: "font-bebas text-3xl w-12 text-center", children: quantity }), _jsx("button", { onClick: () => setQuantity(Math.min(10, quantity + 1)), className: "w-10 h-10 bg-smoke border border-white/10 flex items-center justify-center hover:bg-fire hover:text-white transition", children: _jsx(Plus, { size: 16 }) }), _jsxs("span", { className: "text-fog ml-4", children: ["Total: ", _jsx("strong", { className: "text-fire font-bebas text-2xl", children: isFree ? 'FREE' : `KES ${(Number(ev.price) * quantity).toLocaleString()}` })] })] }), _jsxs("button", { onClick: () => navigate(`/events/${id}/checkout`, { state: { quantity } }), className: "w-full bg-fire text-white py-4 font-barlow-condensed font-black text-sm letter-spacing-widest text-transform-uppercase clip-angled hover:bg-ember flex items-center justify-center gap-2", children: [_jsx(Ticket, { size: 18 }), "Buy ", quantity, " Ticket", quantity > 1 ? 's' : ''] })] })] })] }));
 }
 //# sourceMappingURL=EventDetail.js.map

@@ -14,15 +14,11 @@ import {
   logError,
   logDuplicateCallback,
 } from '../utils/paymentLogger.js'
+import { validatePaymentReference } from '../utils/paymentValidation.js'
 
 export async function initiateSTKPush(req: Request, res: Response) {
   try {
     const { phone, amount, orderId, ticketId, equipmentHireId } = req.body
-    const userId = req.user?.id
-
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' })
-    }
 
     if (!phone || !amount) {
       logSTKInitiation(phone || 'N/A', amount || 0, orderId, ticketId, equipmentHireId, null, 'Missing required fields')
@@ -48,6 +44,18 @@ export async function initiateSTKPush(req: Request, res: Response) {
       return res
         .status(400)
         .json({ error: 'One of orderId, ticketId, or equipmentHireId is required' })
+    }
+
+    const validation = await validatePaymentReference(
+      orderId,
+      ticketId,
+      equipmentHireId,
+      phone,
+      amount
+    )
+    if (!validation.ok) {
+      logSTKInitiation(phone, amount, orderId, ticketId, equipmentHireId, null, validation.error)
+      return res.status(validation.status).json({ error: validation.error })
     }
 
     const token = await getMPesaToken()
@@ -98,6 +106,24 @@ export async function initiateSTKPush(req: Request, res: Response) {
         error: stkResponse!.CustomerMessage || 'Failed to initiate payment. Please try again.',
         responseCode: stkResponse!.ResponseCode,
       })
+    }
+
+    const checkoutRequestId = stkResponse!.CheckoutRequestID
+    if (orderId) {
+      await query(
+        'UPDATE orders SET checkout_request_id = $1 WHERE id = $2',
+        [checkoutRequestId, orderId]
+      )
+    } else if (ticketId) {
+      await query(
+        'UPDATE tickets SET checkout_request_id = $1 WHERE id = $2',
+        [checkoutRequestId, ticketId]
+      )
+    } else if (equipmentHireId) {
+      await query(
+        'UPDATE equipment_hire SET checkout_request_id = $1 WHERE id = $2',
+        [checkoutRequestId, equipmentHireId]
+      )
     }
 
     res.json({
@@ -214,14 +240,9 @@ export async function handleCallback(req: Request, res: Response) {
 export async function queryPaymentStatus(req: Request, res: Response) {
   try {
     const { checkoutRequestId } = req.params
-    const userId = req.user?.id
-
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' })
-    }
 
     if (!checkoutRequestId) {
-      logError('STATUS_QUERY_ERROR', 'Missing checkoutRequestId', { userId })
+      logError('STATUS_QUERY_ERROR', 'Missing checkoutRequestId', {})
       return res.status(400).json({ error: 'checkoutRequestId is required' })
     }
 

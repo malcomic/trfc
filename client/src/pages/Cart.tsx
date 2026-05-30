@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useCart } from '../store/cartStore'
 import { useEffect } from 'react'
 import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, Tag } from 'lucide-react'
+import { getShipping, getGrandTotal } from '../utils/shipping'
 
 export default function Cart() {
   const { items, removeItem, updateQuantity, getTotal } = useCart()
@@ -18,8 +19,8 @@ export default function Cart() {
   }
 
   const subtotal = total
-  const shipping = subtotal >= 3000 ? 0 : 250
-  const grandTotal = subtotal + shipping
+  const shipping = getShipping(subtotal)
+  const grandTotal = getGrandTotal(subtotal)
 
   return (
     <div className="min-h-screen bg-night text-chalk font-barlow">

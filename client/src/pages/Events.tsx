@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getEvents } from '../api/events'
-import EventCard from '../components/EventCard'
+import { AlertCircle, ChevronRight, Search, X, MapPin } from 'lucide-react'
 import { Event } from '../types'
-import { AlertCircle, ChevronRight, Search, X } from 'lucide-react'
 
 const FILTERS = ['All', 'Race', 'Training', 'Social', 'Charity']
 
@@ -43,7 +42,11 @@ export default function Events() {
       !search ||
       e.title?.toLowerCase().includes(search.toLowerCase()) ||
       e.location?.toLowerCase().includes(search.toLowerCase())
-    return matchSearch
+    const category = (e as any).category || ''
+    const matchFilter =
+      activeFilter === 'All' ||
+      category.toLowerCase() === activeFilter.toLowerCase()
+    return matchSearch && matchFilter
   })
 
   return (
@@ -210,8 +213,16 @@ export default function Events() {
 
                   {/* Body */}
                   <div className="px-5.5 py-5.5 border-t border-white/5 flex flex-col gap-3.5">
-                    {/* EventCard renders existing content (description, etc.) */}
-                    <EventCard event={event} />
+                    <h3 className="font-barlow-condensed font-bold text-lg letter-spacing-tighter text-chalk leading-tight">{event.title}</h3>
+                    {event.location && (
+                      <div className="flex items-center gap-1.75 text-sm text-fog">
+                        <MapPin size={11} className="text-fire flex-shrink-0" />
+                        <span>{event.location}</span>
+                      </div>
+                    )}
+                    {event.description && (
+                      <p className="text-sm text-chalk/45 leading-relaxed line-clamp-2">{event.description}</p>
+                    )}
 
                     <div className="flex items-center justify-between pt-3.5 border-t border-white/5 mt-auto">
                       <div>

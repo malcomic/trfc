@@ -28,8 +28,10 @@ CREATE TABLE IF NOT EXISTS tickets (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE SET NULL,
   event_id UUID REFERENCES events(id) ON DELETE SET NULL,
+  phone VARCHAR(20),
   payment_status VARCHAR(20) DEFAULT 'pending',
   mpesa_receipt VARCHAR(100),
+  checkout_request_id VARCHAR(100),
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -53,6 +55,7 @@ CREATE TABLE IF NOT EXISTS orders (
   total_amount NUMERIC(10,2) NOT NULL,
   payment_status VARCHAR(20) DEFAULT 'pending',
   mpesa_receipt VARCHAR(100),
+  checkout_request_id VARCHAR(100),
   phone VARCHAR(20),
   delivery_address TEXT,
   created_at TIMESTAMP DEFAULT NOW()
@@ -95,7 +98,10 @@ CREATE TABLE IF NOT EXISTS equipment_hire (
   hire_date DATE NOT NULL,
   return_date DATE NOT NULL,
   total_cost NUMERIC(10,2),
+  phone VARCHAR(20),
   payment_status VARCHAR(20) DEFAULT 'pending',
+  mpesa_receipt VARCHAR(100),
+  checkout_request_id VARCHAR(100),
   created_at TIMESTAMP DEFAULT NOW()
 );
 

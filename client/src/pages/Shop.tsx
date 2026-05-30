@@ -56,14 +56,26 @@ export default function Shop() {
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3000)
   }
 
-  const sortedProducts = [...products].sort((a, b) => {
+  const filteredProducts = products.filter((p) => {
+    if (activeCategory === 'All') return true
+    return (p.category || '').toLowerCase() === activeCategory.toLowerCase()
+  })
+
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
     if (sortBy === 'Price: Low to High') return (a.price ?? 0) - (b.price ?? 0)
     if (sortBy === 'Price: High to Low') return (b.price ?? 0) - (a.price ?? 0)
+    if (sortBy === 'Newest') {
+      const aTime = (a as any).created_at ? new Date((a as any).created_at).getTime() : 0
+      const bTime = (b as any).created_at ? new Date((b as any).created_at).getTime() : 0
+      return bTime - aTime
+    }
     return 0
   })
 
-  const isNew = () => {
-    return false
+  const isNew = (product: Product) => {
+    const created = (product as any).created_at
+    if (!created) return false
+    return Date.now() - new Date(created).getTime() < 1000 * 60 * 60 * 24 * 14
   }
 
   return (
@@ -198,7 +210,7 @@ export default function Shop() {
                         (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1556906781-9a412961a28d?w=500&q=80'
                       }}
                     />
-                    {isNew() && (
+                    {isNew(product) && (
                       <span className="absolute top-3 left-3 font-barlow-condensed font-black text-xs letter-spacing-widest text-transform-uppercase px-2.5 py-1 bg-fire text-white z-1">New</span>
                     )}
                     {product.stock === 0 && (
@@ -227,7 +239,7 @@ export default function Shop() {
 
                   {/* Card body */}
                   <div className="px-4.5 py-5 flex flex-col gap-1.5 border-t border-white/5">
-                    <ProductCard product={product} />
+                    <ProductCard product={product} variant="compact" />
                     <div className="flex items-center justify-between mt-2">
                       <div className="font-bebas text-2xl text-fire letter-spacing-wider">
                         KES {product.price?.toLocaleString?.() ?? product.price}

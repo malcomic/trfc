@@ -1,14 +1,12 @@
 import { Request, Response } from 'express'
 import { query } from '../config/db.js'
+import { phonesMatch } from '../utils/phone.js'
 
 export async function buyTicket(req: Request, res: Response) {
   try {
-    const { eventId, quantity, phone } = req.body
-    const userId = req.user?.id
-
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' })
-    }
+    const eventId = req.params.eventId || req.body.eventId
+    const { quantity, phone } = req.body
+    const userId = req.user?.id ?? null
 
     if (!eventId || !quantity || !phone) {
       return res
@@ -85,28 +83,39 @@ export async function getUserTickets(req: Request, res: Response) {
 export async function getTicketById(req: Request, res: Response) {
   try {
     const { id } = req.params
+    const phoneQuery = typeof req.query.phone === 'string' ? req.query.phone : undefined
     const userId = req.user?.id
-
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' })
-    }
 
     const result = await query(
       `SELECT
-        t.id, t.user_id, t.event_id, t.payment_status, t.mpesa_receipt,
+        t.id, t.user_id, t.event_id, t.phone, t.payment_status, t.mpesa_receipt,
         t.checkout_request_id, t.created_at,
         e.title as event_title, e.event_date, e.price, e.location, e.description
        FROM tickets t
        JOIN events e ON t.event_id = e.id
-       WHERE t.id = $1 AND t.user_id = $2`,
-      [id, userId]
+       WHERE t.id = $1`,
+      [id]
     )
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Ticket not found' })
     }
 
-    res.json(result.rows[0])
+    const ticket = result.rows[0]
+    const isOwner = userId && ticket.user_id === userId
+    const phoneVerified = phoneQuery && ticket.phone && phonesMatch(phoneQuery, ticket.phone)
+
+    if (!isOwner && !phoneVerified) {
+      return res.json({
+        id: ticket.id,
+        payment_status: ticket.payment_status,
+        event_title: ticket.event_title,
+        event_date: ticket.event_date,
+        created_at: ticket.created_at,
+      })
+    }
+
+    res.json(ticket)
   } catch (error) {
     console.error('Error fetching ticket:', error)
     res.status(500).json({ error: 'Failed to fetch ticket' })

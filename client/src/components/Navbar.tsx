@@ -12,7 +12,7 @@ export default function Navbar() {
   const { items } = useCart()
   const navigate = useNavigate()
   const location = useLocation()
-  const cartCount = items.length
+  const cartCount = items.reduce((s, i) => s + i.quantity, 0)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -39,11 +39,14 @@ export default function Navbar() {
     path === '/' ? location.pathname === '/' : location.pathname.startsWith(path)
 
   const navLinks = [
-    { to: '/',       label: 'Home' },
+    { to: '/', label: 'Home' },
     { to: '/events', label: 'Events' },
     { to: '/programs', label: 'Programs' },
+    { to: '/equipment', label: 'Equipment' },
     { to: '/gallery', label: 'Gallery' },
-    { to: '/shop',   label: 'Shop' },
+    { to: '/shop', label: 'Shop' },
+    { to: '/testimonials', label: 'Testimonials' },
+    { to: '/contact', label: 'Contact' },
   ]
 
   return (
@@ -122,10 +125,15 @@ export default function Navbar() {
               </Link>
 
               {token ? (
-                <button onClick={handleLogout} className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 dark:text-white/55 light:text-black/55 no-underline px-3.5 py-2 border border-white/7 dark:border-white/7 light:border-black/8 transition-all duration-200 flex items-center gap-1.5 bg-transparent cursor-pointer hover:text-chalk light:hover:text-chalk-light hover:border-white/20 dark:hover:border-white/20 clip-angled-sm">
-                  <LogOut size={13} />
-                  Logout
-                </button>
+                <>
+                  <Link to="/account" className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 dark:text-white/55 light:text-black/55 no-underline px-3.5 py-2 border border-white/7 dark:border-white/7 light:border-black/8 transition-all duration-200 flex items-center gap-1.5 bg-transparent hover:text-chalk light:hover:text-chalk-light hover:border-white/20 dark:hover:border-white/20 clip-angled-sm">
+                    Account
+                  </Link>
+                  <button onClick={handleLogout} className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 dark:text-white/55 light:text-black/55 no-underline px-3.5 py-2 border border-white/7 dark:border-white/7 light:border-black/8 transition-all duration-200 flex items-center gap-1.5 bg-transparent cursor-pointer hover:text-chalk light:hover:text-chalk-light hover:border-white/20 dark:hover:border-white/20 clip-angled-sm">
+                    <LogOut size={13} />
+                    Logout
+                  </button>
+                </>
               ) : (
                 <>
                   <Link to="/login" className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 dark:text-white/55 light:text-black/55 no-underline px-3.5 py-2 border border-white/7 dark:border-white/7 light:border-black/8 transition-all duration-200 flex items-center gap-1.5 bg-transparent hover:text-chalk light:hover:text-chalk-light hover:border-white/20 dark:hover:border-white/20 clip-angled-sm">
@@ -204,10 +212,15 @@ export default function Navbar() {
               <ThemeToggle />
             </div>
             {token ? (
-              <button onClick={handleLogout} className="font-barlow-condensed font-bold text-xs tracking-wider text-white no-underline px-3.5 py-3.5 bg-fire w-full flex items-center justify-center gap-1.5 cursor-pointer hover:bg-ember clip-angled-lg transition-all duration-200">
-                <LogOut size={15} />
-                Logout
-              </button>
+              <>
+                <Link to="/account" className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 no-underline px-3.5 py-3.5 border border-white/7 flex items-center justify-center bg-transparent hover:text-chalk clip-angled-lg transition-all duration-200" onClick={() => setIsOpen(false)}>
+                  Account
+                </Link>
+                <button onClick={handleLogout} className="font-barlow-condensed font-bold text-xs tracking-wider text-white no-underline px-3.5 py-3.5 bg-fire w-full flex items-center justify-center gap-1.5 cursor-pointer hover:bg-ember clip-angled-lg transition-all duration-200">
+                  <LogOut size={15} />
+                  Logout
+                </button>
+              </>
             ) : (
               <>
                 <Link
