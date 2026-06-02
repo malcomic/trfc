@@ -14,11 +14,71 @@ import {
   logError,
   logDuplicateCallback,
 } from '../utils/paymentLogger.js'
-import { validatePaymentReference } from '../utils/paymentValidation.js'
+import { validatePaymentReference, markEntitiesFailedByCheckoutId } from '../utils/paymentValidation.js'
+
+async function decrementOrderStock(orderId: string) {
+  const items = await query(
+    'SELECT product_id, quantity FROM order_items WHERE order_id = $1',
+    [orderId]
+  )
+  for (const item of items.rows) {
+    await query(
+      'UPDATE products SET stock = GREATEST(0, stock - $1) WHERE id = $2',
+      [item.quantity, item.product_id]
+    )
+  }
+}
+
+async function applyPaymentFromAccountRef(
+  accountRef: string,
+  checkoutRequestId: string,
+  mpesaReceipt: string | null
+): Promise<number> {
+  if (accountRef.startsWith('TICKET-BATCH-')) {
+    const batchId = accountRef.replace('TICKET-BATCH-', '')
+    const result = await query(
+      `UPDATE tickets SET payment_status = $1, mpesa_receipt = $2, checkout_request_id = $3
+       WHERE purchase_batch_id = $4`,
+      ['paid', mpesaReceipt, checkoutRequestId, batchId]
+    )
+    return result.rowCount || 0
+  }
+
+  const dashIdx = accountRef.indexOf('-')
+  if (dashIdx === -1) return 0
+  const type = accountRef.slice(0, dashIdx)
+  const refId = accountRef.slice(dashIdx + 1)
+
+  if (type === 'ORDER') {
+    const result = await query(
+      'UPDATE orders SET payment_status = $1, mpesa_receipt = $2, checkout_request_id = $3 WHERE id = $4',
+      ['paid', mpesaReceipt, checkoutRequestId, refId]
+    )
+    if ((result.rowCount || 0) > 0) {
+      await decrementOrderStock(refId)
+    }
+    return result.rowCount || 0
+  }
+  if (type === 'TICKET') {
+    const result = await query(
+      'UPDATE tickets SET payment_status = $1, mpesa_receipt = $2, checkout_request_id = $3 WHERE id = $4',
+      ['paid', mpesaReceipt, checkoutRequestId, refId]
+    )
+    return result.rowCount || 0
+  }
+  if (type === 'HIRE') {
+    const result = await query(
+      'UPDATE equipment_hire SET payment_status = $1, mpesa_receipt = $2, checkout_request_id = $3 WHERE id = $4',
+      ['paid', mpesaReceipt, checkoutRequestId, refId]
+    )
+    return result.rowCount || 0
+  }
+  return 0
+}
 
 export async function initiateSTKPush(req: Request, res: Response) {
   try {
-    const { phone, amount, orderId, ticketId, equipmentHireId } = req.body
+    const { phone, amount, orderId, ticketId, ticketBatchId, equipmentHireId } = req.body
 
     if (!phone || !amount) {
       logSTKInitiation(phone || 'N/A', amount || 0, orderId, ticketId, equipmentHireId, null, 'Missing required fields')
@@ -35,6 +95,8 @@ export async function initiateSTKPush(req: Request, res: Response) {
     let accountReference = ''
     if (orderId) {
       accountReference = `ORDER-${orderId}`
+    } else if (ticketBatchId) {
+      accountReference = `TICKET-BATCH-${ticketBatchId}`
     } else if (ticketId) {
       accountReference = `TICKET-${ticketId}`
     } else if (equipmentHireId) {
@@ -43,12 +105,13 @@ export async function initiateSTKPush(req: Request, res: Response) {
       logSTKInitiation(phone, amount, orderId, ticketId, equipmentHireId, null, 'No reference provided')
       return res
         .status(400)
-        .json({ error: 'One of orderId, ticketId, or equipmentHireId is required' })
+        .json({ error: 'One of orderId, ticketBatchId, ticketId, or equipmentHireId is required' })
     }
 
     const validation = await validatePaymentReference(
       orderId,
       ticketId,
+      ticketBatchId,
       equipmentHireId,
       phone,
       amount
@@ -114,6 +177,11 @@ export async function initiateSTKPush(req: Request, res: Response) {
         'UPDATE orders SET checkout_request_id = $1 WHERE id = $2',
         [checkoutRequestId, orderId]
       )
+    } else if (ticketBatchId) {
+      await query(
+        'UPDATE tickets SET checkout_request_id = $1 WHERE purchase_batch_id = $2',
+        [checkoutRequestId, ticketBatchId]
+      )
     } else if (ticketId) {
       await query(
         'UPDATE tickets SET checkout_request_id = $1 WHERE id = $2',
@@ -157,9 +225,12 @@ export async function handleCallback(req: Request, res: Response) {
 
     const callback = parseCallbackResponse(payload)
 
+    const checkoutRequestId = callback.checkoutRequestId
+
     if (callback.resultCode !== 0) {
+      await markEntitiesFailedByCheckoutId(checkoutRequestId)
       logCallbackProcessing(
-        callback.checkoutRequestId,
+        checkoutRequestId,
         'FAILED',
         null,
         0,
@@ -168,7 +239,6 @@ export async function handleCallback(req: Request, res: Response) {
       return res.json({ ResultCode: 0, ResultDesc: 'Received' })
     }
 
-    const checkoutRequestId = callback.checkoutRequestId
     const mpesaReceipt = callback.mpesaReceiptNumber
 
     const existingCallback = await query(
@@ -192,33 +262,20 @@ export async function handleCallback(req: Request, res: Response) {
       ]
     )
 
-    const accountRefMatch = payload.Body?.stkCallback?.CallbackMetadata?.Item?.find(
-      (item: any) => item.Name === 'AccountReference'
-    )?.Value
+    const metadataItems = payload.Body?.stkCallback?.CallbackMetadata?.Item
+    const accountRefMatch = Array.isArray(metadataItems)
+      ? metadataItems.find((item: any) => item.Name === 'AccountReference')?.Value
+      : metadataItems?.Name === 'AccountReference'
+        ? metadataItems.Value
+        : undefined
 
     let updateCount = 0
     if (accountRefMatch) {
-      const [type, refId] = String(accountRefMatch).split('-')
-
-      if (type === 'ORDER') {
-        const result = await query(
-          'UPDATE orders SET payment_status = $1, mpesa_receipt = $2, checkout_request_id = $3 WHERE id = $4',
-          ['paid', mpesaReceipt, checkoutRequestId, refId]
-        )
-        updateCount = result.rowCount || 0
-      } else if (type === 'TICKET') {
-        const result = await query(
-          'UPDATE tickets SET payment_status = $1, mpesa_receipt = $2, checkout_request_id = $3 WHERE id = $4',
-          ['paid', mpesaReceipt, checkoutRequestId, refId]
-        )
-        updateCount = result.rowCount || 0
-      } else if (type === 'HIRE') {
-        const result = await query(
-          'UPDATE equipment_hire SET payment_status = $1, mpesa_receipt = $2, checkout_request_id = $3 WHERE id = $4',
-          ['paid', mpesaReceipt, checkoutRequestId, refId]
-        )
-        updateCount = result.rowCount || 0
-      }
+      updateCount = await applyPaymentFromAccountRef(
+        String(accountRefMatch),
+        checkoutRequestId,
+        mpesaReceipt || null
+      )
     }
 
     logCallbackProcessing(

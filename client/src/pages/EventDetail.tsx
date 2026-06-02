@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { MapPin, Clock, Users, AlertCircle, Minus, Plus, Ticket } from 'lucide-react'
 import { getEventById } from '../api/events'
 import { Event } from '../types'
+import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 
 export default function EventDetail() {
   const { id } = useParams()
@@ -32,12 +33,12 @@ export default function EventDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-night text-chalk font-barlow">
+      <div className={pageRoot}>
         <div className="max-w-4xl mx-auto px-6 py-16">
-          <div className="h-96 bg-smoke animate-pulse mb-8" />
-          <div className="h-8 bg-smoke animate-pulse w-2/3 mb-4" />
-          <div className="h-4 bg-smoke animate-pulse w-full mb-2" />
-          <div className="h-4 bg-smoke animate-pulse w-4/5" />
+          <div className="h-96 bg-smoke light:bg-smoke-light animate-pulse mb-8" />
+          <div className="h-8 bg-smoke light:bg-smoke-light animate-pulse w-2/3 mb-4" />
+          <div className="h-4 bg-smoke light:bg-smoke-light animate-pulse w-full mb-2" />
+          <div className="h-4 bg-smoke light:bg-smoke-light animate-pulse w-4/5" />
         </div>
       </div>
     )
@@ -45,7 +46,7 @@ export default function EventDetail() {
 
   if (!event || error) {
     return (
-      <div className="min-h-screen bg-night text-chalk font-barlow py-16 px-6">
+      <div className={`${pageRoot} py-16 px-6`}>
         <div className="max-w-2xl mx-auto">
           <div className="bg-red-500/10 border border-red-500/20 border-l-4 border-l-red-500 p-6 flex gap-4">
             <AlertCircle className="w-6 h-6 text-red-400 flex-shrink-0" />
@@ -72,8 +73,8 @@ export default function EventDetail() {
   const isFree = !ev.price || Number(ev.price) === 0
 
   return (
-    <div className="min-h-screen bg-night text-chalk font-barlow">
-      <section className="bg-ink border-b border-white/5 px-[6%] pt-14 pb-8">
+    <div className={pageRoot}>
+      <section className="bg-ink light:bg-ink-light border-b border-white/5 light:border-black/8 px-[6%] pt-14 pb-8">
         <div className="max-w-4xl mx-auto">
           <button onClick={() => navigate('/events')} className="text-fire text-sm mb-4 bg-transparent border-0 cursor-pointer font-barlow-condensed font-bold hover:underline">
             ← Back to Events
@@ -89,53 +90,53 @@ export default function EventDetail() {
           className="w-full h-80 object-cover brightness-85 clip-angled mb-8"
         />
 
-        <p className="text-fog mb-8 leading-relaxed">{ev.description}</p>
+        <p className="text-fog light:text-fog-light mb-8 leading-relaxed">{ev.description}</p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <div className="bg-ash border border-white/5 p-5 flex items-start gap-3">
+          <div className={`${cardSurface} p-5 flex items-start gap-3`}>
             <MapPin size={18} className="text-fire flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-xs text-fog uppercase letter-spacing-widest mb-1">Location</p>
+              <p className="text-xs text-fog light:text-fog-light uppercase letter-spacing-widest mb-1">Location</p>
               <p className="font-semibold">{ev.location}</p>
             </div>
           </div>
-          <div className="bg-ash border border-white/5 p-5 flex items-start gap-3">
+          <div className={`${cardSurface} p-5 flex items-start gap-3`}>
             <Clock size={18} className="text-fire flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-xs text-fog uppercase letter-spacing-widest mb-1">Date & Time</p>
+              <p className="text-xs text-fog light:text-fog-light uppercase letter-spacing-widest mb-1">Date & Time</p>
               <p className="font-semibold">{formattedDate}</p>
-              {formattedTime && <p className="text-fog text-sm">{formattedTime}</p>}
+              {formattedTime && <p className="text-fog light:text-fog-light text-sm">{formattedTime}</p>}
             </div>
           </div>
-          <div className="bg-ash border border-white/5 p-5 flex items-start gap-3">
+          <div className={`${cardSurface} p-5 flex items-start gap-3`}>
             <Ticket size={18} className="text-fire flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-xs text-fog uppercase letter-spacing-widest mb-1">Price</p>
+              <p className="text-xs text-fog light:text-fog-light uppercase letter-spacing-widest mb-1">Price</p>
               <p className="font-bebas text-3xl text-fire">{isFree ? 'FREE' : `KES ${Number(ev.price).toLocaleString()}`}</p>
             </div>
           </div>
           {ev.capacity && (
-            <div className="bg-ash border border-white/5 p-5 flex items-start gap-3">
+            <div className={`${cardSurface} p-5 flex items-start gap-3`}>
               <Users size={18} className="text-fire flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-xs text-fog uppercase letter-spacing-widest mb-1">Capacity</p>
+                <p className="text-xs text-fog light:text-fog-light uppercase letter-spacing-widest mb-1">Capacity</p>
                 <p className="font-semibold">{ev.capacity} spots</p>
               </div>
             </div>
           )}
         </div>
 
-        <div className="bg-ash border border-white/5 p-6">
+        <div className={`${cardSurface} p-6`}>
           <label className="block font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-fire mb-4">Number of Tickets</label>
           <div className="flex items-center gap-4 mb-6">
-            <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 bg-smoke border border-white/10 flex items-center justify-center hover:bg-fire hover:text-white transition">
+            <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className={`w-10 h-10 flex items-center justify-center hover:bg-fire hover:text-white transition ${inputField}`}>
               <Minus size={16} />
             </button>
             <span className="font-bebas text-3xl w-12 text-center">{quantity}</span>
-            <button onClick={() => setQuantity(Math.min(10, quantity + 1))} className="w-10 h-10 bg-smoke border border-white/10 flex items-center justify-center hover:bg-fire hover:text-white transition">
+            <button onClick={() => setQuantity(Math.min(10, quantity + 1))} className={`w-10 h-10 flex items-center justify-center hover:bg-fire hover:text-white transition ${inputField}`}>
               <Plus size={16} />
             </button>
-            <span className="text-fog ml-4">
+            <span className="text-fog light:text-fog-light ml-4">
               Total: <strong className="text-fire font-bebas text-2xl">{isFree ? 'FREE' : `KES ${(Number(ev.price) * quantity).toLocaleString()}`}</strong>
             </span>
           </div>

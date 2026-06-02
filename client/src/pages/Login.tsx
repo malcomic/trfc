@@ -1,5 +1,5 @@
 import { useForm } from 'react-hook-form'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { loginUser } from '../api/auth'
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
@@ -10,7 +10,20 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { login } = useAuth()
+
+  const getRedirectPath = () => {
+    const redirect = searchParams.get('redirect')
+    if (!redirect) return '/'
+    try {
+      const decoded = decodeURIComponent(redirect)
+      if (decoded.startsWith('/') && !decoded.startsWith('//')) return decoded
+    } catch {
+      /* ignore malformed redirect */
+    }
+    return '/'
+  }
 
   const onSubmit = async (data: any) => {
     try {
@@ -18,7 +31,7 @@ export default function Login() {
       setErrorMessage('')
       const response = await loginUser(data)
       login(response.token, response.user, response.refreshToken)
-      navigate('/')
+      navigate(getRedirectPath())
     } catch (error: any) {
       console.error('Login failed:', error)
       setErrorMessage(error.response?.data?.error || 'Login failed. Please try again.')
@@ -130,7 +143,7 @@ export default function Login() {
 
           {/* Forgot password */}
           <div className="flex justify-end mb-2">
-            <a href="#" className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fog text-decoration-none transition-colors duration-200 hover:text-fire">Forgot password?</a>
+            <Link to="/contact" className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fog text-decoration-none transition-colors duration-200 hover:text-fire">Forgot password?</Link>
           </div>
 
           {/* Submit */}

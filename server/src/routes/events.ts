@@ -10,6 +10,7 @@ import {
   buyTicket,
   getUserTickets,
   getTicketById,
+  getTicketsByCheckoutRequestId,
 } from '../controllers/ticketsController.js'
 import { authMiddleware, adminMiddleware, optionalAuthMiddleware } from '../middleware/auth.js'
 
@@ -17,6 +18,7 @@ const router = Router()
 
 router.get('/', getEvents)
 router.get('/tickets/list/user', authMiddleware, getUserTickets)
+router.get('/tickets/checkout/:checkoutRequestId', optionalAuthMiddleware, getTicketsByCheckoutRequestId)
 router.get('/tickets/:id', optionalAuthMiddleware, getTicketById)
 router.post('/:eventId/tickets', optionalAuthMiddleware, buyTicket)
 router.get('/:id', getEventById)

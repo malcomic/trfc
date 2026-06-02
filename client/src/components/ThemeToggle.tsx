@@ -7,13 +7,13 @@ export function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="p-2 rounded-lg transition-colors duration-300 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+      className="w-10 h-10 flex items-center justify-center bg-ash light:bg-smoke-light border border-white/10 light:border-black/10 text-chalk light:text-chalk-light clip-angled-sm transition-all duration-200 hover:border-fire light:hover:border-fire hover:text-fire light:hover:text-fire"
       aria-label="Toggle theme"
     >
       {theme === 'light' ? (
-        <Moon className="w-5 h-5 text-gray-800" />
+        <Moon size={18} className="text-fire" />
       ) : (
-        <Sun className="w-5 h-5 text-yellow-400" />
+        <Sun size={18} className="text-fire" />
       )}
     </button>
   );

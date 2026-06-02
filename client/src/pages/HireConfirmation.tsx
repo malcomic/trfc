@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { getEquipmentHireById } from '../api/equipment'
 import { pollPaymentStatus } from '../api/payments'
 import { AlertCircle, CheckCircle, Clock, Package } from 'lucide-react'
@@ -8,8 +8,8 @@ export default function HireConfirmation() {
   const { id } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const state = (location.state || {}) as {
-    hireId?: string
     equipmentName?: string
     hireDate?: string
     returnDate?: string
@@ -17,44 +17,113 @@ export default function HireConfirmation() {
     phone?: string
     checkoutRequestId?: string
   }
+  const phoneFromUrl = searchParams.get('phone') || ''
+  const [phone, setPhone] = useState(phoneFromUrl || state.phone || '')
+  const [phonePrompt, setPhonePrompt] = useState(!phoneFromUrl && !state.phone)
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'paid'>('pending')
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [hire, setHire] = useState<any>(null)
 
-  const checkoutRequestId = state.checkoutRequestId
+  const fetchHire = async (verifyPhone: string) => {
+    if (!id) return null
+    const data = await getEquipmentHireById(id, verifyPhone)
+    setHire(data)
+    if (data.payment_status === 'paid') setPaymentStatus('paid')
+    return data
+  }
 
   useEffect(() => {
+    if (!id) {
+      setLoading(false)
+      return
+    }
+    if (phonePrompt) {
+      setLoading(false)
+      return
+    }
+
     const load = async () => {
       try {
-        if (id && state.phone) {
-          const data = await getEquipmentHireById(id, state.phone)
-          setHire(data)
-          if (data.payment_status === 'paid') setPaymentStatus('paid')
-        }
-        if (checkoutRequestId && paymentStatus !== 'paid') {
+        setLoading(true)
+        setError('')
+        const data = await fetchHire(phone)
+        const checkoutRef = data?.checkout_request_id || state.checkoutRequestId
+        if (checkoutRef && data?.payment_status !== 'paid') {
           try {
-            await pollPaymentStatus(checkoutRequestId)
+            await pollPaymentStatus(checkoutRef)
             setPaymentStatus('paid')
-            if (id && state.phone) {
-              const updated = await getEquipmentHireById(id, state.phone)
-              setHire(updated)
-            }
+            await fetchHire(phone)
           } catch {
             /* polling timeout */
           }
         }
+      } catch (err: any) {
+        setError(err.response?.data?.error || 'Failed to load hire details')
       } finally {
         setLoading(false)
       }
     }
     load()
-  }, [id, checkoutRequestId, state.phone])
+  }, [id, phone, phonePrompt])
+
+  const handlePhoneVerify = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const normalized = phone.replace(/\s+/g, '')
+    if (!/^254\d{9}$/.test(normalized)) {
+      setError('Enter a valid phone number (254XXXXXXXXX)')
+      return
+    }
+    try {
+      setLoading(true)
+      setError('')
+      setPhone(normalized)
+      setSearchParams({ phone: normalized })
+      await fetchHire(normalized)
+      setPhonePrompt(false)
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Could not verify hire record')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const display = hire || state
+
+  if (phonePrompt) {
+    return (
+      <div className="min-h-screen bg-night text-chalk font-barlow py-16 px-6">
+        <div className="max-w-md mx-auto bg-ash border border-white/5 p-8">
+          <h1 className="font-bebas text-4xl mb-2">HIRE <span className="text-fire">CONFIRMATION</span></h1>
+          <p className="text-fog text-sm mb-6">Enter the phone number used at checkout to view your hire.</p>
+          {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+          <form onSubmit={handlePhoneVerify} className="space-y-4">
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value.replace(/\s+/g, ''))}
+              placeholder="254712345678"
+              className="w-full bg-smoke border border-white/10 px-4 py-3 text-chalk focus:outline-none focus:border-fire"
+            />
+            <button type="submit" className="w-full bg-fire text-white py-3 font-barlow-condensed font-black text-sm letter-spacing-widest text-transform-uppercase clip-angled hover:bg-ember">
+              View Hire
+            </button>
+          </form>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-night text-chalk font-barlow py-12 px-6">
       <div className="max-w-2xl mx-auto">
+        {error && (
+          <div className="flex items-start gap-2.5 bg-red-500/10 border border-red-500/20 border-l-4 border-l-red-500 px-4 py-3.5 mb-6 text-sm text-red-400">
+            <AlertCircle size={16} className="flex-shrink-0 mt-0.25" />
+            <span>{error}</span>
+          </div>
+        )}
+
         <div className={`p-6 mb-6 border-l-4 ${paymentStatus === 'paid' ? 'bg-green-500/10 border-green-500' : 'bg-fire/10 border-fire'}`}>
           <div className="flex items-center gap-3 mb-2">
             {loading ? (
@@ -92,7 +161,7 @@ export default function HireConfirmation() {
           {(display.total_cost != null || display.totalPrice != null) && (
             <p><span className="text-fog">Total: </span>KES {Number(display.total_cost ?? display.totalPrice).toLocaleString()}</p>
           )}
-          {state.phone && <p><span className="text-fog">Phone: </span>{state.phone}</p>}
+          {phone && <p><span className="text-fog">Phone: </span>{phone}</p>}
         </div>
 
         <div className="flex gap-3">

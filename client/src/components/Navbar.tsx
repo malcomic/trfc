@@ -40,8 +40,10 @@ export default function Navbar() {
 
   const navLinks = [
     { to: '/', label: 'Home' },
+    { to: '/about', label: 'About' },
     { to: '/events', label: 'Events' },
     { to: '/programs', label: 'Programs' },
+    { to: '/partnerships', label: 'Partnerships' },
     { to: '/equipment', label: 'Equipment' },
     { to: '/gallery', label: 'Gallery' },
     { to: '/shop', label: 'Shop' },

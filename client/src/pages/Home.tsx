@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { AlertCircle, Star } from 'lucide-react'
 import { getEvents } from '../api/events'
 import { getGallery } from '../api/gallery'
+import { getTestimonials, Testimonial } from '../api/testimonials'
+import { pageRoot, cardSurface } from '../utils/themeClasses'
+import landingHero from '../assets/landing-hero.png'
 
 interface GalleryItem {
   id: string
@@ -13,7 +17,9 @@ interface GalleryItem {
 export default function Home() {
   const [events, setEvents] = useState<any[]>([])
   const [gallery, setGallery] = useState<GalleryItem[]>([])
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     fetchData()
@@ -21,18 +27,26 @@ export default function Home() {
 
   const fetchData = async () => {
     try {
-      const [eventsData, galleryData] = await Promise.all([getEvents(), getGallery()])
+      setLoading(true)
+      setError('')
+      const [eventsData, galleryData, testimonialsData] = await Promise.all([
+        getEvents(),
+        getGallery(),
+        getTestimonials(),
+      ])
       setEvents(eventsData.slice(0, 3))
       setGallery(Array.isArray(galleryData) ? galleryData.slice(0, 6) : [])
-    } catch (error) {
-      console.error('Failed to fetch data:', error)
+      setTestimonials(Array.isArray(testimonialsData) ? testimonialsData.slice(0, 3) : [])
+    } catch (err) {
+      setError('Failed to load homepage content. Please try again.')
+      console.error('Failed to fetch data:', err)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="bg-ink dark:bg-ink light:bg-ink-light min-h-screen">
+    <div className={pageRoot}>
 
       {/* ── HERO ───────────────────────────────────────────────────── */}
       <style>{`
@@ -66,33 +80,40 @@ export default function Home() {
         }
       `}</style>
 
-      <section
-        className="noise-bg relative min-h-screen flex items-center overflow-hidden bg-gradient-to-br from-night via-[#1a0800] to-night"
-      >
-        {/* Big background "TRFC" watermark */}
-        <div className="absolute -right-[2%] top-1/2 -translate-y-1/2 font-bebas text-[clamp(200px,28vw,480px)] text-fire/5 leading-none select-none pointer-events-none -tracking-[4px]">
-          TRFC
+      <section className="relative min-h-screen flex items-center overflow-hidden">
+        {/* Landing hero image — full bleed on mobile, right panel on desktop */}
+        <div className="absolute inset-0 lg:inset-y-0 lg:left-[38%] lg:right-0">
+          <img
+            src={landingHero}
+            alt="TRFC community members training together"
+            className="w-full h-full min-h-[320px] object-cover object-center"
+            fetchPriority="high"
+          />
         </div>
 
+        {/* Readability overlay — dark tint only; never white in light mode */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-black/25 lg:from-black/92 lg:via-black/75 lg:to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30 pointer-events-none lg:hidden" />
+
         {/* Vertical accent line */}
-        <div className="absolute left-[6%] top-[15%] bottom-[15%] w-0.5 bg-gradient-to-b from-transparent via-fire to-transparent opacity-60" />
+        <div className="absolute left-[6%] top-[15%] bottom-[15%] w-0.5 bg-gradient-to-b from-transparent via-fire to-transparent opacity-60 z-10" />
 
         {/* Main hero content */}
-        <div className="max-w-[1200px] mx-auto px-[6%] py-[80px] relative z-10">
+        <div className="max-w-[1200px] mx-auto px-[6%] py-[80px] relative z-10 w-full">
 
           <div className="font-barlow-condensed font-bold text-xs tracking-widest text-fire mb-7 flex items-center gap-2.5">
             <span className="block w-6 h-0.5 bg-fire" />
-            Thika Road · Nairobi · Est. 2019
+            Thika Road · Nairobi · Est. 2026
           </div>
 
           {/* Giant headline */}
           <h1 className="text-[clamp(72px,12vw,180px)] mb-8">
-            <span className="hero-word text-chalk dark:text-chalk light:text-chalk-light">RUN</span>
-            <span className="hero-word text-fire dark:text-fire light:text-fire" style={{ WebkitTextStroke: '2px', WebkitTextFillColor: 'transparent', color: '#FF4500' }}>TOGETHER</span>
-            <span className="hero-word text-chalk dark:text-chalk light:text-chalk-light">THRIVE</span>
+            <span className="hero-word text-white">RUN</span>
+            <span className="hero-word text-fire" style={{ WebkitTextStroke: '2px', WebkitTextFillColor: 'transparent', color: '#FF4500' }}>TOGETHER</span>
+            <span className="hero-word text-white">THRIVE</span>
           </h1>
 
-          <p className="hero-sub max-w-[520px] text-lg leading-relaxed text-white/65 dark:text-white/65 light:text-black/65 mb-10">
+          <p className="hero-sub max-w-[520px] text-lg leading-relaxed text-white/75 mb-10">
             Nairobi's most energetic running and fitness community.
             Train hard, race smart, celebrate every kilometre.
           </p>
@@ -101,10 +122,10 @@ export default function Home() {
             <Link to="/register" className="font-barlow-condensed font-black text-base tracking-wider text-white px-9 py-3.5 bg-fire clip-angled-lg transition-all duration-200 hover:bg-ember hover:scale-104 inline-block">
               Join the Community
             </Link>
-            <Link to="/events" className="font-barlow-condensed font-bold text-base tracking-wider text-chalk light:text-chalk-light px-8 py-3 border-1.5 border-white/40 dark:border-white/40 light:border-black/40 transition-all duration-200 hover:border-fire light:hover:border-fire hover:text-fire light:hover:text-fire inline-block">
+            <Link to="/events" className="font-barlow-condensed font-bold text-base tracking-wider text-white px-8 py-3 border-1.5 border-white/40 transition-all duration-200 hover:border-fire hover:text-fire inline-block">
               View Events
             </Link>
-            <Link to="/shop" className="font-barlow-condensed font-bold text-base tracking-wider text-chalk light:text-chalk-light px-8 py-3 border-1.5 border-white/40 dark:border-white/40 light:border-black/40 transition-all duration-200 hover:border-fire light:hover:border-fire hover:text-fire light:hover:text-fire inline-block">
+            <Link to="/shop" className="font-barlow-condensed font-bold text-base tracking-wider text-white px-8 py-3 border-1.5 border-white/40 transition-all duration-200 hover:border-fire hover:text-fire inline-block">
               Shop Merch
             </Link>
           </div>
@@ -118,16 +139,16 @@ export default function Home() {
             ].map((b) => (
               <div key={b.val} className="flex items-center gap-2.5">
                 <span className="font-bebas text-5xl text-fire leading-none">{b.val}</span>
-                <span className="text-xs text-fog light:text-fog-light uppercase tracking-wider leading-relaxed">{b.desc}</span>
+                <span className="text-xs text-white/60 uppercase tracking-wider leading-relaxed">{b.desc}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Scroll hint */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-40">
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-40 z-10">
           <span className="font-barlow-condensed text-xs tracking-widest uppercase">Scroll</span>
-          <div className="w-px h-12 bg-gradient-to-b from-chalk dark:from-chalk light:from-chalk-light to-transparent scroll-hint-line" />
+          <div className="w-px h-12 bg-gradient-to-b from-white/60 to-transparent scroll-hint-line" />
         </div>
       </section>
 
@@ -157,7 +178,7 @@ export default function Home() {
       </div>
 
       {/* ── WHAT WE OFFER ─────────────────────────────────────────── */}
-      <section className="bg-ash dark:bg-ash light:bg-ash-light py-24 px-[6%]">
+      <section className="bg-ash light:bg-ash-light py-24 px-[6%]">
         <div className="max-w-[1200px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
 
           <div>
@@ -165,12 +186,12 @@ export default function Home() {
               <span className="block w-6 h-0.5 bg-fire" />
               What We Offer
             </div>
-            <h2 className="font-bebas text-[clamp(44px,6vw,80px)] leading-[0.95] text-chalk dark:text-chalk light:text-chalk-light mb-7">
+            <h2 className="font-bebas text-[clamp(44px,6vw,80px)] leading-[0.95] text-chalk light:text-chalk-light mb-7">
               MORE THAN<br />
               <span className="text-fire">A GYM.</span><br />
               A MOVEMENT.
             </h2>
-            <p className="text-white/60 dark:text-white/60 light:text-black/60 text-base leading-relaxed max-w-sm">
+            <p className="text-white/60 light:text-black/60 text-base leading-relaxed max-w-sm">
               From sunrise track sessions to charity races and weekend long runs —
               TRFC is where Nairobi shows up, laces up, and levels up.
             </p>
@@ -184,10 +205,10 @@ export default function Home() {
               { n: '04', label: 'Nutrition & Coaching Plans', to: '/programs' },
               { n: '05', label: 'Community Merch & Gear', to: '/shop' },
             ].map((f) => (
-              <Link to={f.to} key={f.n} className="flex items-center gap-3 py-4.5 border-b border-white/7 dark:border-white/7 light:border-black/7 no-underline transition-all duration-200 hover:gap-4.5 group" style={{ color: 'inherit' }}>
+              <Link to={f.to} key={f.n} className="flex items-center gap-3 py-4.5 border-b border-white/7 light:border-black/7 no-underline transition-all duration-200 hover:gap-4.5 group" style={{ color: 'inherit' }}>
                 <span className="font-bebas text-xs text-fog light:text-fog-light w-7">{f.n}</span>
-                <span className="font-barlow-condensed font-bold text-2xl tracking-tighter text-chalk dark:text-chalk light:text-chalk-light flex-1">{f.label}</span>
-                <span className="text-smoke dark:text-smoke light:text-mist transition-colors duration-200 group-hover:text-fire">→</span>
+                <span className="font-barlow-condensed font-bold text-2xl tracking-tighter text-chalk light:text-chalk-light flex-1">{f.label}</span>
+                <span className="text-smoke light:text-mist transition-colors duration-200 group-hover:text-fire">→</span>
               </Link>
             ))}
           </div>
@@ -195,7 +216,7 @@ export default function Home() {
       </section>
 
       {/* ── STATS ─────────────────────────────────────────────────── */}
-      <section className="py-20 px-[6%] bg-ink dark:bg-ink light:bg-ink-light border-t border-white/5 dark:border-white/5 light:border-black/5">
+      <section className="py-20 px-[6%] bg-ink light:bg-ink-light border-t border-white/5 light:border-black/5">
         <div className="max-w-[1200px] mx-auto grid grid-cols-4 gap-px">
           {[
             { val: '500+', label: 'Members', sub: 'and growing' },
@@ -205,11 +226,11 @@ export default function Home() {
           ].map((s, i) => (
             <div
               key={s.label}
-              className={`stat-card py-10 px-7 text-center ${i % 2 === 0 ? 'bg-ash dark:bg-ash light:bg-ash-light' : 'bg-smoke dark:bg-smoke light:bg-smoke-light'} ${i === 0 ? 'border-l-3 border-fire' : ''}`}
+              className={`stat-card py-10 px-7 text-center ${i % 2 === 0 ? 'bg-ash light:bg-ash-light' : 'bg-smoke light:bg-smoke-light'} ${i === 0 ? 'border-l-3 border-fire' : ''}`}
               style={{ '--delay': `${i * 0.12}s` } as any}
             >
               <p className="font-bebas text-[clamp(48px,5vw,72px)] text-fire leading-none mb-1.5">{s.val}</p>
-              <p className="font-barlow-condensed font-bold text-lg tracking-wider uppercase text-chalk dark:text-chalk light:text-chalk-light mb-1">{s.label}</p>
+              <p className="font-barlow-condensed font-bold text-lg tracking-wider uppercase text-chalk light:text-chalk-light mb-1">{s.label}</p>
               <p className="text-xs text-fog light:text-fog-light uppercase tracking-widest">{s.sub}</p>
             </div>
           ))}
@@ -217,19 +238,25 @@ export default function Home() {
       </section>
 
       {/* ── EVENTS ────────────────────────────────────────────────── */}
-      <section className="py-24 px-[6%] bg-ink dark:bg-ink light:bg-ink-light">
+      <section className="py-24 px-[6%] bg-ink light:bg-ink-light">
         <div className="max-w-[1200px] mx-auto">
+          {error && (
+            <div className="flex items-start gap-2.5 bg-red-500/10 border border-red-500/20 border-l-4 border-l-red-500 px-4 py-3.5 mb-8 text-sm text-red-600 dark:text-red-400">
+              <AlertCircle size={16} className="flex-shrink-0 mt-0.25" />
+              <span>{error}</span>
+            </div>
+          )}
           <div className="flex justify-between items-end gap-4 mb-12 flex-wrap">
             <div>
               <div className="font-barlow-condensed font-bold text-xs tracking-widest text-fire mb-3 flex items-center gap-2.5">
                 <span className="block w-6 h-0.5 bg-fire" />
                 On The Calendar
               </div>
-              <h2 className="font-bebas text-[clamp(40px,5vw,64px)] text-chalk dark:text-chalk light:text-chalk-light leading-tight">
+              <h2 className="font-bebas text-[clamp(40px,5vw,64px)] text-chalk light:text-chalk-light leading-tight">
                 UPCOMING EVENTS
               </h2>
             </div>
-            <Link to="/events" className="font-barlow-condensed font-bold text-xs tracking-wider text-chalk light:text-chalk-light px-6 py-2.5 border border-white/40 dark:border-white/40 light:border-black/40 transition-all duration-200 hover:border-fire light:hover:border-fire hover:text-fire light:hover:text-fire no-underline">
+            <Link to="/events" className="font-barlow-condensed font-bold text-xs tracking-wider text-chalk light:text-chalk-light px-6 py-2.5 border border-white/40 light:border-black/40 transition-all duration-200 hover:border-fire light:hover:border-fire hover:text-fire light:hover:text-fire no-underline">
               All Events →
             </Link>
           </div>
@@ -241,7 +268,7 @@ export default function Home() {
           ) : events.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {events.map((event: any, idx: number) => (
-                <Link to={`/events/${event.id}`} key={event.id} className="bg-ash dark:bg-ash light:bg-ash-light border border-white/6 dark:border-white/6 light:border-black/6 overflow-hidden relative transition-all duration-300 no-underline hover:-translate-y-1.5 hover:border-fire group" style={{ animationDelay: `${idx * 0.1}s` }}>
+                <Link to={`/events/${event.id}`} key={event.id} className="bg-ash light:bg-ash-light border border-white/6 light:border-black/6 overflow-hidden relative transition-all duration-300 no-underline hover:-translate-y-1.5 hover:border-fire group" style={{ animationDelay: `${idx * 0.1}s` }}>
                   <div className="overflow-hidden">
                     <img
                       src={event.image_url || 'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=600&q=80'}
@@ -254,7 +281,7 @@ export default function Home() {
                     Event
                   </div>
                   <div className="p-5 pt-6">
-                    <div className="font-barlow-condensed font-bold text-xl tracking-tight text-chalk dark:text-chalk light:text-chalk-light mb-2">{event.title}</div>
+                    <div className="font-barlow-condensed font-bold text-xl tracking-tight text-chalk light:text-chalk-light mb-2">{event.title}</div>
                     <div className="text-xs text-fog light:text-fog-light mb-3 flex items-center gap-1.5">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                       {event.location}
@@ -298,9 +325,44 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── TESTIMONIALS ──────────────────────────────────────────── */}
+      {testimonials.length > 0 && (
+        <section className="py-24 px-[6%] bg-ink light:bg-ink-light">
+          <div className="max-w-[1200px] mx-auto">
+            <div className="flex justify-between items-end gap-4 mb-12 flex-wrap">
+              <div>
+                <div className="font-barlow-condensed font-bold text-xs tracking-widest text-fire mb-3 flex items-center gap-2.5">
+                  <span className="block w-6 h-0.5 bg-fire" />
+                  Community Voices
+                </div>
+                <h2 className="font-bebas text-[clamp(40px,5vw,64px)] text-chalk light:text-chalk-light leading-tight">
+                  WHAT MEMBERS SAY
+                </h2>
+              </div>
+              <Link to="/testimonials" className="font-barlow-condensed font-bold text-xs tracking-wider text-chalk light:text-chalk-light px-6 py-2.5 border border-white/40 light:border-black/40 transition-all duration-200 hover:border-fire light:hover:border-fire hover:text-fire light:hover:text-fire no-underline">
+                All Testimonials →
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {testimonials.map((t) => (
+                <div key={t.id} className={`${cardSurface} p-6 flex flex-col`}>
+                  <div className="flex gap-1 mb-4">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} size={14} className={i < t.rating ? 'text-fire fill-fire' : 'text-fog light:text-fog-light'} />
+                    ))}
+                  </div>
+                  <p className="text-chalk/90 light:text-chalk-light/90 leading-relaxed flex-1 mb-4">&ldquo;{t.message}&rdquo;</p>
+                  <p className="font-barlow-condensed font-bold text-fire text-sm">{t.member_name}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* ── GALLERY ───────────────────────────────────────────────── */}
       {gallery.length > 0 && (
-        <section className="py-24 px-[6%] bg-night dark:bg-night light:bg-night">
+        <section className="py-24 px-[6%] bg-night light:bg-night-light">
           <div className="max-w-[1200px] mx-auto">
             <div className="flex justify-between items-end gap-4 mb-10 flex-wrap">
               <div>
@@ -308,11 +370,11 @@ export default function Home() {
                   <span className="block w-6 h-0.5 bg-fire" />
                   On The Ground
                 </div>
-                <h2 className="font-bebas text-[clamp(40px,5vw,64px)] text-chalk dark:text-chalk light:text-chalk-light leading-tight">
+                <h2 className="font-bebas text-[clamp(40px,5vw,64px)] text-chalk light:text-chalk-light leading-tight">
                   COMMUNITY GALLERY
                 </h2>
               </div>
-              <Link to="/gallery" className="font-barlow-condensed font-bold text-xs tracking-wider text-chalk light:text-chalk-light px-6 py-2.5 border border-white/40 dark:border-white/40 light:border-black/40 transition-all duration-200 hover:border-fire light:hover:border-fire hover:text-fire light:hover:text-fire no-underline">
+              <Link to="/gallery" className="font-barlow-condensed font-bold text-xs tracking-wider text-chalk light:text-chalk-light px-6 py-2.5 border border-white/40 light:border-black/40 transition-all duration-200 hover:border-fire light:hover:border-fire hover:text-fire light:hover:text-fire no-underline">
                 All Photos →
               </Link>
             </div>
@@ -323,7 +385,7 @@ export default function Home() {
                 <Link
                   to="/gallery"
                   key={item.id}
-                  className="relative overflow-hidden bg-ash dark:bg-ash light:bg-ash-light block no-underline group"
+                  className="relative overflow-hidden bg-ash light:bg-ash-light block no-underline group"
                   style={{
                     gridColumn: i === 0 ? 'span 2' : 'span 1',
                     gridRow: i === 0 ? 'span 2' : 'span 1',
@@ -336,7 +398,7 @@ export default function Home() {
                     className="w-full h-full object-cover brightness-75 saturate-90 transition-all duration-500 group-hover:brightness-100 group-hover:saturate-110 group-hover:scale-108"
                   />
                   <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 to-transparent p-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                    {item.caption && <p className="text-xs text-chalk italic">{item.caption}</p>}
+                    {item.caption && <p className="text-xs text-chalk light:text-chalk-light italic">{item.caption}</p>}
                   </div>
                 </Link>
               ))}

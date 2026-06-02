@@ -27,4 +27,10 @@ export const getUserTickets = async () => {
     const response = await api.get('/events/tickets/list/user');
     return response.data;
 };
+export const getTicketsByCheckoutRequestId = async (checkoutRequestId, phone) => {
+    const response = await api.get(`/events/tickets/checkout/${checkoutRequestId}`, {
+        params: { phone },
+    });
+    return response.data;
+};
 //# sourceMappingURL=events.js.map

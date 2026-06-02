@@ -55,3 +55,17 @@ export const approveTestimonial = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to approve testimonial' });
   }
 };
+
+export const rejectTestimonial = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const result = await query('DELETE FROM testimonials WHERE id = $1 RETURNING id', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Testimonial not found' });
+    }
+    res.json({ message: 'Testimonial rejected and removed', id });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to reject testimonial' });
+  }
+};

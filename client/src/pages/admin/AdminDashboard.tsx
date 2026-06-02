@@ -22,6 +22,8 @@ const quickActions = [
   { to: '/admin/users', label: 'Users', desc: 'Manage user roles', color: 'pink' },
   { to: '/admin/testimonials', label: 'Testimonials', desc: 'Review pending submissions', color: 'yellow' },
   { to: '/admin/equipment', label: 'Equipment', desc: 'Equipment hire statistics', color: 'cyan' },
+  { to: '/admin/tickets', label: 'Tickets', desc: 'View event ticket sales', color: 'blue' },
+  { to: '/admin/partnerships', label: 'Partnerships', desc: 'Review sponsorship inquiries', color: 'indigo' },
 ]
 
 export default function AdminDashboard() {

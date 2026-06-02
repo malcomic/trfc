@@ -26,8 +26,9 @@ CREATE TABLE IF NOT EXISTS events (
 -- Tickets
 CREATE TABLE IF NOT EXISTS tickets (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id),
-  event_id UUID REFERENCES events(id),
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  event_id UUID REFERENCES events(id) ON DELETE SET NULL,
+  purchase_batch_id UUID,
   phone VARCHAR(20),
   payment_status VARCHAR(20) DEFAULT 'pending',
   mpesa_receipt VARCHAR(100),
@@ -92,12 +93,13 @@ CREATE TABLE IF NOT EXISTS testimonials (
 -- Equipment Hire
 CREATE TABLE IF NOT EXISTS equipment_hire (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id),
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
   equipment_name VARCHAR(150),
   package_type VARCHAR(50),
   hire_date DATE NOT NULL,
   return_date DATE NOT NULL,
   total_cost NUMERIC(10,2),
+  phone VARCHAR(20),
   payment_status VARCHAR(20) DEFAULT 'pending',
   mpesa_receipt VARCHAR(100),
   checkout_request_id VARCHAR(100),
@@ -141,5 +143,8 @@ CREATE INDEX IF NOT EXISTS idx_gallery_type ON gallery(media_type);
 CREATE INDEX IF NOT EXISTS idx_tickets_checkout ON tickets(checkout_request_id);
 CREATE INDEX IF NOT EXISTS idx_equipment_user ON equipment_hire(user_id);
 CREATE INDEX IF NOT EXISTS idx_equipment_checkout ON equipment_hire(checkout_request_id);
-CREATE INDEX IF NOT EXISTS idx_partnerships_status ON partnerships(status);
-CREATE INDEX IF NOT EXISTS idx_payment_callbacks_checkout ON payment_callbacks(checkout_request_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_batch ON tickets(purchase_batch_id);
+CREATE INDEX IF NOT EXISTS idx_events_active ON events(is_active);
+CREATE INDEX IF NOT EXISTS idx_products_active ON products(is_active);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(payment_status);
+CREATE INDEX IF NOT EXISTS idx_testimonials_approved ON testimonials(is_approved);

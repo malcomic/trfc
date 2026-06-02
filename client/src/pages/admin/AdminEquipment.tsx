@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Loader, AlertCircle } from 'lucide-react'
+import { Loader, AlertCircle, Wrench } from 'lucide-react'
 import { getEquipmentStats } from '../../api/analytics'
+import { getEquipmentHireForAdmin, AdminEquipmentHire } from '../../api/admin/equipment'
 
 interface EquipmentStat {
   name: string
@@ -11,21 +12,27 @@ interface EquipmentStat {
 
 export default function AdminEquipment() {
   const [stats, setStats] = useState<EquipmentStat[]>([])
+  const [hires, setHires] = useState<AdminEquipmentHire[]>([])
+  const [statusFilter, setStatusFilter] = useState('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    fetchStats()
-  }, [])
+    fetchData()
+  }, [statusFilter])
 
-  const fetchStats = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true)
       setError('')
-      const data = await getEquipmentStats()
-      setStats(Array.isArray(data) ? data : [])
-    } catch (err: any) {
-      setError('Failed to load equipment statistics')
+      const [statsData, hireData] = await Promise.all([
+        getEquipmentStats(),
+        getEquipmentHireForAdmin(statusFilter),
+      ])
+      setStats(Array.isArray(statsData) ? statsData : [])
+      setHires(Array.isArray(hireData) ? hireData : [])
+    } catch (err) {
+      setError('Failed to load equipment data')
       console.error(err)
     } finally {
       setLoading(false)
@@ -34,6 +41,17 @@ export default function AdminEquipment() {
 
   const totalRentals = stats.reduce((sum, s) => sum + s.rentals, 0)
   const totalRevenue = stats.reduce((sum, s) => sum + s.revenue, 0)
+
+  const statusColor = (status: string) => {
+    switch (status) {
+      case 'paid':
+        return 'text-green-600 dark:text-green-400'
+      case 'failed':
+        return 'text-red-600 dark:text-red-400'
+      default:
+        return 'text-yellow-600 dark:text-yellow-400'
+    }
+  }
 
   if (loading) {
     return (
@@ -50,7 +68,7 @@ export default function AdminEquipment() {
         <div>
           <p className="text-red-700 dark:text-red-400 mb-4">{error}</p>
           <button
-            onClick={fetchStats}
+            onClick={fetchData}
             className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
           >
             Try Again
@@ -62,7 +80,10 @@ export default function AdminEquipment() {
 
   return (
     <div>
-      <h1 className="text-4xl font-bold mb-8 text-gray-800 dark:text-white">Equipment</h1>
+      <h1 className="text-4xl font-bold mb-8 text-gray-800 dark:text-white flex items-center gap-3">
+        <Wrench size={36} />
+        Equipment
+      </h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-6">
@@ -76,6 +97,65 @@ export default function AdminEquipment() {
           </p>
         </div>
       </div>
+
+      <div className="mb-6 flex items-center gap-4">
+        <label htmlFor="status-filter" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          Filter by payment status:
+        </label>
+        <select
+          id="status-filter"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+        >
+          <option value="all">All</option>
+          <option value="pending">Pending</option>
+          <option value="paid">Paid</option>
+          <option value="failed">Failed</option>
+        </select>
+      </div>
+
+      <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Hire Records</h2>
+
+      {hires.length === 0 ? (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-12 text-center mb-8">
+          <p className="text-gray-600 dark:text-gray-400 text-lg">No equipment hire records</p>
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg overflow-x-auto mb-8">
+          <table className="w-full min-w-[900px]">
+            <thead className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+              <tr>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Equipment</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Phone</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Hire Period</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Total</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Payment</th>
+              </tr>
+            </thead>
+            <tbody>
+              {hires.map((h) => (
+                <tr
+                  key={h.id}
+                  className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-900 dark:text-gray-100"
+                >
+                  <td className="px-6 py-4 font-semibold">{h.equipment_name}</td>
+                  <td className="px-6 py-4">{h.phone || '—'}</td>
+                  <td className="px-6 py-4 text-sm">
+                    {new Date(h.hire_date).toLocaleDateString()} – {new Date(h.return_date).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4">KES {Number(h.total_cost).toLocaleString()}</td>
+                  <td className={`px-6 py-4 capitalize font-medium ${statusColor(h.payment_status)}`}>
+                    {h.payment_status}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">By Equipment</h2>
 
       {stats.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-12 text-center">

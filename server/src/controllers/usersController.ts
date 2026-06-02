@@ -20,6 +20,18 @@ export const updateUserRole = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid role' });
     }
 
+    if (role === 'member') {
+      const current = await query('SELECT role FROM users WHERE id = $1', [id]);
+      if (current.rows[0]?.role === 'admin') {
+        const adminCount = await query(
+          "SELECT COUNT(*)::int AS cnt FROM users WHERE role = 'admin'"
+        );
+        if (adminCount.rows[0].cnt <= 1) {
+          return res.status(400).json({ error: 'Cannot demote the last admin user' });
+        }
+      }
+    }
+
     const result = await query(
       'UPDATE users SET role = $1 WHERE id = $2 RETURNING id, name, email, phone, role',
       [role, id]

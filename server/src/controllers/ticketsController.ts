@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import { query } from '../config/db.js'
 import { phonesMatch } from '../utils/phone.js'
+import { randomUUID } from 'crypto'
 
 export async function buyTicket(req: Request, res: Response) {
   try {
@@ -20,9 +21,7 @@ export async function buyTicket(req: Request, res: Response) {
         .json({ error: 'Quantity must be between 1 and 100' })
     }
 
-    const eventResult = await query('SELECT * FROM events WHERE id = $1', [
-      eventId,
-    ])
+    const eventResult = await query('SELECT * FROM events WHERE id = $1', [eventId])
 
     if (eventResult.rows.length === 0) {
       return res.status(404).json({ error: 'Event not found' })
@@ -30,16 +29,33 @@ export async function buyTicket(req: Request, res: Response) {
 
     const event = eventResult.rows[0]
 
+    if (event.capacity != null) {
+      const countResult = await query(
+        `SELECT COUNT(*)::int AS cnt FROM tickets
+         WHERE event_id = $1 AND payment_status IN ('pending', 'paid')`,
+        [eventId]
+      )
+      const existing = countResult.rows[0].cnt
+      if (existing + quantity > event.capacity) {
+        return res.status(400).json({
+          error: `Only ${Math.max(0, event.capacity - existing)} ticket(s) available`,
+        })
+      }
+    }
+
+    const purchaseBatchId = randomUUID()
     const ticketIds: string[] = []
     for (let i = 0; i < quantity; i++) {
       const ticketResult = await query(
-        'INSERT INTO tickets (user_id, event_id, phone, payment_status) VALUES ($1, $2, $3, $4) RETURNING *',
-        [userId, eventId, phone, 'pending']
+        `INSERT INTO tickets (user_id, event_id, purchase_batch_id, phone, payment_status)
+         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        [userId, eventId, purchaseBatchId, phone, 'pending']
       )
       ticketIds.push(ticketResult.rows[0].id)
     }
 
     res.status(201).json({
+      purchaseBatchId,
       ticketIds,
       quantity,
       eventTitle: event.title,
@@ -63,7 +79,7 @@ export async function getUserTickets(req: Request, res: Response) {
 
     const result = await query(
       `SELECT
-        t.id, t.user_id, t.event_id, t.payment_status, t.mpesa_receipt,
+        t.id, t.user_id, t.event_id, t.purchase_batch_id, t.payment_status, t.mpesa_receipt,
         t.checkout_request_id, t.created_at,
         e.title as event_title, e.event_date, e.price, e.location
        FROM tickets t
@@ -80,15 +96,65 @@ export async function getUserTickets(req: Request, res: Response) {
   }
 }
 
+export async function getTicketsByCheckoutRequestId(req: Request, res: Response) {
+  try {
+    const { checkoutRequestId } = req.params
+    const phoneQuery = typeof req.query.phone === 'string' ? req.query.phone : undefined
+
+    if (!checkoutRequestId) {
+      return res.status(400).json({ error: 'checkoutRequestId is required' })
+    }
+    if (!phoneQuery) {
+      return res.status(400).json({ error: 'phone query parameter is required' })
+    }
+
+    const result = await query(
+      `SELECT
+        t.id, t.phone, t.payment_status, t.checkout_request_id,
+        e.title as event_title, e.event_date, e.price
+       FROM tickets t
+       JOIN events e ON t.event_id = e.id
+       WHERE t.checkout_request_id = $1`,
+      [checkoutRequestId]
+    )
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Tickets not found for this payment reference' })
+    }
+
+    const ticket = result.rows[0]
+    if (!phonesMatch(phoneQuery, ticket.phone)) {
+      return res.status(403).json({ error: 'Phone number does not match ticket purchase' })
+    }
+
+    const quantity = result.rows.length
+    const totalPrice = Math.round(Number(ticket.price) * quantity)
+
+    res.json({
+      event_title: ticket.event_title,
+      event_date: ticket.event_date,
+      quantity,
+      total_price: totalPrice,
+      payment_status: ticket.payment_status,
+      phone: ticket.phone,
+      checkout_request_id: ticket.checkout_request_id,
+    })
+  } catch (error) {
+    console.error('Error fetching tickets by checkout:', error)
+    res.status(500).json({ error: 'Failed to fetch ticket details' })
+  }
+}
+
 export async function getTicketById(req: Request, res: Response) {
   try {
     const { id } = req.params
     const phoneQuery = typeof req.query.phone === 'string' ? req.query.phone : undefined
     const userId = req.user?.id
+    const isAdmin = req.user?.role === 'admin'
 
     const result = await query(
       `SELECT
-        t.id, t.user_id, t.event_id, t.phone, t.payment_status, t.mpesa_receipt,
+        t.id, t.user_id, t.event_id, t.purchase_batch_id, t.phone, t.payment_status, t.mpesa_receipt,
         t.checkout_request_id, t.created_at,
         e.title as event_title, e.event_date, e.price, e.location, e.description
        FROM tickets t
@@ -105,10 +171,11 @@ export async function getTicketById(req: Request, res: Response) {
     const isOwner = userId && ticket.user_id === userId
     const phoneVerified = phoneQuery && ticket.phone && phonesMatch(phoneQuery, ticket.phone)
 
-    if (!isOwner && !phoneVerified) {
+    if (!isOwner && !isAdmin && !phoneVerified) {
       return res.json({
         id: ticket.id,
-        payment_status: ticket.payment_status,
+        status: ticket.payment_status,
+        total: ticket.price,
         event_title: ticket.event_title,
         event_date: ticket.event_date,
         created_at: ticket.created_at,
@@ -122,10 +189,7 @@ export async function getTicketById(req: Request, res: Response) {
   }
 }
 
-export async function updateTicketPaymentStatus(
-  req: Request,
-  res: Response
-) {
+export async function updateTicketPaymentStatus(req: Request, res: Response) {
   try {
     const { ticketId } = req.params
     const { paymentStatus, mpesaReceipt } = req.body

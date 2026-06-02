@@ -1,6 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Package, Image, ShoppingCart, Users, BarChart3, FileText, MessageSquare, Wrench, LogOut, ArrowLeft, } from 'lucide-react';
+import { LayoutDashboard, Calendar, Package, Image, ShoppingCart, Users, BarChart3, FileText, MessageSquare, Wrench, Ticket, Handshake, LogOut, ArrowLeft, } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 export function isAdminNavActive(pathname, path) {
     if (path === '/admin') {
@@ -23,6 +23,8 @@ export default function AdminLayout() {
         { path: '/admin/users', label: 'Users', icon: Users },
         { path: '/admin/testimonials', label: 'Testimonials', icon: MessageSquare },
         { path: '/admin/equipment', label: 'Equipment', icon: Wrench },
+        { path: '/admin/tickets', label: 'Tickets', icon: Ticket },
+        { path: '/admin/partnerships', label: 'Partnerships', icon: Handshake },
     ];
     const handleLogout = () => {
         logout();

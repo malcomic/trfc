@@ -10,6 +10,8 @@ import {
   FileText,
   MessageSquare,
   Wrench,
+  Ticket,
+  Handshake,
   LogOut,
   ArrowLeft,
 } from 'lucide-react'
@@ -38,6 +40,8 @@ export default function AdminLayout() {
     { path: '/admin/users', label: 'Users', icon: Users },
     { path: '/admin/testimonials', label: 'Testimonials', icon: MessageSquare },
     { path: '/admin/equipment', label: 'Equipment', icon: Wrench },
+    { path: '/admin/tickets', label: 'Tickets', icon: Ticket },
+    { path: '/admin/partnerships', label: 'Partnerships', icon: Handshake },
   ]
 
   const handleLogout = () => {

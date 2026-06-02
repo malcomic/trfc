@@ -3,6 +3,7 @@ export interface PaymentInitiateRequest {
     amount: number;
     orderId?: string;
     ticketId?: string;
+    ticketBatchId?: string;
     equipmentHireId?: string;
 }
 export interface PaymentInitiateResponse {
@@ -30,7 +31,7 @@ export declare function getPaymentHistory(): Promise<PaymentHistoryItem[]>;
 export declare function initiateTicketPayment(data: {
     phone: string;
     amount: number;
-    ticketId: string;
+    ticketBatchId: string;
 }): Promise<PaymentInitiateResponse>;
 export declare function initiateEquipmentPayment(data: {
     phone: string;

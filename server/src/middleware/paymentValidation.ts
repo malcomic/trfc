@@ -64,7 +64,7 @@ export function validatePaymentRequest(
   res: Response,
   next: NextFunction
 ) {
-  const { phone, amount, orderId, ticketId, equipmentHireId } = req.body
+  const { phone, amount, orderId, ticketId, ticketBatchId, equipmentHireId } = req.body
 
   if (!phone) {
     return res.status(400).json({ error: 'Phone number is required' })
@@ -88,9 +88,9 @@ export function validatePaymentRequest(
     })
   }
 
-  if (!orderId && !ticketId && !equipmentHireId) {
+  if (!orderId && !ticketId && !ticketBatchId && !equipmentHireId) {
     return res.status(400).json({
-      error: 'One of orderId, ticketId, or equipmentHireId is required',
+      error: 'One of orderId, ticketBatchId, ticketId, or equipmentHireId is required',
     })
   }
 

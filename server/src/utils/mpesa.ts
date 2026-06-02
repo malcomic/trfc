@@ -15,7 +15,8 @@ export async function getMPesaToken(): Promise<string> {
       `${config.mpesa.consumerKey}:${config.mpesa.consumerSecret}`
     ).toString('base64')
 
-    const response = await axios.get(SANDBOX_AUTH_URL, {
+    const { auth: authUrl } = getUrls()
+    const response = await axios.get(authUrl, {
       headers: {
         Authorization: `Basic ${auth}`,
       },

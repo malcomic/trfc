@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getTestimonials, submitTestimonial, Testimonial } from '../api/testimonials'
 import { AlertCircle, Loader, Star, CheckCircle } from 'lucide-react'
+import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 
 export default function Testimonials() {
   const [list, setList] = useState<Testimonial[]>([])
@@ -42,11 +43,11 @@ export default function Testimonials() {
   }
 
   return (
-    <div className="min-h-screen bg-night text-chalk font-barlow">
-      <section className="bg-ink border-b border-white/5 px-[6%] pt-14 pb-11">
+    <div className={pageRoot}>
+      <section className="bg-ink light:bg-ink-light border-b border-white/5 light:border-black/8 px-[6%] pt-14 pb-11">
         <div className="max-w-5xl mx-auto">
-          <h1 className="font-bebas text-5xl">COMMUNITY <span className="text-fire">VOICES</span></h1>
-          <p className="text-fog mt-2">Stories from TRFC members</p>
+          <h1 className="font-bebas text-5xl text-chalk light:text-chalk-light">COMMUNITY <span className="text-fire">VOICES</span></h1>
+          <p className="text-fog light:text-fog-light mt-2">Stories from TRFC members</p>
         </div>
       </section>
 
@@ -59,24 +60,24 @@ export default function Testimonials() {
             </div>
           )}
           {!loading && !error && list.length === 0 && (
-            <p className="text-fog">No testimonials yet — be the first to share yours.</p>
+            <p className="text-fog light:text-fog-light">No testimonials yet — be the first to share yours.</p>
           )}
           <div className="space-y-4">
             {list.map((t) => (
-              <div key={t.id} className="bg-ash border border-white/5 p-6">
+              <div key={t.id} className={`${cardSurface} p-6`}>
                 <div className="flex gap-1 mb-3">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} size={14} className={i < t.rating ? 'text-fire fill-fire' : 'text-fog'} />
+                    <Star key={i} size={14} className={i < t.rating ? 'text-fire fill-fire' : 'text-fog light:text-fog-light'} />
                   ))}
                 </div>
-                <p className="text-chalk/90 leading-relaxed mb-4">&ldquo;{t.message}&rdquo;</p>
+                <p className="text-chalk/90 light:text-chalk-light/90 leading-relaxed mb-4">&ldquo;{t.message}&rdquo;</p>
                 <p className="font-barlow-condensed font-bold text-fire text-sm">{t.member_name}</p>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="bg-ash border border-white/5 p-6 h-fit sticky top-20">
+        <div className={`${cardSurface} p-6 h-fit sticky top-20`}>
           <h2 className="font-barlow-condensed font-bold text-fire letter-spacing-widest text-transform-uppercase mb-4">Share Your Story</h2>
           {submitted ? (
             <div className="flex gap-3 text-green-400 text-sm">
@@ -89,21 +90,21 @@ export default function Testimonials() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your name"
-                className="w-full bg-smoke border border-white/10 px-3 py-2 text-chalk text-sm focus:outline-none focus:border-fire"
+                className={`w-full px-3 py-2 text-sm ${inputField}`}
               />
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Your experience with TRFC…"
                 rows={4}
-                className="w-full bg-smoke border border-white/10 px-3 py-2 text-chalk text-sm focus:outline-none focus:border-fire resize-none"
+                className={`w-full px-3 py-2 text-sm resize-none ${inputField}`}
               />
               <div>
-                <label className="text-xs text-fog block mb-2">Rating</label>
+                <label className="text-xs text-fog light:text-fog-light block mb-2">Rating</label>
                 <div className="flex gap-1">
                   {[1, 2, 3, 4, 5].map((n) => (
                     <button key={n} type="button" onClick={() => setRating(n)} className="bg-transparent border-0 cursor-pointer p-0">
-                      <Star size={20} className={n <= rating ? 'text-fire fill-fire' : 'text-fog'} />
+                      <Star size={20} className={n <= rating ? 'text-fire fill-fire' : 'text-fog light:text-fog-light'} />
                     </button>
                   ))}
                 </div>

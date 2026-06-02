@@ -33,6 +33,7 @@ export const buyEventTickets = async (
   const response = await api.post(`/events/${eventId}/tickets`, data);
   return response.data as {
     ticketIds: string[];
+    purchaseBatchId: string;
     quantity: number;
     eventTitle: string;
     eventDate: string;
@@ -44,4 +45,22 @@ export const buyEventTickets = async (
 export const getUserTickets = async () => {
   const response = await api.get('/events/tickets/list/user');
   return response.data;
+};
+
+export const getTicketsByCheckoutRequestId = async (
+  checkoutRequestId: string,
+  phone: string
+) => {
+  const response = await api.get(`/events/tickets/checkout/${checkoutRequestId}`, {
+    params: { phone },
+  });
+  return response.data as {
+    event_title: string;
+    event_date: string;
+    quantity: number;
+    total_price: number;
+    payment_status: string;
+    phone: string;
+    checkout_request_id: string;
+  };
 };

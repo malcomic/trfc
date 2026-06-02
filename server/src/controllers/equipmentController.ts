@@ -150,13 +150,14 @@ export async function getEquipmentHireById(req: Request, res: Response) {
 
     const hire = result.rows[0]
     const isOwner = userId && hire.user_id === userId
+    const isAdmin = req.user?.role === 'admin'
     const phoneVerified = phoneQuery && hire.phone && phonesMatch(phoneQuery, hire.phone)
 
-    if (!isOwner && !phoneVerified) {
+    if (!isOwner && !isAdmin && !phoneVerified) {
       return res.json({
         id: hire.id,
-        payment_status: hire.payment_status,
-        total_cost: hire.total_cost,
+        status: hire.payment_status,
+        total: hire.total_cost,
         equipment_name: hire.equipment_name,
         created_at: hire.created_at,
       })

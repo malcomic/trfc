@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Check, Loader } from 'lucide-react'
-import { getPendingTestimonials, approveTestimonial } from '../../api/admin/testimonials'
+import { Check, Loader, X } from 'lucide-react'
+import { getPendingTestimonials, approveTestimonial, rejectTestimonial } from '../../api/admin/testimonials'
 import AdminConfirmDialog from '../../components/AdminConfirmDialog'
 
 interface Testimonial {
@@ -16,7 +16,9 @@ export default function AdminTestimonials() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [approvingId, setApprovingId] = useState<string | null>(null)
+  const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [rejectConfirmId, setRejectConfirmId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchPending()
@@ -47,6 +49,21 @@ export default function AdminTestimonials() {
       console.error(err)
     } finally {
       setApprovingId(null)
+    }
+  }
+
+  const handleReject = async (id: string) => {
+    try {
+      setRejectingId(id)
+      setError('')
+      await rejectTestimonial(id)
+      setTestimonials(testimonials.filter((t) => t.id !== id))
+      setRejectConfirmId(null)
+    } catch (err) {
+      setError('Failed to reject testimonial')
+      console.error(err)
+    } finally {
+      setRejectingId(null)
     }
   }
 
@@ -95,18 +112,32 @@ export default function AdminTestimonials() {
                     {new Date(t.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4">
-                    <button
-                      onClick={() => setConfirmId(t.id)}
-                      disabled={approvingId === t.id}
-                      className="flex items-center gap-1 text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 disabled:opacity-50"
-                    >
-                      {approvingId === t.id ? (
-                        <Loader className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Check size={18} />
-                      )}
-                      Approve
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setConfirmId(t.id)}
+                        disabled={approvingId === t.id || rejectingId === t.id}
+                        className="flex items-center gap-1 text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 disabled:opacity-50"
+                      >
+                        {approvingId === t.id ? (
+                          <Loader className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Check size={18} />
+                        )}
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => setRejectConfirmId(t.id)}
+                        disabled={approvingId === t.id || rejectingId === t.id}
+                        className="flex items-center gap-1 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 disabled:opacity-50"
+                      >
+                        {rejectingId === t.id ? (
+                          <Loader className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <X size={18} />
+                        )}
+                        Reject
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -118,10 +149,19 @@ export default function AdminTestimonials() {
       <AdminConfirmDialog
         open={confirmId !== null}
         title="Approve testimonial"
-        message="This testimonial will be published on the public site."
+        message="This testimonial will be published on the site."
         confirmLabel="Approve"
         onConfirm={() => confirmId && handleApprove(confirmId)}
         onCancel={() => setConfirmId(null)}
+      />
+
+      <AdminConfirmDialog
+        open={rejectConfirmId !== null}
+        title="Reject testimonial"
+        message="This testimonial will be permanently deleted."
+        confirmLabel="Reject"
+        onConfirm={() => rejectConfirmId && handleReject(rejectConfirmId)}
+        onCancel={() => setRejectConfirmId(null)}
       />
     </div>
   )

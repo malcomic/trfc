@@ -5,6 +5,7 @@ import { getEventById, buyEventTickets } from '../api/events'
 import { initiateTicketPayment } from '../api/payments'
 import PaymentStatusModal from '../components/PaymentStatusModal'
 import { AlertCircle, Loader, ArrowLeft } from 'lucide-react'
+import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 
 interface Event {
   id: string
@@ -71,7 +72,7 @@ export default function EventCheckout() {
       const paymentResponse = await initiateTicketPayment({
         phone: data.phone,
         amount: Math.round(ticketResult.totalPrice),
-        ticketId: ticketResult.ticketIds[0],
+        ticketBatchId: ticketResult.purchaseBatchId,
       })
 
       if (paymentResponse.checkoutRequestId) {
@@ -94,14 +95,15 @@ export default function EventCheckout() {
 
   const handleModalClose = () => {
     setShowPaymentModal(false)
-    navigate(`/ticket-confirmation/${checkoutRequestId}`, {
+    const params = new URLSearchParams({ phone })
+    navigate(`/ticket-confirmation/${checkoutRequestId}?${params.toString()}`, {
       state: { ...ticketMeta, phone, eventTitle: ticketMeta?.eventTitle || event?.title },
     })
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-night text-chalk flex items-center justify-center">
+      <div className={`${pageRoot} flex items-center justify-center`}>
         <Loader className="w-12 h-12 animate-spin text-fire" />
       </div>
     )
@@ -109,7 +111,7 @@ export default function EventCheckout() {
 
   if (error && !event) {
     return (
-      <div className="min-h-screen bg-night text-chalk py-16 px-6">
+      <div className={`${pageRoot} py-16 px-6`}>
         <div className="max-w-2xl mx-auto bg-red-500/10 border border-red-500/20 p-6 flex gap-4">
           <AlertCircle className="w-6 h-6 text-red-400" />
           <div>
@@ -124,24 +126,24 @@ export default function EventCheckout() {
   if (!event) return null
 
   return (
-    <div className="min-h-screen bg-night text-chalk font-barlow">
-      <section className="bg-ink border-b border-white/5 px-[6%] pt-14 pb-8">
+    <div className={pageRoot}>
+      <section className="bg-ink light:bg-ink-light border-b border-white/5 light:border-black/8 px-[6%] pt-14 pb-8">
         <div className="max-w-2xl mx-auto">
           <button onClick={() => navigate(`/events/${eventId}`)} className="inline-flex items-center gap-2 text-fire text-sm mb-4 bg-transparent border-0 cursor-pointer hover:underline">
             <ArrowLeft size={14} /> Back to Event
           </button>
-          <h1 className="font-bebas text-4xl">BUY <span className="text-fire">TICKETS</span></h1>
-          <p className="text-fog mt-1">{event.title}</p>
+          <h1 className="font-bebas text-4xl text-chalk light:text-chalk-light">BUY <span className="text-fire">TICKETS</span></h1>
+          <p className="text-fog light:text-fog-light mt-1">{event.title}</p>
         </div>
       </section>
 
       <div className="max-w-2xl mx-auto px-[6%] py-10 pb-20 grid grid-cols-1 md:grid-cols-3 gap-6">
-        <form onSubmit={handleSubmit(onSubmit)} className="md:col-span-2 bg-ash border border-white/5 p-6 space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className={`md:col-span-2 ${cardSurface} p-6 space-y-4`}>
           <div>
             <label className="block text-sm font-semibold mb-2">Number of Tickets</label>
             <select
               {...register('quantity', { required: true, min: 1, max: 10, valueAsNumber: true })}
-              className="w-full bg-smoke border border-white/10 px-4 py-2 text-chalk focus:outline-none focus:border-fire"
+              className={`w-full px-4 py-2 ${inputField}`}
             >
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
                 <option key={n} value={n}>{n} {n === 1 ? 'Ticket' : 'Tickets'}</option>
@@ -156,7 +158,7 @@ export default function EventCheckout() {
                 pattern: { value: /^254\d{9}$/, message: 'Format: 254XXXXXXXXX' },
               })}
               placeholder="254712345678"
-              className="w-full bg-smoke border border-white/10 px-4 py-2 text-chalk focus:outline-none focus:border-fire"
+              className={`w-full px-4 py-2 ${inputField}`}
             />
             {errors.phone && <p className="text-red-400 text-sm mt-1">{errors.phone.message}</p>}
           </div>
@@ -170,11 +172,11 @@ export default function EventCheckout() {
           </button>
         </form>
 
-        <div className="bg-ash border border-white/5 p-6 sticky top-20 h-fit">
+        <div className={`${cardSurface} p-6 sticky top-20 h-fit`}>
           <h3 className="font-barlow-condensed font-bold text-fire letter-spacing-widest text-transform-uppercase mb-4">Summary</h3>
-          <p className="text-sm text-fog mb-2">{quantity} ticket(s)</p>
+          <p className="text-sm text-fog light:text-fog-light mb-2">{quantity} ticket(s)</p>
           <p className="font-bebas text-3xl text-fire">KES {totalPrice.toLocaleString()}</p>
-          <p className="text-xs text-fog mt-4">M-Pesa prompt will appear on your phone after checkout.</p>
+          <p className="text-xs text-fog light:text-fog-light mt-4">M-Pesa prompt will appear on your phone after checkout.</p>
         </div>
       </div>
 

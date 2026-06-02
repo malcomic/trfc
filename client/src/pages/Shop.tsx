@@ -1,9 +1,11 @@
 import { useEffect, useState, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { useCart } from '../store/cartStore'
 import { getProducts } from '../api/products'
 import ProductCard from '../components/ProductCard'
 import { Product } from '../types'
 import { ShoppingCart, AlertCircle, SlidersHorizontal, Check, ChevronDown } from 'lucide-react'
+import { pageRoot, cardSurface } from '../utils/themeClasses'
 
 interface Toast { id: number; name: string }
 
@@ -79,19 +81,19 @@ export default function Shop() {
   }
 
   return (
-    <div className="min-h-screen bg-night text-chalk font-barlow">
+    <div className={pageRoot}>
 
       {/* ── Hero ── */}
-      <section className="bg-ink border-b border-white/5 px-[6%] pt-16 pb-12 relative overflow-hidden">
+      <section className="bg-ink light:bg-ink-light border-b border-white/5 light:border-black/8 px-[6%] pt-16 pb-12 relative overflow-hidden">
         <div className="absolute right-[-2%] top-1/2 -translate-y-1/2 font-bebas text-clamp-2xl text-fire/5 leading-none pointer-events-none select-none letter-spacing-tighter">MERCH</div>
         <div className="max-w-5xl mx-auto relative z-1 flex items-end justify-between gap-6 flex-wrap">
           <div>
             <div className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fire flex items-center gap-2 mb-3.5 before:block before:w-5 before:h-0.5 before:bg-fire">Official Merchandise</div>
-            <h1 className="font-bebas text-clamp-lg leading-tight text-chalk letter-spacing-tighter">
+            <h1 className="font-bebas text-clamp-lg leading-tight text-chalk light:text-chalk-light letter-spacing-tighter">
               TRFC<br /><span className="text-fire">SHOP</span>
             </h1>
           </div>
-          <p className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-fog pb-2">
+          <p className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-fog light:text-fog-light pb-2">
             {loading ? '—' : `${products.length} product${products.length !== 1 ? 's' : ''}`} available
           </p>
         </div>
@@ -117,7 +119,7 @@ export default function Shop() {
       </div>
 
       {/* ── Toolbar ── */}
-      <div className="bg-ash border-b border-white/5 px-[6%] py-7">
+      <div className="bg-ash light:bg-ash-light border-b border-white/5 light:border-black/8 px-[6%] py-7">
         <div className="max-w-5xl mx-auto flex items-center gap-3 flex-wrap">
           {CATEGORIES.map((cat) => (
             <button
@@ -126,7 +128,7 @@ export default function Shop() {
               className={`flex items-center gap-1.75 font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase px-4.5 py-2 transition-all duration-200 clip-angled-sm ${
                 activeCategory === cat
                   ? 'bg-fire text-white border border-fire'
-                  : 'bg-ash text-fog border border-white/10 hover:border-white/20 hover:text-chalk'
+                  : 'bg-ash light:bg-ash-light text-fog light:text-fog-light border border-white/10 light:border-black/10 hover:border-white/20 light:hover:border-black/20 hover:text-chalk light:hover:text-chalk-light'
               }`}
             >
               {cat}
@@ -135,7 +137,7 @@ export default function Shop() {
 
           <div className="ml-auto relative">
             <button
-              className="flex items-center gap-1.75 font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase px-4 py-2 bg-ash text-fog border border-white/10 cursor-pointer clip-angled-sm transition-all duration-200 hover:border-white/20"
+              className="flex items-center gap-1.75 font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase px-4 py-2 bg-ash light:bg-ash-light text-fog light:text-fog-light border border-white/10 light:border-black/10 cursor-pointer clip-angled-sm transition-all duration-200 hover:border-white/20 light:hover:border-black/20"
               onClick={() => setShowSort((v) => !v)}
             >
               <SlidersHorizontal size={13} />
@@ -143,12 +145,12 @@ export default function Shop() {
               <ChevronDown size={13} className="transition-transform duration-200" style={{ transform: showSort ? 'rotate(180deg)' : 'none' }} />
             </button>
             {showSort && (
-              <div className="absolute top-full right-0 mt-2 min-w-52 bg-ash border border-white/10 clip-angled-sm z-50">
+              <div className={`absolute top-full right-0 mt-2 min-w-52 ${cardSurface} clip-angled-sm z-50`}>
                 {SORT_OPTIONS.map((opt) => (
                   <button
                     key={opt}
                     onClick={() => { setSortBy(opt); setShowSort(false) }}
-                    className="w-full text-left bg-none border-none border-b border-white/5 last:border-b-0 px-4 py-3 cursor-pointer font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase transition-all duration-200 flex items-center gap-2 hover:text-fire hover:bg-white/5"
+                    className="w-full text-left bg-none border-none border-b border-white/5 light:border-black/8 last:border-b-0 px-4 py-3 cursor-pointer font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase transition-all duration-200 flex items-center gap-2 hover:text-fire hover:bg-white/5 light:hover:bg-black/5"
                     style={{ color: opt === sortBy ? '#FF4500' : 'var(--fog)' }}
                   >
                     {opt === sortBy && <Check size={12} />}
@@ -176,7 +178,7 @@ export default function Shop() {
         {loading && (
           <div className="grid grid-cols-auto-fill gap-0.5">
             {Array(8).fill(null).map((_, i) => (
-              <div key={i} className="bg-ash animate-pulse" style={{ aspectRatio: '3/4', animation: 'skelShimmer 1.4s ease infinite' }} />
+              <div key={i} className="bg-ash light:bg-ash-light animate-pulse" style={{ aspectRatio: '3/4', animation: 'skelShimmer 1.4s ease infinite' }} />
             ))}
           </div>
         )}
@@ -185,8 +187,8 @@ export default function Shop() {
         {!loading && !error && products.length === 0 && (
           <div className="text-center py-25">
             <div className="font-bebas text-clamp-2xl text-fire/10 leading-none mb-4 letter-spacing-tighter">SOLD<br />OUT</div>
-            <p className="font-barlow-condensed font-bold text-xl letter-spacing-widest text-transform-uppercase text-fog mb-2">No products available right now</p>
-            <p className="text-sm text-fog">
+            <p className="font-barlow-condensed font-bold text-xl letter-spacing-widest text-transform-uppercase text-fog light:text-fog-light mb-2">No products available right now</p>
+            <p className="text-sm text-fog light:text-fog-light">
               Check back soon — new drops coming.
             </p>
           </div>
@@ -198,10 +200,13 @@ export default function Shop() {
             {sortedProducts.map((product) => {
               const added = addedIds.has(product.id)
               return (
-                <div key={product.id} className="bg-ash border border-transparent hover:border-fire/30 transition-all duration-250 hover:-translate-y-0.75 hover:z-10">
+                <div key={product.id} className="bg-ash light:bg-ash-light border border-transparent hover:border-fire/30 transition-all duration-250 hover:-translate-y-0.75 hover:z-10">
 
                   {/* Image + overlay */}
-                  <div className="relative overflow-hidden aspect-square bg-smoke group">
+                  <Link
+                    to={`/shop/${product.id}`}
+                    className="relative overflow-hidden aspect-square bg-smoke light:bg-smoke-light group block text-decoration-none"
+                  >
                     <img
                       src={product.image_url || 'https://images.unsplash.com/photo-1556906781-9a412961a28d?w=500&q=80'}
                       alt={product.name}
@@ -214,7 +219,7 @@ export default function Shop() {
                       <span className="absolute top-3 left-3 font-barlow-condensed font-black text-xs letter-spacing-widest text-transform-uppercase px-2.5 py-1 bg-fire text-white z-1">New</span>
                     )}
                     {product.stock === 0 && (
-                      <span className="absolute top-3 left-3 font-barlow-condensed font-black text-xs letter-spacing-widest text-transform-uppercase px-2.5 py-1 bg-smoke text-fog z-1">Sold Out</span>
+                      <span className="absolute top-3 left-3 font-barlow-condensed font-black text-xs letter-spacing-widest text-transform-uppercase px-2.5 py-1 bg-smoke light:bg-smoke-light text-fog light:text-fog-light z-1">Sold Out</span>
                     )}
 
                     {/* Quick-add overlay */}
@@ -235,11 +240,13 @@ export default function Shop() {
                         }
                       </button>
                     </div>
-                  </div>
+                  </Link>
 
                   {/* Card body */}
-                  <div className="px-4.5 py-5 flex flex-col gap-1.5 border-t border-white/5">
-                    <ProductCard product={product} variant="compact" />
+                  <div className="px-4.5 py-5 flex flex-col gap-1.5 border-t border-white/5 light:border-black/8">
+                    <Link to={`/shop/${product.id}`} className="text-decoration-none hover:text-fire transition-colors duration-200">
+                      <ProductCard product={product} variant="compact" />
+                    </Link>
                     <div className="flex items-center justify-between mt-2">
                       <div className="font-bebas text-2xl text-fire letter-spacing-wider">
                         KES {product.price?.toLocaleString?.() ?? product.price}
@@ -272,13 +279,13 @@ export default function Shop() {
       {/* ── Toast stack ── */}
       <div className="fixed bottom-8 right-8 flex flex-col gap-2.5 z-1000">
         {toasts.map((toast) => (
-          <div key={toast.id} className="bg-ash border border-white/10 border-l-4 border-l-fire px-5 py-3.5 flex items-center gap-3 clip-angled-sm animate-toastIn w-64">
+          <div key={toast.id} className={`${cardSurface} border-l-4 border-l-fire px-5 py-3.5 flex items-center gap-3 clip-angled-sm animate-toastIn w-64`}>
             <div className="w-7 h-7 bg-green-600/15 border border-green-600/25 rounded-full flex items-center justify-center text-green-400 flex-shrink-0">
               <Check size={13} />
             </div>
             <div className="font-barlow-condensed">
-              <div className="font-bold text-base text-chalk letter-spacing-tighter">Added to cart</div>
-              <div className="font-bold text-xs letter-spacing-widest text-transform-uppercase text-fog mt-0.25">{toast.name}</div>
+              <div className="font-bold text-base text-chalk light:text-chalk-light letter-spacing-tighter">Added to cart</div>
+              <div className="font-bold text-xs letter-spacing-widest text-transform-uppercase text-fog light:text-fog-light mt-0.25">{toast.name}</div>
             </div>
           </div>
         ))}

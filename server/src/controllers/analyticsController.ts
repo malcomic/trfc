@@ -7,37 +7,61 @@ export const analyticsController = {
   // Dashboard Summary - KPI overview
   getDashboardSummary: async (req: Request, res: Response) => {
     try {
-      const totalRevenueRes = await pool.query(
+      const orderRevenueRes = await pool.query(
         'SELECT COALESCE(SUM(total_amount), 0) as total FROM orders WHERE payment_status = $1',
         ['paid']
       )
+      const ticketRevenueRes = await pool.query(
+        `SELECT COALESCE(SUM(e.price), 0) as total
+         FROM tickets t
+         JOIN events e ON t.event_id = e.id
+         WHERE t.payment_status = $1`,
+        ['paid']
+      )
+      const hireRevenueRes = await pool.query(
+        'SELECT COALESCE(SUM(total_cost), 0) as total FROM equipment_hire WHERE payment_status = $1',
+        ['paid']
+      )
 
-      const thisMonthRevenueRes = await pool.query(
+      const thisMonthOrderRes = await pool.query(
         'SELECT COALESCE(SUM(total_amount), 0) as total FROM orders WHERE payment_status = $1 AND created_at >= DATE_TRUNC($2, NOW())',
         ['paid', 'month']
       )
-
-      const totalOrdersRes = await pool.query(
-        'SELECT COUNT(*) as total FROM orders'
+      const thisMonthTicketRes = await pool.query(
+        `SELECT COALESCE(SUM(e.price), 0) as total
+         FROM tickets t
+         JOIN events e ON t.event_id = e.id
+         WHERE t.payment_status = $1 AND t.created_at >= DATE_TRUNC($2, NOW())`,
+        ['paid', 'month']
+      )
+      const thisMonthHireRes = await pool.query(
+        'SELECT COALESCE(SUM(total_cost), 0) as total FROM equipment_hire WHERE payment_status = $1 AND created_at >= DATE_TRUNC($2, NOW())',
+        ['paid', 'month']
       )
 
+      const totalOrdersRes = await pool.query('SELECT COUNT(*) as total FROM orders')
       const paidOrdersRes = await pool.query(
         'SELECT COUNT(*) as total FROM orders WHERE payment_status = $1',
         ['paid']
       )
+      const totalUsersRes = await pool.query('SELECT COUNT(*) as total FROM users')
 
-      const totalUsersRes = await pool.query(
-        'SELECT COUNT(*) as total FROM users'
-      )
+      const orderRevenue = parseFloat(orderRevenueRes.rows[0].total)
+      const ticketRevenue = parseFloat(ticketRevenueRes.rows[0].total)
+      const hireRevenue = parseFloat(hireRevenueRes.rows[0].total)
+      const totalRevenue = orderRevenue + ticketRevenue + hireRevenue
 
-      const totalRevenue = parseFloat(totalRevenueRes.rows[0].total)
-      const thisMonthRevenue = parseFloat(thisMonthRevenueRes.rows[0].total)
+      const thisMonthRevenue =
+        parseFloat(thisMonthOrderRes.rows[0].total) +
+        parseFloat(thisMonthTicketRes.rows[0].total) +
+        parseFloat(thisMonthHireRes.rows[0].total)
+
       const totalOrders = parseInt(totalOrdersRes.rows[0].total)
       const paidOrders = parseInt(paidOrdersRes.rows[0].total)
       const totalUsers = parseInt(totalUsersRes.rows[0].total)
 
       const paymentSuccessRate = totalOrders > 0 ? (paidOrders / totalOrders) * 100 : 0
-      const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0
+      const avgOrderValue = totalOrders > 0 ? orderRevenue / totalOrders : 0
 
       return res.json({
         totalRevenue: parseFloat(totalRevenue.toFixed(2)),
@@ -46,6 +70,8 @@ export const analyticsController = {
         paymentSuccessRate: parseFloat(paymentSuccessRate.toFixed(1)),
         totalUsers,
         avgOrderValue: parseFloat(avgOrderValue.toFixed(2)),
+        ticketRevenue: parseFloat(ticketRevenue.toFixed(2)),
+        equipmentRevenue: parseFloat(hireRevenue.toFixed(2)),
       })
     } catch (error: any) {
       console.error('Error in getDashboardSummary:', error)
@@ -194,7 +220,9 @@ export const analyticsController = {
           ticketsSold: parseInt(row.tickets_sold),
           ticketPrice: parseFloat(row.ticket_price),
           revenue: parseFloat(row.revenue),
-          utilization: `${((parseInt(row.tickets_sold) / parseInt(row.capacity)) * 100).toFixed(1)}%`,
+          utilization: row.capacity > 0
+            ? `${((parseInt(row.tickets_sold) / parseInt(row.capacity)) * 100).toFixed(1)}%`
+            : '0%',
           eventDate: row.event_date,
         }))
       )
@@ -207,43 +235,69 @@ export const analyticsController = {
   // Payment statistics
   getPaymentStats: async (req: Request, res: Response) => {
     try {
-      const totalRes = await pool.query(
+      const orderTotalRes = await pool.query(
         'SELECT COUNT(*) as total, COALESCE(SUM(total_amount), 0) as sum FROM orders'
       )
-
-      const statusRes = await pool.query(
-        `SELECT
-          payment_status,
-          COUNT(*) as count,
-          COALESCE(SUM(total_amount), 0) as total
-        FROM orders
-        GROUP BY payment_status`
+      const ticketTotalRes = await pool.query(
+        `SELECT COUNT(*) as total, COALESCE(SUM(e.price), 0) as sum
+         FROM tickets t JOIN events e ON t.event_id = e.id`
+      )
+      const hireTotalRes = await pool.query(
+        'SELECT COUNT(*) as total, COALESCE(SUM(total_cost), 0) as sum FROM equipment_hire'
       )
 
-      const total = parseInt(totalRes.rows[0].total)
-      const totalAmount = parseFloat(totalRes.rows[0].sum)
+      const orderStatusRes = await pool.query(
+        `SELECT payment_status, COUNT(*) as count, COALESCE(SUM(total_amount), 0) as total
+         FROM orders GROUP BY payment_status`
+      )
+      const ticketStatusRes = await pool.query(
+        `SELECT t.payment_status, COUNT(*) as count, COALESCE(SUM(e.price), 0) as total
+         FROM tickets t JOIN events e ON t.event_id = e.id
+         GROUP BY t.payment_status`
+      )
+      const hireStatusRes = await pool.query(
+        `SELECT payment_status, COUNT(*) as count, COALESCE(SUM(total_cost), 0) as total
+         FROM equipment_hire GROUP BY payment_status`
+      )
 
-      const statusBreakdown: any = {
-        paid: 0,
-        pending: 0,
-        failed: 0,
+      const total =
+        parseInt(orderTotalRes.rows[0].total) +
+        parseInt(ticketTotalRes.rows[0].total) +
+        parseInt(hireTotalRes.rows[0].total)
+      const totalAmount =
+        parseFloat(orderTotalRes.rows[0].sum) +
+        parseFloat(ticketTotalRes.rows[0].sum) +
+        parseFloat(hireTotalRes.rows[0].sum)
+
+      const statusBreakdown: Record<string, { count: number; total: number }> = {
+        paid: { count: 0, total: 0 },
+        pending: { count: 0, total: 0 },
+        failed: { count: 0, total: 0 },
       }
 
-      statusRes.rows.forEach((row: any) => {
-        statusBreakdown[row.payment_status] = {
-          count: parseInt(row.count),
-          total: parseFloat(row.total),
-        }
-      })
+      const mergeStatus = (rows: { payment_status: string; count: string; total: string }[]) => {
+        rows.forEach((row) => {
+          const key = row.payment_status
+          if (!statusBreakdown[key]) {
+            statusBreakdown[key] = { count: 0, total: 0 }
+          }
+          statusBreakdown[key].count += parseInt(row.count)
+          statusBreakdown[key].total += parseFloat(row.total)
+        })
+      }
 
-      const successRate = total > 0 ? (statusBreakdown.paid?.count / total) * 100 : 0
+      mergeStatus(orderStatusRes.rows)
+      mergeStatus(ticketStatusRes.rows)
+      mergeStatus(hireStatusRes.rows)
+
+      const successRate = total > 0 ? (statusBreakdown.paid.count / total) * 100 : 0
       const avgAmount = total > 0 ? totalAmount / total : 0
 
       return res.json({
         total,
-        successful: statusBreakdown.paid?.count || 0,
-        pending: statusBreakdown.pending?.count || 0,
-        failed: statusBreakdown.failed?.count || 0,
+        successful: statusBreakdown.paid.count,
+        pending: statusBreakdown.pending.count,
+        failed: statusBreakdown.failed.count,
         successRate: parseFloat(successRate.toFixed(1)),
         totalAmount: parseFloat(totalAmount.toFixed(2)),
         avgAmount: parseFloat(avgAmount.toFixed(2)),

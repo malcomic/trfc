@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { createEquipmentHireRequest, initiateEquipmentPayment } from '../api/equipment'
+import PaymentStatusModal from '../components/PaymentStatusModal'
 import { AlertCircle, Loader, Calendar } from 'lucide-react'
 
 export default function EquipmentCheckout() {
@@ -22,6 +23,16 @@ export default function EquipmentCheckout() {
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [checkoutRequestId, setCheckoutRequestId] = useState('')
+  const [phone, setPhone] = useState('')
+  const [hireId, setHireId] = useState('')
+  const [hireMeta, setHireMeta] = useState<{
+    equipmentName: string
+    hireDate: string
+    returnDate: string
+    totalPrice: number
+  } | null>(null)
   const hireDate = watch('hireDate')
   const returnDate = watch('returnDate')
 
@@ -39,6 +50,7 @@ export default function EquipmentCheckout() {
     try {
       setLoading(true)
       setError('')
+      setPhone(data.phone)
 
       // Create hire request first
       const hireRequest = await createEquipmentHireRequest({
@@ -57,16 +69,16 @@ export default function EquipmentCheckout() {
       })
 
       if (paymentResponse.checkoutRequestId) {
-        navigate(`/hire-confirmation/${hireRequest.id}`, {
-          state: {
-            checkoutRequestId: paymentResponse.checkoutRequestId,
-            equipmentName: data.equipmentName,
-            hireDate: data.hireDate,
-            returnDate: data.returnDate,
-            totalPrice,
-            phone: data.phone,
-          },
+        setCheckoutRequestId(paymentResponse.checkoutRequestId)
+        setPhone(data.phone)
+        setHireId(hireRequest.id)
+        setHireMeta({
+          equipmentName: data.equipmentName,
+          hireDate: data.hireDate,
+          returnDate: data.returnDate,
+          totalPrice,
         })
+        setShowPaymentModal(true)
       } else {
         setError('Failed to initiate payment. Please try again.')
       }
@@ -81,6 +93,23 @@ export default function EquipmentCheckout() {
   }
 
   const today = new Date().toISOString().split('T')[0]
+
+  const handlePaymentModalClose = () => {
+    setShowPaymentModal(false)
+    if (hireId) {
+      const params = new URLSearchParams({ phone })
+      navigate(`/hire-confirmation/${hireId}?${params.toString()}`, {
+        state: {
+          checkoutRequestId,
+          equipmentName: hireMeta?.equipmentName,
+          hireDate: hireMeta?.hireDate,
+          returnDate: hireMeta?.returnDate,
+          totalPrice: hireMeta?.totalPrice,
+          phone,
+        },
+      })
+    }
+  }
 
   return (
     <div className="min-h-screen py-12 px-4 bg-gray-50 dark:bg-gray-900">
@@ -252,6 +281,13 @@ export default function EquipmentCheckout() {
           </div>
         </div>
       </div>
+
+      <PaymentStatusModal
+        isOpen={showPaymentModal}
+        checkoutRequestId={checkoutRequestId}
+        phone={phone}
+        onClose={handlePaymentModalClose}
+      />
     </div>
   )
 }
