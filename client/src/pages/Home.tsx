@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ImgHTMLAttributes } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertCircle, Star } from 'lucide-react'
 import { getEvents } from '../api/events'
@@ -80,20 +80,20 @@ export default function Home() {
         }
       `}</style>
 
-      <section className="relative min-h-screen flex items-center overflow-hidden">
-        {/* Landing hero image — full bleed on mobile, right panel on desktop */}
-        <div className="absolute inset-0 lg:inset-y-0 lg:left-[38%] lg:right-0">
+      <section className="relative min-h-screen w-full flex items-center overflow-hidden">
+        {/* Landing hero image — full viewport bleed */}
+        <div className="absolute inset-0 w-full h-full">
           <img
             src={landingHero}
             alt="TRFC community members training together"
-            className="w-full h-full min-h-[320px] object-cover object-center"
-            fetchPriority="high"
+            className="absolute inset-0 w-full h-full object-cover object-center"
+            {...({ fetchpriority: 'high' } as ImgHTMLAttributes<HTMLImageElement>)}
           />
         </div>
 
-        {/* Readability overlay — dark tint only; never white in light mode */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-black/25 lg:from-black/92 lg:via-black/75 lg:to-transparent pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30 pointer-events-none lg:hidden" />
+        {/* Text readability overlay — lighter so photo shows edge to edge */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/45 to-black/15 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
 
         {/* Vertical accent line */}
         <div className="absolute left-[6%] top-[15%] bottom-[15%] w-0.5 bg-gradient-to-b from-transparent via-fire to-transparent opacity-60 z-10" />
