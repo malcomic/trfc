@@ -1,5 +1,5 @@
 import { Request, Response } from 'express'
-import { pool } from '../server'
+import { pool } from '../server.js'
 
 // Analytics controller with aggregation functions for dashboard metrics
 
