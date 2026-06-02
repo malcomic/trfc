@@ -1,4 +1,4 @@
-import { pool } from '../server'
+import { pool } from '../server.js'
 
 /**
  * Analytics query helpers - organized SQL queries for dashboard metrics
