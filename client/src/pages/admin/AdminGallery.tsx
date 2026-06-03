@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { Trash2, Plus, X, Edit } from 'lucide-react'
 import { getGallery, uploadGalleryFile, uploadMedia, updateMedia, deleteMedia } from '../../api/admin/gallery'
 import AdminConfirmDialog from '../../components/AdminConfirmDialog'
+import AdminPageHeader from '../../components/admin/AdminPageHeader'
 
 interface GalleryItem {
   id: string
@@ -150,21 +151,23 @@ export default function AdminGallery() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 dark:text-white">Gallery</h1>
-        <button
-          onClick={() => {
-            setEditingId(null)
-            setFilePreview(null)
-            reset()
-            setShowModal(true)
-          }}
-          className="flex items-center gap-2 bg-primary dark:bg-primary-dark text-white px-6 py-2 rounded-lg hover:opacity-90 transition"
-        >
-          <Plus size={20} />
-          Upload Media
-        </button>
-      </div>
+      <AdminPageHeader
+        title="Gallery"
+        actions={
+          <button
+            onClick={() => {
+              setEditingId(null)
+              setFilePreview(null)
+              reset()
+              setShowModal(true)
+            }}
+            className="flex items-center justify-center gap-2 bg-primary dark:bg-primary-dark text-white px-6 py-2 rounded-lg hover:opacity-90 transition w-full sm:w-auto min-h-[44px]"
+          >
+            <Plus size={20} />
+            Upload Media
+          </button>
+        }
+      />
 
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-6">
@@ -219,7 +222,7 @@ export default function AdminGallery() {
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full max-h-[85vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+            <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{editingId ? 'Edit Media' : 'Upload Media'}</h2>
               <button
                 onClick={() => {
@@ -234,7 +237,7 @@ export default function AdminGallery() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="p-4 sm:p-6 space-y-4">
               {!editingId && (
                 <div className="space-y-2">
                   <div>

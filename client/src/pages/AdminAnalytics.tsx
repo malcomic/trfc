@@ -15,6 +15,7 @@ import {
   getUserStats,
   getOrderStats,
 } from '../api/analytics'
+import AdminPageHeader from '../components/admin/AdminPageHeader'
 
 interface DashboardData {
   summary: any
@@ -163,42 +164,42 @@ export default function AdminAnalytics() {
 
   return (
     <div ref={reportRef} className="space-y-8">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-4xl font-bold mb-2 text-gray-800 dark:text-white">Analytics</h1>
-          <p className="text-gray-600 dark:text-gray-400">Track your business performance and metrics</p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={exportToCSV}
-            disabled={loading}
-            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition disabled:opacity-50"
-          >
-            <Download className="w-4 h-4" />
-            CSV
-          </button>
-          <button
-            onClick={exportToPDF}
-            disabled={loading}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-          >
-            <Download className="w-4 h-4" />
-            PDF
-          </button>
-          <button
-            onClick={fetchAnalytics}
-            disabled={loading}
-            className="flex items-center gap-2 bg-primary dark:bg-primary-dark text-white px-4 py-2 rounded-lg hover:opacity-90 transition disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-        </div>
-      </div>
+      <AdminPageHeader
+        title="Analytics"
+        subtitle="Track your business performance and metrics"
+        actions={
+          <>
+            <button
+              onClick={exportToCSV}
+              disabled={loading}
+              className="flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 min-h-[44px] rounded-lg hover:bg-green-700 transition disabled:opacity-50 w-full sm:w-auto"
+            >
+              <Download className="w-4 h-4" />
+              CSV
+            </button>
+            <button
+              onClick={exportToPDF}
+              disabled={loading}
+              className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 min-h-[44px] rounded-lg hover:bg-blue-700 transition disabled:opacity-50 w-full sm:w-auto"
+            >
+              <Download className="w-4 h-4" />
+              PDF
+            </button>
+            <button
+              onClick={fetchAnalytics}
+              disabled={loading}
+              className="flex items-center justify-center gap-2 bg-primary dark:bg-primary-dark text-white px-4 py-2 min-h-[44px] rounded-lg hover:opacity-90 transition disabled:opacity-50 w-full sm:w-auto"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </>
+        }
+      />
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-lg p-4">
         <label className="block text-sm font-semibold mb-3 text-gray-900 dark:text-gray-100">Date Range</label>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           {['7', '30', '90'].map((range) => (
             <button
               key={range}

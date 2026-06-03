@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { Loader, AlertCircle, Wrench } from 'lucide-react'
 import { getEquipmentStats } from '../../api/analytics'
 import { getEquipmentHireForAdmin, AdminEquipmentHire } from '../../api/admin/equipment'
+import AdminPageHeader from '../../components/admin/AdminPageHeader'
+import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/AdminMobileCard'
+import AdminResponsiveData from '../../components/admin/AdminResponsiveData'
 
 interface EquipmentStat {
   name: string
@@ -80,33 +83,33 @@ export default function AdminEquipment() {
 
   return (
     <div>
-      <h1 className="text-4xl font-bold mb-8 text-gray-800 dark:text-white flex items-center gap-3">
-        <Wrench size={36} />
-        Equipment
-      </h1>
+      <AdminPageHeader
+        title="Equipment"
+        actions={<Wrench size={28} className="text-primary dark:text-primary-dark hidden sm:block" />}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-6">
           <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Total Rentals</p>
-          <p className="text-4xl font-bold text-gray-800 dark:text-white mt-2">{totalRentals}</p>
+          <p className="text-2xl sm:text-4xl font-bold text-gray-800 dark:text-white mt-2">{totalRentals}</p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-6">
           <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Total Revenue</p>
-          <p className="text-4xl font-bold text-primary dark:text-primary-dark mt-2">
+          <p className="text-2xl sm:text-4xl font-bold text-primary dark:text-primary-dark mt-2">
             KES {totalRevenue.toLocaleString()}
           </p>
         </div>
       </div>
 
-      <div className="mb-6 flex items-center gap-4">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-2">
         <label htmlFor="status-filter" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Filter by payment status:
+          Filter by payment status
         </label>
         <select
           id="status-filter"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+          className="w-full sm:w-auto border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 min-h-[44px] bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
         >
           <option value="all">All</option>
           <option value="pending">Pending</option>
@@ -115,55 +118,76 @@ export default function AdminEquipment() {
         </select>
       </div>
 
-      <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Hire Records</h2>
+      <h2 className="text-xl sm:text-2xl font-bold mb-4 text-gray-800 dark:text-white">Hire Records</h2>
 
-      {hires.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-12 text-center mb-8">
-          <p className="text-gray-600 dark:text-gray-400 text-lg">No equipment hire records</p>
-        </div>
-      ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg overflow-x-auto mb-8">
-          <table className="w-full min-w-[900px]">
-            <thead className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Equipment</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Phone</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Hire Period</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Total</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Payment</th>
-              </tr>
-            </thead>
-            <tbody>
-              {hires.map((h) => (
-                <tr
-                  key={h.id}
-                  className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-900 dark:text-gray-100"
-                >
-                  <td className="px-6 py-4 font-semibold">{h.equipment_name}</td>
-                  <td className="px-6 py-4">{h.phone || '—'}</td>
-                  <td className="px-6 py-4 text-sm">
-                    {new Date(h.hire_date).toLocaleDateString()} – {new Date(h.return_date).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4">KES {Number(h.total_cost).toLocaleString()}</td>
-                  <td className={`px-6 py-4 capitalize font-medium ${statusColor(h.payment_status)}`}>
-                    {h.payment_status}
-                  </td>
+      <div className="mb-8">
+        <AdminResponsiveData
+          isEmpty={hires.length === 0}
+          empty={
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center">
+              <p className="text-gray-600 dark:text-gray-400 text-lg">No equipment hire records</p>
+            </div>
+          }
+          desktop={
+            <table className="w-full min-w-[640px]">
+              <thead className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                <tr>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Equipment</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Phone</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Hire Period</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Total</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Payment</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {hires.map((h) => (
+                  <tr
+                    key={h.id}
+                    className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-900 dark:text-gray-100"
+                  >
+                    <td className="px-6 py-4 font-semibold">{h.equipment_name}</td>
+                    <td className="px-6 py-4">{h.phone || '—'}</td>
+                    <td className="px-6 py-4 text-sm">
+                      {new Date(h.hire_date).toLocaleDateString()} – {new Date(h.return_date).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4">KES {Number(h.total_cost).toLocaleString()}</td>
+                    <td className={`px-6 py-4 capitalize font-medium ${statusColor(h.payment_status)}`}>
+                      {h.payment_status}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          }
+          mobile={hires.map((h) => (
+            <AdminMobileCard key={h.id}>
+              <p className="font-semibold text-gray-900 dark:text-white">{h.equipment_name}</p>
+              <AdminMobileCardRow label="Phone" value={h.phone || '—'} />
+              <AdminMobileCardRow
+                label="Hire period"
+                value={`${new Date(h.hire_date).toLocaleDateString()} – ${new Date(h.return_date).toLocaleDateString()}`}
+              />
+              <AdminMobileCardRow label="Total" value={`KES ${Number(h.total_cost).toLocaleString()}`} />
+              <AdminMobileCardRow
+                label="Payment"
+                value={<span className={`capitalize font-medium ${statusColor(h.payment_status)}`}>{h.payment_status}</span>}
+              />
+            </AdminMobileCard>
+          ))}
+        />
+      </div>
 
-      <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">By Equipment</h2>
+      <h2 className="text-xl sm:text-2xl font-bold mb-4 text-gray-800 dark:text-white">By Equipment</h2>
 
-      {stats.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-12 text-center">
-          <p className="text-gray-600 dark:text-gray-400 text-lg">No equipment hire data yet</p>
-        </div>
-      ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg overflow-hidden">
-          <table className="w-full">
+      <AdminResponsiveData
+        isEmpty={stats.length === 0}
+        empty={
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center">
+            <p className="text-gray-600 dark:text-gray-400 text-lg">No equipment hire data yet</p>
+          </div>
+        }
+        desktop={
+          <table className="w-full min-w-[480px]">
             <thead className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <tr>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Equipment</th>
@@ -186,8 +210,16 @@ export default function AdminEquipment() {
               ))}
             </tbody>
           </table>
-        </div>
-      )}
+        }
+        mobile={stats.map((item) => (
+          <AdminMobileCard key={item.name}>
+            <p className="font-semibold text-gray-900 dark:text-white">{item.name}</p>
+            <AdminMobileCardRow label="Rentals" value={item.rentals} />
+            <AdminMobileCardRow label="Revenue" value={`KES ${item.revenue.toLocaleString()}`} />
+            <AdminMobileCardRow label="Avg duration" value={`${item.avgDurationDays} days`} />
+          </AdminMobileCard>
+        ))}
+      />
     </div>
   )
 }

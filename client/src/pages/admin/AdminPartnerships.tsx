@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Loader, AlertCircle, Handshake } from 'lucide-react'
 import { getPartnershipsForAdmin, updatePartnershipStatus, AdminPartnership } from '../../api/admin/partnerships'
+import AdminPageHeader from '../../components/admin/AdminPageHeader'
+import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/AdminMobileCard'
+import AdminResponsiveData from '../../components/admin/AdminResponsiveData'
 
 const STATUS_OPTIONS = ['all', 'pending', 'contacted', 'approved', 'declined']
 
@@ -56,6 +59,19 @@ export default function AdminPartnerships() {
     }
   }
 
+  const statusSelect = (p: AdminPartnership) => (
+    <select
+      value={p.status}
+      disabled={savingId === p.id}
+      onChange={(e) => handleStatusChange(p.id, e.target.value)}
+      className={`w-full px-3 py-2 min-h-[44px] rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 capitalize font-medium ${statusColor(p.status)}`}
+    >
+      {STATUS_OPTIONS.filter((s) => s !== 'all').map((s) => (
+        <option key={s} value={s}>{s}</option>
+      ))}
+    </select>
+  )
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -66,10 +82,12 @@ export default function AdminPartnerships() {
 
   return (
     <div>
-      <h1 className="text-4xl font-bold mb-8 text-gray-800 dark:text-white flex items-center gap-3">
-        <Handshake size={36} />
-        Partnerships
-      </h1>
+      <AdminPageHeader
+        title="Partnerships"
+        actions={
+          <Handshake size={28} className="text-primary dark:text-primary-dark hidden sm:block" />
+        }
+      />
 
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex gap-3 mb-6">
@@ -78,12 +96,12 @@ export default function AdminPartnerships() {
         </div>
       )}
 
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filter by status</label>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-2">
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter by status</label>
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+          className="w-full sm:w-auto px-4 py-2 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
         >
           {STATUS_OPTIONS.map((s) => (
             <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
@@ -91,13 +109,15 @@ export default function AdminPartnerships() {
         </select>
       </div>
 
-      {partnerships.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center">
-          <p className="text-gray-600 dark:text-gray-400 text-lg">No partnership inquiries yet</p>
-        </div>
-      ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-x-auto">
-          <table className="w-full min-w-[900px]">
+      <AdminResponsiveData
+        isEmpty={partnerships.length === 0}
+        empty={
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center">
+            <p className="text-gray-600 dark:text-gray-400 text-lg">No partnership inquiries yet</p>
+          </div>
+        }
+        desktop={
+          <table className="w-full min-w-[800px]">
             <thead className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <tr>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Company</th>
@@ -114,23 +134,11 @@ export default function AdminPartnerships() {
                   <td className="px-6 py-4">
                     <div className="font-semibold text-gray-900 dark:text-gray-100">{p.company_name}</div>
                     <div className="text-sm text-gray-500 dark:text-gray-400">{p.email}</div>
-                    {p.message && <div className="text-xs text-gray-400 mt-1 max-w-xs truncate">{p.message}</div>}
                   </td>
                   <td className="px-6 py-4 text-gray-900 dark:text-gray-100">{p.contact_person}</td>
                   <td className="px-6 py-4 capitalize text-gray-900 dark:text-gray-100">{p.tier}</td>
                   <td className="px-6 py-4 text-gray-900 dark:text-gray-100">{p.phone}</td>
-                  <td className="px-6 py-4">
-                    <select
-                      value={p.status}
-                      disabled={savingId === p.id}
-                      onChange={(e) => handleStatusChange(p.id, e.target.value)}
-                      className={`px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 capitalize font-medium ${statusColor(p.status)}`}
-                    >
-                      {STATUS_OPTIONS.filter((s) => s !== 'all').map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
-                  </td>
+                  <td className="px-6 py-4">{statusSelect(p)}</td>
                   <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                     {new Date(p.created_at).toLocaleString()}
                   </td>
@@ -138,8 +146,19 @@ export default function AdminPartnerships() {
               ))}
             </tbody>
           </table>
-        </div>
-      )}
+        }
+        mobile={partnerships.map((p) => (
+          <AdminMobileCard key={p.id} footer={statusSelect(p)}>
+            <p className="font-semibold text-gray-900 dark:text-white">{p.company_name}</p>
+            <AdminMobileCardRow label="Contact" value={p.contact_person} />
+            <AdminMobileCardRow label="Email" value={p.email} />
+            <AdminMobileCardRow label="Phone" value={p.phone} />
+            <AdminMobileCardRow label="Tier" value={<span className="capitalize">{p.tier}</span>} />
+            <AdminMobileCardRow label="Submitted" value={new Date(p.created_at).toLocaleString()} />
+            {p.message && <p className="text-sm text-gray-600 dark:text-gray-400 pt-1">{p.message}</p>}
+          </AdminMobileCard>
+        ))}
+      />
     </div>
   )
 }

@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Loader, AlertCircle, Ticket } from 'lucide-react'
 import { getTicketsForAdmin, AdminTicket } from '../../api/admin/tickets'
+import AdminPageHeader from '../../components/admin/AdminPageHeader'
+import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/AdminMobileCard'
+import AdminResponsiveData from '../../components/admin/AdminResponsiveData'
 
 export default function AdminTickets() {
   const [tickets, setTickets] = useState<AdminTicket[]>([])
@@ -52,10 +55,12 @@ export default function AdminTickets() {
 
   return (
     <div>
-      <h1 className="text-4xl font-bold mb-8 text-gray-800 dark:text-white flex items-center gap-3">
-        <Ticket size={36} />
-        Tickets
-      </h1>
+      <AdminPageHeader
+        title="Tickets"
+        actions={
+          <Ticket size={28} className="text-primary dark:text-primary-dark hidden sm:block" />
+        }
+      />
 
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 flex gap-3 mb-6">
@@ -64,7 +69,7 @@ export default function AdminTickets() {
             <p className="text-red-700 dark:text-red-400 mb-4">{error}</p>
             <button
               onClick={fetchTickets}
-              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
+              className="bg-red-600 text-white px-4 py-2 min-h-[44px] rounded hover:bg-red-700 transition"
             >
               Try Again
             </button>
@@ -72,12 +77,12 @@ export default function AdminTickets() {
         </div>
       )}
 
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filter by status</label>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-2">
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter by status</label>
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+          className="w-full sm:w-auto px-4 py-2 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
         >
           <option value="all">All</option>
           <option value="paid">Paid</option>
@@ -86,13 +91,15 @@ export default function AdminTickets() {
         </select>
       </div>
 
-      {filteredTickets.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-12 text-center">
-          <p className="text-gray-600 dark:text-gray-400 text-lg">No tickets yet</p>
-        </div>
-      ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg overflow-x-auto">
-          <table className="w-full min-w-[800px]">
+      <AdminResponsiveData
+        isEmpty={filteredTickets.length === 0}
+        empty={
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center">
+            <p className="text-gray-600 dark:text-gray-400 text-lg">No tickets yet</p>
+          </div>
+        }
+        desktop={
+          <table className="w-full min-w-[640px]">
             <thead className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <tr>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Event</th>
@@ -123,15 +130,29 @@ export default function AdminTickets() {
                   <td className="px-6 py-4 text-xs font-mono text-gray-500 dark:text-gray-400">
                     {t.purchase_batch_id ? t.purchase_batch_id.slice(0, 8) + '…' : '—'}
                   </td>
-                  <td className="px-6 py-4 text-sm">
-                    {new Date(t.created_at).toLocaleString()}
-                  </td>
+                  <td className="px-6 py-4 text-sm">{new Date(t.created_at).toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      )}
+        }
+        mobile={filteredTickets.map((t) => (
+          <AdminMobileCard key={t.id}>
+            <p className="font-semibold text-gray-900 dark:text-white">{t.event_title || '—'}</p>
+            <AdminMobileCardRow label="Event date" value={t.event_date ? new Date(t.event_date).toLocaleDateString() : '—'} />
+            <AdminMobileCardRow label="Phone" value={t.phone || '—'} />
+            <AdminMobileCardRow
+              label="Status"
+              value={<span className={`capitalize font-medium ${statusColor(t.payment_status)}`}>{t.payment_status}</span>}
+            />
+            <AdminMobileCardRow
+              label="Batch"
+              value={t.purchase_batch_id ? t.purchase_batch_id.slice(0, 8) + '…' : '—'}
+            />
+            <AdminMobileCardRow label="Purchased" value={new Date(t.created_at).toLocaleString()} />
+          </AdminMobileCard>
+        ))}
+      />
     </div>
   )
 }

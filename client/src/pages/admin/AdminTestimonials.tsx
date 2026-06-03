@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { Check, Loader, X } from 'lucide-react'
 import { getPendingTestimonials, approveTestimonial, rejectTestimonial } from '../../api/admin/testimonials'
 import AdminConfirmDialog from '../../components/AdminConfirmDialog'
+import AdminPageHeader from '../../components/admin/AdminPageHeader'
+import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/AdminMobileCard'
+import AdminResponsiveData from '../../components/admin/AdminResponsiveData'
 
 interface Testimonial {
   id: string
@@ -73,7 +76,7 @@ export default function AdminTestimonials() {
 
   return (
     <div>
-      <h1 className="text-4xl font-bold mb-8 text-gray-800 dark:text-white">Testimonials</h1>
+      <AdminPageHeader title="Testimonials" />
 
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-6">
@@ -81,13 +84,15 @@ export default function AdminTestimonials() {
         </div>
       )}
 
-      {testimonials.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-12 text-center">
-          <p className="text-gray-600 dark:text-gray-400 text-lg">No pending testimonials to review</p>
-        </div>
-      ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg overflow-hidden">
-          <table className="w-full">
+      <AdminResponsiveData
+        isEmpty={testimonials.length === 0}
+        empty={
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-12 text-center">
+            <p className="text-gray-600 dark:text-gray-400 text-lg">No pending testimonials to review</p>
+          </div>
+        }
+        desktop={
+          <table className="w-full min-w-[640px]">
             <thead className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <tr>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Member</th>
@@ -116,25 +121,17 @@ export default function AdminTestimonials() {
                       <button
                         onClick={() => setConfirmId(t.id)}
                         disabled={approvingId === t.id || rejectingId === t.id}
-                        className="flex items-center gap-1 text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 disabled:opacity-50"
+                        className="flex items-center gap-1 text-green-600 dark:text-green-400 disabled:opacity-50 min-h-[44px]"
                       >
-                        {approvingId === t.id ? (
-                          <Loader className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Check size={18} />
-                        )}
+                        {approvingId === t.id ? <Loader className="w-4 h-4 animate-spin" /> : <Check size={18} />}
                         Approve
                       </button>
                       <button
                         onClick={() => setRejectConfirmId(t.id)}
                         disabled={approvingId === t.id || rejectingId === t.id}
-                        className="flex items-center gap-1 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 disabled:opacity-50"
+                        className="flex items-center gap-1 text-red-600 dark:text-red-400 disabled:opacity-50 min-h-[44px]"
                       >
-                        {rejectingId === t.id ? (
-                          <Loader className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <X size={18} />
-                        )}
+                        {rejectingId === t.id ? <Loader className="w-4 h-4 animate-spin" /> : <X size={18} />}
                         Reject
                       </button>
                     </div>
@@ -143,8 +140,38 @@ export default function AdminTestimonials() {
               ))}
             </tbody>
           </table>
-        </div>
-      )}
+        }
+        mobile={testimonials.map((t) => (
+          <AdminMobileCard
+            key={t.id}
+            footer={
+              <>
+                <button
+                  onClick={() => setConfirmId(t.id)}
+                  disabled={approvingId === t.id || rejectingId === t.id}
+                  className="flex items-center gap-1 text-green-600 dark:text-green-400 disabled:opacity-50 min-h-[44px] px-3"
+                >
+                  {approvingId === t.id ? <Loader className="w-4 h-4 animate-spin" /> : <Check size={18} />}
+                  Approve
+                </button>
+                <button
+                  onClick={() => setRejectConfirmId(t.id)}
+                  disabled={approvingId === t.id || rejectingId === t.id}
+                  className="flex items-center gap-1 text-red-600 dark:text-red-400 disabled:opacity-50 min-h-[44px] px-3"
+                >
+                  {rejectingId === t.id ? <Loader className="w-4 h-4 animate-spin" /> : <X size={18} />}
+                  Reject
+                </button>
+              </>
+            }
+          >
+            <p className="font-semibold text-gray-900 dark:text-white">{t.member_name || 'Anonymous'}</p>
+            <AdminMobileCardRow label="Rating" value={`${t.rating}/5`} />
+            <AdminMobileCardRow label="Submitted" value={new Date(t.created_at).toLocaleDateString()} />
+            <p className="text-sm text-gray-700 dark:text-gray-300 pt-1">{t.message}</p>
+          </AdminMobileCard>
+        ))}
+      />
 
       <AdminConfirmDialog
         open={confirmId !== null}

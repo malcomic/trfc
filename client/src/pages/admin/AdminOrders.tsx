@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Eye } from 'lucide-react'
 import { getOrdersForAdmin, updateOrderStatus } from '../../api/admin/orders'
+import AdminPageHeader from '../../components/admin/AdminPageHeader'
+import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/AdminMobileCard'
+import AdminResponsiveData from '../../components/admin/AdminResponsiveData'
 
 interface OrderItem {
   product_id: string
@@ -105,22 +108,24 @@ export default function AdminOrders() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 dark:text-white">Orders</h1>
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-semibold text-gray-900 dark:text-gray-100">Filter by Status:</label>
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-primary dark:focus:border-primary-dark bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          >
-            <option value="all">All Orders</option>
-            <option value="paid">Paid</option>
-            <option value="pending">Pending</option>
-            <option value="failed">Failed</option>
-          </select>
-        </div>
-      </div>
+      <AdminPageHeader
+        title="Orders"
+        actions={
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+            <label className="text-sm font-semibold text-gray-900 dark:text-gray-100">Filter by Status</label>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="w-full sm:w-auto px-4 py-2 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-primary dark:focus:border-primary-dark bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            >
+              <option value="all">All Orders</option>
+              <option value="paid">Paid</option>
+              <option value="pending">Pending</option>
+              <option value="failed">Failed</option>
+            </select>
+          </div>
+        }
+      />
 
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-6">
@@ -128,9 +133,15 @@ export default function AdminOrders() {
         </div>
       )}
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+      <AdminResponsiveData
+        isEmpty={filteredOrders.length === 0}
+        empty={
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center text-gray-600 dark:text-gray-400">
+            No orders found
+          </div>
+        }
+        desktop={
+          <table className="w-full min-w-[720px]">
             <thead className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <tr>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Order ID</th>
@@ -143,63 +154,60 @@ export default function AdminOrders() {
               </tr>
             </thead>
             <tbody>
-              {filteredOrders.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-gray-600 dark:text-gray-400">
-                    No orders found
+              {filteredOrders.map((order) => (
+                <tr
+                  key={order.id}
+                  className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-900 dark:text-gray-100"
+                >
+                  <td className="px-6 py-4 font-mono text-sm">{order.id.slice(0, 8)}</td>
+                  <td className="px-6 py-4 font-semibold">KES {(Number(order.total_amount) || 0).toFixed(2)}</td>
+                  <td className="px-6 py-4">
+                    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(order.payment_status)}`}>
+                      {order.payment_status.toUpperCase()}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 font-mono text-sm">{order.mpesa_receipt || '—'}</td>
+                  <td className="px-6 py-4">{order.phone || '—'}</td>
+                  <td className="px-6 py-4 text-sm">{new Date(order.created_at).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 text-center">
+                    <button onClick={() => openModal(order)} className="inline-flex items-center gap-2 px-3 py-2 min-h-[44px] text-primary dark:text-primary-dark hover:bg-primary/10 rounded transition" title="View details">
+                      <Eye className="w-4 h-4" />
+                    </button>
                   </td>
                 </tr>
-              ) : (
-                filteredOrders.map((order) => (
-                  <tr
-                    key={order.id}
-                    className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-900 dark:text-gray-100"
-                  >
-                    <td className="px-6 py-4 font-mono text-sm">{order.id.slice(0, 8)}</td>
-                    <td className="px-6 py-4 font-semibold">
-                      KES {(Number(order.total_amount) || 0).toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(
-                          order.payment_status
-                        )}`}
-                      >
-                        {order.payment_status.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 font-mono text-sm">
-                      {order.mpesa_receipt ? (
-                        <span title={order.mpesa_receipt}>{order.mpesa_receipt}</span>
-                      ) : (
-                        <span className="text-gray-400 dark:text-gray-500">—</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">{order.phone || '—'}</td>
-                    <td className="px-6 py-4 text-sm">
-                      {new Date(order.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <button
-                        onClick={() => openModal(order)}
-                        className="inline-flex items-center gap-2 px-3 py-1 text-primary dark:text-primary-dark hover:bg-primary dark:hover:bg-primary-dark hover:text-white rounded transition"
-                        title="View details"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
-        </div>
-      </div>
+        }
+        mobile={filteredOrders.map((order) => (
+          <AdminMobileCard
+            key={order.id}
+            footer={
+              <button onClick={() => openModal(order)} className="flex items-center gap-2 text-primary dark:text-primary-dark min-h-[44px] px-3 font-semibold">
+                <Eye className="w-4 h-4" /> View details
+              </button>
+            }
+          >
+            <p className="font-mono font-semibold text-gray-900 dark:text-white">{order.id.slice(0, 8)}…</p>
+            <AdminMobileCardRow label="Amount" value={`KES ${(Number(order.total_amount) || 0).toFixed(2)}`} />
+            <AdminMobileCardRow
+              label="Status"
+              value={
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getStatusColor(order.payment_status)}`}>
+                  {order.payment_status.toUpperCase()}
+                </span>
+              }
+            />
+            <AdminMobileCardRow label="Phone" value={order.phone || '—'} />
+            <AdminMobileCardRow label="Date" value={new Date(order.created_at).toLocaleDateString()} />
+          </AdminMobileCard>
+        ))}
+      />
 
       {showModal && selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto">
-            <div className="sticky top-0 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 px-6 py-4 flex justify-between items-center">
+            <div className="sticky top-0 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 px-4 sm:px-6 py-4 flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">Order Details</h2>
               <button
                 onClick={closeModal}
@@ -209,10 +217,10 @@ export default function AdminOrders() {
               </button>
             </div>
 
-            <div className="p-6 space-y-6 text-gray-900 dark:text-gray-100">
+            <div className="p-4 sm:p-6 space-y-6 text-gray-900 dark:text-gray-100">
               <div>
                 <h3 className="text-lg font-semibold mb-3">Order Information</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">Order ID</p>
                     <p className="font-mono font-semibold">{selectedOrder.id}</p>
@@ -299,7 +307,7 @@ export default function AdminOrders() {
               )}
             </div>
 
-            <div className="bg-gray-100 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 px-6 py-4 flex justify-end gap-3">
+            <div className="bg-gray-100 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 px-4 sm:px-6 py-4 flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3">
               <button
                 onClick={closeModal}
                 className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 font-semibold text-gray-900 dark:text-gray-100"

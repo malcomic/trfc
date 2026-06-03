@@ -4,6 +4,7 @@ import { Users, Calendar, Package, ShoppingCart } from 'lucide-react'
 import { getEventsForAdmin } from '../../api/admin/events'
 import { getProductsForAdmin } from '../../api/admin/products'
 import api from '../../api/index'
+import AdminPageHeader from '../../components/admin/AdminPageHeader'
 
 interface StatCard {
   label: string
@@ -89,7 +90,7 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <h1 className="text-4xl font-bold mb-8 text-gray-800 dark:text-white">Dashboard</h1>
+      <AdminPageHeader title="Dashboard" />
 
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-6">
@@ -103,7 +104,7 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">{stat.label}</p>
-                <p className="text-4xl font-bold text-gray-800 dark:text-white mt-2">{stat.value}</p>
+                <p className="text-2xl sm:text-4xl font-bold text-gray-800 dark:text-white mt-2">{stat.value}</p>
               </div>
               <div className={`${stat.color} text-white p-3 rounded-lg opacity-80`}>
                 {stat.icon}
@@ -114,7 +115,7 @@ export default function AdminDashboard() {
       </div>
 
       <div className="mt-12 bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">Quick Actions</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {quickActions.map((action) => (
             <Link

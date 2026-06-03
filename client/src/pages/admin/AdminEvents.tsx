@@ -3,6 +3,9 @@ import { useForm } from 'react-hook-form'
 import { Trash2, Edit2, Plus } from 'lucide-react'
 import { getEventsForAdmin, createEvent, updateEvent, deleteEvent } from '../../api/admin/events'
 import AdminConfirmDialog from '../../components/AdminConfirmDialog'
+import AdminPageHeader from '../../components/admin/AdminPageHeader'
+import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/AdminMobileCard'
+import AdminResponsiveData from '../../components/admin/AdminResponsiveData'
 
 interface Event {
   id: string
@@ -92,20 +95,22 @@ export default function AdminEvents() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 dark:text-white">Events</h1>
-        <button
-          onClick={() => {
-            setEditingId(null)
-            reset()
-            setShowModal(true)
-          }}
-          className="flex items-center gap-2 bg-primary dark:bg-primary-dark text-white px-6 py-2 rounded-lg hover:opacity-90 transition"
-        >
-          <Plus size={20} />
-          New Event
-        </button>
-      </div>
+      <AdminPageHeader
+        title="Events"
+        actions={
+          <button
+            onClick={() => {
+              setEditingId(null)
+              reset()
+              setShowModal(true)
+            }}
+            className="flex items-center justify-center gap-2 bg-primary dark:bg-primary-dark text-white px-6 py-2 rounded-lg hover:opacity-90 transition w-full sm:w-auto"
+          >
+            <Plus size={20} />
+            New Event
+          </button>
+        }
+      />
 
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-6">
@@ -113,51 +118,87 @@ export default function AdminEvents() {
         </div>
       )}
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-            <tr>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Title</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Date</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Price</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Status</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {events.map((event) => (
-              <tr key={event.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-900 dark:text-gray-100">
-                <td className="px-6 py-4">{event.title}</td>
-                <td className="px-6 py-4">{new Date(event.event_date).toLocaleDateString()}</td>
-                <td className="px-6 py-4">KES {event.price}</td>
-                <td className="px-6 py-4">
-                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                    event.is_active
-                      ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
-                  }`}>
-                    {event.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 flex gap-2">
-                  <button
-                    onClick={() => handleEdit(event)}
-                    className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-                  >
-                    <Edit2 size={18} />
-                  </button>
-                  <button
-                    onClick={() => setDeleteId(event.id)}
-                    className="flex items-center gap-1 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </td>
+      <AdminResponsiveData
+        isEmpty={events.length === 0}
+        empty={
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center text-gray-600 dark:text-gray-400">
+            No events yet
+          </div>
+        }
+        desktop={
+          <table className="w-full min-w-[600px]">
+            <thead className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+              <tr>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Title</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Date</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Location</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Price</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Status</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {events.map((event) => (
+                <tr key={event.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-900 dark:text-gray-100">
+                  <td className="px-6 py-4">{event.title}</td>
+                  <td className="px-6 py-4">{new Date(event.event_date).toLocaleDateString()}</td>
+                  <td className="px-6 py-4">{event.location || '—'}</td>
+                  <td className="px-6 py-4">KES {event.price}</td>
+                  <td className="px-6 py-4">
+                    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                      event.is_active
+                        ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
+                    }`}>
+                      {event.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 flex gap-2">
+                    <button onClick={() => handleEdit(event)} className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 min-h-[44px]">
+                      <Edit2 size={18} />
+                    </button>
+                    <button onClick={() => setDeleteId(event.id)} className="flex items-center gap-1 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 min-h-[44px]">
+                      <Trash2 size={18} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        }
+        mobile={events.map((event) => (
+          <AdminMobileCard
+            key={event.id}
+            footer={
+              <>
+                <button onClick={() => handleEdit(event)} className="flex items-center gap-1 text-blue-600 dark:text-blue-400 min-h-[44px] px-3">
+                  <Edit2 size={18} /> Edit
+                </button>
+                <button onClick={() => setDeleteId(event.id)} className="flex items-center gap-1 text-red-600 dark:text-red-400 min-h-[44px] px-3">
+                  <Trash2 size={18} /> Delete
+                </button>
+              </>
+            }
+          >
+            <p className="font-semibold text-gray-900 dark:text-white">{event.title}</p>
+            <AdminMobileCardRow label="Date" value={new Date(event.event_date).toLocaleDateString()} />
+            <AdminMobileCardRow label="Location" value={event.location || '—'} />
+            <AdminMobileCardRow label="Price" value={`KES ${event.price}`} />
+            <AdminMobileCardRow
+              label="Status"
+              value={
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                  event.is_active
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
+                }`}>
+                  {event.is_active ? 'Active' : 'Inactive'}
+                </span>
+              }
+            />
+          </AdminMobileCard>
+        ))}
+      />
 
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">

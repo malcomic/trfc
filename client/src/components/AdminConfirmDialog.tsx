@@ -26,7 +26,7 @@ export default function AdminConfirmDialog({
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full p-6">
         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{title}</h2>
         <p className="text-gray-600 dark:text-gray-400 mb-6">{message}</p>
-        <div className="flex gap-3 justify-end">
+        <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 sm:justify-end">
           <button
             type="button"
             onClick={onCancel}

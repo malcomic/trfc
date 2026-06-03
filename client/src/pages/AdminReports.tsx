@@ -10,6 +10,9 @@ import {
   getUserStats,
   getOrderStats,
 } from '../api/analytics'
+import AdminPageHeader from '../components/admin/AdminPageHeader'
+import AdminMobileCard, { AdminMobileCardRow } from '../components/admin/AdminMobileCard'
+import AdminResponsiveData from '../components/admin/AdminResponsiveData'
 
 interface ReportConfig {
   id: string
@@ -200,10 +203,10 @@ export default function AdminReports() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-4xl font-bold mb-2 text-gray-800 dark:text-white">Reports</h1>
-        <p className="text-gray-600 dark:text-gray-400">Create and manage custom analytics reports</p>
-      </div>
+      <AdminPageHeader
+        title="Reports"
+        subtitle="Create and manage custom analytics reports"
+      />
 
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex gap-3">
@@ -228,7 +231,7 @@ export default function AdminReports() {
 
         <div className="mb-6">
           <label className="block text-sm font-semibold mb-3 text-gray-900 dark:text-gray-100">Date Range</label>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             {['7', '30', '90'].map((range) => (
               <button
                 key={range}
@@ -278,11 +281,11 @@ export default function AdminReports() {
           </div>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={() => generateReport()}
             disabled={loading}
-            className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+            className="flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-2 min-h-[44px] rounded-lg hover:bg-blue-700 transition disabled:opacity-50 w-full sm:w-auto"
           >
             {loading ? <Loader className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             Generate & Download
@@ -290,7 +293,7 @@ export default function AdminReports() {
           <button
             onClick={saveReport}
             disabled={loading}
-            className="flex items-center gap-2 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+            className="flex items-center justify-center gap-2 bg-green-600 text-white px-6 py-2 min-h-[44px] rounded-lg hover:bg-green-700 transition disabled:opacity-50 w-full sm:w-auto"
           >
             <Plus className="w-4 h-4" />
             Save Report Template
@@ -302,52 +305,84 @@ export default function AdminReports() {
       </div>
 
       {reports.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-lg p-6">
-          <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Saved Report Templates</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
-                <tr>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Report Name</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Created</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Date Range</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Metrics</th>
-                  <th className="text-right px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reports.map((report) => (
-                  <tr key={report.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{report.name}</td>
-                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
-                      {new Date(report.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400">Last {report.dateRange} days</td>
-                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
-                      {Object.values(report.metrics).filter(Boolean).length}/7
-                    </td>
-                    <td className="text-right px-4 py-3">
-                      <div className="flex gap-2 justify-end">
-                        <button
-                          onClick={() => generateReport(report)}
-                          disabled={loading}
-                          className="text-blue-600 dark:text-blue-400 hover:text-blue-700 disabled:opacity-50"
-                        >
-                          <Download className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => deleteReport(report.id)}
-                          className="text-red-600 dark:text-red-400 hover:text-red-700"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold mb-6 text-gray-900 dark:text-white">Saved Report Templates</h2>
+          <AdminResponsiveData
+            desktop={
+              <table className="w-full text-sm min-w-[560px]">
+                <thead className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
+                  <tr>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Report Name</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Created</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Date Range</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Metrics</th>
+                    <th className="text-right px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {reports.map((report) => (
+                    <tr key={report.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{report.name}</td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                        {new Date(report.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">Last {report.dateRange} days</td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                        {Object.values(report.metrics).filter(Boolean).length}/7
+                      </td>
+                      <td className="text-right px-4 py-3">
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            onClick={() => generateReport(report)}
+                            disabled={loading}
+                            className="text-blue-600 dark:text-blue-400 hover:text-blue-700 disabled:opacity-50 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                          >
+                            <Download className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => deleteReport(report.id)}
+                            className="text-red-600 dark:text-red-400 hover:text-red-700 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            }
+            mobile={reports.map((report) => (
+              <AdminMobileCard
+                key={report.id}
+                footer={
+                  <>
+                    <button
+                      onClick={() => generateReport(report)}
+                      disabled={loading}
+                      className="flex items-center gap-2 text-blue-600 dark:text-blue-400 disabled:opacity-50 min-h-[44px] px-3"
+                    >
+                      <Download className="w-4 h-4" /> Download
+                    </button>
+                    <button
+                      onClick={() => deleteReport(report.id)}
+                      className="flex items-center gap-2 text-red-600 dark:text-red-400 min-h-[44px] px-3"
+                    >
+                      <Trash2 className="w-4 h-4" /> Delete
+                    </button>
+                  </>
+                }
+              >
+                <p className="font-semibold text-gray-900 dark:text-white">{report.name}</p>
+                <AdminMobileCardRow label="Created" value={new Date(report.createdAt).toLocaleDateString()} />
+                <AdminMobileCardRow label="Date range" value={`Last ${report.dateRange} days`} />
+                <AdminMobileCardRow
+                  label="Metrics"
+                  value={`${Object.values(report.metrics).filter(Boolean).length}/7`}
+                />
+              </AdminMobileCard>
+            ))}
+          />
         </div>
       )}
     </div>
