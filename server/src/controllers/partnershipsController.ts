@@ -1,8 +1,8 @@
 import { Request, Response } from 'express'
 import { query } from '../config/db.js'
+import { getActiveTierSlugs } from './sponsorshipTiersController.js'
 
 const VALID_STATUSES = ['pending', 'contacted', 'approved', 'declined'] as const
-const VALID_TIERS = ['community', 'title', 'premier'] as const
 
 export async function createPartnership(req: Request, res: Response) {
   try {
@@ -12,7 +12,8 @@ export async function createPartnership(req: Request, res: Response) {
       return res.status(400).json({ error: 'Company name, contact person, email, phone, and tier are required' })
     }
 
-    if (!VALID_TIERS.includes(tier)) {
+    const validTiers = await getActiveTierSlugs()
+    if (!validTiers.includes(tier)) {
       return res.status(400).json({ error: 'Invalid sponsorship tier' })
     }
 

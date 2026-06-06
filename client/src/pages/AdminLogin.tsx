@@ -1,5 +1,5 @@
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { loginUser } from '../api/auth'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
@@ -9,11 +9,24 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { login, user } = useAuth()
+
+  const getRedirectPath = () => {
+    const redirect = searchParams.get('redirect')
+    if (!redirect) return '/admin'
+    try {
+      const decoded = decodeURIComponent(redirect)
+      if (decoded.startsWith('/admin') && !decoded.startsWith('//')) return decoded
+    } catch {
+      /* ignore malformed redirect */
+    }
+    return '/admin'
+  }
 
   useEffect(() => {
     if (user && user.role === 'admin') {
-      navigate('/admin')
+      navigate(getRedirectPath())
     }
   }, [user, navigate])
 
@@ -29,7 +42,7 @@ export default function AdminLogin() {
       }
 
       login(response.token, response.user, response.refreshToken)
-      navigate('/admin')
+      navigate(getRedirectPath())
     } catch (error: any) {
       console.error('Login failed:', error)
       setErrorMessage(error.response?.data?.error || 'Login failed. Please try again.')

@@ -31,6 +31,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       try {
         const profile = await getUserProfile()
+        const refreshedToken = localStorage.getItem('token')
+        if (refreshedToken) setToken(refreshedToken)
         setUser(profile)
         localStorage.setItem('user', JSON.stringify(profile))
       } catch (err: any) {

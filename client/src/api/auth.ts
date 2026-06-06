@@ -22,5 +22,5 @@ export const refreshToken = async (refreshToken: string) => {
 
 export const getUserProfile = async () => {
   const response = await api.get('/auth/me');
-  return response.data;
+  return response.data.user;
 };

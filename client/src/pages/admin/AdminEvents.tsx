@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { Trash2, Edit2, Plus } from 'lucide-react'
 import { getEventsForAdmin, createEvent, updateEvent, deleteEvent } from '../../api/admin/events'
+import { uploadImage } from '../../api/admin/upload'
 import AdminConfirmDialog from '../../components/AdminConfirmDialog'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/AdminMobileCard'
@@ -26,11 +27,25 @@ export default function AdminEvents() {
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
-  const { register, handleSubmit, reset, formState: { errors } } = useForm()
+  const [uploading, setUploading] = useState(false)
+  const [filePreview, setFilePreview] = useState<string | null>(null)
+  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm()
+  const fileInput = watch('file')
 
   useEffect(() => {
     fetchEvents()
   }, [])
+
+  useEffect(() => {
+    if (fileInput && fileInput.length > 0) {
+      const file = fileInput[0]
+      const reader = new FileReader()
+      reader.onloadend = () => setFilePreview(reader.result as string)
+      reader.readAsDataURL(file)
+    } else {
+      setFilePreview(null)
+    }
+  }, [fileInput])
 
   const fetchEvents = async () => {
     try {
@@ -47,26 +62,45 @@ export default function AdminEvents() {
 
   const onSubmit = async (data: any) => {
     try {
+      setUploading(true)
+      setError('')
+
+      let imageUrl = data.image_url || undefined
+      if (data.file && data.file.length > 0) {
+        const formData = new FormData()
+        formData.append('file', data.file[0])
+        formData.append('folder', 'trfc_events')
+        const result = await uploadImage(formData)
+        imageUrl = result.url
+      }
+
+      const payload = {
+        title: data.title,
+        description: data.description,
+        event_date: data.event_date,
+        location: data.location,
+        price: parseFloat(data.price),
+        capacity: data.capacity ? parseInt(data.capacity) : undefined,
+        image_url: imageUrl,
+      }
+
       if (editingId) {
         await updateEvent(editingId, {
-          ...data,
-          price: parseFloat(data.price),
-          capacity: data.capacity ? parseInt(data.capacity) : null,
+          ...payload,
           is_active: data.is_active === 'on',
         })
       } else {
-        await createEvent({
-          ...data,
-          price: parseFloat(data.price),
-          capacity: data.capacity ? parseInt(data.capacity) : null,
-        })
+        await createEvent(payload)
       }
       setShowModal(false)
       setEditingId(null)
+      setFilePreview(null)
       reset()
       fetchEvents()
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to save event')
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -85,6 +119,7 @@ export default function AdminEvents() {
 
   const handleEdit = (event: Event) => {
     setEditingId(event.id)
+    setFilePreview(null)
     reset(event)
     setShowModal(true)
   }
@@ -101,6 +136,7 @@ export default function AdminEvents() {
           <button
             onClick={() => {
               setEditingId(null)
+              setFilePreview(null)
               reset()
               setShowModal(true)
             }}
@@ -266,13 +302,38 @@ export default function AdminEvents() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Image URL</label>
-                <input
-                  type="url"
-                  {...register('image_url')}
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Upload Image</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    {...register('file')}
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                  {filePreview && (
+                    <div className="mt-2 relative w-full h-32 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
+                      <img src={filePreview} alt="Preview" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  {!filePreview && editingId && watch('image_url') && (
+                    <div className="mt-2 relative w-full h-32 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
+                      <img src={watch('image_url')} alt="Current" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="text-center text-gray-500 dark:text-gray-400 text-sm">OR</div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Image URL</label>
+                  <input
+                    type="url"
+                    {...register('image_url')}
+                    placeholder="https://example.com/image.jpg"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                </div>
               </div>
 
               {editingId && (
@@ -294,6 +355,7 @@ export default function AdminEvents() {
                   type="button"
                   onClick={() => {
                     setShowModal(false)
+                    setFilePreview(null)
                     reset()
                   }}
                   className="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -302,9 +364,10 @@ export default function AdminEvents() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-primary dark:bg-primary-dark text-white rounded-lg hover:opacity-90"
+                  disabled={uploading}
+                  className="px-4 py-2 bg-primary dark:bg-primary-dark text-white rounded-lg hover:opacity-90 disabled:opacity-50"
                 >
-                  {editingId ? 'Update' : 'Create'}
+                  {uploading ? 'Saving...' : editingId ? 'Update' : 'Create'}
                 </button>
               </div>
             </form>

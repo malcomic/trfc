@@ -28,12 +28,30 @@ export default function AdminEquipment() {
     try {
       setLoading(true)
       setError('')
-      const [statsData, hireData] = await Promise.all([
+      const [statsResult, hireResult] = await Promise.allSettled([
         getEquipmentStats(),
         getEquipmentHireForAdmin(statusFilter),
       ])
-      setStats(Array.isArray(statsData) ? statsData : [])
-      setHires(Array.isArray(hireData) ? hireData : [])
+
+      if (statsResult.status === 'fulfilled') {
+        setStats(Array.isArray(statsResult.value) ? statsResult.value : [])
+      } else {
+        setStats([])
+        console.error(statsResult.reason)
+      }
+
+      if (hireResult.status === 'fulfilled') {
+        setHires(Array.isArray(hireResult.value) ? hireResult.value : [])
+      } else {
+        setHires([])
+        console.error(hireResult.reason)
+      }
+
+      if (statsResult.status === 'rejected' && hireResult.status === 'rejected') {
+        setError('Failed to load equipment data')
+      } else if (statsResult.status === 'rejected') {
+        setError('Failed to load equipment stats. Hire records are shown below.')
+      }
     } catch (err) {
       setError('Failed to load equipment data')
       console.error(err)

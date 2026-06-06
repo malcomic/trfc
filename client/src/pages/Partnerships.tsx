@@ -1,31 +1,9 @@
-import { useState } from 'react'
-import { CheckCircle, AlertCircle, Handshake, Building2, Megaphone, Crown } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { CheckCircle, AlertCircle, Handshake } from 'lucide-react'
 import { submitPartnership } from '../api/partnerships'
+import { getSponsorshipTiers, type SponsorshipTier } from '../api/sponsorshipTiers'
+import { getSponsorshipIcon } from '../utils/sponsorshipIcons'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
-
-const TIERS = [
-  {
-    id: 'community',
-    icon: Building2,
-    name: 'Community Partner',
-    price: 'KES 50,000',
-    benefits: ['Logo on event banners', 'Social media shout-out', '2 complimentary event entries'],
-  },
-  {
-    id: 'title',
-    icon: Megaphone,
-    name: 'Title Sponsor',
-    price: 'KES 150,000',
-    benefits: ['Title naming on one flagship event', 'Logo on TRFC merch', 'Booth at 3 events', 'Newsletter feature'],
-  },
-  {
-    id: 'premier',
-    icon: Crown,
-    name: 'Premier Partner',
-    price: 'KES 300,000',
-    benefits: ['Season-long brand presence', 'Exclusive category naming rights', 'Coach-led brand activation', 'Priority vendor onboarding'],
-  },
-]
 
 const POLICIES = [
   'All sponsorships are subject to TRFC brand guidelines and approval.',
@@ -35,17 +13,38 @@ const POLICIES = [
 ]
 
 export default function Partnerships() {
+  const [tiers, setTiers] = useState<SponsorshipTier[]>([])
+  const [tiersLoading, setTiersLoading] = useState(true)
   const [form, setForm] = useState({
     company_name: '',
     contact_person: '',
     email: '',
     phone: '',
-    tier: 'community',
+    tier: '',
     message: '',
   })
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    const fetchTiers = async () => {
+      try {
+        setTiersLoading(true)
+        const data = await getSponsorshipTiers()
+        const activeTiers = Array.isArray(data) ? data : []
+        setTiers(activeTiers)
+        if (activeTiers.length > 0) {
+          setForm((prev) => ({ ...prev, tier: prev.tier || activeTiers[0].slug }))
+        }
+      } catch {
+        setError('Failed to load sponsorship tiers. Please refresh the page.')
+      } finally {
+        setTiersLoading(false)
+      }
+    }
+    fetchTiers()
+  }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
@@ -57,12 +56,23 @@ export default function Partnerships() {
       setError('Please fill in all required fields')
       return
     }
+    if (!form.tier) {
+      setError('Please select a sponsorship tier')
+      return
+    }
     try {
       setSubmitting(true)
       setError('')
       await submitPartnership(form)
       setSubmitted(true)
-      setForm({ company_name: '', contact_person: '', email: '', phone: '', tier: 'community', message: '' })
+      setForm({
+        company_name: '',
+        contact_person: '',
+        email: '',
+        phone: '',
+        tier: tiers[0]?.slug || '',
+        message: '',
+      })
     } catch {
       setError('Failed to submit inquiry. Please try again.')
     } finally {
@@ -88,22 +98,31 @@ export default function Partnerships() {
       <div className="max-w-5xl mx-auto px-[6%] py-10 pb-20 space-y-16">
         <section>
           <h2 className="font-bebas text-4xl text-chalk light:text-chalk-light mb-6">SPONSORSHIP TIERS</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {TIERS.map(({ id, icon: Icon, name, price, benefits }) => (
-              <div key={id} className={`${cardSurface} p-6 flex flex-col ${form.tier === id ? 'border-fire/40' : ''}`}>
-                <div className="w-12 h-12 bg-fire/10 border border-fire/20 flex items-center justify-center text-fire mb-4">
-                  <Icon size={22} />
-                </div>
-                <h3 className="font-barlow-condensed font-bold text-xl mb-1">{name}</h3>
-                <p className="font-bebas text-2xl text-fire mb-4">{price}</p>
-                <ul className="text-sm text-fog light:text-fog-light space-y-2 flex-1">
-                  {benefits.map((b) => (
-                    <li key={b}>• {b}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+          {tiersLoading ? (
+            <p className="text-fog light:text-fog-light text-sm">Loading tiers…</p>
+          ) : tiers.length === 0 ? (
+            <p className="text-fog light:text-fog-light text-sm">Sponsorship tiers are being updated. Please check back soon.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {tiers.map(({ slug, icon, name, price_display, benefits }) => {
+                const Icon = getSponsorshipIcon(icon)
+                return (
+                  <div key={slug} className={`${cardSurface} p-6 flex flex-col ${form.tier === slug ? 'border-fire/40' : ''}`}>
+                    <div className="w-12 h-12 bg-fire/10 border border-fire/20 flex items-center justify-center text-fire mb-4">
+                      <Icon size={22} />
+                    </div>
+                    <h3 className="font-barlow-condensed font-bold text-xl mb-1">{name}</h3>
+                    <p className="font-bebas text-2xl text-fire mb-4">{price_display}</p>
+                    <ul className="text-sm text-fog light:text-fog-light space-y-2 flex-1">
+                      {benefits.map((b) => (
+                        <li key={b}>• {b}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </section>
 
         <section>
@@ -149,9 +168,15 @@ export default function Partnerships() {
                 </div>
                 <div>
                   <label className="text-xs text-fog light:text-fog-light block mb-1.5">Sponsorship Tier *</label>
-                  <select name="tier" value={form.tier} onChange={handleChange} className={`w-full px-3 py-2 text-sm ${inputField}`}>
-                    {TIERS.map((t) => (
-                      <option key={t.id} value={t.id}>{t.name} — {t.price}</option>
+                  <select
+                    name="tier"
+                    value={form.tier}
+                    onChange={handleChange}
+                    disabled={tiers.length === 0}
+                    className={`w-full px-3 py-2 text-sm ${inputField}`}
+                  >
+                    {tiers.map((t) => (
+                      <option key={t.slug} value={t.slug}>{t.name} — {t.price_display}</option>
                     ))}
                   </select>
                 </div>
@@ -164,7 +189,7 @@ export default function Partnerships() {
                     <AlertCircle size={16} className="flex-shrink-0" /> {error}
                   </div>
                 )}
-                <button type="submit" disabled={submitting} className="w-full bg-fire text-white py-3 clip-angled font-barlow-condensed font-black text-sm letter-spacing-widest text-transform-uppercase hover:bg-ember disabled:opacity-50">
+                <button type="submit" disabled={submitting || tiers.length === 0} className="w-full bg-fire text-white py-3 clip-angled font-barlow-condensed font-black text-sm letter-spacing-widest text-transform-uppercase hover:bg-ember disabled:opacity-50">
                   {submitting ? 'Submitting…' : 'Submit Inquiry'}
                 </button>
               </form>

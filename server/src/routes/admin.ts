@@ -9,6 +9,7 @@ import {
   getAdminPartnerships,
   updatePartnershipStatus,
 } from '../controllers/partnershipsController.js'
+import { getAdminSponsorshipTiers } from '../controllers/sponsorshipTiersController.js'
 import { authMiddleware, adminMiddleware } from '../middleware/auth.js'
 
 const router = Router()
@@ -21,5 +22,6 @@ router.get('/equipment/hire', getAdminEquipmentHire)
 router.get('/tickets', getAdminTickets)
 router.get('/partnerships', getAdminPartnerships)
 router.patch('/partnerships/:id', updatePartnershipStatus)
+router.get('/sponsorship-tiers', getAdminSponsorshipTiers)
 
 export default router

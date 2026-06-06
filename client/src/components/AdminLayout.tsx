@@ -13,6 +13,7 @@ import {
   Wrench,
   Ticket,
   Handshake,
+  Layers,
   LogOut,
   ArrowLeft,
   Menu,
@@ -40,6 +41,7 @@ const navItems = [
   { path: '/admin/equipment', label: 'Equipment', icon: Wrench },
   { path: '/admin/tickets', label: 'Tickets', icon: Ticket },
   { path: '/admin/partnerships', label: 'Partnerships', icon: Handshake },
+  { path: '/admin/sponsorship-tiers', label: 'Sponsorship Tiers', icon: Layers },
 ]
 
 function AdminNavLinks({

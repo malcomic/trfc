@@ -464,7 +464,7 @@ export const analyticsController = {
           equipment_name,
           COUNT(id) as rentals,
           COALESCE(SUM(CASE WHEN payment_status = $1 THEN total_cost ELSE 0 END), 0) as revenue,
-          COALESCE(AVG(EXTRACT(DAY FROM return_date - hire_date)), 0) as avg_duration_days
+          COALESCE(AVG(return_date - hire_date), 0) as avg_duration_days
         FROM equipment_hire
         WHERE equipment_name IS NOT NULL
         GROUP BY equipment_name
@@ -477,7 +477,7 @@ export const analyticsController = {
           name: row.equipment_name,
           rentals: parseInt(row.rentals),
           revenue: parseFloat(row.revenue),
-          avgDurationDays: parseFloat(row.avg_duration_days.toFixed(1)),
+          avgDurationDays: parseFloat(Number(row.avg_duration_days).toFixed(1)),
         }))
       )
     } catch (error: any) {

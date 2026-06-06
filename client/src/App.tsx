@@ -40,6 +40,7 @@ import AdminTestimonials from './pages/admin/AdminTestimonials'
 import AdminEquipment from './pages/admin/AdminEquipment'
 import AdminTickets from './pages/admin/AdminTickets'
 import AdminPartnerships from './pages/admin/AdminPartnerships'
+import AdminSponsorshipTiers from './pages/admin/AdminSponsorshipTiers'
 
 function App() {
   return (
@@ -71,6 +72,7 @@ function App() {
           <Route path="equipment" element={<AdminEquipment />} />
           <Route path="tickets" element={<AdminTickets />} />
           <Route path="partnerships" element={<AdminPartnerships />} />
+          <Route path="sponsorship-tiers" element={<AdminSponsorshipTiers />} />
         </Route>
 
         <Route element={<PublicLayout />}>

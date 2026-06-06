@@ -106,6 +106,19 @@ CREATE TABLE IF NOT EXISTS equipment_hire (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Sponsorship Tiers
+CREATE TABLE IF NOT EXISTS sponsorship_tiers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug VARCHAR(50) UNIQUE NOT NULL,
+  name VARCHAR(200) NOT NULL,
+  price_display VARCHAR(50) NOT NULL,
+  benefits JSONB NOT NULL DEFAULT '[]',
+  icon VARCHAR(50) DEFAULT 'Handshake',
+  sort_order INT DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Partnerships
 CREATE TABLE IF NOT EXISTS partnerships (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -148,3 +161,5 @@ CREATE INDEX IF NOT EXISTS idx_events_active ON events(is_active);
 CREATE INDEX IF NOT EXISTS idx_products_active ON products(is_active);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(payment_status);
 CREATE INDEX IF NOT EXISTS idx_testimonials_approved ON testimonials(is_approved);
+CREATE INDEX IF NOT EXISTS idx_sponsorship_tiers_active ON sponsorship_tiers(is_active);
+CREATE INDEX IF NOT EXISTS idx_sponsorship_tiers_sort ON sponsorship_tiers(sort_order);

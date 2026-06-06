@@ -17,8 +17,10 @@ import testimonialsRoutes from './routes/testimonials.js';
 import galleryRoutes from './routes/gallery.js';
 import equipmentRoutes from './routes/equipment.js';
 import partnershipsRoutes from './routes/partnerships.js';
+import sponsorshipTiersRoutes from './routes/sponsorshipTiers.js';
 import analyticsRoutes from './routes/analytics.js';
 import adminRoutes from './routes/admin.js';
+import uploadRoutes from './routes/upload.js';
 
 dotenv.config();
 
@@ -44,8 +46,10 @@ app.use('/api/orders', ordersRoutes);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/partnerships', partnershipsRoutes);
+app.use('/api/sponsorship-tiers', sponsorshipTiersRoutes);
 app.use('/api/testimonials', testimonialsRoutes);
 app.use('/api/gallery', upload.single('file'), galleryRoutes);
+app.use('/api/upload', upload.single('file'), uploadRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/admin', adminRoutes);
 

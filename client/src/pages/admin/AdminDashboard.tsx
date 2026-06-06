@@ -25,6 +25,7 @@ const quickActions = [
   { to: '/admin/equipment', label: 'Equipment', desc: 'Equipment hire statistics', color: 'cyan' },
   { to: '/admin/tickets', label: 'Tickets', desc: 'View event ticket sales', color: 'blue' },
   { to: '/admin/partnerships', label: 'Partnerships', desc: 'Review sponsorship inquiries', color: 'indigo' },
+  { to: '/admin/sponsorship-tiers', label: 'Sponsorship Tiers', desc: 'Manage tier pricing and benefits', color: 'violet' },
 ]
 
 export default function AdminDashboard() {
