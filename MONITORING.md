@@ -21,7 +21,7 @@ The backend logs all important events to `server/logs/payments.log`:
 logger.debug('Debug message')      // Development only
 logger.info('Information')         // General events
 logger.warn('Warning message')     // Potential issues
-logger.error('Error message')      // Error
+logger.error('Error message')      // Errors
 logger.critical('Critical error')  // System failures
 ```
 
