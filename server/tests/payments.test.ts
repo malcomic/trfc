@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { getTimestamp, generatePassword, getMPesaToken } from '../utils/mpesa'
+import { getTimestamp, generatePassword, getMPesaToken } from '../src/utils/mpesa'
 import crypto from 'crypto'
-import { config } from '../config/env'
+import { config } from '../src/config/env'
 
 describe('M-Pesa Utilities', () => {
   describe('getTimestamp', () => {
