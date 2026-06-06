@@ -7,7 +7,14 @@ export async function buyTicket(req: Request, res: Response) {
   try {
     const eventId = req.params.eventId || req.body.eventId
     const { quantity, phone } = req.body
-    const userId = req.user?.id ?? null
+    let userId = req.user?.id ?? null
+
+    if (userId) {
+      const userCheck = await query('SELECT id FROM users WHERE id = $1', [userId])
+      if (userCheck.rows.length === 0) {
+        userId = null
+      }
+    }
 
     if (!eventId || !quantity || !phone) {
       return res
@@ -63,8 +70,14 @@ export async function buyTicket(req: Request, res: Response) {
       pricePerTicket: event.price,
       totalPrice: parseFloat(event.price) * quantity,
     })
-  } catch (error) {
-    console.error('Error buying ticket:', error)
+  } catch (error: unknown) {
+    const pgError = error as { code?: string; message?: string }
+    console.error('Error buying ticket:', pgError?.message ?? error)
+    if (pgError?.code === '42703') {
+      return res.status(500).json({
+        error: 'Database schema is out of date. Restart the server to apply migrations.',
+      })
+    }
     res.status(500).json({ error: 'Failed to create tickets' })
   }
 }

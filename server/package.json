@@ -8,6 +8,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "esbuild src/server.ts --bundle --platform=node --target=node18 --outfile=dist/server.js --format=esm --packages=external",
     "start": "node dist/server.js",
+    "migrate": "tsx src/scripts/migrate.ts",
     "test": "vitest",
     "test:unit": "vitest run src/__tests__/unit",
     "test:integration": "vitest run src/__tests__/integration",

@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import multer from 'multer';
 import pool from './config/db.js';
+import { runMigrations } from './utils/runMigrations.js';
 
 export { pool };
 
@@ -59,6 +60,8 @@ const startServer = async () => {
     const client = await pool.connect();
     console.log('✓ Connected to PostgreSQL database');
     client.release();
+
+    await runMigrations();
 
     app.listen(PORT, () => {
       console.log(`✓ Server running on http://localhost:${PORT}`);
