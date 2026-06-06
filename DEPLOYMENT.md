@@ -18,7 +18,7 @@
 
 ### Setup
 
-1. **Create .env file from template:**
+1. **Create .env file from templates:**
 ```bash
 cp .env.example .env.local
 # Edit .env.local with your local credentials
