@@ -19,40 +19,66 @@ export default function PaymentStatusModal({
   const [error, setError] = useState('')
   const [attempts, setAttempts] = useState(0)
 
+  const MAX_ATTEMPTS = 100
+  const POLL_INTERVAL_MS = 3000
+
+  const isPaymentSuccess = (result: Record<string, unknown>) => {
+    const resultCode = result.ResultCode ?? result.resultCode
+    const responseCode = result.ResponseCode ?? result.responseCode
+    return (
+      resultCode === '0' ||
+      resultCode === 0 ||
+      responseCode === '0' ||
+      responseCode === 0 ||
+      result.payment_status === 'paid'
+    )
+  }
+
+  const isPaymentFailed = (result: Record<string, unknown>) => {
+    const resultCode = result.ResultCode ?? result.resultCode
+    return (
+      resultCode === '1' ||
+      resultCode === 1 ||
+      result.payment_status === 'failed'
+    )
+  }
+
   useEffect(() => {
-    if (!isOpen || !checkoutRequestId) return
+    if (!isOpen || !checkoutRequestId || status !== 'pending') return
 
     const timer = setTimeout(() => {
-      checkStatus()
-    }, 1000)
+      void checkStatus()
+    }, attempts === 0 ? 1000 : POLL_INTERVAL_MS)
 
     return () => clearTimeout(timer)
-  }, [isOpen, checkoutRequestId, attempts])
+  }, [isOpen, checkoutRequestId, attempts, status])
 
   const checkStatus = async () => {
     try {
       const result = await checkPaymentStatus(checkoutRequestId)
 
-      if (
-        result.ResultCode === '0' ||
-        result.ResultCode === 0 ||
-        result.payment_status === 'paid'
-      ) {
+      if (isPaymentSuccess(result)) {
         setStatus('success')
-      } else if (result.ResultCode === '1' || result.payment_status === 'failed') {
+        return
+      }
+
+      if (isPaymentFailed(result)) {
         setError('Payment was rejected. Please try again.')
         setStatus('failed')
+        return
+      }
+
+      if (attempts < MAX_ATTEMPTS) {
+        setAttempts((prev) => prev + 1)
       } else {
-        if (attempts < 60) {
-          setAttempts(attempts + 1)
-        } else {
-          setError('Payment confirmation timeout. Please check your M-Pesa')
-          setStatus('failed')
-        }
+        setError(
+          'Payment confirmation timeout. If M-Pesa deducted your money, close this and check your ticket confirmation page.'
+        )
+        setStatus('failed')
       }
     } catch {
-      if (attempts < 60) {
-        setAttempts(attempts + 1)
+      if (attempts < MAX_ATTEMPTS) {
+        setAttempts((prev) => prev + 1)
       } else {
         setError('Unable to verify payment status. Please check M-Pesa.')
         setStatus('failed')

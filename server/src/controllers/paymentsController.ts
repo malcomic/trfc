@@ -14,7 +14,12 @@ import {
   logError,
   logDuplicateCallback,
 } from '../utils/paymentLogger.js'
-import { validatePaymentReference, markEntitiesFailedByCheckoutId } from '../utils/paymentValidation.js'
+import {
+  validatePaymentReference,
+  markEntitiesFailedByCheckoutId,
+  markEntitiesPaidByCheckoutId,
+  isMpesaSuccessCode,
+} from '../utils/paymentValidation.js'
 import { getLocalPaymentStatus, toStatusResponse } from '../utils/paymentStatus.js'
 
 async function decrementOrderStock(orderId: string) {
@@ -278,6 +283,20 @@ export async function handleCallback(req: Request, res: Response) {
         mpesaReceipt || null
       )
     }
+    if (updateCount === 0) {
+      updateCount = await markEntitiesPaidByCheckoutId(
+        checkoutRequestId,
+        mpesaReceipt || null
+      )
+      const paidOrders = await query(
+        `SELECT id FROM orders
+         WHERE checkout_request_id = $1 AND payment_status = 'paid'`,
+        [checkoutRequestId]
+      )
+      for (const order of paidOrders.rows) {
+        await decrementOrderStock(order.id)
+      }
+    }
 
     logCallbackProcessing(
       checkoutRequestId,
@@ -321,7 +340,33 @@ export async function queryPaymentStatus(req: Request, res: Response) {
     try {
       const token = await getMPesaToken()
       const statusResponse = await mpesaQueryPaymentStatus(checkoutRequestId, token)
-      logPaymentStatusQuery(checkoutRequestId, statusResponse.ResultCode, null)
+      const resultCode = statusResponse.ResultCode ?? statusResponse.resultCode
+      logPaymentStatusQuery(checkoutRequestId, resultCode, null)
+
+      if (isMpesaSuccessCode(resultCode)) {
+        const mpesaReceipt =
+          statusResponse.MpesaReceiptNumber ??
+          statusResponse.mpesaReceiptNumber ??
+          null
+        await markEntitiesPaidByCheckoutId(checkoutRequestId, mpesaReceipt)
+        const paidOrders = await query(
+          `SELECT id FROM orders
+           WHERE checkout_request_id = $1 AND payment_status = 'paid'`,
+          [checkoutRequestId]
+        )
+        for (const order of paidOrders.rows) {
+          await decrementOrderStock(order.id)
+        }
+
+        return res.json({
+          ...statusResponse,
+          ResultCode: 0,
+          payment_status: 'paid',
+          MpesaReceiptNumber: mpesaReceipt,
+          CheckoutRequestID: checkoutRequestId,
+        })
+      }
+
       return res.json(statusResponse)
     } catch (mpesaError: unknown) {
       const err = mpesaError as { response?: { data?: Record<string, unknown> }; message?: string }

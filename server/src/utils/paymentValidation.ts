@@ -85,6 +85,40 @@ export async function validatePaymentReference(
   return { ok: false, status: 400, error: 'One of orderId, ticketBatchId, ticketId, or equipmentHireId is required' }
 }
 
+export function isMpesaSuccessCode(code: unknown): boolean {
+  return code === 0 || code === '0'
+}
+
+export async function markEntitiesPaidByCheckoutId(
+  checkoutRequestId: string,
+  mpesaReceipt?: string | null
+): Promise<number> {
+  const orderResult = await query(
+    `UPDATE orders
+     SET payment_status = 'paid', mpesa_receipt = COALESCE($2, mpesa_receipt)
+     WHERE checkout_request_id = $1 AND payment_status = 'pending'`,
+    [checkoutRequestId, mpesaReceipt || null]
+  )
+  const ticketResult = await query(
+    `UPDATE tickets
+     SET payment_status = 'paid', mpesa_receipt = COALESCE($2, mpesa_receipt)
+     WHERE checkout_request_id = $1 AND payment_status = 'pending'`,
+    [checkoutRequestId, mpesaReceipt || null]
+  )
+  const hireResult = await query(
+    `UPDATE equipment_hire
+     SET payment_status = 'paid', mpesa_receipt = COALESCE($2, mpesa_receipt)
+     WHERE checkout_request_id = $1 AND payment_status = 'pending'`,
+    [checkoutRequestId, mpesaReceipt || null]
+  )
+
+  return (
+    (orderResult.rowCount || 0) +
+    (ticketResult.rowCount || 0) +
+    (hireResult.rowCount || 0)
+  )
+}
+
 async function markEntitiesFailedByCheckoutId(checkoutRequestId: string) {
   await query(
     `UPDATE orders SET payment_status = 'failed' WHERE checkout_request_id = $1 AND payment_status = 'pending'`,

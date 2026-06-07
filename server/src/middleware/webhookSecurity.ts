@@ -15,9 +15,10 @@ export function validateWebhookSignature(
 ) {
   const signature = req.headers['x-mpesa-signature'] as string
 
+  // Safaricom STK callbacks do not send x-mpesa-signature; only verify when present.
   if (!signature) {
-    logWebhookReceived('MISSING_SIGNATURE', req.body, null, false)
-    return res.status(401).json({ ResultCode: 1, ResultDesc: 'Missing signature' })
+    logWebhookReceived('NO_SIGNATURE_PROCEEDING', req.body, null, true)
+    return next()
   }
 
   const payloadString = JSON.stringify(req.body)
@@ -64,7 +65,11 @@ export function validateCallbackBody(req: Request, res: Response, next: NextFunc
   }
 
   const callback = req.body.Body.stkCallback
-  if (!callback.CheckoutRequestID || !callback.ResultCode) {
+  if (
+    !callback.CheckoutRequestID ||
+    callback.ResultCode === undefined ||
+    callback.ResultCode === null
+  ) {
     logWebhookReceived('MISSING_REQUIRED_FIELDS', req.body, null, false)
     return res.status(400).json({ ResultCode: 1, ResultDesc: 'Missing required fields' })
   }
