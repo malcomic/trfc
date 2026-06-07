@@ -1,12 +1,33 @@
 import fs from 'fs'
 import path from 'path'
+import os from 'os'
 
-const LOGS_DIR = './logs'
+const LOGS_DIR =
+  process.env.PAYMENTS_LOG_DIR ||
+  (process.env.NODE_ENV === 'production' ? path.join(os.tmpdir(), 'trfc-logs') : './logs')
 const PAYMENTS_LOG_FILE = path.join(LOGS_DIR, 'payments.log')
 
-// Ensure logs directory exists
-if (!fs.existsSync(LOGS_DIR)) {
-  fs.mkdirSync(LOGS_DIR, { recursive: true })
+let fileLoggingEnabled = process.env.DISABLE_PAYMENT_FILE_LOGS !== 'true'
+
+function ensureLogDir() {
+  if (!fileLoggingEnabled) return
+  try {
+    if (!fs.existsSync(LOGS_DIR)) {
+      fs.mkdirSync(LOGS_DIR, { recursive: true })
+    }
+  } catch {
+    fileLoggingEnabled = false
+  }
+}
+
+function writeLog(logMessage: string) {
+  if (!fileLoggingEnabled) return
+  try {
+    ensureLogDir()
+    fs.appendFileSync(PAYMENTS_LOG_FILE, logMessage)
+  } catch {
+    fileLoggingEnabled = false
+  }
 }
 
 function formatLog(message: string, data?: any): string {
@@ -40,7 +61,7 @@ export function logSTKInitiation(
     }
   )
 
-  fs.appendFileSync(PAYMENTS_LOG_FILE, logMessage)
+  writeLog(logMessage)
   console.log(
     `[PAYMENTS] STK Push initiated: ${reference} - Amount: ${amount} - Status: ${status}`
   )
@@ -62,7 +83,7 @@ export function logWebhookReceived(
     timestamp: new Date().toISOString(),
   })
 
-  fs.appendFileSync(PAYMENTS_LOG_FILE, logMessage)
+  writeLog(logMessage)
   console.log(`[PAYMENTS] Webhook received: ${eventType} - Valid: ${isValid}`)
 }
 
@@ -85,7 +106,7 @@ export function logCallbackProcessing(
     }
   )
 
-  fs.appendFileSync(PAYMENTS_LOG_FILE, logMessage)
+  writeLog(logMessage)
   console.log(
     `[PAYMENTS] Callback processed: ${checkoutRequestId} - Status: ${status} - Updates: ${updateCount}`
   )
@@ -106,7 +127,7 @@ export function logPaymentStatusQuery(
     }
   )
 
-  fs.appendFileSync(PAYMENTS_LOG_FILE, logMessage)
+  writeLog(logMessage)
   console.log(`[PAYMENTS] Status query: ${checkoutRequestId} - Status: ${status}`)
 }
 
@@ -125,7 +146,7 @@ export function logError(
     }
   )
 
-  fs.appendFileSync(PAYMENTS_LOG_FILE, logMessage)
+  writeLog(logMessage)
   console.error(`[PAYMENTS] Error: ${errorType} - ${errorMessage}`)
 }
 
@@ -134,7 +155,7 @@ export function logDuplicateCallback(checkoutRequestId: string): void {
     `DUPLICATE CALLBACK DETECTED - CheckoutID: ${checkoutRequestId}`
   )
 
-  fs.appendFileSync(PAYMENTS_LOG_FILE, logMessage)
+  writeLog(logMessage)
   console.log(`[PAYMENTS] Duplicate callback ignored: ${checkoutRequestId}`)
 }
 

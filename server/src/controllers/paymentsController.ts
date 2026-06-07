@@ -304,7 +304,14 @@ export async function queryPaymentStatus(req: Request, res: Response) {
       return res.status(400).json({ error: 'checkoutRequestId is required' })
     }
 
-    const localStatus = await getLocalPaymentStatus(checkoutRequestId)
+    let localStatus = null
+    try {
+      localStatus = await getLocalPaymentStatus(checkoutRequestId)
+    } catch (dbError) {
+      console.error('Local payment status lookup failed:', dbError)
+      logError('STATUS_QUERY_DB_FALLBACK', String(dbError), { checkoutRequestId })
+    }
+
     if (localStatus && localStatus.payment_status !== 'pending') {
       const response = toStatusResponse(localStatus, checkoutRequestId)
       logPaymentStatusQuery(checkoutRequestId, response.ResultCode, 'local_db')
@@ -341,7 +348,12 @@ export async function queryPaymentStatus(req: Request, res: Response) {
   } catch (error) {
     console.error('Error querying payment status:', error)
     logError('STATUS_QUERY_EXCEPTION', String(error), { checkoutRequestId: req.params.checkoutRequestId })
-    res.status(500).json({ error: 'Failed to query payment status' })
+    return res.json({
+      ResultCode: '1032',
+      ResultDesc: 'Payment still pending. Complete the M-Pesa prompt on your phone.',
+      payment_status: 'pending',
+      CheckoutRequestID: req.params.checkoutRequestId,
+    })
   }
 }
 
