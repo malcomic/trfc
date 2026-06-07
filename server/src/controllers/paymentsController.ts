@@ -15,6 +15,7 @@ import {
   logDuplicateCallback,
 } from '../utils/paymentLogger.js'
 import { validatePaymentReference, markEntitiesFailedByCheckoutId } from '../utils/paymentValidation.js'
+import { getLocalPaymentStatus, toStatusResponse } from '../utils/paymentStatus.js'
 
 async function decrementOrderStock(orderId: string) {
   const items = await query(
@@ -303,12 +304,40 @@ export async function queryPaymentStatus(req: Request, res: Response) {
       return res.status(400).json({ error: 'checkoutRequestId is required' })
     }
 
-    const token = await getMPesaToken()
-    const statusResponse = await mpesaQueryPaymentStatus(checkoutRequestId, token)
+    const localStatus = await getLocalPaymentStatus(checkoutRequestId)
+    if (localStatus && localStatus.payment_status !== 'pending') {
+      const response = toStatusResponse(localStatus, checkoutRequestId)
+      logPaymentStatusQuery(checkoutRequestId, response.ResultCode, 'local_db')
+      return res.json(response)
+    }
 
-    logPaymentStatusQuery(checkoutRequestId, statusResponse.ResultCode, null)
+    try {
+      const token = await getMPesaToken()
+      const statusResponse = await mpesaQueryPaymentStatus(checkoutRequestId, token)
+      logPaymentStatusQuery(checkoutRequestId, statusResponse.ResultCode, null)
+      return res.json(statusResponse)
+    } catch (mpesaError: unknown) {
+      const err = mpesaError as { response?: { data?: Record<string, unknown> }; message?: string }
+      const mpesaData = err.response?.data
+      if (mpesaData && ('ResultCode' in mpesaData || 'resultCode' in mpesaData)) {
+        logPaymentStatusQuery(
+          checkoutRequestId,
+          mpesaData.ResultCode ?? mpesaData.resultCode,
+          'mpesa_error_body'
+        )
+        return res.json(mpesaData)
+      }
 
-    res.json(statusResponse)
+      console.error('M-Pesa status query failed, returning pending:', err.message ?? mpesaError)
+      logError('STATUS_QUERY_MPESA_FALLBACK', String(err.message ?? mpesaError), { checkoutRequestId })
+
+      return res.json({
+        ResultCode: '1032',
+        ResultDesc: 'Payment still pending. Complete the M-Pesa prompt on your phone.',
+        payment_status: 'pending',
+        CheckoutRequestID: checkoutRequestId,
+      })
+    }
   } catch (error) {
     console.error('Error querying payment status:', error)
     logError('STATUS_QUERY_EXCEPTION', String(error), { checkoutRequestId: req.params.checkoutRequestId })

@@ -151,8 +151,13 @@ export async function queryPaymentStatus(
     )
 
     return response.data
-  } catch (error) {
-    console.error('Error querying payment status:', error)
+  } catch (error: unknown) {
+    const axiosError = error as { response?: { data?: unknown }; message?: string }
+    if (axiosError.response?.data) {
+      console.error('M-Pesa status query error response:', axiosError.response.data)
+    } else {
+      console.error('Error querying payment status:', axiosError.message ?? error)
+    }
     throw error
   }
 }

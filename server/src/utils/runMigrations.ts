@@ -45,6 +45,21 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       ON CONFLICT (slug) DO NOTHING;
     `,
   },
+  {
+    name: '004_payment_callbacks',
+    sql: `
+      CREATE TABLE IF NOT EXISTS payment_callbacks (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        checkout_request_id VARCHAR(100) UNIQUE NOT NULL,
+        mpesa_receipt_number VARCHAR(100),
+        merchant_request_id VARCHAR(100),
+        response_body JSONB,
+        payment_status VARCHAR(20),
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_tickets_checkout ON tickets(checkout_request_id);
+    `,
+  },
 ]
 
 export async function runMigrations() {

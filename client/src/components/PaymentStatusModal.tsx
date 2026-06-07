@@ -33,9 +33,13 @@ export default function PaymentStatusModal({
     try {
       const result = await checkPaymentStatus(checkoutRequestId)
 
-      if (result.ResultCode === '0' || result.ResultCode === 0) {
+      if (
+        result.ResultCode === '0' ||
+        result.ResultCode === 0 ||
+        result.payment_status === 'paid'
+      ) {
         setStatus('success')
-      } else if (result.ResultCode === '1') {
+      } else if (result.ResultCode === '1' || result.payment_status === 'failed') {
         setError('Payment was rejected. Please try again.')
         setStatus('failed')
       } else {
