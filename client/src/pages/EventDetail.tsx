@@ -4,6 +4,10 @@ import { MapPin, Clock, Users, AlertCircle, Minus, Plus, Ticket } from 'lucide-r
 import { getEventById } from '../api/events'
 import { Event } from '../types'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
+import { getSafeImageUrl } from '../utils/imageUrl'
+
+const EVENT_IMAGE_FALLBACK =
+  'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=800&q=80'
 
 export default function EventDetail() {
   const { id } = useParams()
@@ -85,7 +89,7 @@ export default function EventDetail() {
 
       <div className="max-w-4xl mx-auto px-[6%] py-10 pb-20">
         <img
-          src={ev.image_url || 'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=800&q=80'}
+          src={getSafeImageUrl(ev.image_url, EVENT_IMAGE_FALLBACK)}
           alt={ev.title}
           className="w-full h-80 object-cover brightness-85 clip-angled mb-8"
         />

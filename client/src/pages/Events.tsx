@@ -4,6 +4,10 @@ import { getEvents } from '../api/events'
 import { AlertCircle, ChevronRight, Search, X, MapPin } from 'lucide-react'
 import { Event } from '../types'
 import { pageRoot, inputField } from '../utils/themeClasses'
+import { getSafeImageUrl } from '../utils/imageUrl'
+
+const EVENT_IMAGE_FALLBACK =
+  'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=800&q=80'
 
 const FILTERS = ['All', 'Race', 'Training', 'Social', 'Charity']
 
@@ -188,12 +192,11 @@ export default function Events() {
                   {/* Image */}
                   <div className="relative overflow-hidden bg-smoke light:bg-smoke-light" style={{ height: isFeatured ? '320px' : '220px' }}>
                     <img
-                      src={(event as any).image_url || 'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=800&q=80'}
+                      src={getSafeImageUrl((event as any).image_url, EVENT_IMAGE_FALLBACK)}
                       alt={event.title}
                       className="w-full h-full object-cover brightness-75 saturate-80 transition-all duration-500 ease-out group-hover:scale-107 group-hover:brightness-90 group-hover:saturate-100"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src =
-                          'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=800&q=80'
+                        (e.target as HTMLImageElement).src = EVENT_IMAGE_FALLBACK
                       }}
                     />
                     <div className="absolute bottom-0 left-0 right-0 h-3/5 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />

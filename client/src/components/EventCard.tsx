@@ -1,5 +1,9 @@
 import { Event } from '../types'
 import { MapPin, Clock, Users, ChevronRight } from 'lucide-react'
+import { getSafeImageUrl } from '../utils/imageUrl'
+
+const EVENT_IMAGE_FALLBACK =
+  'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=600&q=80'
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return { day: null, mon: null }
@@ -18,15 +22,16 @@ export default function EventCard({ event }: { event: Event }) {
   const slots = ev.capacity ? Math.max(0, ev.capacity - (ev.registered_count || 0)) : null
   const slotsPercent = ev.capacity ? Math.min(100, ((ev.registered_count || 0) / ev.capacity) * 100) : 0
   const slotsUrgent = slots !== null && slots <= 10
+  const imageSrc = getSafeImageUrl(ev.image_url, EVENT_IMAGE_FALLBACK)
 
   return (
     <div className="bg-ash dark:bg-ash relative overflow-hidden flex flex-col h-full font-barlow">
       {/* Image */}
       <div className="relative overflow-hidden h-56 bg-smoke dark:bg-smoke flex-shrink-0">
-        {ev.image_url ? (
+        {imageSrc ? (
           <>
             <img
-              src={ev.image_url}
+              src={imageSrc}
               alt={ev.title}
               className="w-full h-full object-cover brightness-75 saturate-[0.85] transition-all duration-500 ease-out group-hover:scale-[1.06] group-hover:brightness-90 group-hover:saturate-100"
               onError={(e) => {

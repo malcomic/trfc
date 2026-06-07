@@ -5,6 +5,10 @@ import { getEvents } from '../api/events'
 import { getGallery } from '../api/gallery'
 import { getTestimonials, Testimonial } from '../api/testimonials'
 import { pageRoot, cardSurface } from '../utils/themeClasses'
+import { getSafeImageUrl } from '../utils/imageUrl'
+
+const EVENT_IMAGE_FALLBACK =
+  'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=600&q=80'
 import landingHero from '../assets/landing-hero.png'
 
 interface GalleryItem {
@@ -271,9 +275,9 @@ export default function Home() {
                 <Link to={`/events/${event.id}`} key={event.id} className="bg-ash light:bg-ash-light border border-white/6 light:border-black/6 overflow-hidden relative transition-all duration-300 no-underline hover:-translate-y-1.5 hover:border-fire group" style={{ animationDelay: `${idx * 0.1}s` }}>
                   <div className="overflow-hidden">
                     <img
-                      src={event.image_url || 'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=600&q=80'}
+                      src={getSafeImageUrl(event.image_url, EVENT_IMAGE_FALLBACK)}
                       alt={event.title}
-                      onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=600&q=80' }}
+                      onError={(e) => { (e.target as HTMLImageElement).src = EVENT_IMAGE_FALLBACK }}
                       className="w-full h-55 object-cover brightness-[0.88] transition-all duration-300 group-hover:brightness-100 group-hover:scale-103"
                     />
                   </div>
