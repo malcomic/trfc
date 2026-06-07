@@ -185,8 +185,8 @@ export default function Footer() {
             © {new Date().getFullYear()} <strong className="text-fire font-bebas text-sm letter-spacing-widest">TRFC</strong> · Thika Road Fitness Community · Nairobi, Kenya
           </p>
           <div className="flex gap-5">
-            <a href="/contact" className="text-xs letter-spacing-widest text-transform-uppercase text-fog light:text-fog-light text-decoration-none font-barlow-condensed font-bold transition-all duration-200 hover:text-fire">Privacy</a>
-            <a href="/contact" className="text-xs letter-spacing-widest text-transform-uppercase text-fog light:text-fog-light text-decoration-none font-barlow-condensed font-bold transition-all duration-200 hover:text-fire">Terms</a>
+            <Link to="/privacy" className="text-xs letter-spacing-widest text-transform-uppercase text-fog light:text-fog-light text-decoration-none font-barlow-condensed font-bold transition-all duration-200 hover:text-fire">Privacy</Link>
+            <Link to="/terms" className="text-xs letter-spacing-widest text-transform-uppercase text-fog light:text-fog-light text-decoration-none font-barlow-condensed font-bold transition-all duration-200 hover:text-fire">Terms</Link>
             <Link to="/contact" className="text-xs letter-spacing-widest text-transform-uppercase text-fog light:text-fog-light text-decoration-none font-barlow-condensed font-bold transition-all duration-200 hover:text-fire">Contact</Link>
           </div>
         </div>

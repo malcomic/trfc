@@ -26,6 +26,8 @@ import Gallery from './pages/Gallery'
 import Programs from './pages/Programs'
 import Testimonials from './pages/Testimonials'
 import Contact from './pages/Contact'
+import Privacy from './pages/Privacy'
+import Terms from './pages/Terms'
 import Partnerships from './pages/Partnerships'
 import NotFound from './pages/NotFound'
 import AdminDashboard from './pages/admin/AdminDashboard'
@@ -87,6 +89,8 @@ function App() {
           <Route path="/programs" element={<Programs />} />
           <Route path="/testimonials" element={<Testimonials />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
           <Route path="/shop" element={<Shop />} />
           <Route path="/shop/:id" element={<ProductDetail />} />
           <Route path="/cart" element={<Cart />} />

@@ -20,6 +20,9 @@ export function AuthProvider({ children }) {
                 setUser(JSON.parse(savedUser));
             try {
                 const profile = await getUserProfile();
+                const refreshedToken = localStorage.getItem('token');
+                if (refreshedToken)
+                    setToken(refreshedToken);
                 setUser(profile);
                 localStorage.setItem('user', JSON.stringify(profile));
             }

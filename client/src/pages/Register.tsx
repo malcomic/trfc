@@ -209,8 +209,8 @@ export default function Register() {
               {agreed && <Check size={11} color="white" strokeWidth={3} />}
             </div>
             <p className="text-xs text-fog leading-loose">
-              I agree to the <Link to="/contact" onClick={(e) => e.stopPropagation()} className="text-fire text-decoration-none hover:text-decoration-underline">Terms of Service</Link> and{' '}
-              <Link to="/contact" onClick={(e) => e.stopPropagation()} className="text-fire text-decoration-none hover:text-decoration-underline">Privacy Policy</Link>
+              I agree to the <Link to="/terms" onClick={(e) => e.stopPropagation()} className="text-fire text-decoration-none hover:text-decoration-underline">Terms of Service</Link> and{' '}
+              <Link to="/privacy" onClick={(e) => e.stopPropagation()} className="text-fire text-decoration-none hover:text-decoration-underline">Privacy Policy</Link>
             </p>
           </div>
 

@@ -1,0 +1,15 @@
+import { jsx as _jsx, Fragment as _Fragment, jsxs as _jsxs } from "react/jsx-runtime";
+import { useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { pageRoot } from '../utils/themeClasses';
+export default function LegalPageLayout({ meta, sections, crossLink }) {
+    useEffect(() => {
+        const previousTitle = document.title;
+        document.title = meta.documentTitle;
+        return () => {
+            document.title = previousTitle;
+        };
+    }, [meta.documentTitle]);
+    return (_jsxs("div", { className: pageRoot, children: [_jsxs("section", { className: "bg-ink light:bg-ink-light border-b border-white/5 light:border-black/8 px-[6%] pt-14 pb-11 relative overflow-hidden", children: [_jsx("div", { className: "absolute right-[-1%] bottom-[-16px] font-bebas text-clamp-2xl text-fire/5 leading-none pointer-events-none select-none", children: meta.watermark }), _jsxs("div", { className: "max-w-3xl mx-auto relative z-1", children: [_jsx("div", { className: "font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fire flex items-center gap-2 mb-3 before:w-5 before:h-0.5 before:bg-fire", children: meta.eyebrow }), _jsxs("h1", { className: "font-bebas text-5xl leading-tight text-chalk light:text-chalk-light", children: [meta.title, meta.titleAccent && (_jsxs(_Fragment, { children: [_jsx("br", {}), _jsx("span", { className: "text-fire", children: meta.titleAccent })] }))] }), _jsx("p", { className: "text-fog light:text-fog-light mt-4 leading-relaxed", children: meta.intro }), _jsxs("p", { className: "text-xs text-fog/70 light:text-fog-light/70 mt-3 font-barlow-condensed letter-spacing-widest text-transform-uppercase", children: ["Last updated: ", meta.lastUpdated] })] })] }), _jsxs("div", { className: "max-w-3xl mx-auto px-[6%] py-10 pb-20 space-y-10", children: [sections.map((section) => (_jsxs("section", { id: section.id, children: [_jsx("h2", { className: "font-bebas text-3xl text-chalk light:text-chalk-light mb-4", children: section.title }), _jsx("div", { className: "space-y-4", children: section.paragraphs.map((paragraph, index) => (_jsx("p", { className: "text-fog light:text-fog-light leading-relaxed text-sm md:text-base", children: paragraph }, index))) })] }, section.id))), _jsxs("div", { className: "border-t border-white/5 light:border-black/8 pt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm", children: [crossLink && (_jsx(Link, { to: crossLink.to, className: "text-fire no-underline hover:underline font-barlow-condensed font-bold letter-spacing-widest text-transform-uppercase text-xs", children: crossLink.label })), _jsx(Link, { to: "/contact", className: "text-fog light:text-fog-light no-underline hover:text-fire transition font-barlow-condensed font-bold letter-spacing-widest text-transform-uppercase text-xs", children: "Contact Us" })] })] })] }));
+}
+//# sourceMappingURL=LegalPageLayout.js.map

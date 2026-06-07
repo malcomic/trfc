@@ -17,6 +17,6 @@ export const refreshToken = async (refreshToken) => {
 };
 export const getUserProfile = async () => {
     const response = await api.get('/auth/me');
-    return response.data;
+    return response.data.user;
 };
 //# sourceMappingURL=auth.js.map
