@@ -87,7 +87,7 @@ export default function AdminEvents() {
       if (editingId) {
         await updateEvent(editingId, {
           ...payload,
-          is_active: data.is_active === 'on',
+          is_active: Boolean(data.is_active),
         })
       } else {
         await createEvent(payload)
@@ -342,7 +342,6 @@ export default function AdminEvents() {
                     <input
                       type="checkbox"
                       {...register('is_active')}
-                      defaultChecked={events.find(e => e.id === editingId)?.is_active}
                       className="w-4 h-4"
                     />
                     <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Active</span>
