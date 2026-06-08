@@ -104,7 +104,7 @@ export default function EventCheckout() {
   if (loading) {
     return (
       <div className={`${pageRoot} flex items-center justify-center`}>
-        <Loader className="w-12 h-12 animate-spin text-fire" />
+        <Loader className="w-12 h-12 animate-spin text-accent light:text-accent-light" />
       </div>
     )
   }
@@ -116,7 +116,7 @@ export default function EventCheckout() {
           <AlertCircle className="w-6 h-6 text-red-400" />
           <div>
             <p className="text-red-300 mb-4">{error}</p>
-            <button onClick={() => navigate('/events')} className="bg-fire text-white px-4 py-2 clip-angled-sm">Back to Events</button>
+            <button onClick={() => navigate('/events')} className="bg-accent light:bg-accent-light text-black light:text-white px-4 py-2 clip-angled-sm">Back to Events</button>
           </div>
         </div>
       </div>
@@ -129,10 +129,10 @@ export default function EventCheckout() {
     <div className={pageRoot}>
       <section className="bg-ink light:bg-ink-light border-b border-white/5 light:border-black/8 px-[6%] pt-14 pb-8">
         <div className="max-w-2xl mx-auto">
-          <button onClick={() => navigate(`/events/${eventId}`)} className="inline-flex items-center gap-2 text-fire text-sm mb-4 bg-transparent border-0 cursor-pointer hover:underline">
+          <button onClick={() => navigate(`/events/${eventId}`)} className="inline-flex items-center gap-2 text-accent light:text-accent-light text-sm mb-4 bg-transparent border-0 cursor-pointer hover:underline">
             <ArrowLeft size={14} /> Back to Event
           </button>
-          <h1 className="font-bebas text-4xl text-chalk light:text-chalk-light">BUY <span className="text-fire">TICKETS</span></h1>
+          <h1 className="font-bebas text-4xl text-chalk light:text-chalk-light">BUY <span className="text-accent light:text-accent-light">TICKETS</span></h1>
           <p className="text-fog light:text-fog-light mt-1">{event.title}</p>
         </div>
       </section>
@@ -167,15 +167,15 @@ export default function EventCheckout() {
               <AlertCircle size={16} className="flex-shrink-0" /> {error}
             </div>
           )}
-          <button type="submit" disabled={submitting} className="w-full bg-fire text-white py-3 clip-angled font-barlow-condensed font-black text-sm letter-spacing-widest text-transform-uppercase hover:bg-ember disabled:opacity-50 flex items-center justify-center gap-2">
+          <button type="submit" disabled={submitting} className="w-full bg-accent light:bg-accent-light text-black light:text-white py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-accent/90 light:hover:bg-accent-light/90 disabled:opacity-50 flex items-center justify-center gap-2">
             {submitting ? <><Loader className="w-4 h-4 animate-spin" /> Processing…</> : 'Complete Purchase'}
           </button>
         </form>
 
         <div className={`${cardSurface} p-6 sticky top-20 h-fit`}>
-          <h3 className="font-barlow-condensed font-bold text-fire letter-spacing-widest text-transform-uppercase mb-4">Summary</h3>
+          <h3 className="font-barlow-condensed font-bold text-accent light:text-accent-light tracking-widest uppercase mb-4">Summary</h3>
           <p className="text-sm text-fog light:text-fog-light mb-2">{quantity} ticket(s)</p>
-          <p className="font-bebas text-3xl text-fire">KES {totalPrice.toLocaleString()}</p>
+          <p className="font-bebas text-3xl text-accent light:text-accent-light">KES {totalPrice.toLocaleString()}</p>
           <p className="text-xs text-fog light:text-fog-light mt-4">M-Pesa prompt will appear on your phone after checkout.</p>
         </div>
       </div>

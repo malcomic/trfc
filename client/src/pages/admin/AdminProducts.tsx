@@ -138,7 +138,7 @@ export default function AdminProducts() {
               reset()
               setShowModal(true)
             }}
-            className="flex items-center justify-center gap-2 bg-primary dark:bg-primary-dark text-white px-6 py-2 rounded-lg hover:opacity-90 transition w-full sm:w-auto"
+            className="flex items-center justify-center gap-2 bg-primary dark:bg-primary-dark text-white dark:text-black px-6 py-2 rounded-lg hover:opacity-90 transition w-full sm:w-auto"
           >
             <Plus size={20} />
             New Product
@@ -355,7 +355,7 @@ export default function AdminProducts() {
                 <button
                   type="submit"
                   disabled={uploading}
-                  className="px-4 py-2 bg-primary dark:bg-primary-dark text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+                  className="px-4 py-2 bg-primary dark:bg-primary-dark text-white dark:text-black rounded-lg hover:opacity-90 disabled:opacity-50"
                 >
                   {uploading ? 'Saving...' : editingId ? 'Update' : 'Create'}
                 </button>

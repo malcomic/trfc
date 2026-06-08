@@ -130,7 +130,7 @@ export default function EquipmentCheckout() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Booking Form */}
           <form onSubmit={handleSubmit(onSubmit)} className="md:col-span-2">
-            <div className="bg-white dark:bg-[#1C1C1C] rounded-lg shadow p-6 space-y-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-4">
               <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Booking Details</h2>
 
               <div>
@@ -141,7 +141,7 @@ export default function EquipmentCheckout() {
                   })}
                   type="text"
                   placeholder="e.g., Dumbbells, Treadmill"
-                  className="w-full border border-gray-300 dark:border-gray-700 rounded px-4 py-2 bg-white dark:bg-[#2A2A2A] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-primary"
+                  className="w-full border border-gray-300 dark:border-gray-700 rounded px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-primary"
                 />
                 {errors.equipmentName && (
                   <p className="text-red-600 dark:text-red-400 text-sm mt-1">{errors.equipmentName.message}</p>
@@ -159,7 +159,7 @@ export default function EquipmentCheckout() {
                       })}
                       type="date"
                       min={today}
-                      className="w-full border border-gray-300 dark:border-gray-700 rounded px-4 py-2 pl-10 bg-white dark:bg-[#2A2A2A] text-gray-900 dark:text-white focus:outline-none focus:border-primary"
+                      className="w-full border border-gray-300 dark:border-gray-700 rounded px-4 py-2 pl-10 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-primary"
                     />
                   </div>
                   {errors.hireDate && (
@@ -177,7 +177,7 @@ export default function EquipmentCheckout() {
                       })}
                       type="date"
                       min={hireDate || today}
-                      className="w-full border border-gray-300 dark:border-gray-700 rounded px-4 py-2 pl-10 bg-white dark:bg-[#2A2A2A] text-gray-900 dark:text-white focus:outline-none focus:border-primary"
+                      className="w-full border border-gray-300 dark:border-gray-700 rounded px-4 py-2 pl-10 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-primary"
                     />
                   </div>
                   {errors.returnDate && (
@@ -202,7 +202,7 @@ export default function EquipmentCheckout() {
                   })}
                   type="text"
                   placeholder="254712345678"
-                  className="w-full border border-gray-300 dark:border-gray-700 rounded px-4 py-2 bg-white dark:bg-[#2A2A2A] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-primary"
+                  className="w-full border border-gray-300 dark:border-gray-700 rounded px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-primary"
                 />
                 {errors.phone && (
                   <p className="text-red-600 dark:text-red-400 text-sm mt-1">{errors.phone.message}</p>
@@ -219,7 +219,7 @@ export default function EquipmentCheckout() {
               <button
                 type="submit"
                 disabled={loading || totalPrice === 0}
-                className="w-full bg-primary text-white py-3 rounded-lg hover:bg-opacity-90 font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-6"
+                className="w-full bg-primary dark:bg-primary-dark text-white dark:text-black py-3 rounded-lg hover:bg-opacity-90 font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-6"
               >
                 {loading ? (
                   <>
@@ -235,7 +235,7 @@ export default function EquipmentCheckout() {
 
           {/* Order Summary Sidebar */}
           <div className="md:col-span-1">
-            <div className="bg-white dark:bg-[#1C1C1C] rounded-lg shadow p-6 sticky top-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 sticky top-4">
               <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Booking Summary</h3>
 
               <div className="space-y-2 mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">

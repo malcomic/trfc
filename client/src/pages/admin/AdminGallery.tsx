@@ -161,7 +161,7 @@ export default function AdminGallery() {
               reset()
               setShowModal(true)
             }}
-            className="flex items-center justify-center gap-2 bg-primary dark:bg-primary-dark text-white px-6 py-2 rounded-lg hover:opacity-90 transition w-full sm:w-auto min-h-[44px]"
+            className="flex items-center justify-center gap-2 bg-primary dark:bg-primary-dark text-white dark:text-black px-6 py-2 rounded-lg hover:opacity-90 transition w-full sm:w-auto min-h-[44px]"
           >
             <Plus size={20} />
             Upload Media
@@ -180,7 +180,7 @@ export default function AdminGallery() {
           <p className="text-gray-600 dark:text-gray-400 text-lg">No media in gallery yet</p>
           <button
             onClick={() => setShowModal(true)}
-            className="mt-4 bg-primary dark:bg-primary-dark text-white px-6 py-2 rounded-lg hover:opacity-90"
+            className="mt-4 bg-primary dark:bg-primary-dark text-white dark:text-black px-6 py-2 rounded-lg hover:opacity-90"
           >
             Upload First Media
           </button>
@@ -306,7 +306,7 @@ export default function AdminGallery() {
                 <button
                   type="submit"
                   disabled={uploading}
-                  className="px-4 py-2 bg-primary dark:bg-primary-dark text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+                  className="px-4 py-2 bg-primary dark:bg-primary-dark text-white dark:text-black rounded-lg hover:opacity-90 disabled:opacity-50"
                 >
                   {uploading ? 'Uploading...' : editingId ? 'Update' : 'Upload'}
                 </button>

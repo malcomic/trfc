@@ -31,7 +31,7 @@ export default function Checkout() {
           <ShoppingCart className="w-16 h-16 text-fog light:text-fog-light mx-auto mb-4" />
           <h1 className="font-bebas text-5xl mb-4 text-chalk light:text-chalk-light">CHECKOUT</h1>
           <p className="text-fog light:text-fog-light mb-6">Your cart is empty</p>
-          <Link to="/shop" className="inline-flex bg-fire text-white px-6 py-3 clip-angled font-barlow-condensed font-black text-sm letter-spacing-widest text-transform-uppercase no-underline hover:bg-ember">
+          <Link to="/shop" className="inline-flex bg-accent light:bg-accent-light text-black light:text-white px-6 py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase no-underline hover:bg-accent/90 light:hover:bg-accent-light/90">
             Continue Shopping
           </Link>
         </div>
@@ -92,10 +92,10 @@ export default function Checkout() {
     <div className={pageRoot}>
       <section className="bg-ink light:bg-ink-light border-b border-white/5 light:border-black/8 px-[6%] pt-14 pb-11">
         <div className="max-w-5xl mx-auto">
-          <Link to="/cart" className="inline-flex items-center gap-2 text-fire text-sm mb-4 no-underline hover:underline font-barlow-condensed font-bold">
+          <Link to="/cart" className="inline-flex items-center gap-2 text-accent light:text-accent-light text-sm mb-4 no-underline hover:underline font-barlow-condensed font-bold">
             <ArrowLeft size={14} /> Back to Cart
           </Link>
-          <h1 className="font-bebas text-5xl text-chalk light:text-chalk-light leading-tight">CHECK<span className="text-fire">OUT</span></h1>
+          <h1 className="font-bebas text-5xl text-chalk light:text-chalk-light leading-tight">CHECK<span className="text-accent light:text-accent-light">OUT</span></h1>
           <p className="text-fog light:text-fog-light mt-2">Complete your purchase securely with M-Pesa</p>
         </div>
       </section>
@@ -103,7 +103,7 @@ export default function Checkout() {
       <div className="max-w-5xl mx-auto px-[6%] py-10 pb-20 grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
           <form onSubmit={handleSubmit(onSubmit)} className={`${cardSurface} p-8 space-y-6`}>
-            <h2 className="font-barlow-condensed font-bold text-xl letter-spacing-widest text-transform-uppercase text-fire">Delivery Information</h2>
+            <h2 className="font-barlow-condensed font-bold text-xl tracking-widest uppercase text-accent light:text-accent-light">Delivery Information</h2>
 
             {error && (
               <div className="bg-red-500/10 border border-red-500/20 border-l-4 border-l-red-500 px-4 py-3 flex gap-3 text-sm">
@@ -113,7 +113,7 @@ export default function Checkout() {
             )}
 
             <div>
-              <label className="block text-sm font-semibold mb-2">Phone Number <span className="text-fire">*</span></label>
+              <label className="block text-sm font-semibold mb-2">Phone Number <span className="text-accent light:text-accent-light">*</span></label>
               <input
                 type="tel"
                 {...register('phone', {
@@ -127,7 +127,7 @@ export default function Checkout() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold mb-2">Delivery Address <span className="text-fire">*</span></label>
+              <label className="block text-sm font-semibold mb-2">Delivery Address <span className="text-accent light:text-accent-light">*</span></label>
               <textarea
                 {...register('address', { required: 'Delivery address is required' })}
                 placeholder="E.g., 123 Main Street, Nairobi, Kenya"
@@ -136,8 +136,8 @@ export default function Checkout() {
               {errors.address && <p className="text-red-400 text-sm mt-1">{errors.address.message as string}</p>}
             </div>
 
-            <div className="bg-fire/10 border border-fire/15 p-4 flex gap-3 text-sm text-fog light:text-fog-light">
-              <Truck className="w-5 h-5 text-fire flex-shrink-0" />
+            <div className="bg-accent/10 light:bg-accent-light/10 border border-accent/15 light:border-accent-light/15 p-4 flex gap-3 text-sm text-fog light:text-fog-light">
+              <Truck className="w-5 h-5 text-accent light:text-accent-light flex-shrink-0" />
               <div>
                 <p className="font-semibold text-chalk light:text-chalk-light mb-1">{shipping === 0 ? 'Free Delivery' : `Delivery — KES ${shipping}`}</p>
                 <p>Orders over KES 3,000 qualify for free delivery. Delivered within 2–3 business days after payment.</p>
@@ -147,7 +147,7 @@ export default function Checkout() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-fire text-white py-3 font-barlow-condensed font-black text-sm letter-spacing-widest text-transform-uppercase clip-angled hover:bg-ember transition disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full bg-accent light:bg-accent-light text-black light:text-white py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-accent/90 light:hover:bg-accent-light/90 transition disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? (<><Loader className="w-4 h-4 animate-spin" /> Processing...</>) : 'Proceed to Payment'}
             </button>
@@ -156,7 +156,7 @@ export default function Checkout() {
 
         <div className="lg:col-span-1">
           <div className={`${cardSurface} p-6 sticky top-20`}>
-            <h3 className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fire mb-6">Order Summary</h3>
+            <h3 className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light mb-6">Order Summary</h3>
             <div className="space-y-3 mb-6 pb-6 border-b border-white/5 light:border-black/8 text-sm">
               {items.map((item) => (
                 <div key={item.product.id} className="flex justify-between">
@@ -172,7 +172,7 @@ export default function Checkout() {
                 <span className={shipping === 0 ? 'text-green-400' : 'text-chalk light:text-chalk-light'}>{shipping === 0 ? 'FREE' : `KES ${shipping}`}</span>
               </div>
             </div>
-            <div className="flex justify-between font-bebas text-3xl text-fire">
+            <div className="flex justify-between font-bebas text-3xl text-accent light:text-accent-light">
               <span>Total</span>
               <span>KES {grandTotal.toLocaleString()}</span>
             </div>

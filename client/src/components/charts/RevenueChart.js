@@ -9,6 +9,6 @@ export default function RevenueChart({ data }) {
                         backgroundColor: '#ffffff',
                         border: '1px solid #e5e7eb',
                         borderRadius: '8px',
-                    }, formatter: (value) => `KES ${value.toLocaleString()}` }), _jsx(Legend, {}), _jsx(Line, { type: "monotone", dataKey: "revenue", stroke: "#FF4500", strokeWidth: 2, dot: { fill: '#FF4500', r: 4 }, activeDot: { r: 6 }, name: "Daily Revenue" })] }) }));
+                    }, formatter: (value) => `KES ${value.toLocaleString()}` }), _jsx(Legend, {}), _jsx(Line, { type: "monotone", dataKey: "revenue", stroke: "#111827", strokeWidth: 2, dot: { fill: '#111827', r: 4 }, activeDot: { r: 6 }, name: "Daily Revenue" })] }) }));
 }
 //# sourceMappingURL=RevenueChart.js.map

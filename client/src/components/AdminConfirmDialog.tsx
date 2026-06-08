@@ -40,7 +40,7 @@ export default function AdminConfirmDialog({
             className={`px-4 py-2 rounded-lg text-white ${
               variant === 'danger'
                 ? 'bg-red-600 hover:bg-red-700'
-                : 'bg-primary dark:bg-primary-dark hover:opacity-90'
+                : 'bg-primary dark:bg-primary-dark text-white dark:text-black hover:opacity-90'
             }`}
           >
             {confirmLabel}

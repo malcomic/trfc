@@ -56,7 +56,7 @@ export default function AdminLogin() {
       <div className="w-full max-w-md">
         <div className="bg-white dark:bg-[#1C1C1C] rounded-2xl shadow-xl p-8">
           <div className="flex justify-center mb-6">
-            <div className="bg-primary text-white px-6 py-3 rounded-full font-bold text-lg">
+            <div className="bg-primary dark:bg-primary-dark text-white dark:text-black px-6 py-3 rounded-full font-bold text-lg">
               ADMIN PORTAL
             </div>
           </div>
@@ -96,7 +96,7 @@ export default function AdminLogin() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary text-white py-2 rounded-lg font-semibold hover:opacity-90 transition disabled:opacity-50 mt-6"
+              className="w-full bg-primary dark:bg-primary-dark text-white dark:text-black py-2 rounded-lg font-semibold hover:opacity-90 transition disabled:opacity-50 mt-6"
             >
               {loading ? 'Signing in...' : 'Sign In'}
             </button>

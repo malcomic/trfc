@@ -83,12 +83,12 @@ export default function Partnerships() {
   return (
     <div className={pageRoot}>
       <section className="bg-ink light:bg-ink-light border-b border-white/5 light:border-black/8 px-[6%] pt-14 pb-11 relative overflow-hidden">
-        <div className="absolute right-[-1%] bottom-[-16px] font-bebas text-clamp-2xl text-fire/5 leading-none pointer-events-none select-none">PARTNER</div>
+        <div className="absolute right-[-1%] bottom-[-16px] font-bebas text-clamp-2xl text-accent/5 light:text-accent-light/5 leading-none pointer-events-none select-none">PARTNER</div>
         <div className="max-w-5xl mx-auto relative z-1">
-          <div className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fire flex items-center gap-2 mb-3 before:w-5 before:h-0.5 before:bg-fire">
+          <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light flex items-center gap-2 mb-3 before:w-5 before:h-0.5 before:bg-accent light:before:bg-accent-light">
             <Handshake size={14} /> Sponsorships
           </div>
-          <h1 className="font-bebas text-5xl leading-tight text-chalk light:text-chalk-light">PARTNER WITH<br /><span className="text-fire">TRFC</span></h1>
+          <h1 className="font-bebas text-5xl leading-tight text-chalk light:text-chalk-light">PARTNER WITH<br /><span className="text-accent light:text-accent-light">TRFC</span></h1>
           <p className="text-fog light:text-fog-light mt-4 max-w-xl">
             Align your brand with Nairobi&apos;s most energetic running community. Reach 500+ active members at events, online, and on the road.
           </p>
@@ -107,12 +107,12 @@ export default function Partnerships() {
               {tiers.map(({ slug, icon, name, price_display, benefits }) => {
                 const Icon = getSponsorshipIcon(icon)
                 return (
-                  <div key={slug} className={`${cardSurface} p-6 flex flex-col ${form.tier === slug ? 'border-fire/40' : ''}`}>
-                    <div className="w-12 h-12 bg-fire/10 border border-fire/20 flex items-center justify-center text-fire mb-4">
+                  <div key={slug} className={`${cardSurface} p-6 flex flex-col ${form.tier === slug ? 'border-accent/40 light:border-accent-light/40' : ''}`}>
+                    <div className="w-12 h-12 bg-accent/10 light:bg-accent-light/10 border border-accent/20 light:border-accent-light/20 flex items-center justify-center text-accent light:text-accent-light mb-4">
                       <Icon size={22} />
                     </div>
                     <h3 className="font-barlow-condensed font-bold text-xl mb-1">{name}</h3>
-                    <p className="font-bebas text-2xl text-fire mb-4">{price_display}</p>
+                    <p className="font-bebas text-2xl text-accent light:text-accent-light mb-4">{price_display}</p>
                     <ul className="text-sm text-fog light:text-fog-light space-y-2 flex-1">
                       {benefits.map((b) => (
                         <li key={b}>• {b}</li>
@@ -189,7 +189,7 @@ export default function Partnerships() {
                     <AlertCircle size={16} className="flex-shrink-0" /> {error}
                   </div>
                 )}
-                <button type="submit" disabled={submitting || tiers.length === 0} className="w-full bg-fire text-white py-3 clip-angled font-barlow-condensed font-black text-sm letter-spacing-widest text-transform-uppercase hover:bg-ember disabled:opacity-50">
+                <button type="submit" disabled={submitting || tiers.length === 0} className="w-full bg-accent light:bg-accent-light text-black light:text-white py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-accent/90 light:hover:bg-accent-light/90 disabled:opacity-50">
                   {submitting ? 'Submitting…' : 'Submit Inquiry'}
                 </button>
               </form>

@@ -39,7 +39,7 @@ export default function TopProducts({ data }: TopProductsProps) {
           formatter={(value: any) => `KES ${(value as number).toLocaleString()}`}
         />
         <Legend />
-        <Bar dataKey="revenue" fill="#FF4500" name="Revenue" radius={[8, 8, 0, 0]} />
+        <Bar dataKey="revenue" fill="#111827" name="Revenue" radius={[8, 8, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   )

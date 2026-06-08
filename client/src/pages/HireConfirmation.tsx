@@ -94,7 +94,7 @@ export default function HireConfirmation() {
     return (
       <div className="min-h-screen bg-night text-chalk font-barlow py-16 px-6">
         <div className="max-w-md mx-auto bg-ash border border-white/5 p-8">
-          <h1 className="font-bebas text-4xl mb-2">HIRE <span className="text-fire">CONFIRMATION</span></h1>
+          <h1 className="font-bebas text-4xl mb-2">HIRE <span className="text-accent light:text-accent-light">CONFIRMATION</span></h1>
           <p className="text-fog text-sm mb-6">Enter the phone number used at checkout to view your hire.</p>
           {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
           <form onSubmit={handlePhoneVerify} className="space-y-4">
@@ -103,9 +103,9 @@ export default function HireConfirmation() {
               value={phone}
               onChange={(e) => setPhone(e.target.value.replace(/\s+/g, ''))}
               placeholder="254712345678"
-              className="w-full bg-smoke border border-white/10 px-4 py-3 text-chalk focus:outline-none focus:border-fire"
+              className="w-full bg-smoke border border-white/10 px-4 py-3 text-chalk focus:outline-none focus:border-accent light:focus:border-accent-light"
             />
-            <button type="submit" className="w-full bg-fire text-white py-3 font-barlow-condensed font-black text-sm letter-spacing-widest text-transform-uppercase clip-angled hover:bg-ember">
+            <button type="submit" className="w-full bg-accent light:bg-accent-light text-black light:text-white py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-accent/90 light:hover:bg-accent-light/90">
               View Hire
             </button>
           </form>
@@ -124,14 +124,14 @@ export default function HireConfirmation() {
           </div>
         )}
 
-        <div className={`p-6 mb-6 border-l-4 ${paymentStatus === 'paid' ? 'bg-green-500/10 border-green-500' : 'bg-fire/10 border-fire'}`}>
+        <div className={`p-6 mb-6 border-l-4 ${paymentStatus === 'paid' ? 'bg-green-500/10 border-green-500' : 'bg-accent/10 light:bg-accent-light/10 border-accent light:border-accent-light'}`}>
           <div className="flex items-center gap-3 mb-2">
             {loading ? (
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-fire" />
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent light:border-accent-light" />
             ) : paymentStatus === 'paid' ? (
               <CheckCircle className="w-6 h-6 text-green-400" />
             ) : (
-              <Clock className="w-6 h-6 text-fire" />
+              <Clock className="w-6 h-6 text-accent light:text-accent-light" />
             )}
             <h1 className="font-bebas text-3xl">
               {loading ? 'Confirming…' : paymentStatus === 'paid' ? 'Hire Confirmed!' : 'Payment Pending'}
@@ -145,9 +145,9 @@ export default function HireConfirmation() {
         </div>
 
         <div className="bg-ash border border-white/5 p-6 mb-6 space-y-3">
-          <div className="flex items-center gap-2 text-fire mb-4">
+          <div className="flex items-center gap-2 text-accent light:text-accent-light mb-4">
             <Package size={18} />
-            <h2 className="font-barlow-condensed font-bold letter-spacing-widest text-transform-uppercase">Hire Details</h2>
+            <h2 className="font-barlow-condensed font-bold tracking-widest uppercase">Hire Details</h2>
           </div>
           {(display.equipment_name || display.equipmentName) && (
             <p><span className="text-fog">Equipment: </span>{display.equipment_name || display.equipmentName}</p>
@@ -165,11 +165,11 @@ export default function HireConfirmation() {
         </div>
 
         <div className="flex gap-3">
-          <button onClick={() => navigate('/equipment')} className="flex-1 bg-fire text-white py-3 clip-angled font-barlow-condensed font-black text-sm letter-spacing-widest text-transform-uppercase hover:bg-ember">
+          <button onClick={() => navigate('/equipment')} className="flex-1 bg-accent light:bg-accent-light text-black light:text-white py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-accent/90 light:hover:bg-accent-light/90">
             Back to Equipment
           </button>
           {paymentStatus === 'pending' && !loading && (
-            <button onClick={() => window.location.reload()} className="flex-1 bg-smoke border border-white/10 py-3 font-barlow-condensed font-bold text-sm hover:border-fire">
+            <button onClick={() => window.location.reload()} className="flex-1 bg-smoke border border-white/10 py-3 font-barlow-condensed font-bold text-sm hover:border-accent light:hover:border-accent-light">
               Refresh
             </button>
           )}

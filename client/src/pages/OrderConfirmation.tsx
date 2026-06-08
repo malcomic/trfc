@@ -90,7 +90,7 @@ export default function OrderConfirmation() {
     return (
       <div className={`${pageRoot} py-16 px-6`}>
         <div className={`max-w-md mx-auto ${cardSurface} p-8`}>
-          <h1 className="font-bebas text-4xl mb-2 text-chalk light:text-chalk-light">ORDER <span className="text-fire">CONFIRMATION</span></h1>
+          <h1 className="font-bebas text-4xl mb-2 text-chalk light:text-chalk-light">ORDER <span className="text-accent light:text-accent-light">CONFIRMATION</span></h1>
           <p className="text-fog light:text-fog-light text-sm mb-6">Enter the phone number used at checkout to view your order details.</p>
           {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
           <form onSubmit={handlePhoneVerify} className="space-y-4">
@@ -101,7 +101,7 @@ export default function OrderConfirmation() {
               placeholder="254712345678"
               className={`w-full px-4 py-3 ${inputField}`}
             />
-            <button type="submit" className="w-full bg-fire text-white py-3 font-barlow-condensed font-black text-sm letter-spacing-widest text-transform-uppercase clip-angled hover:bg-ember">
+            <button type="submit" className="w-full bg-accent light:bg-accent-light text-black light:text-white py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-accent/90 light:hover:bg-accent-light/90">
               View Order
             </button>
           </form>
@@ -114,7 +114,7 @@ export default function OrderConfirmation() {
     return (
       <div className={`${pageRoot} flex items-center justify-center`}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-fire mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent light:border-accent-light mx-auto mb-4" />
           <p className="text-fog light:text-fog-light">Loading your order...</p>
         </div>
       </div>
@@ -128,7 +128,7 @@ export default function OrderConfirmation() {
           <AlertCircle className="w-6 h-6 text-red-400 flex-shrink-0" />
           <div>
             <p className="text-red-300 mb-4">{error || 'Order not found'}</p>
-            <button onClick={() => navigate('/shop')} className="bg-fire text-white px-4 py-2 clip-angled-sm">Back to Shop</button>
+            <button onClick={() => navigate('/shop')} className="bg-accent light:bg-accent-light text-black light:text-white px-4 py-2 clip-angled-sm">Back to Shop</button>
           </div>
         </div>
       </div>
@@ -138,9 +138,9 @@ export default function OrderConfirmation() {
   return (
     <div className={`${pageRoot} py-12 px-6`}>
       <div className="max-w-2xl mx-auto">
-        <div className={`rounded-none p-6 mb-6 border-l-4 ${paymentStatus === 'paid' ? 'bg-green-500/10 border-green-500' : 'bg-fire/10 border-fire'}`}>
+        <div className={`rounded-none p-6 mb-6 border-l-4 ${paymentStatus === 'paid' ? 'bg-green-500/10 border-green-500' : 'bg-accent/10 light:bg-accent-light/10 border-accent light:border-accent-light'}`}>
           <div className="flex items-center gap-3 mb-2">
-            {paymentStatus === 'paid' ? <CheckCircle className="w-6 h-6 text-green-400" /> : <Clock className="w-6 h-6 text-fire" />}
+            {paymentStatus === 'paid' ? <CheckCircle className="w-6 h-6 text-green-400" /> : <Clock className="w-6 h-6 text-accent light:text-accent-light" />}
             <h1 className="font-bebas text-3xl">{paymentStatus === 'paid' ? 'Order Confirmed!' : 'Payment Pending'}</h1>
           </div>
           <p className="text-fog light:text-fog-light text-sm">
@@ -151,16 +151,16 @@ export default function OrderConfirmation() {
         </div>
 
         <div className={`${cardSurface} p-6 mb-6 space-y-3 text-sm`}>
-          <h2 className="font-barlow-condensed font-bold text-fire letter-spacing-widest text-transform-uppercase mb-4">Order Details</h2>
+          <h2 className="font-barlow-condensed font-bold text-accent light:text-accent-light tracking-widest uppercase mb-4">Order Details</h2>
           <div className="flex justify-between"><span className="text-fog light:text-fog-light">Order ID</span><span className="font-mono">{order.id.slice(0, 8)}…</span></div>
           <div className="flex justify-between"><span className="text-fog light:text-fog-light">Date</span><span>{new Date(order.created_at).toLocaleDateString()}</span></div>
-          <div className="flex justify-between"><span className="text-fog light:text-fog-light">Status</span><span className="text-fire font-bold uppercase">{paymentStatus}</span></div>
+          <div className="flex justify-between"><span className="text-fog light:text-fog-light">Status</span><span className="text-accent light:text-accent-light font-bold uppercase">{paymentStatus}</span></div>
           {order.mpesa_receipt && <div className="flex justify-between"><span className="text-fog light:text-fog-light">M-Pesa Receipt</span><span className="font-mono">{order.mpesa_receipt}</span></div>}
         </div>
 
         {order.delivery_address && (
           <div className={`${cardSurface} p-6 mb-6 text-sm`}>
-            <h2 className="font-barlow-condensed font-bold text-fire letter-spacing-widest text-transform-uppercase mb-4">Delivery</h2>
+            <h2 className="font-barlow-condensed font-bold text-accent light:text-accent-light tracking-widest uppercase mb-4">Delivery</h2>
             {order.phone && <p className="mb-2"><span className="text-fog light:text-fog-light">Phone: </span>{order.phone}</p>}
             <p><span className="text-fog light:text-fog-light">Address: </span>{order.delivery_address}</p>
           </div>
@@ -168,7 +168,7 @@ export default function OrderConfirmation() {
 
         {order.items && order.items.length > 0 && (
           <div className={`${cardSurface} p-6 mb-6 text-sm`}>
-            <h2 className="font-barlow-condensed font-bold text-fire letter-spacing-widest text-transform-uppercase mb-4">Items</h2>
+            <h2 className="font-barlow-condensed font-bold text-accent light:text-accent-light tracking-widest uppercase mb-4">Items</h2>
             {order.items.map((item, i) => (
               <div key={i} className="flex justify-between py-2 border-b border-white/5 light:border-black/8 last:border-0">
                 <span>{item.product_name || 'Product'} × {item.quantity}</span>
@@ -178,17 +178,17 @@ export default function OrderConfirmation() {
           </div>
         )}
 
-        <div className={`${cardSurface} p-6 mb-6 flex justify-between font-bebas text-3xl text-fire`}>
+        <div className={`${cardSurface} p-6 mb-6 flex justify-between font-bebas text-3xl text-accent light:text-accent-light`}>
           <span>Total</span>
           <span>KES {Number(order.total_amount).toLocaleString()}</span>
         </div>
 
         <div className="flex gap-3">
-          <button onClick={() => navigate('/shop')} className="flex-1 bg-fire text-white py-3 clip-angled font-barlow-condensed font-black text-sm letter-spacing-widest text-transform-uppercase hover:bg-ember">
+          <button onClick={() => navigate('/shop')} className="flex-1 bg-accent light:bg-accent-light text-black light:text-white py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-accent/90 light:hover:bg-accent-light/90">
             {paymentStatus === 'paid' ? 'Continue Shopping' : 'Back to Shop'}
           </button>
           {paymentStatus === 'pending' && (
-            <button onClick={() => window.location.reload()} className={`flex-1 py-3 font-barlow-condensed font-bold text-sm hover:border-fire ${inputField}`}>
+            <button onClick={() => window.location.reload()} className={`flex-1 py-3 font-barlow-condensed font-bold text-sm hover:border-accent light:hover:border-accent-light ${inputField}`}>
               Refresh Status
             </button>
           )}

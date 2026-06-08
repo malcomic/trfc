@@ -33,7 +33,7 @@ export default function EquipmentHire() {
   if (loading) {
     return (
       <div className="min-h-screen bg-night text-chalk flex items-center justify-center">
-        <Loader className="w-12 h-12 animate-spin text-fire" />
+        <Loader className="w-12 h-12 animate-spin text-accent light:text-accent-light" />
       </div>
     )
   }
@@ -42,7 +42,7 @@ export default function EquipmentHire() {
     <div className="min-h-screen bg-night text-chalk font-barlow">
       <section className="bg-ink border-b border-white/5 px-[6%] pt-14 pb-11">
         <div className="max-w-5xl mx-auto">
-          <h1 className="font-bebas text-5xl">EQUIPMENT <span className="text-fire">HIRE</span></h1>
+          <h1 className="font-bebas text-5xl">EQUIPMENT <span className="text-accent light:text-accent-light">HIRE</span></h1>
           <p className="text-fog mt-2">Rent gym equipment at affordable rates</p>
         </div>
       </section>
@@ -56,15 +56,15 @@ export default function EquipmentHire() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {packages.map((pkg) => (
-            <div key={pkg.packageType} className="bg-ash border border-white/5 p-6 flex flex-col hover:border-fire/30 transition">
+            <div key={pkg.packageType} className="bg-ash border border-white/5 p-6 flex flex-col hover:border-accent/30 light:hover:border-accent-light/30 transition">
               <h3 className="font-barlow-condensed font-bold text-2xl capitalize mb-2">{pkg.packageType}</h3>
               <p className="text-fog text-sm mb-6 flex-1">{pkg.description}</p>
-              <p className="font-bebas text-3xl text-fire mb-6">
+              <p className="font-bebas text-3xl text-accent light:text-accent-light mb-6">
                 KES {pkg.price.toLocaleString()}<span className="text-sm text-fog font-barlow">/day</span>
               </p>
               <button
                 onClick={() => navigate('/equipment/checkout', { state: { packageType: pkg.packageType, pricePerDay: pkg.price } })}
-                className="w-full bg-fire text-white py-3 clip-angled font-barlow-condensed font-black text-sm letter-spacing-widest text-transform-uppercase hover:bg-ember flex items-center justify-center gap-2"
+                className="w-full bg-accent light:bg-accent-light text-black light:text-white py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-accent/90 light:hover:bg-accent-light/90 flex items-center justify-center gap-2"
               >
                 Book Now <ArrowRight size={16} />
               </button>

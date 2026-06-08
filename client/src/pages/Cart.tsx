@@ -29,17 +29,17 @@ export default function Cart() {
 
       {/* ── Hero ── */}
       <section className="bg-ink light:bg-ink-light border-b border-white/5 light:border-black/8 px-[6%] pt-14 pb-11 relative overflow-hidden">
-        <div className="absolute right-[-1%] bottom-[-16px] font-bebas text-clamp-2xl text-fire/5 leading-none pointer-events-none select-none letter-spacing-tighter">CART</div>
+        <div className="absolute right-[-1%] bottom-[-16px] font-bebas text-clamp-2xl text-accent/5 light:text-accent-light/5 leading-none pointer-events-none select-none tracking-tighter">CART</div>
         <div className="max-w-5xl mx-auto relative z-1 flex items-end justify-between gap-4 flex-wrap">
           <div>
-            <div className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fire flex items-center gap-2 mb-3 before:w-5 before:h-0.5 before:bg-fire">Your Order</div>
+            <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light flex items-center gap-2 mb-3 before:w-5 before:h-0.5 before:bg-accent light:before:bg-accent-light">Your Order</div>
             <h1 className="font-bebas text-5xl text-chalk light:text-chalk-light leading-tight">
-              MY<br /><span className="text-fire">CART</span>
+              MY<br /><span className="text-accent light:text-accent-light">CART</span>
             </h1>
           </div>
           {items.length > 0 && (
-            <p className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-fog light:text-fog-light pb-1.5">
-              <strong className="font-bebas text-2xl text-fire letter-spacing-wider mr-1">{totalQuantity}</strong>
+            <p className="font-barlow-condensed font-bold text-sm tracking-widest uppercase text-fog light:text-fog-light pb-1.5">
+              <strong className="font-bebas text-2xl text-accent light:text-accent-light tracking-wider mr-1">{totalQuantity}</strong>
               item{totalQuantity !== 1 ? 's' : ''} selected
             </p>
           )}
@@ -49,12 +49,12 @@ export default function Cart() {
       {/* ── Empty state ── */}
       {items.length === 0 && (
         <div className="min-h-60vh flex flex-col items-center justify-center text-center px-6 py-20">
-          <div className="font-bebas text-clamp-2xl text-fire/10 leading-none mb-5 letter-spacing-tighter">EMPTY<br />CART</div>
-          <p className="font-barlow-condensed font-bold text-xl letter-spacing-widest text-transform-uppercase text-fog light:text-fog-light mb-2">Nothing in here yet</p>
+          <div className="font-bebas text-clamp-2xl text-accent/10 light:text-accent-light/10 leading-none mb-5 tracking-tighter">EMPTY<br />CART</div>
+          <p className="font-barlow-condensed font-bold text-xl tracking-widest uppercase text-fog light:text-fog-light mb-2">Nothing in here yet</p>
           <p className="text-sm text-mist light:text-mist-light mb-9">
             Head to the shop and grab some TRFC gear.
           </p>
-          <Link to="/shop" className="inline-flex items-center gap-4 bg-fire text-white text-decoration-none font-barlow-condensed font-black text-sm letter-spacing-widest text-transform-uppercase px-9 py-3.5 clip-angled transition-all duration-200 hover:bg-ember hover:scale-103">
+          <Link to="/shop" className="inline-flex items-center gap-4 bg-accent light:bg-accent-light text-black light:text-white no-underline font-barlow-condensed font-black text-sm tracking-widest uppercase px-9 py-3.5 clip-angled transition-all duration-200 hover:bg-accent/90 light:hover:bg-accent-light/90 hover:scale-103">
             <ShoppingBag size={16} />
             Browse the Shop
           </Link>
@@ -68,7 +68,7 @@ export default function Cart() {
           {/* Left — items */}
           <div className="lg:col-span-2">
             {/* Column headers */}
-            <div className="hidden md:grid grid-cols-5 gap-4.5 px-5 pb-3 font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fog light:text-fog-light border-b border-white/5 light:border-black/8 mb-0.5">
+            <div className="hidden md:grid grid-cols-5 gap-4.5 px-5 pb-3 font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light border-b border-white/5 light:border-black/8 mb-0.5">
               <span>Item</span>
               <span />
               <span className="text-center">Qty</span>
@@ -78,7 +78,7 @@ export default function Cart() {
 
             <div className="flex flex-col gap-0.5">
               {items.map((item) => (
-                <div key={item.product.id} className={`${cardSurface} grid md:grid-cols-5 grid-cols-3 gap-4.5 items-center p-5 transition-all duration-200 hover:border-white/10 light:hover:border-black/15 relative group before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-fire before:scale-y-0 before:origin-bottom before:transition-transform before:duration-250 hover:before:scale-y-100`}>
+                <div key={item.product.id} className={`${cardSurface} grid md:grid-cols-5 grid-cols-3 gap-4.5 items-center p-5 transition-all duration-200 hover:border-white/10 light:hover:border-black/15 relative group before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-accent light:before:bg-accent-light before:scale-y-0 before:origin-bottom before:transition-transform before:duration-250 hover:before:scale-y-100`}>
                   {/* Image */}
                   {(item.product as any).image_url ? (
                     <img
@@ -97,16 +97,16 @@ export default function Cart() {
 
                   {/* Info */}
                   <div className="md:col-span-1 col-span-1">
-                    <p className="font-barlow-condensed font-bold text-lg letter-spacing-tighter text-chalk light:text-chalk-light leading-tight mb-1">{item.product.name}</p>
-                    <p className="text-xs text-fog light:text-fog-light font-barlow-condensed font-medium letter-spacing-widest">
-                      KES <span className="text-fire">{Number(item.product.price).toLocaleString()}</span> each
+                    <p className="font-barlow-condensed font-bold text-lg tracking-tighter text-chalk light:text-chalk-light leading-tight mb-1">{item.product.name}</p>
+                    <p className="text-xs text-fog light:text-fog-light font-barlow-condensed font-medium tracking-widest">
+                      KES <span className="text-accent light:text-accent-light">{Number(item.product.price).toLocaleString()}</span> each
                     </p>
                   </div>
 
                   {/* Qty */}
                   <div className="flex items-center gap-0 border border-white/10 light:border-black/10 overflow-hidden clip-angled-sm md:col-span-1">
                     <button
-                      className="bg-smoke light:bg-smoke-light text-fog light:text-fog-light hover:bg-fire hover:text-white w-8 h-9 flex items-center justify-center cursor-pointer transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-smoke disabled:hover:text-fog"
+                      className="bg-smoke light:bg-smoke-light text-fog light:text-fog-light hover:bg-accent light:hover:bg-accent-light hover:text-white w-8 h-9 flex items-center justify-center cursor-pointer transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-smoke disabled:hover:text-fog"
                       onClick={() => handleQuantityChange(item.product.id, item.quantity - 1)}
                       disabled={item.quantity <= 1}
                       aria-label="Decrease quantity"
@@ -115,7 +115,7 @@ export default function Cart() {
                     </button>
                     <div className="w-10 text-center font-bebas text-xl text-chalk light:text-chalk-light leading-none bg-ash light:bg-ash-light border-l border-r border-white/10 light:border-black/10 py-1.75">{item.quantity}</div>
                     <button
-                      className="bg-smoke light:bg-smoke-light text-fog light:text-fog-light hover:bg-fire hover:text-white w-8 h-9 flex items-center justify-center cursor-pointer transition-all duration-200"
+                      className="bg-smoke light:bg-smoke-light text-fog light:text-fog-light hover:bg-accent light:hover:bg-accent-light hover:text-white w-8 h-9 flex items-center justify-center cursor-pointer transition-all duration-200"
                       onClick={() => handleQuantityChange(item.product.id, item.quantity + 1)}
                       aria-label="Increase quantity"
                     >
@@ -124,7 +124,7 @@ export default function Cart() {
                   </div>
 
                   {/* Line total */}
-                  <p className="font-bebas text-2xl text-chalk light:text-chalk-light letter-spacing-tighter text-right white-space-nowrap">
+                  <p className="font-bebas text-2xl text-chalk light:text-chalk-light tracking-tighter text-right whitespace-nowrap">
                     KES {(item.product.price * item.quantity).toLocaleString()}
                   </p>
 
@@ -144,7 +144,7 @@ export default function Cart() {
           {/* Right — summary */}
           <div className={`${cardSurface} sticky top-20`}>
             <div className="px-6 py-5 border-b border-white/5 light:border-black/8">
-              <p className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fire flex items-center gap-2 before:w-3.5 before:h-0.5 before:bg-fire">Order Summary</p>
+              <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light flex items-center gap-2 before:w-3.5 before:h-0.5 before:bg-accent light:before:bg-accent-light">Order Summary</p>
             </div>
 
             <div className="px-6 py-5">
@@ -157,19 +157,19 @@ export default function Cart() {
                 <span className={shipping === 0 ? 'text-green-400 font-semibold' : 'text-chalk light:text-chalk-light font-semibold'}>{shipping === 0 ? 'FREE' : `KES ${shipping.toLocaleString()}`}</span>
               </div>
               {shipping > 0 && (
-                <div className="bg-fire/10 border border-fire/15 px-3 py-2.5 mt-1 font-barlow-condensed font-medium text-xs letter-spacing-tighter text-fog light:text-fog-light">
-                  Add KES {(3000 - subtotal).toLocaleString()} more for <span className="text-fire font-bold">free delivery</span>
+                <div className="bg-accent/10 light:bg-accent-light/10 border border-accent/15 light:border-accent-light/15 px-3 py-2.5 mt-1 font-barlow-condensed font-medium text-xs tracking-tighter text-fog light:text-fog-light">
+                  Add KES {(3000 - subtotal).toLocaleString()} more for <span className="text-accent light:text-accent-light font-bold">free delivery</span>
                 </div>
               )}
 
-              <div className="flex justify-between items-baseline pt-4.5 border-t-2 border-fire/30 mt-1">
+              <div className="flex justify-between items-baseline pt-4.5 border-t-2 border-accent/30 light:border-accent-light/30 mt-1">
                 <div>
-                  <p className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fog light:text-fog-light">Total</p>
-                  <p className="font-barlow-condensed text-xs letter-spacing-tighter text-fog light:text-fog-light">
+                  <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light">Total</p>
+                  <p className="font-barlow-condensed text-xs tracking-tighter text-fog light:text-fog-light">
                     Taxes included
                   </p>
                 </div>
-                <p className="font-bebas text-4xl text-fire leading-none letter-spacing-wider">
+                <p className="font-bebas text-4xl text-accent light:text-accent-light leading-none tracking-wider">
                   KES {grandTotal.toLocaleString()}
                 </p>
               </div>
@@ -177,33 +177,33 @@ export default function Cart() {
 
             {/* Promo code */}
             <div className="border-t border-white/5 light:border-black/8 px-6 py-4">
-              <p className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fog light:text-fog-light mb-2.5 flex items-center gap-1.5">
+              <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light mb-2.5 flex items-center gap-1.5">
                 <Tag size={11} /> Promo Code
               </p>
               <div className="flex gap-0">
                 <input
                   type="text"
-                  className={`flex-1 ${inputField} border-r-0 text-xs px-3.5 py-2.5 transition-all duration-200 focus:border-fire/40 clip-angled-l`}
+                  className={`flex-1 ${inputField} border-r-0 text-xs px-3.5 py-2.5 transition-all duration-200 focus:border-accent/40 light:focus:border-accent-light/40 clip-angled-l`}
                   placeholder="Enter code…"
                 />
-                <button className="bg-smoke light:bg-smoke-light hover:bg-fire text-chalk light:text-chalk-light hover:text-white border border-white/10 light:border-black/10 hover:border-fire font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase px-4 py-2.5 cursor-pointer transition-all duration-200 flex-shrink-0 clip-angled-r">Apply</button>
+                <button className="bg-smoke light:bg-smoke-light hover:bg-accent light:hover:bg-accent-light text-chalk light:text-chalk-light hover:text-white border border-white/10 light:border-black/10 hover:border-accent light:hover:border-accent-light font-barlow-condensed font-bold text-xs tracking-widest uppercase px-4 py-2.5 cursor-pointer transition-all duration-200 flex-shrink-0 clip-angled-r">Apply</button>
               </div>
             </div>
 
             {/* Checkout CTA */}
-            <Link to="/checkout" className="flex items-center justify-center gap-2.5 w-full mx-0 my-5 bg-fire text-white text-decoration-none font-barlow-condensed font-black text-base letter-spacing-widest text-transform-uppercase px-6 py-4 clip-angled transition-all duration-200 hover:bg-ember hover:scale-102 mx-6 w-calc-100%-48px">
+            <Link to="/checkout" className="flex items-center justify-center gap-2.5 w-full mx-0 my-5 bg-accent light:bg-accent-light text-black light:text-white no-underline font-barlow-condensed font-black text-base tracking-widest uppercase px-6 py-4 clip-angled transition-all duration-200 hover:bg-accent/90 light:hover:bg-accent-light/90 hover:scale-102 mx-6 w-calc-100%-48px">
               Proceed to Checkout <ArrowRight size={16} />
             </Link>
 
-            <Link to="/shop" className="block text-center text-xs letter-spacing-widest text-transform-uppercase text-fog light:text-fog-light text-decoration-none font-barlow-condensed font-bold transition-all duration-200 hover:text-fire pb-5">
+            <Link to="/shop" className="block text-center text-xs tracking-widest uppercase text-fog light:text-fog-light no-underline font-barlow-condensed font-bold transition-all duration-200 hover:text-accent light:hover:text-accent-light pb-5">
               ← Continue Shopping
             </Link>
 
             {/* Trust badges */}
             <div className="px-6 py-4 border-t border-white/5 light:border-black/8 flex flex-col gap-2">
-              <p className="flex items-center gap-2 text-xs text-fog light:text-fog-light font-barlow-condensed font-medium letter-spacing-tighter before:content-['✓'] before:text-green-400 before:font-bold before:text-xs">Secure checkout</p>
-              <p className="flex items-center gap-2 text-xs text-fog light:text-fog-light font-barlow-condensed font-medium letter-spacing-tighter before:content-['✓'] before:text-green-400 before:font-bold before:text-xs">Free returns within 7 days</p>
-              <p className="flex items-center gap-2 text-xs text-fog light:text-fog-light font-barlow-condensed font-medium letter-spacing-tighter before:content-['✓'] before:text-green-400 before:font-bold before:text-xs">Official TRFC merchandise</p>
+              <p className="flex items-center gap-2 text-xs text-fog light:text-fog-light font-barlow-condensed font-medium tracking-tighter before:content-['✓'] before:text-green-400 before:font-bold before:text-xs">Secure checkout</p>
+              <p className="flex items-center gap-2 text-xs text-fog light:text-fog-light font-barlow-condensed font-medium tracking-tighter before:content-['✓'] before:text-green-400 before:font-bold before:text-xs">Free returns within 7 days</p>
+              <p className="flex items-center gap-2 text-xs text-fog light:text-fog-light font-barlow-condensed font-medium tracking-tighter before:content-['✓'] before:text-green-400 before:font-bold before:text-xs">Official TRFC merchandise</p>
             </div>
           </div>
 

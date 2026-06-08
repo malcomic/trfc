@@ -238,7 +238,7 @@ export default function AdminReports() {
                 onClick={() => setDateRange(range as '7' | '30' | '90')}
                 className={`px-4 py-2 rounded transition ${
                   dateRange === range
-                    ? 'bg-primary dark:bg-primary-dark text-white'
+                    ? 'bg-primary dark:bg-primary-dark text-white dark:text-black'
                     : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >

@@ -34,7 +34,7 @@ export default function ProductDetail() {
   if (loading) {
     return (
       <div className="min-h-screen bg-night flex items-center justify-center">
-        <Loader className="animate-spin text-fire w-10 h-10" />
+        <Loader className="animate-spin text-accent light:text-accent-light w-10 h-10" />
       </div>
     )
   }
@@ -46,7 +46,7 @@ export default function ProductDetail() {
           <AlertCircle className="text-red-400" />
           <div>
             <p className="text-red-300 mb-4">{error || 'Not found'}</p>
-            <Link to="/shop" className="text-fire">Back to shop</Link>
+            <Link to="/shop" className="text-accent light:text-accent-light">Back to shop</Link>
           </div>
         </div>
       </div>
@@ -58,7 +58,7 @@ export default function ProductDetail() {
   return (
     <div className="min-h-screen bg-night text-chalk font-barlow">
       <div className="max-w-4xl mx-auto px-[6%] py-10 pb-20">
-        <button onClick={() => navigate('/shop')} className="inline-flex items-center gap-2 text-fire text-sm mb-6 bg-transparent border-0 cursor-pointer hover:underline">
+        <button onClick={() => navigate('/shop')} className="inline-flex items-center gap-2 text-accent light:text-accent-light text-sm mb-6 bg-transparent border-0 cursor-pointer hover:underline">
           <ArrowLeft size={14} /> Back to Shop
         </button>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
@@ -69,10 +69,10 @@ export default function ProductDetail() {
           />
           <div>
             {p.category && (
-              <p className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fire mb-2">{p.category}</p>
+              <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light mb-2">{p.category}</p>
             )}
             <h1 className="font-bebas text-5xl mb-4">{p.name}</h1>
-            <p className="font-bebas text-4xl text-fire mb-6">KES {Number(p.price).toLocaleString()}</p>
+            <p className="font-bebas text-4xl text-accent light:text-accent-light mb-6">KES {Number(p.price).toLocaleString()}</p>
             {p.description && <p className="text-fog leading-relaxed mb-8">{p.description}</p>}
             {p.stock === 0 ? (
               <p className="text-fog font-barlow-condensed font-bold uppercase text-sm">Sold out</p>
@@ -91,7 +91,7 @@ export default function ProductDetail() {
                 </div>
                 <button
                   onClick={handleAdd}
-                  className={`w-full py-4 clip-angled font-barlow-condensed font-black text-sm letter-spacing-widest text-transform-uppercase flex items-center justify-center gap-2 ${added ? 'bg-green-600/30 text-green-400' : 'bg-fire text-white hover:bg-ember'}`}
+                  className={`w-full py-4 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase flex items-center justify-center gap-2 ${added ? 'bg-green-600/30 text-green-400' : 'bg-accent light:bg-accent-light text-black light:text-white hover:bg-accent/90 light:hover:bg-accent-light/90'}`}
                 >
                   <ShoppingCart size={18} />
                   {added ? 'Added to Cart!' : 'Add to Cart'}

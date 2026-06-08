@@ -8,8 +8,36 @@ html {
   scroll-behavior: smooth;
 }
 
-body {
-  font-family: 'Inter', system-ui, sans-serif;
+@layer base {
+  body {
+    @apply font-sans antialiased text-gray-900 dark:text-gray-100;
+  }
+
+  /* Public pages set font-barlow via pageRoot; headings use Bebas where marked */
+  h1,
+  h2,
+  h3,
+  .font-display {
+    @apply font-bebas tracking-tight;
+  }
+}
+
+@layer components {
+  .type-eyebrow {
+    @apply font-barlow-condensed font-bold text-xs tracking-widest uppercase;
+  }
+
+  .type-headline {
+    @apply font-bebas leading-tight tracking-tight;
+  }
+
+  .type-body {
+    @apply font-barlow leading-relaxed;
+  }
+
+  .type-label {
+    @apply font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light;
+  }
 }
 
 @layer utilities {

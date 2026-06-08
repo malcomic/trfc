@@ -63,7 +63,7 @@ function AdminNavLinks({
             onClick={onNavigate}
             className={`flex items-center gap-3 px-4 py-3 min-h-[44px] rounded-lg transition ${
               active
-                ? 'bg-primary dark:bg-primary-dark text-white'
+                ? 'bg-primary dark:bg-primary-dark text-white dark:text-black'
                 : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >

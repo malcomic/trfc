@@ -188,7 +188,7 @@ export default function AdminAnalytics() {
             <button
               onClick={fetchAnalytics}
               disabled={loading}
-              className="flex items-center justify-center gap-2 bg-primary dark:bg-primary-dark text-white px-4 py-2 min-h-[44px] rounded-lg hover:opacity-90 transition disabled:opacity-50 w-full sm:w-auto"
+              className="flex items-center justify-center gap-2 bg-primary dark:bg-primary-dark text-white dark:text-black px-4 py-2 min-h-[44px] rounded-lg hover:opacity-90 transition disabled:opacity-50 w-full sm:w-auto"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh
@@ -206,7 +206,7 @@ export default function AdminAnalytics() {
               onClick={() => setDateRange(range as '7' | '30' | '90')}
               className={`px-4 py-2 rounded transition ${
                 dateRange === range
-                  ? 'bg-primary dark:bg-primary-dark text-white'
+                  ? 'bg-primary dark:bg-primary-dark text-white dark:text-black'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >

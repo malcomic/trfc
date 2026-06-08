@@ -144,7 +144,7 @@ export default function AdminSponsorshipTiers() {
         actions={
           <button
             onClick={openCreateModal}
-            className="flex items-center justify-center gap-2 bg-primary dark:bg-primary-dark text-white px-6 py-2 rounded-lg hover:opacity-90 transition w-full sm:w-auto"
+            className="flex items-center justify-center gap-2 bg-primary dark:bg-primary-dark text-white dark:text-black px-6 py-2 rounded-lg hover:opacity-90 transition w-full sm:w-auto"
           >
             <Plus size={20} />
             New Tier
@@ -384,7 +384,7 @@ export default function AdminSponsorshipTiers() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-4 py-2 bg-primary dark:bg-primary-dark text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+                  className="px-4 py-2 bg-primary dark:bg-primary-dark text-white dark:text-black rounded-lg hover:opacity-90 disabled:opacity-50"
                 >
                   {saving ? 'Saving...' : editingId ? 'Update' : 'Create'}
                 </button>

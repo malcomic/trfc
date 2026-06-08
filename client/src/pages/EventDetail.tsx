@@ -56,7 +56,7 @@ export default function EventDetail() {
             <AlertCircle className="w-6 h-6 text-red-400 flex-shrink-0" />
             <div>
               <p className="text-red-300 mb-4">{error || 'Event not found'}</p>
-              <button onClick={() => (error ? fetchEvent() : navigate('/events'))} className="bg-fire text-white px-4 py-2 clip-angled-sm mr-3">
+              <button onClick={() => (error ? fetchEvent() : navigate('/events'))} className="bg-accent light:bg-accent-light text-black light:text-white px-4 py-2 clip-angled-sm mr-3">
                 {error ? 'Retry' : 'Back to Events'}
               </button>
             </div>
@@ -80,7 +80,7 @@ export default function EventDetail() {
     <div className={pageRoot}>
       <section className="bg-ink light:bg-ink-light border-b border-white/5 light:border-black/8 px-[6%] pt-14 pb-8">
         <div className="max-w-4xl mx-auto">
-          <button onClick={() => navigate('/events')} className="text-fire text-sm mb-4 bg-transparent border-0 cursor-pointer font-barlow-condensed font-bold hover:underline">
+          <button onClick={() => navigate('/events')} className="text-accent light:text-accent-light text-sm mb-4 bg-transparent border-0 cursor-pointer font-barlow-condensed font-bold hover:underline">
             ← Back to Events
           </button>
           <h1 className="font-bebas text-5xl leading-tight">{ev.title}</h1>
@@ -98,32 +98,32 @@ export default function EventDetail() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           <div className={`${cardSurface} p-5 flex items-start gap-3`}>
-            <MapPin size={18} className="text-fire flex-shrink-0 mt-0.5" />
+            <MapPin size={18} className="text-accent light:text-accent-light flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-xs text-fog light:text-fog-light uppercase letter-spacing-widest mb-1">Location</p>
+              <p className="text-xs text-fog light:text-fog-light uppercase tracking-widest mb-1">Location</p>
               <p className="font-semibold">{ev.location}</p>
             </div>
           </div>
           <div className={`${cardSurface} p-5 flex items-start gap-3`}>
-            <Clock size={18} className="text-fire flex-shrink-0 mt-0.5" />
+            <Clock size={18} className="text-accent light:text-accent-light flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-xs text-fog light:text-fog-light uppercase letter-spacing-widest mb-1">Date & Time</p>
+              <p className="text-xs text-fog light:text-fog-light uppercase tracking-widest mb-1">Date & Time</p>
               <p className="font-semibold">{formattedDate}</p>
               {formattedTime && <p className="text-fog light:text-fog-light text-sm">{formattedTime}</p>}
             </div>
           </div>
           <div className={`${cardSurface} p-5 flex items-start gap-3`}>
-            <Ticket size={18} className="text-fire flex-shrink-0 mt-0.5" />
+            <Ticket size={18} className="text-accent light:text-accent-light flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-xs text-fog light:text-fog-light uppercase letter-spacing-widest mb-1">Price</p>
-              <p className="font-bebas text-3xl text-fire">{isFree ? 'FREE' : `KES ${Number(ev.price).toLocaleString()}`}</p>
+              <p className="text-xs text-fog light:text-fog-light uppercase tracking-widest mb-1">Price</p>
+              <p className="font-bebas text-3xl text-accent light:text-accent-light">{isFree ? 'FREE' : `KES ${Number(ev.price).toLocaleString()}`}</p>
             </div>
           </div>
           {ev.capacity && (
             <div className={`${cardSurface} p-5 flex items-start gap-3`}>
-              <Users size={18} className="text-fire flex-shrink-0 mt-0.5" />
+              <Users size={18} className="text-accent light:text-accent-light flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-xs text-fog light:text-fog-light uppercase letter-spacing-widest mb-1">Capacity</p>
+                <p className="text-xs text-fog light:text-fog-light uppercase tracking-widest mb-1">Capacity</p>
                 <p className="font-semibold">{ev.capacity} spots</p>
               </div>
             </div>
@@ -131,23 +131,23 @@ export default function EventDetail() {
         </div>
 
         <div className={`${cardSurface} p-6`}>
-          <label className="block font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-fire mb-4">Number of Tickets</label>
+          <label className="block font-barlow-condensed font-bold text-sm tracking-widest uppercase text-accent light:text-accent-light mb-4">Number of Tickets</label>
           <div className="flex items-center gap-4 mb-6">
-            <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className={`w-10 h-10 flex items-center justify-center hover:bg-fire hover:text-white transition ${inputField}`}>
+            <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className={`w-10 h-10 flex items-center justify-center hover:bg-accent light:hover:bg-accent-light hover:text-white transition ${inputField}`}>
               <Minus size={16} />
             </button>
             <span className="font-bebas text-3xl w-12 text-center">{quantity}</span>
-            <button onClick={() => setQuantity(Math.min(10, quantity + 1))} className={`w-10 h-10 flex items-center justify-center hover:bg-fire hover:text-white transition ${inputField}`}>
+            <button onClick={() => setQuantity(Math.min(10, quantity + 1))} className={`w-10 h-10 flex items-center justify-center hover:bg-accent light:hover:bg-accent-light hover:text-white transition ${inputField}`}>
               <Plus size={16} />
             </button>
             <span className="text-fog light:text-fog-light ml-4">
-              Total: <strong className="text-fire font-bebas text-2xl">{isFree ? 'FREE' : `KES ${(Number(ev.price) * quantity).toLocaleString()}`}</strong>
+              Total: <strong className="text-accent light:text-accent-light font-bebas text-2xl">{isFree ? 'FREE' : `KES ${(Number(ev.price) * quantity).toLocaleString()}`}</strong>
             </span>
           </div>
 
           <button
             onClick={() => navigate(`/events/${id}/checkout`, { state: { quantity } })}
-            className="w-full bg-fire text-white py-4 font-barlow-condensed font-black text-sm letter-spacing-widest text-transform-uppercase clip-angled hover:bg-ember flex items-center justify-center gap-2"
+            className="w-full bg-accent light:bg-accent-light text-black light:text-white py-4 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-accent/90 light:hover:bg-accent-light/90 flex items-center justify-center gap-2"
           >
             <Ticket size={18} />
             Buy {quantity} Ticket{quantity > 1 ? 's' : ''}

@@ -317,7 +317,7 @@ export default function AdminOrders() {
               <button
                 onClick={handleSaveStatus}
                 disabled={saving}
-                className="px-4 py-2 bg-primary dark:bg-primary-dark text-white rounded-lg hover:opacity-90 font-semibold disabled:opacity-50"
+                className="px-4 py-2 bg-primary dark:bg-primary-dark text-white dark:text-black rounded-lg hover:opacity-90 font-semibold disabled:opacity-50"
               >
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>

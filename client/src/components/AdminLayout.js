@@ -29,7 +29,7 @@ function AdminNavLinks({ pathname, onNavigate, }) {
             const Icon = item.icon;
             const active = isAdminNavActive(pathname, item.path);
             return (_jsxs(Link, { to: item.path, onClick: onNavigate, className: `flex items-center gap-3 px-4 py-3 min-h-[44px] rounded-lg transition ${active
-                    ? 'bg-primary dark:bg-primary-dark text-white'
+                    ? 'bg-primary dark:bg-primary-dark text-white dark:text-black'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`, children: [_jsx(Icon, { size: 20 }), _jsx("span", { children: item.label })] }, item.path));
         }) }));
 }

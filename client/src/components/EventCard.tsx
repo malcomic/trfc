@@ -41,45 +41,45 @@ export default function EventCard({ event }: { event: Event }) {
             <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black/75 to-transparent pointer-events-none" />
           </>
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-smoke dark:bg-smoke font-bebas text-5xl text-fire/10 letter-spacing-wider select-none">TRFC</div>
+          <div className="w-full h-full flex items-center justify-center bg-smoke dark:bg-smoke font-bebas text-5xl text-accent/10 light:text-accent-light/10 tracking-wider select-none">TRFC</div>
         )}
 
         {/* Date badge */}
         {day && (
           <div className="absolute top-3 left-3 bg-night/85 backdrop-blur-sm border border-white/10 p-2 text-center min-w-12 clip-angled-sm z-10">
-            <span className="font-bebas text-2xl text-fire leading-none block">{day}</span>
-            <span className="font-barlow-condensed font-bold text-xs letter-spacing-wider text-fog leading-none block mt-0.5">{mon}</span>
+            <span className="font-bebas text-2xl text-accent light:text-accent-light leading-none block">{day}</span>
+            <span className="font-barlow-condensed font-bold text-xs tracking-wider text-fog leading-none block mt-0.5">{mon}</span>
           </div>
         )}
 
         {/* Tag or Free badge */}
         {isFree ? (
-          <span className="absolute top-3 right-3 font-bebas text-sm letter-spacing-wider px-2.5 py-1 bg-success text-white z-10">FREE</span>
+          <span className="absolute top-3 right-3 font-bebas text-sm tracking-wider px-2.5 py-1 bg-success text-white z-10">FREE</span>
         ) : ev.category ? (
-          <span className="absolute top-3 right-3 font-barlow-condensed font-black text-xs letter-spacing-wider text-transform-uppercase px-2 py-1 bg-fire text-white z-10">{ev.category}</span>
+          <span className="absolute top-3 right-3 font-barlow-condensed font-black text-xs tracking-wider uppercase px-2 py-1 bg-accent light:bg-accent-light text-black light:text-white z-10">{ev.category}</span>
         ) : null}
       </div>
 
       {/* Body */}
       <div className="px-4.5 pt-4.5 pb-5 flex flex-col flex-1 gap-0 border-t border-white/5">
-        <h3 className="font-barlow-condensed font-bold text-lg letter-spacing-wide text-chalk leading-tight mb-2.5">{ev.title}</h3>
+        <h3 className="font-barlow-condensed font-bold text-lg tracking-wide text-chalk leading-tight mb-2.5">{ev.title}</h3>
 
         <div className="flex flex-col gap-1.5 mb-3.5">
           {ev.location && (
             <div className="flex items-center gap-1.75 text-sm text-fog font-barlow leading-none">
-              <MapPin size={11} className="text-fire flex-shrink-0" />
+              <MapPin size={11} className="text-accent light:text-accent-light flex-shrink-0" />
               <span>{ev.location}</span>
             </div>
           )}
           {(ev.time || ev.start_time) && (
             <div className="flex items-center gap-1.75 text-sm text-fog font-barlow leading-none">
-              <Clock size={11} className="text-fire flex-shrink-0" />
+              <Clock size={11} className="text-accent light:text-accent-light flex-shrink-0" />
               <span>{ev.time || ev.start_time}</span>
             </div>
           )}
           {ev.capacity && (
             <div className="flex items-center gap-1.75 text-sm text-fog font-barlow leading-none">
-              <Users size={11} className="text-fire flex-shrink-0" />
+              <Users size={11} className="text-accent light:text-accent-light flex-shrink-0" />
               <span>{ev.registered_count || 0} / {ev.capacity} registered</span>
             </div>
           )}
@@ -92,11 +92,11 @@ export default function EventCard({ event }: { event: Event }) {
 
         {/* Slots bar */}
         {slots !== null && (
-          <div className="flex items-center gap-1.5 font-barlow-condensed font-bold text-xs letter-spacing-wider text-transform-uppercase mb-3">
+          <div className="flex items-center gap-1.5 font-barlow-condensed font-bold text-xs tracking-wider uppercase mb-3">
             <div className="flex-1 h-0.75 bg-mist overflow-hidden max-w-20">
-              <div className="h-full bg-fire transition-all duration-400 ease" style={{ width: `${slotsPercent}%` }} />
+              <div className="h-full bg-accent light:bg-accent-light transition-all duration-400 ease" style={{ width: `${slotsPercent}%` }} />
             </div>
-            <span className={`${slotsUrgent ? 'text-fire' : 'text-fog'}`}>
+            <span className={`${slotsUrgent ? 'text-accent light:text-accent-light' : 'text-fog'}`}>
               {slots === 0 ? 'Full' : `${slots} slot${slots !== 1 ? 's' : ''} left`}
             </span>
           </div>
@@ -105,12 +105,12 @@ export default function EventCard({ event }: { event: Event }) {
         {/* Footer */}
         <div className="flex items-center justify-between pt-3.5 border-t border-white/5 mt-auto">
           <div>
-            <div className="font-bebas text-2xl text-fire letter-spacing-wider leading-none">
+            <div className="font-bebas text-2xl text-accent light:text-accent-light tracking-wider leading-none">
               {isFree ? 'FREE' : `KES ${Number(ev.price).toLocaleString()}`}
             </div>
-            <div className="font-barlow-condensed text-xs letter-spacing-wider text-transform-uppercase text-fog mt-0.5">Entry Fee</div>
+            <div className="font-barlow-condensed text-xs tracking-wider uppercase text-fog mt-0.5">Entry Fee</div>
           </div>
-          <div className="flex items-center gap-1.25 font-barlow-condensed font-bold text-xs letter-spacing-wider text-transform-uppercase text-fire border border-fire/25 px-3 py-1.75 clip-angled-sm transition-all duration-200 bg-fire/5 hover:bg-fire hover:text-white cursor-pointer">
+          <div className="flex items-center gap-1.25 font-barlow-condensed font-bold text-xs tracking-wider uppercase text-accent light:text-accent-light border border-accent/25 light:border-accent-light/25 px-3 py-1.75 clip-angled-sm transition-all duration-200 bg-accent/5 light:bg-accent-light/5 hover:bg-accent light:hover:bg-accent-light hover:text-black light:hover:text-white cursor-pointer">
             Register <ChevronRight size={12} />
           </div>
         </div>

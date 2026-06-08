@@ -15,7 +15,7 @@ export default function Contact() {
     <div className={pageRoot}>
       <section className="bg-ink light:bg-ink-light border-b border-white/5 light:border-black/8 px-[6%] pt-14 pb-11">
         <div className="max-w-3xl mx-auto">
-          <h1 className="font-bebas text-5xl text-chalk light:text-chalk-light">GET IN <span className="text-fire">TOUCH</span></h1>
+          <h1 className="font-bebas text-5xl text-chalk light:text-chalk-light">GET IN <span className="text-accent light:text-accent-light">TOUCH</span></h1>
           <p className="text-fog light:text-fog-light mt-2">Questions about events, membership, or partnerships? We&apos;d love to hear from you.</p>
         </div>
       </section>
@@ -28,23 +28,23 @@ export default function Contact() {
               href={href}
               target={href.startsWith('http') ? '_blank' : undefined}
               rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
-              className={`${cardSurface} p-6 flex items-center gap-5 no-underline text-chalk light:text-chalk-light hover:border-fire/30 transition group`}
+              className={`${cardSurface} p-6 flex items-center gap-5 no-underline text-chalk light:text-chalk-light hover:border-accent/30 light:hover:border-accent-light/30 transition group`}
             >
-              <div className="w-12 h-12 bg-fire/10 border border-fire/20 flex items-center justify-center text-fire flex-shrink-0">
+              <div className="w-12 h-12 bg-accent/10 light:bg-accent-light/10 border border-accent/20 light:border-accent-light/20 flex items-center justify-center text-accent light:text-accent-light flex-shrink-0">
                 <Icon size={20} />
               </div>
               <div className="flex-1">
-                <p className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fog light:text-fog-light">{label}</p>
+                <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light">{label}</p>
                 <p className="font-semibold mt-1">{value}</p>
               </div>
-              <ArrowRight size={16} className="text-fire opacity-0 group-hover:opacity-100 transition" />
+              <ArrowRight size={16} className="text-accent light:text-accent-light opacity-0 group-hover:opacity-100 transition" />
             </a>
           ))}
         </div>
 
         {siteSocial.length > 0 && (
           <div className={`${cardSurface} p-8 mb-12`}>
-            <h2 className="font-barlow-condensed font-bold text-fire letter-spacing-widest text-transform-uppercase mb-4">Follow Us</h2>
+            <h2 className="font-barlow-condensed font-bold text-accent light:text-accent-light tracking-widest uppercase mb-4">Follow Us</h2>
             <div className="flex flex-wrap gap-3">
               {siteSocial.map((s) => (
                 <a
@@ -52,7 +52,7 @@ export default function Contact() {
                   href={s.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase px-4 py-2 border border-white/10 light:border-black/10 text-chalk light:text-chalk-light no-underline hover:border-fire hover:text-fire transition"
+                  className="font-barlow-condensed font-bold text-xs tracking-widest uppercase px-4 py-2 border border-white/10 light:border-black/10 text-chalk light:text-chalk-light no-underline hover:border-accent light:hover:border-accent-light hover:text-accent light:hover:text-accent-light transition"
                 >
                   {s.label}
                 </a>
@@ -62,17 +62,17 @@ export default function Contact() {
         )}
 
         <div className={`${cardSurface} p-8`}>
-          <h2 className="font-barlow-condensed font-bold text-fire letter-spacing-widest text-transform-uppercase mb-4">Send a Message</h2>
+          <h2 className="font-barlow-condensed font-bold text-accent light:text-accent-light tracking-widest uppercase mb-4">Send a Message</h2>
           <p className="text-fog light:text-fog-light text-sm mb-6">Prefer email? Tap below to open your mail client with our address pre-filled.</p>
           <a
             href={`mailto:${siteContact.email}?subject=TRFC%20Enquiry`}
-            className="inline-flex bg-fire text-white px-8 py-3 clip-angled font-barlow-condensed font-black text-sm letter-spacing-widest text-transform-uppercase no-underline hover:bg-ember"
+            className="inline-flex bg-accent light:bg-accent-light text-black light:text-white px-8 py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase no-underline hover:bg-accent/90 light:hover:bg-accent-light/90"
           >
             Email TRFC
           </a>
           <p className="text-xs text-fog light:text-fog-light mt-6">
-            New to TRFC? <Link to="/register" className="text-fire no-underline hover:underline">Join the community</Link> or browse{' '}
-            <Link to="/partnerships" className="text-fire no-underline hover:underline">partnership options</Link>.
+            New to TRFC? <Link to="/register" className="text-accent light:text-accent-light no-underline hover:underline">Join the community</Link> or browse{' '}
+            <Link to="/partnerships" className="text-accent light:text-accent-light no-underline hover:underline">partnership options</Link>.
           </p>
         </div>
       </div>

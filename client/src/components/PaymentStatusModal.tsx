@@ -90,17 +90,17 @@ export default function PaymentStatusModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-      <div className="bg-ash border border-white/10 clip-angled-sm shadow-lg max-w-md w-full font-barlow">
-        <div className="bg-fire text-white px-6 py-5 border-b border-white/10">
+      <div className="bg-ash light:bg-ash-light border border-white/10 light:border-black/10 clip-angled-sm shadow-lg max-w-md w-full font-barlow">
+        <div className="bg-accent light:bg-accent-light text-black light:text-white px-6 py-5 border-b border-white/10 light:border-black/10">
           <h2 className="font-bebas text-3xl leading-tight">PAYMENT STATUS</h2>
-          <p className="font-barlow-condensed text-xs letter-spacing-widest text-transform-uppercase text-white/80 mt-1">M-Pesa transaction</p>
+          <p className="font-barlow-condensed text-xs tracking-widest uppercase text-black/70 light:text-white/80 mt-1">M-Pesa transaction</p>
         </div>
 
-        <div className="p-6 text-chalk">
+        <div className="p-6 text-chalk light:text-chalk-light">
           {status === 'pending' && (
             <div className="text-center">
-              <Loader className="w-14 h-14 text-fire animate-spin mx-auto mb-4" />
-              <p className="font-barlow-condensed font-bold text-lg letter-spacing-tighter mb-2">Waiting for Confirmation</p>
+              <Loader className="w-14 h-14 text-accent light:text-accent-light animate-spin mx-auto mb-4" />
+              <p className="font-barlow-condensed font-bold text-lg tracking-tighter mb-2">Waiting for Confirmation</p>
               <p className="text-fog text-sm mb-4">
                 We&apos;re waiting for payment confirmation on
               </p>
@@ -117,7 +117,7 @@ export default function PaymentStatusModal({
           {status === 'success' && (
             <div className="text-center">
               <CheckCircle className="w-14 h-14 text-green-400 mx-auto mb-4" />
-              <p className="font-barlow-condensed font-bold text-lg letter-spacing-tighter mb-2">Payment Successful!</p>
+              <p className="font-barlow-condensed font-bold text-lg tracking-tighter mb-2">Payment Successful!</p>
               <p className="text-fog text-sm mb-4">Your order has been confirmed.</p>
               <div className="bg-green-500/10 border border-green-500/25 p-4 text-sm text-green-300">
                 <p className="font-semibold">Transaction Confirmed</p>
@@ -129,7 +129,7 @@ export default function PaymentStatusModal({
           {status === 'failed' && (
             <div className="text-center">
               <AlertCircle className="w-14 h-14 text-red-400 mx-auto mb-4" />
-              <p className="font-barlow-condensed font-bold text-lg letter-spacing-tighter mb-2">Payment Failed</p>
+              <p className="font-barlow-condensed font-bold text-lg tracking-tighter mb-2">Payment Failed</p>
               <p className="text-fog text-sm mb-4">{error}</p>
               <div className="bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-300">
                 <p>Please try again or contact support for assistance.</p>
@@ -142,7 +142,7 @@ export default function PaymentStatusModal({
           {status !== 'pending' && (
             <button
               onClick={onClose}
-              className="w-full bg-fire text-white px-4 py-3 font-barlow-condensed font-black text-sm letter-spacing-widest text-transform-uppercase clip-angled hover:bg-ember transition-colors duration-200"
+              className="w-full bg-accent light:bg-accent-light text-black light:text-white px-4 py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-accent/90 light:hover:bg-accent-light/90 transition-colors duration-200"
             >
               Close
             </button>

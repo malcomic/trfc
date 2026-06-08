@@ -36,11 +36,11 @@ export default function LegalPageLayout({ meta, sections, crossLink }: LegalPage
   return (
     <div className={pageRoot}>
       <section className="bg-ink light:bg-ink-light border-b border-white/5 light:border-black/8 px-[6%] pt-14 pb-11 relative overflow-hidden">
-        <div className="absolute right-[-1%] bottom-[-16px] font-bebas text-clamp-2xl text-fire/5 leading-none pointer-events-none select-none">
+        <div className="absolute right-[-1%] bottom-[-16px] font-bebas text-clamp-2xl text-accent/5 light:text-accent-light/5 leading-none pointer-events-none select-none">
           {meta.watermark}
         </div>
         <div className="max-w-3xl mx-auto relative z-1">
-          <div className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fire flex items-center gap-2 mb-3 before:w-5 before:h-0.5 before:bg-fire">
+          <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light flex items-center gap-2 mb-3 before:w-5 before:h-0.5 before:bg-accent light:before:bg-accent-light">
             {meta.eyebrow}
           </div>
           <h1 className="font-bebas text-5xl leading-tight text-chalk light:text-chalk-light">
@@ -48,12 +48,12 @@ export default function LegalPageLayout({ meta, sections, crossLink }: LegalPage
             {meta.titleAccent && (
               <>
                 <br />
-                <span className="text-fire">{meta.titleAccent}</span>
+                <span className="text-accent light:text-accent-light">{meta.titleAccent}</span>
               </>
             )}
           </h1>
           <p className="text-fog light:text-fog-light mt-4 leading-relaxed">{meta.intro}</p>
-          <p className="text-xs text-fog/70 light:text-fog-light/70 mt-3 font-barlow-condensed letter-spacing-widest text-transform-uppercase">
+          <p className="text-xs text-fog/70 light:text-fog-light/70 mt-3 font-barlow-condensed tracking-widest uppercase">
             Last updated: {meta.lastUpdated}
           </p>
         </div>
@@ -75,11 +75,11 @@ export default function LegalPageLayout({ meta, sections, crossLink }: LegalPage
 
         <div className="border-t border-white/5 light:border-black/8 pt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
           {crossLink && (
-            <Link to={crossLink.to} className="text-fire no-underline hover:underline font-barlow-condensed font-bold letter-spacing-widest text-transform-uppercase text-xs">
+            <Link to={crossLink.to} className="text-accent light:text-accent-light no-underline hover:underline font-barlow-condensed font-bold tracking-widest uppercase text-xs">
               {crossLink.label}
             </Link>
           )}
-          <Link to="/contact" className="text-fog light:text-fog-light no-underline hover:text-fire transition font-barlow-condensed font-bold letter-spacing-widest text-transform-uppercase text-xs">
+          <Link to="/contact" className="text-fog light:text-fog-light no-underline hover:text-accent light:hover:text-accent-light transition font-barlow-condensed font-bold tracking-widest uppercase text-xs">
             Contact Us
           </Link>
         </div>
