@@ -17,6 +17,10 @@ export const updateMedia = async (id, data) => {
     const response = await api.put(`/gallery/${id}`, data);
     return response.data;
 };
+export const reorderHeroSlides = async (items) => {
+    const response = await api.patch('/gallery/hero/reorder', { items });
+    return response.data;
+};
 export const deleteMedia = async (id) => {
     const response = await api.delete(`/gallery/${id}`);
     return response.data;

@@ -3,15 +3,17 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertCircle, Star } from 'lucide-react';
 import { getEvents } from '../api/events';
-import { getGallery } from '../api/gallery';
+import { getGallery, getHeroSlides } from '../api/gallery';
 import { getTestimonials } from '../api/testimonials';
 import { pageRoot, cardSurface } from '../utils/themeClasses';
 import { getSafeImageUrl } from '../utils/imageUrl';
+import HeroCarousel from '../components/HeroCarousel';
 const EVENT_IMAGE_FALLBACK = 'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=600&q=80';
 import landingHero from '../assets/landing-hero.png';
 export default function Home() {
     const [events, setEvents] = useState([]);
     const [gallery, setGallery] = useState([]);
+    const [heroSlides, setHeroSlides] = useState([]);
     const [testimonials, setTestimonials] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -22,13 +24,15 @@ export default function Home() {
         try {
             setLoading(true);
             setError('');
-            const [eventsData, galleryData, testimonialsData] = await Promise.all([
+            const [eventsData, galleryData, heroData, testimonialsData] = await Promise.all([
                 getEvents(),
                 getGallery(),
+                getHeroSlides(),
                 getTestimonials(),
             ]);
             setEvents(eventsData.slice(0, 3));
             setGallery(Array.isArray(galleryData) ? galleryData.slice(0, 6) : []);
+            setHeroSlides(Array.isArray(heroData) ? heroData : []);
             setTestimonials(Array.isArray(testimonialsData) ? testimonialsData.slice(0, 3) : []);
         }
         catch (err) {
@@ -68,7 +72,7 @@ export default function Home() {
         .scroll-hint-line {
           animation: fadeUp 1.5s ease infinite;
         }
-      ` }), _jsxs("section", { className: "relative min-h-screen w-full flex items-center overflow-hidden", children: [_jsx("div", { className: "absolute inset-0 w-full h-full", children: _jsx("img", { src: landingHero, alt: "TRFC community members training together", className: "absolute inset-0 w-full h-full object-cover object-center", ...{ fetchpriority: 'high' } }) }), _jsx("div", { className: "absolute inset-0 bg-gradient-to-r from-black/80 via-black/45 to-black/15 pointer-events-none" }), _jsx("div", { className: "absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" }), _jsx("div", { className: "absolute left-[6%] top-[15%] bottom-[15%] w-0.5 bg-gradient-to-b from-transparent via-accent light:via-accent-light to-transparent opacity-60 z-10" }), _jsxs("div", { className: "max-w-[1200px] mx-auto px-[6%] py-[80px] relative z-10 w-full", children: [_jsxs("div", { className: "font-barlow-condensed font-bold text-xs tracking-widest text-accent light:text-accent-light mb-7 flex items-center gap-2.5", children: [_jsx("span", { className: "block w-6 h-0.5 bg-accent light:bg-accent-light" }), "Thika Road \u00B7 Nairobi \u00B7 Est. 2026"] }), _jsxs("h1", { className: "text-[clamp(72px,12vw,180px)] mb-8", children: [_jsx("span", { className: "hero-word text-white", children: "RUN" }), _jsx("span", { className: "hero-word text-transparent [-webkit-text-stroke:2px_#fff] light:[-webkit-text-stroke:2px_#000]", children: "TOGETHER" }), _jsx("span", { className: "hero-word text-white", children: "THRIVE" })] }), _jsx("p", { className: "hero-sub max-w-[520px] text-lg leading-relaxed text-white/75 mb-10", children: "Nairobi's most energetic running and fitness community. Train hard, race smart, celebrate every kilometre." }), _jsxs("div", { className: "hero-ctas flex flex-wrap gap-4 mb-15", children: [_jsx(Link, { to: "/register", className: "font-barlow-condensed font-black text-base tracking-wider text-black light:text-white px-9 py-3.5 bg-accent light:bg-accent-light clip-angled-lg transition-all duration-200 hover:bg-accent/90 light:hover:bg-accent-light/90 hover:scale-104 inline-block", children: "Join the Community" }), _jsx(Link, { to: "/events", className: "font-barlow-condensed font-bold text-base tracking-wider text-white px-8 py-3 border-1.5 border-white/40 transition-all duration-200 hover:border-accent light:hover:border-accent-light hover:text-accent light:hover:text-accent-light inline-block", children: "View Events" }), _jsx(Link, { to: "/shop", className: "font-barlow-condensed font-bold text-base tracking-wider text-white px-8 py-3 border-1.5 border-white/40 transition-all duration-200 hover:border-accent light:hover:border-accent-light hover:text-accent light:hover:text-accent-light inline-block", children: "Shop Merch" })] }), _jsx("div", { className: "hero-badge flex flex-wrap gap-6", children: [
+      ` }), _jsxs("section", { className: "relative min-h-screen w-full flex items-center overflow-hidden", children: [_jsx("div", { className: "absolute inset-0 w-full h-full", children: heroSlides.length > 0 ? (_jsx(HeroCarousel, { slides: heroSlides })) : (_jsx("img", { src: landingHero, alt: "TRFC community members training together", className: "absolute inset-0 w-full h-full object-cover object-center", ...{ fetchpriority: 'high' } })) }), _jsx("div", { className: "absolute inset-0 bg-gradient-to-r from-black/80 via-black/45 to-black/15 pointer-events-none" }), _jsx("div", { className: "absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" }), _jsx("div", { className: "absolute left-[6%] top-[15%] bottom-[15%] w-0.5 bg-gradient-to-b from-transparent via-accent light:via-accent-light to-transparent opacity-60 z-10" }), _jsxs("div", { className: "max-w-[1200px] mx-auto px-[6%] py-[80px] relative z-10 w-full", children: [_jsxs("div", { className: "font-barlow-condensed font-bold text-xs tracking-widest text-accent light:text-accent-light mb-7 flex items-center gap-2.5", children: [_jsx("span", { className: "block w-6 h-0.5 bg-accent light:bg-accent-light" }), "Thika Road \u00B7 Nairobi \u00B7 Est. 2026"] }), _jsxs("h1", { className: "text-[clamp(72px,12vw,180px)] mb-8", children: [_jsx("span", { className: "hero-word text-white", children: "RUN" }), _jsx("span", { className: "hero-word text-transparent [-webkit-text-stroke:2px_#fff] light:[-webkit-text-stroke:2px_#000]", children: "TOGETHER" }), _jsx("span", { className: "hero-word text-white", children: "THRIVE" })] }), _jsx("p", { className: "hero-sub max-w-[520px] text-lg leading-relaxed text-white/75 mb-10", children: "Nairobi's most energetic running and fitness community. Train hard, race smart, celebrate every kilometre." }), _jsxs("div", { className: "hero-ctas flex flex-wrap gap-4 mb-15", children: [_jsx(Link, { to: "/register", className: "font-barlow-condensed font-black text-base tracking-wider text-black light:text-white px-9 py-3.5 bg-accent light:bg-accent-light clip-angled-lg transition-all duration-200 hover:bg-accent/90 light:hover:bg-accent-light/90 hover:scale-104 inline-block", children: "Join the Community" }), _jsx(Link, { to: "/events", className: "font-barlow-condensed font-bold text-base tracking-wider text-white px-8 py-3 border-1.5 border-white/40 transition-all duration-200 hover:border-accent light:hover:border-accent-light hover:text-accent light:hover:text-accent-light inline-block", children: "View Events" }), _jsx(Link, { to: "/shop", className: "font-barlow-condensed font-bold text-base tracking-wider text-white px-8 py-3 border-1.5 border-white/40 transition-all duration-200 hover:border-accent light:hover:border-accent-light hover:text-accent light:hover:text-accent-light inline-block", children: "Shop Merch" })] }), _jsx("div", { className: "hero-badge flex flex-wrap gap-6", children: [
                                     { val: '500+', desc: 'Active Members' },
                                     { val: '50+', desc: 'Events Run' },
                                     { val: '5 Yrs', desc: 'Community Built' },

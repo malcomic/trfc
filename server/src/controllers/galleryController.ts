@@ -14,12 +14,30 @@ export const getGallery = async (req: Request, res: Response) => {
   }
 };
 
+export const getHeroSlides = async (req: Request, res: Response) => {
+  try {
+    const result = await query(
+      'SELECT * FROM gallery WHERE show_on_hero = true ORDER BY hero_sort_order ASC, uploaded_at ASC'
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch hero slides' });
+  }
+};
+
 export const uploadMedia = async (req: Request, res: Response) => {
   try {
-    const { media_url, media_type, caption } = req.body;
+    const { media_url, media_type, caption, show_on_hero, hero_sort_order } = req.body;
     const result = await query(
-      'INSERT INTO gallery (media_url, media_type, caption) VALUES ($1, $2, $3) RETURNING *',
-      [media_url, media_type || 'image', caption]
+      'INSERT INTO gallery (media_url, media_type, caption, show_on_hero, hero_sort_order) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [
+        media_url,
+        media_type || 'image',
+        caption,
+        show_on_hero === true || show_on_hero === 'true',
+        hero_sort_order ?? 0,
+      ]
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -34,8 +52,9 @@ export const uploadFile = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'No file provided' });
     }
 
-    const url = await uploadToCloudinary(req.file.buffer, 'trfc_gallery');
-    res.json({ url, media_type: req.body.media_type || 'image' });
+    const mediaType = req.body.media_type || 'image';
+    const url = await uploadToCloudinary(req.file.buffer, 'trfc_gallery', mediaType);
+    res.json({ url, media_type: mediaType });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to upload file' });
@@ -45,10 +64,16 @@ export const uploadFile = async (req: Request, res: Response) => {
 export const updateMedia = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { caption, media_type } = req.body;
+    const { caption, media_type, show_on_hero, hero_sort_order } = req.body;
     const result = await query(
-      'UPDATE gallery SET caption = $1, media_type = $2 WHERE id = $3 RETURNING *',
-      [caption, media_type, id]
+      'UPDATE gallery SET caption = $1, media_type = $2, show_on_hero = $3, hero_sort_order = $4 WHERE id = $5 RETURNING *',
+      [
+        caption,
+        media_type,
+        show_on_hero === true || show_on_hero === 'true',
+        hero_sort_order ?? 0,
+        id,
+      ]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Media not found' });
@@ -57,6 +82,30 @@ export const updateMedia = async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to update media' });
+  }
+};
+
+export const reorderHeroSlides = async (req: Request, res: Response) => {
+  try {
+    const { items } = req.body as { items: { id: string; hero_sort_order: number }[] };
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'items array is required' });
+    }
+
+    for (const item of items) {
+      await query(
+        'UPDATE gallery SET hero_sort_order = $1 WHERE id = $2 AND show_on_hero = true',
+        [item.hero_sort_order, item.id]
+      );
+    }
+
+    const result = await query(
+      'SELECT * FROM gallery WHERE show_on_hero = true ORDER BY hero_sort_order ASC, uploaded_at ASC'
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to reorder hero slides' });
   }
 };
 

@@ -77,6 +77,8 @@ CREATE TABLE IF NOT EXISTS gallery (
   media_url TEXT NOT NULL,
   media_type VARCHAR(10) DEFAULT 'image',
   caption TEXT,
+  show_on_hero BOOLEAN DEFAULT false,
+  hero_sort_order INT DEFAULT 0,
   uploaded_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -153,6 +155,7 @@ CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
 CREATE INDEX IF NOT EXISTS idx_orders_checkout ON orders(checkout_request_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
 CREATE INDEX IF NOT EXISTS idx_gallery_type ON gallery(media_type);
+CREATE INDEX IF NOT EXISTS idx_gallery_hero ON gallery(hero_sort_order) WHERE show_on_hero = true;
 CREATE INDEX IF NOT EXISTS idx_tickets_checkout ON tickets(checkout_request_id);
 CREATE INDEX IF NOT EXISTS idx_equipment_user ON equipment_hire(user_id);
 CREATE INDEX IF NOT EXISTS idx_equipment_checkout ON equipment_hire(checkout_request_id);

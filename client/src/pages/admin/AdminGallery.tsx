@@ -1,7 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
-import { Trash2, Plus, X, Edit } from 'lucide-react'
-import { getGallery, uploadGalleryFile, uploadMedia, updateMedia, deleteMedia } from '../../api/admin/gallery'
+import { Trash2, Plus, X, Edit, ChevronUp, ChevronDown } from 'lucide-react'
+import {
+  getGallery,
+  uploadGalleryFile,
+  uploadMedia,
+  updateMedia,
+  reorderHeroSlides,
+  deleteMedia,
+} from '../../api/admin/gallery'
 import AdminConfirmDialog from '../../components/AdminConfirmDialog'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 
@@ -10,6 +17,8 @@ interface GalleryItem {
   media_url: string
   media_type?: string
   caption?: string
+  show_on_hero?: boolean
+  hero_sort_order?: number
   uploaded_at: string
 }
 
@@ -38,6 +47,13 @@ function GalleryMedia({ item }: { item: GalleryItem }) {
   )
 }
 
+function nextHeroSortOrder(items: GalleryItem[]): number {
+  const maxOrder = items
+    .filter((i) => i.show_on_hero)
+    .reduce((max, i) => Math.max(max, i.hero_sort_order ?? 0), -1)
+  return maxOrder + 1
+}
+
 export default function AdminGallery() {
   const [items, setItems] = useState<GalleryItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -46,9 +62,19 @@ export default function AdminGallery() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [filePreview, setFilePreview] = useState<string | null>(null)
+  const [filePreviewIsVideo, setFilePreviewIsVideo] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
-  const { register, handleSubmit, reset, setValue, watch } = useForm()
+  const [reordering, setReordering] = useState(false)
+  const { register, handleSubmit, reset, watch } = useForm()
   const fileInput = watch('file')
+
+  const heroItems = useMemo(
+    () =>
+      items
+        .filter((i) => i.show_on_hero)
+        .sort((a, b) => (a.hero_sort_order ?? 0) - (b.hero_sort_order ?? 0)),
+    [items]
+  )
 
   useEffect(() => {
     fetchGallery()
@@ -57,6 +83,7 @@ export default function AdminGallery() {
   useEffect(() => {
     if (fileInput && fileInput.length > 0) {
       const file = fileInput[0]
+      setFilePreviewIsVideo(file.type.startsWith('video/'))
       const reader = new FileReader()
       reader.onloadend = () => {
         setFilePreview(reader.result as string)
@@ -64,6 +91,7 @@ export default function AdminGallery() {
       reader.readAsDataURL(file)
     } else {
       setFilePreview(null)
+      setFilePreviewIsVideo(false)
     }
   }, [fileInput])
 
@@ -82,8 +110,11 @@ export default function AdminGallery() {
 
   const handleEdit = (item: GalleryItem) => {
     setEditingId(item.id)
-    setValue('caption', item.caption || '')
-    setValue('media_type', item.media_type || 'image')
+    reset({
+      caption: item.caption || '',
+      media_type: item.media_type || 'image',
+      show_on_hero: item.show_on_hero ?? false,
+    })
     setShowModal(true)
   }
 
@@ -91,10 +122,19 @@ export default function AdminGallery() {
     try {
       setUploading(true)
       setError('')
+      const showOnHero = Boolean(data.show_on_hero)
+
       if (editingId) {
+        const existing = items.find((i) => i.id === editingId)
         await updateMedia(editingId, {
           caption: data.caption,
           media_type: data.media_type,
+          show_on_hero: showOnHero,
+          hero_sort_order: showOnHero
+            ? existing?.show_on_hero
+              ? existing.hero_sort_order ?? 0
+              : nextHeroSortOrder(items)
+            : 0,
         })
       } else {
         let mediaUrl = data.media_url
@@ -118,17 +158,47 @@ export default function AdminGallery() {
           media_url: mediaUrl,
           media_type: data.media_type || 'image',
           caption: data.caption,
+          show_on_hero: showOnHero,
+          hero_sort_order: showOnHero ? nextHeroSortOrder(items) : 0,
         })
       }
       setShowModal(false)
       setEditingId(null)
       setFilePreview(null)
+      setFilePreviewIsVideo(false)
       reset()
       fetchGallery()
     } catch (err: any) {
       setError(err.response?.data?.error || err.message || 'Failed to process request')
     } finally {
       setUploading(false)
+    }
+  }
+
+  const moveHeroItem = async (index: number, direction: 'up' | 'down') => {
+    const swapIndex = direction === 'up' ? index - 1 : index + 1
+    if (swapIndex < 0 || swapIndex >= heroItems.length) return
+
+    const reordered = [...heroItems]
+    const current = reordered[index]
+    const neighbor = reordered[swapIndex]
+    reordered[index] = neighbor
+    reordered[swapIndex] = current
+
+    const payload = reordered.map((item, i) => ({
+      id: item.id,
+      hero_sort_order: i,
+    }))
+
+    try {
+      setReordering(true)
+      setError('')
+      await reorderHeroSlides(payload)
+      fetchGallery()
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to reorder hero slides')
+    } finally {
+      setReordering(false)
     }
   }
 
@@ -158,6 +228,7 @@ export default function AdminGallery() {
             onClick={() => {
               setEditingId(null)
               setFilePreview(null)
+              setFilePreviewIsVideo(false)
               reset()
               setShowModal(true)
             }}
@@ -172,6 +243,55 @@ export default function AdminGallery() {
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-6">
           {error}
+        </div>
+      )}
+
+      {heroItems.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-4 sm:p-6 mb-6">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Homepage hero slideshow</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            These items appear in order on the landing page hero. Use the arrows to reorder.
+          </p>
+          <ul className="space-y-3">
+            {heroItems.map((item, index) => (
+              <li
+                key={item.id}
+                className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50"
+              >
+                <div className="w-20 h-14 shrink-0 rounded overflow-hidden bg-gray-200 dark:bg-gray-600">
+                  <GalleryMedia item={item} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    {item.caption || item.media_type || 'Media'}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {item.media_type || 'image'} · Slide {index + 1}
+                  </p>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <button
+                    type="button"
+                    disabled={reordering || index === 0}
+                    onClick={() => moveHeroItem(index, 'up')}
+                    className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 disabled:opacity-40 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    aria-label="Move up"
+                  >
+                    <ChevronUp size={18} />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={reordering || index === heroItems.length - 1}
+                    onClick={() => moveHeroItem(index, 'down')}
+                    className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 disabled:opacity-40 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    aria-label="Move down"
+                  >
+                    <ChevronDown size={18} />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -191,6 +311,11 @@ export default function AdminGallery() {
             <div key={item.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg overflow-hidden hover:shadow-lg transition">
               <div className="relative w-full h-48 bg-gray-100 dark:bg-gray-700 overflow-hidden">
                 <GalleryMedia item={item} />
+                {item.show_on_hero && (
+                  <span className="absolute top-2 left-2 bg-primary dark:bg-primary-dark text-white dark:text-black text-xs font-semibold px-2 py-1 rounded">
+                    Hero
+                  </span>
+                )}
                 <div className="absolute top-2 right-2 flex gap-2">
                   <button
                     onClick={() => handleEdit(item)}
@@ -211,7 +336,10 @@ export default function AdminGallery() {
                   <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">{item.caption}</p>
                 )}
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {item.media_type || 'image'} • {new Date(item.uploaded_at).toLocaleDateString()}
+                  {item.media_type || 'image'}
+                  {item.show_on_hero ? ' · Homepage hero' : ''}
+                  {' · '}
+                  {new Date(item.uploaded_at).toLocaleDateString()}
                 </p>
               </div>
             </div>
@@ -229,6 +357,7 @@ export default function AdminGallery() {
                   setShowModal(false)
                   setEditingId(null)
                   setFilePreview(null)
+                  setFilePreviewIsVideo(false)
                   reset()
                 }}
                 className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
@@ -250,7 +379,11 @@ export default function AdminGallery() {
                     />
                     {filePreview && (
                       <div className="mt-2 relative w-full h-32 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
-                        <img src={filePreview} alt="Preview" className="w-full h-full object-cover" />
+                        {filePreviewIsVideo ? (
+                          <video src={filePreview} className="w-full h-full object-cover" controls />
+                        ) : (
+                          <img src={filePreview} alt="Preview" className="w-full h-full object-cover" />
+                        )}
                       </div>
                     )}
                   </div>
@@ -290,6 +423,17 @@ export default function AdminGallery() {
                 />
               </div>
 
+              <div>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    {...register('show_on_hero')}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Show on homepage hero</span>
+                </label>
+              </div>
+
               <div className="flex gap-2 justify-end pt-4">
                 <button
                   type="button"
@@ -297,6 +441,7 @@ export default function AdminGallery() {
                     setShowModal(false)
                     setEditingId(null)
                     setFilePreview(null)
+                    setFilePreviewIsVideo(false)
                     reset()
                   }}
                   className="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"

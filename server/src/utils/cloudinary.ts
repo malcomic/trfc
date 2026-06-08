@@ -7,10 +7,15 @@ cloudinary.config({
   api_secret: config.cloudinary.apiSecret,
 })
 
-export async function uploadToCloudinary(fileBuffer: Buffer, folder: string): Promise<string> {
+export async function uploadToCloudinary(
+  fileBuffer: Buffer,
+  folder: string,
+  mediaType?: string
+): Promise<string> {
+  const resourceType = mediaType === 'video' ? 'video' : 'auto'
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
-      { folder },
+      { folder, resource_type: resourceType },
       (error, result) => {
         if (error) reject(error)
         else resolve(result?.secure_url || '')

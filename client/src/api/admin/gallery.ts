@@ -16,6 +16,8 @@ export const uploadMedia = async (data: {
   media_url: string
   media_type?: string
   caption?: string
+  show_on_hero?: boolean
+  hero_sort_order?: number
 }) => {
   const response = await api.post('/gallery', data)
   return response.data
@@ -26,9 +28,18 @@ export const updateMedia = async (
   data: {
     caption?: string
     media_type?: string
+    show_on_hero?: boolean
+    hero_sort_order?: number
   }
 ) => {
   const response = await api.put(`/gallery/${id}`, data)
+  return response.data
+}
+
+export const reorderHeroSlides = async (
+  items: { id: string; hero_sort_order: number }[]
+) => {
+  const response = await api.patch('/gallery/hero/reorder', { items })
   return response.data
 }
 

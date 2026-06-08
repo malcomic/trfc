@@ -2,10 +2,11 @@ import { useEffect, useState, type ImgHTMLAttributes } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertCircle, Star } from 'lucide-react'
 import { getEvents } from '../api/events'
-import { getGallery } from '../api/gallery'
+import { getGallery, getHeroSlides, type HeroSlide } from '../api/gallery'
 import { getTestimonials, Testimonial } from '../api/testimonials'
 import { pageRoot, cardSurface } from '../utils/themeClasses'
 import { getSafeImageUrl } from '../utils/imageUrl'
+import HeroCarousel from '../components/HeroCarousel'
 
 const EVENT_IMAGE_FALLBACK =
   'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=600&q=80'
@@ -21,6 +22,7 @@ interface GalleryItem {
 export default function Home() {
   const [events, setEvents] = useState<any[]>([])
   const [gallery, setGallery] = useState<GalleryItem[]>([])
+  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([])
   const [testimonials, setTestimonials] = useState<Testimonial[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -33,13 +35,15 @@ export default function Home() {
     try {
       setLoading(true)
       setError('')
-      const [eventsData, galleryData, testimonialsData] = await Promise.all([
+      const [eventsData, galleryData, heroData, testimonialsData] = await Promise.all([
         getEvents(),
         getGallery(),
+        getHeroSlides(),
         getTestimonials(),
       ])
       setEvents(eventsData.slice(0, 3))
       setGallery(Array.isArray(galleryData) ? galleryData.slice(0, 6) : [])
+      setHeroSlides(Array.isArray(heroData) ? heroData : [])
       setTestimonials(Array.isArray(testimonialsData) ? testimonialsData.slice(0, 3) : [])
     } catch (err) {
       setError('Failed to load homepage content. Please try again.')
@@ -85,14 +89,18 @@ export default function Home() {
       `}</style>
 
       <section className="relative min-h-screen w-full flex items-center overflow-hidden">
-        {/* Landing hero image — full viewport bleed */}
+        {/* Landing hero — slideshow or static fallback */}
         <div className="absolute inset-0 w-full h-full">
-          <img
-            src={landingHero}
-            alt="TRFC community members training together"
-            className="absolute inset-0 w-full h-full object-cover object-center"
-            {...({ fetchpriority: 'high' } as ImgHTMLAttributes<HTMLImageElement>)}
-          />
+          {heroSlides.length > 0 ? (
+            <HeroCarousel slides={heroSlides} />
+          ) : (
+            <img
+              src={landingHero}
+              alt="TRFC community members training together"
+              className="absolute inset-0 w-full h-full object-cover object-center"
+              {...({ fetchpriority: 'high' } as ImgHTMLAttributes<HTMLImageElement>)}
+            />
+          )}
         </div>
 
         {/* Text readability overlay — lighter so photo shows edge to edge */}
