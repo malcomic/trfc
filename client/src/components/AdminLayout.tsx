@@ -14,6 +14,7 @@ import {
   Ticket,
   Handshake,
   Layers,
+  Type,
   LogOut,
   ArrowLeft,
   Menu,
@@ -42,6 +43,7 @@ const navItems = [
   { path: '/admin/tickets', label: 'Tickets', icon: Ticket },
   { path: '/admin/partnerships', label: 'Partnerships', icon: Handshake },
   { path: '/admin/sponsorship-tiers', label: 'Sponsorship Tiers', icon: Layers },
+  { path: '/admin/appearance', label: 'Appearance', icon: Type },
 ]
 
 function AdminNavLinks({

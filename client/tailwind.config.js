@@ -45,10 +45,10 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        bebas: ['Bebas Neue', 'sans-serif'],
-        barlow: ['Barlow', 'sans-serif'],
-        'barlow-condensed': ['Barlow Condensed', 'sans-serif'],
+        sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
+        bebas: ['var(--font-display)', 'sans-serif'],
+        barlow: ['var(--font-body)', 'sans-serif'],
+        'barlow-condensed': ['var(--font-condensed)', 'sans-serif'],
       },
       keyframes: {
         fadeUp: {

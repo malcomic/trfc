@@ -21,6 +21,7 @@ import partnershipsRoutes from './routes/partnerships.js';
 import sponsorshipTiersRoutes from './routes/sponsorshipTiers.js';
 import analyticsRoutes from './routes/analytics.js';
 import adminRoutes from './routes/admin.js';
+import settingsRoutes from './routes/settings.js';
 import uploadRoutes from './routes/upload.js';
 
 dotenv.config();
@@ -52,6 +53,7 @@ app.use('/api/testimonials', testimonialsRoutes);
 app.use('/api/gallery', upload.single('file'), galleryRoutes);
 app.use('/api/upload', upload.single('file'), uploadRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/settings', settingsRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Start server

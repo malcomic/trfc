@@ -46,7 +46,7 @@ export default function Home() {
     return (_jsxs("div", { className: pageRoot, children: [_jsx("style", { children: `
         .hero-word {
           display: block;
-          font-family: 'Bebas Neue', sans-serif;
+          font-family: var(--font-display);
           line-height: 0.92;
           opacity: 0;
         }

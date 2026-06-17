@@ -60,7 +60,7 @@ export default function Home() {
       <style>{`
         .hero-word {
           display: block;
-          font-family: 'Bebas Neue', sans-serif;
+          font-family: var(--font-display);
           line-height: 0.92;
           opacity: 0;
         }

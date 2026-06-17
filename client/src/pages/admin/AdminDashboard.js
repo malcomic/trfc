@@ -19,6 +19,7 @@ const quickActions = [
     { to: '/admin/tickets', label: 'Tickets', desc: 'View event ticket sales', color: 'blue' },
     { to: '/admin/partnerships', label: 'Partnerships', desc: 'Review sponsorship inquiries', color: 'indigo' },
     { to: '/admin/sponsorship-tiers', label: 'Sponsorship Tiers', desc: 'Manage tier pricing and benefits', color: 'violet' },
+    { to: '/admin/appearance', label: 'Appearance', desc: 'Customize public site fonts', color: 'slate' },
 ];
 export default function AdminDashboard() {
     const [stats, setStats] = useState([]);
