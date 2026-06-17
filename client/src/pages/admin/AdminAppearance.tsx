@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { RotateCcw, Save } from 'lucide-react'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import {
   DEFAULT_TYPOGRAPHY,
   TYPOGRAPHY_FIELDS,
   TYPOGRAPHY_LABELS,
+  getAllCatalogFonts,
   getCatalogForField,
   type TypographyField,
   type TypographySettings,
@@ -15,7 +16,7 @@ import {
   updateTypography,
 } from '../../api/admin/settings'
 import { useFonts } from '../../context/FontContext'
-import { applyTypography, buildGoogleFontsUrl } from '../../utils/googleFonts'
+import { applyTypography, loadGoogleFontsBatched } from '../../utils/googleFonts'
 
 export default function AdminAppearance() {
   const { applyTypographySettings } = useFonts()
@@ -44,39 +45,12 @@ export default function AdminAppearance() {
   }, [])
 
   useEffect(() => {
-    applyTypography(settings)
-  }, [settings])
-
-  const previewFontUrl = useMemo(
-    () =>
-      buildGoogleFontsUrl([
-        settings.display_font,
-        settings.body_font,
-        settings.condensed_font,
-        settings.sans_font,
-      ]),
-    [settings]
-  )
+    loadGoogleFontsBatched(getAllCatalogFonts())
+  }, [])
 
   useEffect(() => {
-    if (!previewFontUrl) {
-      return
-    }
-
-    let link = document.getElementById('trfc-admin-font-preview') as HTMLLinkElement | null
-    if (!link) {
-      link = document.createElement('link')
-      link.id = 'trfc-admin-font-preview'
-      link.rel = 'stylesheet'
-      document.head.appendChild(link)
-    }
-
-    link.href = previewFontUrl
-
-    return () => {
-      link?.remove()
-    }
-  }, [previewFontUrl])
+    applyTypography(settings)
+  }, [settings])
 
   const handleFieldChange = (field: TypographyField, value: string) => {
     setSettings((prev) => ({ ...prev, [field]: value }))

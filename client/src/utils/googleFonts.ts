@@ -34,6 +34,32 @@ export function loadGoogleFonts(fonts: string[]): void {
   }
 }
 
+export function loadGoogleFontsBatched(fonts: string[], batchSize = 15): void {
+  const unique = [...new Set(fonts.map((font) => font.trim()).filter(Boolean))]
+  const batchCount = Math.ceil(unique.length / batchSize)
+
+  for (let index = 0; index < batchCount; index += 1) {
+    const batch = unique.slice(index * batchSize, index * batchSize + batchSize)
+    const url = buildGoogleFontsUrl(batch)
+    if (!url) {
+      continue
+    }
+
+    const linkId = `${GOOGLE_FONTS_LINK_ID}-batch-${index}`
+    let link = document.getElementById(linkId) as HTMLLinkElement | null
+    if (!link) {
+      link = document.createElement('link')
+      link.id = linkId
+      link.rel = 'stylesheet'
+      document.head.appendChild(link)
+    }
+
+    if (link.href !== url) {
+      link.href = url
+    }
+  }
+}
+
 export function applyTypographyVariables(settings: TypographySettings): void {
   const root = document.documentElement
   root.style.setProperty('--font-sans', `'${settings.sans_font}', system-ui, sans-serif`)
