@@ -28,6 +28,7 @@ export const FONT_CATALOG = {
   ],
   body: [
     'Barlow',
+    'Bebas Neue',
     'Inter',
     'Roboto',
     'Open Sans',
@@ -87,6 +88,7 @@ export const FONT_CATALOG = {
   ],
   sans: [
     'Inter',
+    'Bebas Neue',
     'Roboto',
     'Open Sans',
     'Lato',
