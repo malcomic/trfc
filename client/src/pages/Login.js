@@ -5,6 +5,7 @@ import { loginUser } from '../api/auth';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
+import { Logo } from '../components/Logo';
 export default function Login() {
     const { register, handleSubmit, formState: { errors } } = useForm();
     const [loading, setLoading] = useState(false);
@@ -42,7 +43,7 @@ export default function Login() {
             setLoading(false);
         }
     };
-    return (_jsxs("div", { className: "min-h-screen bg-night light:bg-night-light flex font-barlow relative overflow-hidden", children: [_jsx("div", { className: "absolute inset-0 bg-gradient-lines pointer-events-none" }), _jsx("div", { className: "absolute top-0 right-0 w-96 h-96 bg-accent/15 light:bg-accent-light/15 rounded-full blur-3xl pointer-events-none", style: { transform: 'translate(100px, -150px)' } }), _jsx("div", { className: "absolute bottom-0 left-0 w-72 h-72 bg-accent/10 light:bg-accent-light/10 rounded-full blur-3xl pointer-events-none", style: { transform: 'translate(-60px, 80px)' } }), _jsxs("div", { className: "flex-1 hidden md:flex flex-col justify-between p-16 relative z-10 border-r border-white/5 light:border-black/8 light:border-black/8", children: [_jsxs(Link, { to: "/", className: "no-underline", children: [_jsxs("div", { className: "font-bebas text-7xl leading-tight text-chalk light:text-chalk-light tracking-tighter", children: ["TH", _jsx("em", { className: "not-italic text-transparent [-webkit-text-stroke:2px_#fff] light:[-webkit-text-stroke:2px_#000]", children: "I" }), "KA", _jsx("br", {}), "ROAD", _jsx("br", {}), _jsx("em", { className: "not-italic text-transparent [-webkit-text-stroke:2px_#fff] light:[-webkit-text-stroke:2px_#000]", children: "FC" })] }), _jsx("p", { className: "font-barlow-condensed font-medium text-sm tracking-widest uppercase text-fog mt-5", children: "Nairobi \u00B7 Est. 2019" })] }), _jsx("div", { className: "flex gap-10", children: [
+    return (_jsxs("div", { className: "min-h-screen bg-night light:bg-night-light flex font-barlow relative overflow-hidden", children: [_jsx("div", { className: "absolute inset-0 bg-gradient-lines pointer-events-none" }), _jsx("div", { className: "absolute top-0 right-0 w-96 h-96 bg-accent/15 light:bg-accent-light/15 rounded-full blur-3xl pointer-events-none", style: { transform: 'translate(100px, -150px)' } }), _jsx("div", { className: "absolute bottom-0 left-0 w-72 h-72 bg-accent/10 light:bg-accent-light/10 rounded-full blur-3xl pointer-events-none", style: { transform: 'translate(-60px, 80px)' } }), _jsxs("div", { className: "flex-1 hidden md:flex flex-col justify-between p-16 relative z-10 border-r border-white/5 light:border-black/8 light:border-black/8", children: [_jsxs(Link, { to: "/", className: "no-underline", children: [_jsx(Logo, { size: "xl" }), _jsx("p", { className: "font-barlow-condensed font-medium text-sm tracking-widest uppercase text-fog mt-5", children: "Nairobi \u00B7 Est. 2019" })] }), _jsx("div", { className: "flex gap-10", children: [
                             { val: '500+', label: 'Members' },
                             { val: '50+', label: 'Events' },
                             { val: '5 Yrs', label: 'Running' },

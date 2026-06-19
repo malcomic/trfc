@@ -4,6 +4,7 @@ import { ShoppingCart, X, Menu, LogOut, LogIn, UserPlus } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../store/cartStore'
 import { ThemeToggle } from './ThemeToggle'
+import { Logo } from './Logo'
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
@@ -95,15 +96,7 @@ export default function Navbar() {
         <div className={`bg-gradient-to-r from-night to-night/95 dark:from-night dark:to-night/95 light:from-white light:to-white/95 backdrop-blur-[16px] transition-all duration-300 border-b ${scrolled ? 'border-accent/15 light:border-accent-light/15' : 'border-white/5 light:border-black/8'}`}>
           <div className="max-w-[1200px] mx-auto px-[6%] h-16 flex items-center justify-between gap-6">
 
-            {/* Logo */}
-            <Link to="/" className="flex flex-col items-start">
-              <span className="font-bebas text-3xl text-chalk light:text-chalk-light tracking-wider leading-none">
-                TR<span className="text-accent light:text-accent-light">F</span>C
-              </span>
-              <span className="font-barlow-condensed font-bold text-[8px] tracking-wider text-fog light:text-fog-light leading-none mt-0.5">
-                Thika Road FC
-              </span>
-            </Link>
+            <Logo size="md" showTagline linkToHome />
 
             {/* Desktop nav links */}
             <div className="hidden md:flex items-center gap-0.5 flex-1 justify-center">
@@ -185,14 +178,7 @@ export default function Navbar() {
         <div className={`absolute top-0 right-0 bottom-0 w-[min(360px,90vw)] bg-ink light:bg-ink-light border-l border-white/6 dark:border-white/6 light:border-black/8 transform transition-transform duration-400 ${isOpen ? 'translate-x-0' : 'translate-x-full'} flex flex-col pointer-events-auto overflow-y-auto`}>
 
           <div className="flex items-center justify-between p-6 border-b border-white/5 dark:border-white/5 light:border-black/8">
-            <Link to="/" className="flex flex-col items-start" onClick={() => setIsOpen(false)}>
-              <span className="font-bebas text-2xl text-chalk light:text-chalk-light tracking-wider leading-none">
-                TR<span className="text-accent light:text-accent-light">F</span>C
-              </span>
-              <span className="font-barlow-condensed font-bold text-[8px] tracking-wider text-fog light:text-fog-light leading-none mt-0.5">
-                Thika Road FC
-              </span>
-            </Link>
+            <Logo size="sm" showTagline linkToHome onClick={() => setIsOpen(false)} />
             <button className="bg-transparent border border-white/10 dark:border-white/10 light:border-black/10 text-chalk light:text-chalk-light w-9 h-9 flex items-center justify-center cursor-pointer clip-angled-sm transition-all duration-200 hover:border-accent light:hover:border-accent-light hover:text-accent light:hover:text-accent-light" onClick={() => setIsOpen(false)} aria-label="Close menu">
               <X size={16} />
             </button>

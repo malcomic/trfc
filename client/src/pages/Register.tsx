@@ -4,6 +4,7 @@ import { registerUser } from '../api/auth'
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { User, Mail, Phone, Lock, ArrowRight, AlertCircle, Check } from 'lucide-react'
+import { Logo } from '../components/Logo'
 
 function getPasswordStrength(pw: string): { score: number; label: string; cls: string } {
   if (!pw) return { score: 0, label: '', cls: '' }
@@ -61,9 +62,7 @@ export default function Register() {
 
       {/* ── Left — form ── */}
       <div className="w-full md:max-w-96 flex flex-col justify-center p-12 md:p-14 relative z-10">
-        <Link to="/" className="font-bebas text-3xl text-chalk light:text-chalk-light tracking-widest mb-9 block no-underline md:hidden">
-          TR<span className="text-accent light:text-accent-light">F</span>C
-        </Link>
+        <Logo size="md" linkToHome className="mb-9 md:hidden" />
 
         <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light flex items-center gap-2 mb-3.5 before:w-5 before:h-0.5 before:bg-accent light:before:bg-accent-light before:inline-block before:flex-shrink-0">
           Create Account

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useState } from 'react'
 import { ToastStack, ToastMessage } from './Toast'
 import { siteContact, siteSocial } from '../config/site'
+import { Logo } from './Logo'
 export default function Footer() {
   const { user } = useAuth()
   const isAdmin = user && user.role === 'admin'
@@ -81,10 +82,8 @@ export default function Footer() {
 
           {/* ── Brand ── */}
           <div className="col-span-1">
-            <div className="font-bebas text-5xl text-chalk light:text-chalk-light leading-none tracking-widest mb-1">
-              TH<span className="text-accent light:text-accent-light">I</span>KA<br />ROAD<br />FC
-            </div>
-            <p className="font-barlow-condensed font-medium text-xs tracking-widest uppercase text-fog light:text-fog-light mt-1 mb-5">Nairobi · Est. 2019</p>
+            <Logo size="lg" className="mb-3" />
+            <p className="font-barlow-condensed font-medium text-xs tracking-widest uppercase text-fog light:text-fog-light mb-5">Nairobi · Est. 2019</p>
             <p className="text-sm leading-loose text-fog light:text-fog-light max-w-56">
               Building Nairobi's strongest running community — one kilometre, one race, one sunrise at a time.
             </p>

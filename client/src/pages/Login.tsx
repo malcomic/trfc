@@ -4,6 +4,7 @@ import { loginUser } from '../api/auth'
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react'
+import { Logo } from '../components/Logo'
 
 export default function Login() {
   const { register, handleSubmit, formState: { errors } } = useForm()
@@ -50,9 +51,7 @@ export default function Login() {
       {/* ── Left branding panel ── */}
       <div className="flex-1 hidden md:flex flex-col justify-between p-16 relative z-10 border-r border-white/5 light:border-black/8 light:border-black/8">
         <Link to="/" className="no-underline">
-          <div className="font-bebas text-7xl leading-tight text-chalk light:text-chalk-light tracking-tighter">
-            TH<em className="not-italic text-transparent [-webkit-text-stroke:2px_#fff] light:[-webkit-text-stroke:2px_#000]">I</em>KA<br />ROAD<br /><em className="not-italic text-transparent [-webkit-text-stroke:2px_#fff] light:[-webkit-text-stroke:2px_#000]">FC</em>
-          </div>
+          <Logo size="xl" />
           <p className="font-barlow-condensed font-medium text-sm tracking-widest uppercase text-fog mt-5">Nairobi · Est. 2019</p>
         </Link>
 
@@ -76,10 +75,7 @@ export default function Login() {
 
       {/* ── Right form panel ── */}
       <div className="w-full md:max-w-96 flex flex-col justify-center p-12 md:p-16 relative z-10">
-        {/* Mobile-only logo */}
-        <Link to="/" className="font-bebas text-3xl text-chalk light:text-chalk-light tracking-widest mb-10 block no-underline md:hidden">
-          TR<span className="text-accent light:text-accent-light">F</span>C
-        </Link>
+        <Logo size="md" linkToHome className="mb-10 md:hidden" />
 
         <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light flex items-center gap-2 mb-3.5 before:w-5 before:h-0.5 before:bg-accent light:before:bg-accent-light before:inline-block before:flex-shrink-0">
           Member Access

@@ -1,11 +1,11 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { RotateCcw, Save } from 'lucide-react';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
-import { DEFAULT_TYPOGRAPHY, TYPOGRAPHY_FIELDS, TYPOGRAPHY_LABELS, getCatalogForField, } from '../../config/fontCatalog';
+import { DEFAULT_TYPOGRAPHY, TYPOGRAPHY_FIELDS, TYPOGRAPHY_LABELS, getAllCatalogFonts, getCatalogForField, } from '../../config/fontCatalog';
 import { getTypographyForAdmin, resetTypography, updateTypography, } from '../../api/admin/settings';
 import { useFonts } from '../../context/FontContext';
-import { applyTypography, buildGoogleFontsUrl } from '../../utils/googleFonts';
+import { applyTypography, loadGoogleFontsBatched } from '../../utils/googleFonts';
 export default function AdminAppearance() {
     const { applyTypographySettings } = useFonts();
     const [settings, setSettings] = useState({ ...DEFAULT_TYPOGRAPHY });
@@ -32,30 +32,11 @@ export default function AdminAppearance() {
         fetchSettings();
     }, []);
     useEffect(() => {
+        loadGoogleFontsBatched(getAllCatalogFonts());
+    }, []);
+    useEffect(() => {
         applyTypography(settings);
     }, [settings]);
-    const previewFontUrl = useMemo(() => buildGoogleFontsUrl([
-        settings.display_font,
-        settings.body_font,
-        settings.condensed_font,
-        settings.sans_font,
-    ]), [settings]);
-    useEffect(() => {
-        if (!previewFontUrl) {
-            return;
-        }
-        let link = document.getElementById('trfc-admin-font-preview');
-        if (!link) {
-            link = document.createElement('link');
-            link.id = 'trfc-admin-font-preview';
-            link.rel = 'stylesheet';
-            document.head.appendChild(link);
-        }
-        link.href = previewFontUrl;
-        return () => {
-            link?.remove();
-        };
-    }, [previewFontUrl]);
     const handleFieldChange = (field, value) => {
         setSettings((prev) => ({ ...prev, [field]: value }));
         setSuccess('');
