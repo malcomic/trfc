@@ -1,8 +1,8 @@
 declare const SIZES: {
-    readonly sm: "h-9";
-    readonly md: "h-11";
-    readonly lg: "h-16";
-    readonly xl: "h-28";
+    readonly sm: "h-12";
+    readonly md: "h-14";
+    readonly lg: "h-19";
+    readonly xl: "h-31";
 };
 type LogoSize = keyof typeof SIZES;
 interface LogoProps {

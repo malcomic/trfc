@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom'
 
 const SIZES = {
-  sm: 'h-9',
-  md: 'h-11',
-  lg: 'h-16',
-  xl: 'h-28',
+  sm: 'h-12',
+  md: 'h-14',
+  lg: 'h-19',
+  xl: 'h-31',
 } as const
 
 type LogoSize = keyof typeof SIZES
