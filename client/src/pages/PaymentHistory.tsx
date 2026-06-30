@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getPaymentHistory, PaymentHistoryItem } from '../api/payments'
 import { Calendar, DollarSign, Download, Eye, Loader, AlertCircle, FileText } from 'lucide-react'
 import { downloadReceiptAsText, downloadReceiptAsCSV } from '../utils/receiptGenerator'
+import TicketDownloadButton from '../components/TicketDownloadButton'
 
 export default function PaymentHistory() {
   const [payments, setPayments] = useState<PaymentHistoryItem[]>([])
@@ -211,7 +212,7 @@ export default function PaymentHistory() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex gap-2 justify-end">
+                  <div className="flex gap-2 justify-end flex-wrap">
                     <button
                       onClick={() => openReceiptModal(payment)}
                       className="inline-flex items-center gap-2 px-3 py-2 text-primary hover:bg-blue-50 rounded transition"
@@ -221,14 +222,24 @@ export default function PaymentHistory() {
                       <span className="text-sm font-semibold">View</span>
                     </button>
                     {payment.payment_status === 'paid' && (
-                      <button
-                        onClick={() => downloadReceipt(payment)}
-                        className="inline-flex items-center gap-2 px-3 py-2 text-green-600 hover:bg-green-50 rounded transition"
-                        title="Download receipt"
-                      >
-                        <Download className="w-4 h-4" />
-                        <span className="text-sm font-semibold">Download</span>
-                      </button>
+                      <>
+                        <button
+                          onClick={() => downloadReceipt(payment)}
+                          className="inline-flex items-center gap-2 px-3 py-2 text-green-600 hover:bg-green-50 rounded transition"
+                          title="Download receipt"
+                        >
+                          <Download className="w-4 h-4" />
+                          <span className="text-sm font-semibold">Receipt</span>
+                        </button>
+                        {payment.type === 'ticket' && (
+                          <TicketDownloadButton
+                            ticketId={payment.id}
+                            paymentStatus={payment.payment_status as 'paid' | 'pending' | 'failed'}
+                            eventTitle="Event Ticket"
+                            className="inline-flex"
+                          />
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

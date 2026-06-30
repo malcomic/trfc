@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getEvents } from '../api/events'
 import { getGallery } from '../api/gallery'
+import { Button } from '../components/ui'
+import { Card } from '../components/ui'
 
 interface GalleryItem {
   id: string
@@ -98,14 +100,20 @@ export default function Home() {
           </p>
 
           <div className="hero-ctas flex flex-wrap gap-4 mb-15">
-            <Link to="/register" className="font-barlow-condensed font-black text-base tracking-wider text-white px-9 py-3.5 bg-fire clip-angled-lg transition-all duration-200 hover:bg-ember hover:scale-104 inline-block">
-              Join the Community
+            <Link to="/register">
+              <Button variant="primary" size="lg" className="h-13 px-8">
+                Join the Community
+              </Button>
             </Link>
-            <Link to="/events" className="font-barlow-condensed font-bold text-base tracking-wider text-chalk light:text-chalk-light px-8 py-3 border-1.5 border-white/40 dark:border-white/40 light:border-black/40 transition-all duration-200 hover:border-fire light:hover:border-fire hover:text-fire light:hover:text-fire inline-block">
-              View Events
+            <Link to="/events">
+              <Button variant="secondary" size="lg" className="h-13 px-8">
+                View Events
+              </Button>
             </Link>
-            <Link to="/shop" className="font-barlow-condensed font-bold text-base tracking-wider text-chalk light:text-chalk-light px-8 py-3 border-1.5 border-white/40 dark:border-white/40 light:border-black/40 transition-all duration-200 hover:border-fire light:hover:border-fire hover:text-fire light:hover:text-fire inline-block">
-              Shop Merch
+            <Link to="/shop">
+              <Button variant="secondary" size="lg" className="h-13 px-8">
+                Shop Merch
+              </Button>
             </Link>
           </div>
 
@@ -229,8 +237,10 @@ export default function Home() {
                 UPCOMING EVENTS
               </h2>
             </div>
-            <Link to="/events" className="font-barlow-condensed font-bold text-xs tracking-wider text-chalk light:text-chalk-light px-6 py-2.5 border border-white/40 dark:border-white/40 light:border-black/40 transition-all duration-200 hover:border-fire light:hover:border-fire hover:text-fire light:hover:text-fire no-underline">
-              All Events →
+            <Link to="/events">
+              <Button variant="secondary" size="sm">
+                All Events →
+              </Button>
             </Link>
           </div>
 
@@ -239,33 +249,35 @@ export default function Home() {
               Loading events...
             </div>
           ) : events.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {events.map((event: any, idx: number) => (
-                <Link to={`/events/${event.id}`} key={event.id} className="bg-ash dark:bg-ash light:bg-ash-light border border-white/6 dark:border-white/6 light:border-black/6 overflow-hidden relative transition-all duration-300 no-underline hover:-translate-y-1.5 hover:border-fire group" style={{ animationDelay: `${idx * 0.1}s` }}>
-                  <div className="overflow-hidden">
-                    <img
-                      src={event.image_url || 'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=600&q=80'}
-                      alt={event.title}
-                      onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=600&q=80' }}
-                      className="w-full h-55 object-cover brightness-[0.88] transition-all duration-300 group-hover:brightness-100 group-hover:scale-103"
-                    />
-                  </div>
-                  <div className="absolute top-3.5 left-3.5 bg-fire text-white font-barlow-condensed font-bold text-xs tracking-wider uppercase px-2.5 py-1">
-                    Event
-                  </div>
-                  <div className="p-5 pt-6">
-                    <div className="font-barlow-condensed font-bold text-xl tracking-tight text-chalk dark:text-chalk light:text-chalk-light mb-2">{event.title}</div>
-                    <div className="text-xs text-fog light:text-fog-light mb-3 flex items-center gap-1.5">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                      {event.location}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {events.map((event: any) => (
+                <Link to={`/events/${event.id}`} key={event.id} className="no-underline">
+                  <Card variant="interactive">
+                    <div className="overflow-hidden relative">
+                      <img
+                        src={event.image_url || 'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=600&q=80'}
+                        alt={event.title}
+                        onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=600&q=80' }}
+                        className="w-full h-55 object-cover brightness-[0.88] transition-all duration-300 hover:brightness-100 hover:scale-103"
+                      />
+                      <div className="absolute top-3.5 left-3.5 bg-fire text-chalk font-barlow-condensed font-bold text-xs tracking-wider uppercase px-2.5 py-1">
+                        Event
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <div className="font-bebas text-2xl text-fire tracking-wider">KES {event.price?.toLocaleString?.() ?? event.price}</div>
-                      <span className="font-barlow-condensed text-xs tracking-widest text-fire font-bold">
-                        Register →
-                      </span>
+                    <div className="p-5 pt-6">
+                      <h3 className="font-barlow-condensed font-bold text-xl tracking-tight text-chalk mb-2 hover:text-fire transition-colors">{event.title}</h3>
+                      <div className="text-xs text-fog mb-3 flex items-center gap-1.5">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                        {event.location}
+                      </div>
+                      <div className="flex justify-between items-center border-t border-mist pt-4">
+                        <div className="font-bebas text-2xl text-fire tracking-wider">KES {event.price?.toLocaleString?.() ?? event.price}</div>
+                        <span className="font-barlow-condensed text-xs tracking-widest text-fire font-bold hover:text-ember transition-colors">
+                          Register →
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  </Card>
                 </Link>
               ))}
             </div>
@@ -282,18 +294,17 @@ export default function Home() {
         <div className="absolute -right-[5%] top-1/2 -translate-y-1/2 font-bebas text-[260px] text-black/10 leading-none pointer-events-none select-none">RUN</div>
         <div className="max-w-[1200px] mx-auto flex items-center justify-between gap-8 flex-wrap relative">
           <div>
-            <h2 className="font-bebas text-[clamp(36px,5vw,64px)] text-white leading-tight mb-3">
+            <h2 className="font-bebas text-[clamp(36px,5vw,64px)] text-chalk leading-tight mb-3">
               READY TO RUN<br />WITH US?
             </h2>
-            <p className="text-white/80 text-base max-w-sm">
+            <p className="text-chalk/80 text-base max-w-sm">
               Sign up today and join 500+ athletes who chose community over the treadmill.
             </p>
           </div>
-          <Link to="/register" className="bg-white text-fire px-12 py-4.5 font-barlow-condensed font-black text-lg tracking-widest uppercase no-underline clip-angled-lg inline-block transition-all duration-200 hover:scale-106 animate-pulse-ring"
-            onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.06)')}
-            onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-          >
-            Join Now — It's Free
+          <Link to="/register">
+            <Button variant="secondary" size="lg" className="h-13 px-8 bg-chalk text-fire hover:bg-chalk/90">
+              Join Now — It's Free
+            </Button>
           </Link>
         </div>
       </section>
@@ -312,8 +323,10 @@ export default function Home() {
                   COMMUNITY GALLERY
                 </h2>
               </div>
-              <Link to="/gallery" className="font-barlow-condensed font-bold text-xs tracking-wider text-chalk light:text-chalk-light px-6 py-2.5 border border-white/40 dark:border-white/40 light:border-black/40 transition-all duration-200 hover:border-fire light:hover:border-fire hover:text-fire light:hover:text-fire no-underline">
-                All Photos →
+              <Link to="/gallery">
+                <Button variant="secondary" size="sm">
+                  All Photos →
+                </Button>
               </Link>
             </div>
 

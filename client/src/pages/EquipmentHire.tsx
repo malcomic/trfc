@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getAvailableEquipment } from '../api/equipment'
-import { ArrowRight, Loader } from 'lucide-react'
+import { AlertCircle, ArrowRight, Dumbbell, Check } from 'lucide-react'
+import { Button, Card } from '../components/ui'
 
 interface Equipment {
   packageType: string
@@ -33,81 +34,161 @@ export default function EquipmentHire() {
 
   if (loading) {
     return (
-      <div className="min-h-screen py-12 px-4 flex items-center justify-center bg-white dark:bg-[#1C1C1C]">
+      <div className="min-h-screen bg-night text-chalk font-barlow flex items-center justify-center px-[6%] py-12">
         <div className="text-center">
-          <Loader className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Loading equipment packages...</p>
+          <div className="w-16 h-16 border-4 border-fire/20 border-t-fire rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-fog">Loading equipment packages...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen py-12 px-4 bg-white dark:bg-[#1C1C1C]">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-4xl font-bold mb-2 text-gray-900 dark:text-white">Equipment Hire</h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-12">
-          Rent gym equipment at affordable rates. Choose your rental period.
-        </p>
+    <div className="min-h-screen bg-night text-chalk font-barlow">
+      {/* ── Hero ── */}
+      <section className="bg-gradient-to-r from-ink via-ash to-ink border-b border-white/5 px-[6%] py-16 md:py-20">
+        <div className="max-w-5xl mx-auto">
+          <div className="inline-flex items-center gap-2 font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fire mb-4 before:block before:w-5 before:h-0.5 before:bg-fire">
+            Premium Rentals
+          </div>
+          <h1 className="font-bebas text-clamp-lg leading-tight text-chalk mb-4 letter-spacing-tighter">
+            EQUIPMENT <span className="text-fire">HIRE</span>
+          </h1>
+          <p className="text-lg text-fog max-w-2xl">
+            Rent professional gym equipment at affordable rates. Choose your rental period and start your fitness journey today.
+          </p>
+        </div>
+      </section>
 
+      {/* ── Main Content ── */}
+      <div className="max-w-5xl mx-auto px-[6%] py-16">
+        {/* Error Alert */}
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-8 text-red-700 dark:text-red-400">
-            {error}
+          <div className="flex items-start gap-3 bg-danger-red/10 border border-danger-red/30 p-5 mb-8 rounded-sm">
+            <AlertCircle size={20} className="text-danger-red flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-chalk/70">{error}</p>
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Packages Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
           {packages.map((pkg) => (
-            <div
-              key={pkg.packageType}
-              className="bg-white dark:bg-[#1C1C1C] rounded-lg shadow hover:shadow-lg transition p-6 flex flex-col border border-gray-200 dark:border-gray-700"
-            >
-              <h3 className="text-2xl font-bold mb-2 capitalize text-gray-900 dark:text-white">{pkg.packageType}</h3>
-              <p className="text-gray-600 dark:text-gray-400 text-sm mb-6">{pkg.description}</p>
-
-              <div className="mb-6 flex-grow">
-                <div className="text-3xl font-bold text-primary">
-                  KES {pkg.price.toLocaleString()}
-                  <span className="text-sm text-gray-600 dark:text-gray-400 font-normal">/day</span>
+            <Card key={pkg.packageType} variant="interactive">
+              <Card.Body>
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <p className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fire mb-2">
+                      Rental Option
+                    </p>
+                    <h3 className="font-bebas text-2xl text-chalk letter-spacing-tighter capitalize">
+                      {pkg.packageType}
+                    </h3>
+                  </div>
+                  <div className="w-12 h-12 bg-fire/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Dumbbell size={20} className="text-fire" />
+                  </div>
                 </div>
-              </div>
 
-              <button
-                onClick={() =>
-                  navigate('/equipment-checkout', {
-                    state: { packageType: pkg.packageType, pricePerDay: pkg.price },
-                  })
-                }
-                className="bg-primary text-white py-3 rounded-lg hover:bg-opacity-90 font-semibold flex items-center justify-center gap-2"
-              >
-                Book Now
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
+                <p className="text-sm text-fog mb-6 leading-relaxed">
+                  {pkg.description}
+                </p>
+
+                <div className="mb-8 pb-8 border-b border-white/10">
+                  <div className="font-bebas text-4xl text-fire letter-spacing-tighter">
+                    KES {pkg.price.toLocaleString()}
+                  </div>
+                  <p className="text-xs text-fog mt-1">Per day</p>
+                </div>
+
+                <Button
+                  onClick={() =>
+                    navigate('/equipment-checkout', {
+                      state: { packageType: pkg.packageType, pricePerDay: pkg.price },
+                    })
+                  }
+                  variant="primary"
+                  size="lg"
+                  fullWidth
+                  className="flex items-center justify-center gap-2"
+                >
+                  Book Now <ArrowRight size={16} />
+                </Button>
+              </Card.Body>
+            </Card>
           ))}
         </div>
 
-        <div className="mt-12 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
-          <h2 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">How It Works</h2>
-          <ol className="space-y-2 text-sm text-gray-700 dark:text-gray-400">
-            <li>
-              <strong>1. Choose Package:</strong> Select a rental period (daily, weekly, or
-              monthly)
-            </li>
-            <li>
-              <strong>2. Select Dates:</strong> Pick your hire and return dates
-            </li>
-            <li>
-              <strong>3. Confirm Details:</strong> Review the total cost and equipment details
-            </li>
-            <li>
-              <strong>4. Pay with M-Pesa:</strong> Complete payment securely
-            </li>
-            <li>
-              <strong>5. Collect Equipment:</strong> Collect your equipment at our location
-            </li>
-          </ol>
-        </div>
+        {/* How It Works */}
+        <Card>
+          <Card.Body>
+            <h2 className="font-bebas text-3xl text-chalk mb-8 letter-spacing-tighter">
+              HOW <span className="text-fire">IT WORKS</span>
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+              {[
+                {
+                  step: 1,
+                  title: 'Choose Package',
+                  desc: 'Select your rental period (daily, weekly, or monthly)'
+                },
+                {
+                  step: 2,
+                  title: 'Select Dates',
+                  desc: 'Pick your hire and return dates that work for you'
+                },
+                {
+                  step: 3,
+                  title: 'Confirm Details',
+                  desc: 'Review total cost and equipment specifications'
+                },
+                {
+                  step: 4,
+                  title: 'Pay with M-Pesa',
+                  desc: 'Complete payment securely via M-Pesa'
+                },
+                {
+                  step: 5,
+                  title: 'Collect Equipment',
+                  desc: 'Pick up your equipment at our location'
+                }
+              ].map((item) => (
+                <div key={item.step} className="text-center">
+                  <div className="w-12 h-12 bg-fire text-night font-bebas text-lg rounded-full flex items-center justify-center mx-auto mb-3">
+                    {item.step}
+                  </div>
+                  <h4 className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-chalk mb-2">
+                    {item.title}
+                  </h4>
+                  <p className="text-xs text-fog leading-relaxed">
+                    {item.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </Card.Body>
+        </Card>
+
+        {/* Info Box */}
+        <Card className="mt-12 bg-gradient-to-r from-fire/10 via-ember/5 to-fire/10 border-fire/20">
+          <Card.Body>
+            <div className="flex items-start gap-4">
+              <Check size={24} className="text-fire flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-chalk mb-2">
+                  Why Rent From TRFC?
+                </h3>
+                <ul className="space-y-2 text-sm text-fog">
+                  <li>✓ Professional-grade equipment maintained to the highest standards</li>
+                  <li>✓ Competitive pricing with flexible rental periods</li>
+                  <li>✓ Quick booking process — rent in minutes</li>
+                  <li>✓ Local pickup at our Nairobi location</li>
+                  <li>✓ Dedicated support for all rentals</li>
+                </ul>
+              </div>
+            </div>
+          </Card.Body>
+        </Card>
       </div>
     </div>
   )

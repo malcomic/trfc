@@ -10,6 +10,7 @@ import {
   buyTicket,
   getUserTickets,
   getTicketById,
+  downloadTicketPDF,
 } from '../controllers/ticketsController.js'
 import { authMiddleware, adminMiddleware } from '../middleware/auth.js'
 
@@ -24,5 +25,6 @@ router.delete('/:id', authMiddleware, adminMiddleware, deleteEvent)
 router.post('/:eventId/tickets', authMiddleware, buyTicket)
 router.get('/tickets/list/user', authMiddleware, getUserTickets)
 router.get('/tickets/:id', authMiddleware, getTicketById)
+router.get('/tickets/:ticketId/download', authMiddleware, downloadTicketPDF)
 
 export default router

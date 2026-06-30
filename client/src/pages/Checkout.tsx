@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom'
 import { createOrder } from '../api/orders'
 import { initiateSTKPush } from '../api/payments'
 import { useCart } from '../store/cartStore'
-import { AlertCircle, Loader, ShoppingCart, Truck } from 'lucide-react'
+import { AlertCircle, ShoppingCart, Truck } from 'lucide-react'
+import { Button, FormInput, Card } from '../components/ui'
 
 export default function Checkout() {
   const { register, handleSubmit, formState: { errors } } = useForm()
@@ -16,17 +17,24 @@ export default function Checkout() {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen py-12 px-4 bg-white dark:bg-[#1C1C1C]">
-        <div className="max-w-2xl mx-auto text-center">
-          <ShoppingCart className="w-16 h-16 text-gray-300 dark:text-gray-700 mx-auto mb-4" />
-          <h1 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">Checkout</h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">Your cart is empty</p>
-          <button
+      <div className="min-h-screen bg-night text-chalk font-barlow flex items-center justify-center px-[6%] py-12">
+        <div className="max-w-2xl w-full text-center">
+          <div className="w-20 h-20 bg-ash rounded-full flex items-center justify-center mx-auto mb-8 border border-white/10">
+            <ShoppingCart size={40} className="text-fog" />
+          </div>
+          <h1 className="font-bebas text-5xl text-chalk mb-3 letter-spacing-tighter">
+            CART EMPTY
+          </h1>
+          <p className="text-lg text-fog mb-8">
+            Your shopping cart is empty. Browse our products and start adding items to your order.
+          </p>
+          <Button
             onClick={() => navigate('/shop')}
-            className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-opacity-90 font-semibold"
+            variant="primary"
+            size="lg"
           >
             Continue Shopping
-          </button>
+          </Button>
         </div>
       </div>
     )
@@ -78,182 +86,189 @@ export default function Checkout() {
   }
 
   return (
-    <div className="min-h-screen py-12 px-4 bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 text-gray-900 dark:text-white">Checkout</h1>
-          <p className="text-gray-600 dark:text-gray-400">Complete your purchase securely with M-Pesa</p>
+    <div className="min-h-screen bg-night text-chalk font-barlow">
+      {/* ── Hero ── */}
+      <section className="bg-gradient-to-r from-ink via-ash to-ink border-b border-white/5 px-[6%] py-12">
+        <div className="max-w-5xl mx-auto relative z-10">
+          <div className="inline-flex items-center gap-2 font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fire mb-3 before:block before:w-5 before:h-0.5 before:bg-fire">
+            Complete Your Order
+          </div>
+          <h1 className="font-bebas text-4xl text-chalk letter-spacing-tighter">
+            SECURE <span className="text-fire">CHECKOUT</span>
+          </h1>
         </div>
+      </section>
 
+      {/* ── Main Content ── */}
+      <div className="max-w-5xl mx-auto px-[6%] py-12 pb-20">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Checkout Form */}
           <div className="lg:col-span-2">
-            <form onSubmit={handleSubmit(onSubmit)} className="bg-white dark:bg-[#1C1C1C] rounded-lg shadow-lg p-8 space-y-6">
-              <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Delivery Information</h2>
-
+            <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-8">
+              {/* Error Alert */}
               {error && (
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                <div className="flex items-start gap-3 bg-danger-red/10 border border-danger-red/30 p-5 rounded-sm">
+                  <AlertCircle size={20} className="text-danger-red flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-red-800 dark:text-red-300 font-semibold">Payment Error</p>
-                    <p className="text-red-700 dark:text-red-400 text-sm">{error}</p>
+                    <p className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-danger-red">Payment Error</p>
+                    <p className="text-sm text-chalk/70 mt-1">{error}</p>
                   </div>
                 </div>
               )}
 
-              <div>
-                <label className="block text-sm font-semibold mb-2 text-gray-900 dark:text-white">
-                  Phone Number <span className="text-red-600">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="tel"
-                    {...register('phone', {
-                      required: 'Phone number is required',
-                      pattern: {
-                        value: /^254\d{9}$/,
-                        message: 'Phone must be in format 254XXXXXXXXX',
-                      },
-                    })}
-                    placeholder="254712345678"
-                    className="w-full border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-3 bg-white dark:bg-[#2A2A2A] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                  />
+              {/* Delivery Section */}
+              <Card>
+                <Card.Body>
+                  <h2 className="font-bebas text-2xl text-chalk mb-6 letter-spacing-tighter">
+                    DELIVERY <span className="text-fire">INFO</span>
+                  </h2>
+                  <div className="space-y-5">
+                    <FormInput
+                      label="Phone Number"
+                      id="checkout-phone"
+                      type="tel"
+                      placeholder="254712345678"
+                      error={errors.phone ? (errors.phone.message as string) : undefined}
+                      {...register('phone', {
+                        required: 'Phone number is required',
+                        pattern: {
+                          value: /^254\d{9}$/,
+                          message: 'Format: 254XXXXXXXXX (Kenya)',
+                        },
+                      })}
+                    />
+
+                    <div>
+                      <label className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-chalk/40 mb-2.5 block" htmlFor="checkout-address">
+                        Delivery Address
+                      </label>
+                      <textarea
+                        id="checkout-address"
+                        rows={4}
+                        className="w-full bg-smoke border border-white/10 text-chalk font-barlow text-base px-4 py-3 outline-none transition-all duration-200 focus:border-fire/50 resize-none"
+                        placeholder="E.g., 123 Main Street, Nairobi, Kenya"
+                        {...register('address', { required: 'Delivery address is required' })}
+                      />
+                      {errors.address && (
+                        <p className="text-xs text-danger-red mt-1.5">{errors.address.message as string}</p>
+                      )}
+                    </div>
+                  </div>
+                </Card.Body>
+              </Card>
+
+              {/* Shipping Info */}
+              <div className="flex items-start gap-4 bg-info-blue/10 border border-info-blue/30 p-5">
+                <Truck size={20} className="text-info-blue flex-shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-barlow-condensed font-bold letter-spacing-widest text-transform-uppercase text-info-blue mb-1">Free Delivery</p>
+                  <p className="text-chalk/70">Orders delivered within 2-3 business days after payment confirmation.</p>
                 </div>
-                {errors.phone && (
-                  <p className="text-red-600 dark:text-red-400 text-sm mt-1">{errors.phone.message as string}</p>
-                )}
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Format: 254712345678 (Kenya number)</p>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold mb-2 text-gray-900 dark:text-white">
-                  Delivery Address <span className="text-red-600">*</span>
-                </label>
-                <textarea
-                  {...register('address', { required: 'Delivery address is required' })}
-                  placeholder="E.g., 123 Main Street, Nairobi, Kenya"
-                  className="w-full border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-3 h-24 bg-white dark:bg-[#2A2A2A] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
-                ></textarea>
-                {errors.address && (
-                  <p className="text-red-600 dark:text-red-400 text-sm mt-1">{errors.address.message as string}</p>
-                )}
-              </div>
-
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex gap-3">
-                <Truck className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-blue-800 dark:text-blue-300">
-                  <p className="font-semibold mb-1">Free Delivery</p>
-                  <p>We will deliver your order to the address you provide within 2-3 business days after payment.</p>
-                </div>
-              </div>
-
-              <button
+              {/* Submit Button */}
+              <Button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                isLoading={loading}
+                variant="primary"
+                size="lg"
+                fullWidth
+                className="h-13"
               >
-                {loading ? (
-                  <>
-                    <Loader className="w-4 h-4 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  'Proceed to Payment'
-                )}
-              </button>
+                {loading ? 'Processing...' : 'Proceed to Payment'}
+              </Button>
 
-              <p className="text-xs text-gray-600 dark:text-gray-400 text-center">
-                💡 After clicking "Proceed to Payment", an M-Pesa prompt will appear on your phone. Enter your M-Pesa PIN to complete the transaction.
+              <p className="text-xs text-fog text-center">
+                💡 After clicking proceed, an M-Pesa prompt will appear on your phone. Enter your PIN to complete payment.
               </p>
             </form>
           </div>
 
           {/* Order Summary Sidebar */}
           <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-[#1C1C1C] rounded-lg shadow-lg p-6 sticky top-4">
-              <h3 className="text-xl font-bold mb-6 text-gray-900 dark:text-white">Order Summary</h3>
+            <Card className="sticky top-4">
+              <Card.Body>
+                <h3 className="font-bebas text-2xl text-chalk mb-6 letter-spacing-tighter">
+                  ORDER <span className="text-fire">SUMMARY</span>
+                </h3>
 
-              {/* Items List */}
-              <div className="space-y-3 mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
-                {items.map((item) => (
-                  <div key={item.product.id} className="flex justify-between text-sm">
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-800 dark:text-white">{item.product.name}</p>
-                      <p className="text-gray-600 dark:text-gray-400 text-xs">
-                        KES {(Number(item.product.price)).toFixed(2)} × {item.quantity}
+                {/* Items */}
+                <div className="space-y-3 mb-6 pb-6 border-b border-white/10">
+                  {items.map((item) => (
+                    <div key={item.product.id} className="flex justify-between items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-chalk truncate">
+                          {item.product.name}
+                        </p>
+                        <p className="text-xs text-fog mt-1">
+                          KES {Number(item.product.price).toFixed(0)} × {item.quantity}
+                        </p>
+                      </div>
+                      <p className="font-bebas text-lg text-fire flex-shrink-0">
+                        {(Number(item.product.price) * item.quantity).toFixed(0)}
                       </p>
-                    </div>
-                    <p className="font-semibold text-gray-800 dark:text-white">
-                      KES {(Number(item.product.price) * item.quantity).toFixed(2)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Pricing Breakdown */}
-              <div className="space-y-2 mb-6 pb-6 border-b border-gray-200 dark:border-gray-700 text-sm">
-                <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                  <span>Subtotal</span>
-                  <span>KES {total.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                  <span>Delivery</span>
-                  <span className="font-semibold text-green-600 dark:text-green-400">Free</span>
-                </div>
-              </div>
-
-              {/* Total */}
-              <div className="flex justify-between text-lg font-bold mb-6">
-                <span className="text-gray-900 dark:text-white">Total</span>
-                <span className="text-primary text-2xl">KES {total.toFixed(2)}</span>
-              </div>
-
-              {/* Info Box */}
-              <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg text-xs text-gray-600 dark:text-gray-400 space-y-2">
-                <p>
-                  <strong>📍 Items:</strong> {items.length} item(s)
-                </p>
-                <p>
-                  <strong>⏱️ Delivery:</strong> 2-3 business days
-                </p>
-                <p>
-                  <strong>🔒 Secure:</strong> Powered by M-Pesa
-                </p>
-              </div>
-
-              {/* Product List */}
-              <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-3">ITEMS IN ORDER</p>
-                <div className="space-y-2 text-xs">
-                  {items.map((item, idx) => (
-                    <div key={idx} className="flex justify-between py-1">
-                      <span className="text-gray-600 dark:text-gray-400">{idx + 1}. {item.product.name}</span>
-                      <span className="font-mono text-gray-700 dark:text-gray-300">×{item.quantity}</span>
                     </div>
                   ))}
                 </div>
-              </div>
-            </div>
+
+                {/* Pricing */}
+                <div className="space-y-3 mb-6 pb-6 border-b border-white/10 text-sm">
+                  <div className="flex justify-between text-fog">
+                    <span>Subtotal</span>
+                    <span>KES {total.toFixed(0)}</span>
+                  </div>
+                  <div className="flex justify-between text-fog">
+                    <span>Delivery</span>
+                    <span className="font-barlow-condensed font-bold text-success-green">FREE</span>
+                  </div>
+                </div>
+
+                {/* Total */}
+                <div className="flex justify-between items-baseline mb-6">
+                  <span className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-fog">Total</span>
+                  <span className="font-bebas text-4xl text-fire letter-spacing-tighter">
+                    {total.toFixed(0)}
+                  </span>
+                </div>
+
+                {/* Info */}
+                <div className="bg-ash p-4 space-y-2 text-xs text-fog">
+                  <div className="flex justify-between">
+                    <span>📦 Items</span>
+                    <span className="font-bold text-chalk">{items.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>⏱️ Delivery</span>
+                    <span className="font-bold text-chalk">2-3 days</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>🔒 Secure</span>
+                    <span className="font-bold text-fire">M-Pesa</span>
+                  </div>
+                </div>
+              </Card.Body>
+            </Card>
           </div>
         </div>
 
-        {/* Security Trust Badges */}
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-          <div className="bg-white dark:bg-[#1C1C1C] rounded-lg p-6">
-            <div className="text-3xl mb-2">🔒</div>
-            <h4 className="font-semibold mb-1 text-gray-900 dark:text-white">Secure Payment</h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400">M-Pesa encryption protects your data</p>
-          </div>
-          <div className="bg-white dark:bg-[#1C1C1C] rounded-lg p-6">
-            <div className="text-3xl mb-2">✓</div>
-            <h4 className="font-semibold mb-1 text-gray-900 dark:text-white">Money-Back Guarantee</h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Unsatisfied? We'll refund you</p>
-          </div>
-          <div className="bg-white dark:bg-[#1C1C1C] rounded-lg p-6">
-            <div className="text-3xl mb-2">🚚</div>
-            <h4 className="font-semibold mb-1 text-gray-900 dark:text-white">Fast Delivery</h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Free delivery within 2-3 business days</p>
-          </div>
+        {/* Trust Badges */}
+        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            { icon: '🔒', title: 'Secure Payment', desc: 'M-Pesa encryption protects your data' },
+            { icon: '✓', title: 'Satisfaction Guaranteed', desc: 'Not satisfied? We offer full refunds' },
+            { icon: '⚡', title: 'Fast Processing', desc: 'Orders processed within hours' }
+          ].map((badge, idx) => (
+            <Card key={idx}>
+              <Card.Body className="text-center">
+                <div className="text-4xl mb-3">{badge.icon}</div>
+                <h4 className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-chalk mb-2">
+                  {badge.title}
+                </h4>
+                <p className="text-xs text-fog">{badge.desc}</p>
+              </Card.Body>
+            </Card>
+          ))}
         </div>
       </div>
     </div>

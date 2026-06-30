@@ -42,12 +42,30 @@ export default {
           light: '#D0D0D0',
         },
         gold: '#C9A84C',
+        // Fitness-inspired status colors
+        'success-green': '#22C55E',
+        'warning-amber': '#F59E0B',
+        'danger-red': '#EF4444',
+        'info-blue': '#3B82F6',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         bebas: ['Bebas Neue', 'sans-serif'],
         barlow: ['Barlow', 'sans-serif'],
         'barlow-condensed': ['Barlow Condensed', 'sans-serif'],
+      },
+      // Button sizing tokens
+      height: {
+        9: '2.25rem',   // 36px - sm button
+        11: '2.75rem',  // 44px - md button (default)
+        13: '3.25rem',  // 52px - lg button
+      },
+      // Consistent spacing scale
+      spacing: {
+        4: '1rem',      // 16px - small
+        6: '1.5rem',    // 24px - medium (default)
+        8: '2rem',      // 32px - large
+        12: '3rem',     // 48px - xl
       },
       keyframes: {
         fadeUp: {
