@@ -4,6 +4,7 @@ import { ShoppingCart, X, Menu, LogOut, LogIn, UserPlus } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../store/cartStore'
 import { ThemeToggle } from './ThemeToggle'
+import { Logo } from './Logo'
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
@@ -12,7 +13,7 @@ export default function Navbar() {
   const { items } = useCart()
   const navigate = useNavigate()
   const location = useLocation()
-  const cartCount = items.length
+  const cartCount = items.reduce((s, i) => s + i.quantity, 0)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -39,11 +40,16 @@ export default function Navbar() {
     path === '/' ? location.pathname === '/' : location.pathname.startsWith(path)
 
   const navLinks = [
-    { to: '/',       label: 'Home' },
+    { to: '/', label: 'Home' },
+    { to: '/about', label: 'About' },
     { to: '/events', label: 'Events' },
     { to: '/programs', label: 'Programs' },
+    { to: '/partnerships', label: 'Partnerships' },
+    { to: '/equipment', label: 'Equipment' },
     { to: '/gallery', label: 'Gallery' },
-    { to: '/shop',   label: 'Shop' },
+    { to: '/shop', label: 'Shop' },
+    { to: '/testimonials', label: 'Testimonials' },
+    { to: '/contact', label: 'Contact' },
   ]
 
   return (
@@ -56,10 +62,13 @@ export default function Navbar() {
           left: 16px;
           right: 16px;
           height: 2px;
-          background: #FF4500;
+          background: #FFFFFF;
           transform: scaleX(0);
           transform-origin: left;
           transition: transform 0.25s cubic-bezier(0.16,1,0.3,1);
+        }
+        html:not(.dark) .nav-link-underline::after {
+          background: #000000;
         }
         .nav-link-underline:hover::after,
         .nav-link-underline.active::after {
@@ -67,7 +76,10 @@ export default function Navbar() {
         }
         .nav-topline {
           height: 2px;
-          background: linear-gradient(90deg, transparent, #FF4500 40%, #FF7A1A 60%, transparent);
+          background: linear-gradient(90deg, transparent, #FFFFFF 40%, #A3A3A3 60%, transparent);
+        }
+        html:not(.dark) .nav-topline {
+          background: linear-gradient(90deg, transparent, #000000 40%, #737373 60%, transparent);
         }
         @keyframes badgePop {
           from { transform: scale(0); }
@@ -81,18 +93,10 @@ export default function Navbar() {
       <nav className="sticky top-0 z-100">
         <div className="nav-topline" />
 
-        <div className={`bg-gradient-to-r from-night to-night/95 dark:from-night dark:to-night/95 light:from-white light:to-white/95 backdrop-blur-[16px] transition-all duration-300 border-b ${scrolled ? 'border-fire/15 dark:border-fire/15 light:border-black/8' : 'border-white/5 light:border-black/8'}`}>
+        <div className={`bg-gradient-to-r from-night to-night/95 dark:from-night dark:to-night/95 light:from-white light:to-white/95 backdrop-blur-[16px] transition-all duration-300 border-b ${scrolled ? 'border-accent/15 light:border-accent-light/15' : 'border-white/5 light:border-black/8'}`}>
           <div className="max-w-[1200px] mx-auto px-[6%] h-16 flex items-center justify-between gap-6">
 
-            {/* Logo */}
-            <Link to="/" className="flex flex-col items-start">
-              <span className="font-bebas text-3xl text-chalk light:text-chalk-light tracking-wider leading-none">
-                TR<span className="text-fire">F</span>C
-              </span>
-              <span className="font-barlow-condensed font-bold text-[8px] tracking-wider text-fog light:text-fog-light leading-none mt-0.5">
-                Thika Road FC
-              </span>
-            </Link>
+            <Logo size="md" showTagline linkToHome />
 
             {/* Desktop nav links */}
             <div className="hidden md:flex items-center gap-0.5 flex-1 justify-center">
@@ -115,24 +119,29 @@ export default function Navbar() {
               <Link to="/cart" className="relative flex items-center justify-center w-10 h-10 text-white/55 dark:text-white/55 light:text-black/55 no-underline border border-white/7 dark:border-white/7 light:border-black/8 clip-angled-sm transition-all duration-200 hover:text-chalk light:hover:text-chalk-light hover:border-white/15 dark:hover:border-white/15" aria-label={`Cart (${cartCount} items)`}>
                 <ShoppingCart size={18} />
                 {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 badge-pop bg-fire text-white font-barlow-condensed font-black text-[10px] w-4.5 h-4.5 flex items-center justify-center rounded-full">
+                  <span className="absolute -top-1 -right-1 badge-pop bg-accent light:bg-accent-light text-black light:text-white font-barlow-condensed font-black text-[10px] w-4.5 h-4.5 flex items-center justify-center rounded-full">
                     {cartCount > 9 ? '9+' : cartCount}
                   </span>
                 )}
               </Link>
 
               {token ? (
-                <button onClick={handleLogout} className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 dark:text-white/55 light:text-black/55 no-underline px-3.5 py-2 border border-white/7 dark:border-white/7 light:border-black/8 transition-all duration-200 flex items-center gap-1.5 bg-transparent cursor-pointer hover:text-chalk light:hover:text-chalk-light hover:border-white/20 dark:hover:border-white/20 clip-angled-sm">
-                  <LogOut size={13} />
-                  Logout
-                </button>
+                <>
+                  <Link to="/account" className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 dark:text-white/55 light:text-black/55 no-underline px-3.5 py-2 border border-white/7 dark:border-white/7 light:border-black/8 transition-all duration-200 flex items-center gap-1.5 bg-transparent hover:text-chalk light:hover:text-chalk-light hover:border-white/20 dark:hover:border-white/20 clip-angled-sm">
+                    Account
+                  </Link>
+                  <button onClick={handleLogout} className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 dark:text-white/55 light:text-black/55 no-underline px-3.5 py-2 border border-white/7 dark:border-white/7 light:border-black/8 transition-all duration-200 flex items-center gap-1.5 bg-transparent cursor-pointer hover:text-chalk light:hover:text-chalk-light hover:border-white/20 dark:hover:border-white/20 clip-angled-sm">
+                    <LogOut size={13} />
+                    Logout
+                  </button>
+                </>
               ) : (
                 <>
                   <Link to="/login" className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 dark:text-white/55 light:text-black/55 no-underline px-3.5 py-2 border border-white/7 dark:border-white/7 light:border-black/8 transition-all duration-200 flex items-center gap-1.5 bg-transparent hover:text-chalk light:hover:text-chalk-light hover:border-white/20 dark:hover:border-white/20 clip-angled-sm">
                     <LogIn size={13} />
                     Login
                   </Link>
-                  <Link to="/register" className="font-barlow-condensed font-black text-xs tracking-wider text-white no-underline px-5 py-2 bg-fire clip-angled-lg transition-all duration-200 flex items-center gap-1.5 border-none cursor-pointer hover:bg-ember hover:scale-103">
+                  <Link to="/register" className="font-barlow-condensed font-black text-xs tracking-wider text-black light:text-white no-underline px-5 py-2 bg-accent light:bg-accent-light clip-angled-lg transition-all duration-200 flex items-center gap-1.5 border-none cursor-pointer hover:bg-accent/90 light:hover:bg-accent-light/90 hover:scale-103">
                     <UserPlus size={13} />
                     Join
                   </Link>
@@ -145,13 +154,13 @@ export default function Navbar() {
               <Link to="/cart" className="relative flex items-center justify-center w-10 h-10 text-white/55 dark:text-white/55 light:text-black/55 no-underline border border-white/7 dark:border-white/7 light:border-black/8 clip-angled-sm" aria-label="Cart">
                 <ShoppingCart size={18} />
                 {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 badge-pop bg-fire text-white font-barlow-condensed font-black text-[10px] w-4.5 h-4.5 flex items-center justify-center rounded-full">
+                  <span className="absolute -top-1 -right-1 badge-pop bg-accent light:bg-accent-light text-black light:text-white font-barlow-condensed font-black text-[10px] w-4.5 h-4.5 flex items-center justify-center rounded-full">
                     {cartCount > 9 ? '9+' : cartCount}
                   </span>
                 )}
               </Link>
               <button
-                className="bg-transparent border border-white/10 dark:border-white/10 light:border-black/10 text-chalk light:text-chalk-light w-10 h-10 flex items-center justify-center cursor-pointer clip-angled-sm transition-all duration-200 hover:border-fire light:hover:border-fire hover:text-fire light:hover:text-fire"
+                className="bg-transparent border border-white/10 dark:border-white/10 light:border-black/10 text-chalk light:text-chalk-light w-10 h-10 flex items-center justify-center cursor-pointer clip-angled-sm transition-all duration-200 hover:border-accent light:hover:border-accent-light hover:text-accent light:hover:text-accent-light"
                 onClick={() => setIsOpen(true)}
                 aria-label="Open menu"
               >
@@ -169,15 +178,8 @@ export default function Navbar() {
         <div className={`absolute top-0 right-0 bottom-0 w-[min(360px,90vw)] bg-ink light:bg-ink-light border-l border-white/6 dark:border-white/6 light:border-black/8 transform transition-transform duration-400 ${isOpen ? 'translate-x-0' : 'translate-x-full'} flex flex-col pointer-events-auto overflow-y-auto`}>
 
           <div className="flex items-center justify-between p-6 border-b border-white/5 dark:border-white/5 light:border-black/8">
-            <Link to="/" className="flex flex-col items-start" onClick={() => setIsOpen(false)}>
-              <span className="font-bebas text-2xl text-chalk light:text-chalk-light tracking-wider leading-none">
-                TR<span className="text-fire">F</span>C
-              </span>
-              <span className="font-barlow-condensed font-bold text-[8px] tracking-wider text-fog light:text-fog-light leading-none mt-0.5">
-                Thika Road FC
-              </span>
-            </Link>
-            <button className="bg-transparent border border-white/10 dark:border-white/10 light:border-black/10 text-chalk light:text-chalk-light w-9 h-9 flex items-center justify-center cursor-pointer clip-angled-sm transition-all duration-200 hover:border-fire light:hover:border-fire hover:text-fire light:hover:text-fire" onClick={() => setIsOpen(false)} aria-label="Close menu">
+            <Logo size="sm" showTagline linkToHome onClick={() => setIsOpen(false)} />
+            <button className="bg-transparent border border-white/10 dark:border-white/10 light:border-black/10 text-chalk light:text-chalk-light w-9 h-9 flex items-center justify-center cursor-pointer clip-angled-sm transition-all duration-200 hover:border-accent light:hover:border-accent-light hover:text-accent light:hover:text-accent-light" onClick={() => setIsOpen(false)} aria-label="Close menu">
               <X size={16} />
             </button>
           </div>
@@ -193,7 +195,7 @@ export default function Navbar() {
                 onClick={() => setIsOpen(false)}
               >
                 {l.label}
-                <span className={`text-base text-fire transition-opacity duration-200 ${isActive(l.to) ? 'opacity-100' : 'opacity-0'}`}>→</span>
+                <span className={`text-base text-accent light:text-accent-light transition-opacity duration-200 ${isActive(l.to) ? 'opacity-100' : 'opacity-0'}`}>→</span>
               </Link>
             ))}
           </div>
@@ -204,10 +206,15 @@ export default function Navbar() {
               <ThemeToggle />
             </div>
             {token ? (
-              <button onClick={handleLogout} className="font-barlow-condensed font-bold text-xs tracking-wider text-white no-underline px-3.5 py-3.5 bg-fire w-full flex items-center justify-center gap-1.5 cursor-pointer hover:bg-ember clip-angled-lg transition-all duration-200">
-                <LogOut size={15} />
-                Logout
-              </button>
+              <>
+                <Link to="/account" className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 no-underline px-3.5 py-3.5 border border-white/7 flex items-center justify-center bg-transparent hover:text-chalk clip-angled-lg transition-all duration-200" onClick={() => setIsOpen(false)}>
+                  Account
+                </Link>
+                <button onClick={handleLogout} className="font-barlow-condensed font-bold text-xs tracking-wider text-black light:text-white no-underline px-3.5 py-3.5 bg-accent light:bg-accent-light w-full flex items-center justify-center gap-1.5 cursor-pointer hover:bg-accent/90 light:hover:bg-accent-light/90 clip-angled-lg transition-all duration-200">
+                  <LogOut size={15} />
+                  Logout
+                </button>
+              </>
             ) : (
               <>
                 <Link
@@ -220,7 +227,7 @@ export default function Navbar() {
                 </Link>
                 <Link
                   to="/register"
-                  className="font-barlow-condensed font-black text-xs tracking-wider text-white no-underline px-3.5 py-3.5 bg-fire flex items-center justify-center gap-1.5 cursor-pointer hover:bg-ember clip-angled-lg transition-all duration-200"
+                  className="font-barlow-condensed font-black text-xs tracking-wider text-black light:text-white no-underline px-3.5 py-3.5 bg-accent light:bg-accent-light flex items-center justify-center gap-1.5 cursor-pointer hover:bg-accent/90 light:hover:bg-accent-light/90 clip-angled-lg transition-all duration-200"
                   onClick={() => setIsOpen(false)}
                 >
                   <UserPlus size={15} />

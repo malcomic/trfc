@@ -1,6 +1,6 @@
 import api from '../index';
 export const getProductsForAdmin = async () => {
-    const response = await api.get('/products');
+    const response = await api.get('/admin/products');
     return response.data;
 };
 export const createProduct = async (data) => {

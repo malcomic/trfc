@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Loader, AlertCircle, RefreshCw, Download } from 'lucide-react'
 import Papa from 'papaparse'
-import AdminLayout from '../components/AdminLayout'
 import MetricCard from '../components/MetricCard'
 import RevenueChart from '../components/charts/RevenueChart'
 import PaymentDistribution from '../components/charts/PaymentDistribution'
@@ -14,8 +13,9 @@ import {
   getTopProducts,
   getTopEvents,
   getUserStats,
-  getOrderStats
+  getOrderStats,
 } from '../api/analytics'
+import AdminPageHeader from '../components/admin/AdminPageHeader'
 
 interface DashboardData {
   summary: any
@@ -28,6 +28,7 @@ interface DashboardData {
 }
 
 export default function AdminAnalytics() {
+  const reportRef = useRef<HTMLDivElement>(null)
   const [data, setData] = useState<DashboardData>({
     summary: null,
     revenueTimeline: [],
@@ -60,7 +61,6 @@ export default function AdminAnalytics() {
         getOrderStats(),
       ])
 
-      // Transform payment stats to array format for pie chart
       const paymentStatsArray = [
         { payment_status: 'paid', count: payments.successful },
         { payment_status: 'pending', count: payments.pending },
@@ -96,15 +96,15 @@ export default function AdminAnalytics() {
       },
       'Top Products': data.topProducts.map((p: any) => ({
         'Product Name': p.name,
-        'Revenue': p.revenue,
+        Revenue: p.revenue,
         'Quantity Sold': p.quantitySold,
-        'Category': p.category,
+        Category: p.category,
       })),
       'Top Events': data.topEvents.map((e: any) => ({
         'Event Name': e.name,
         'Tickets Sold': e.ticketsSold,
-        'Capacity': e.capacity,
-        'Utilization': e.utilization,
+        Capacity: e.capacity,
+        Utilization: e.utilization,
       })),
     }
 
@@ -112,7 +112,8 @@ export default function AdminAnalytics() {
     const productsCSV = Papa.unparse(csvData['Top Products'])
     const eventsCSV = Papa.unparse(csvData['Top Events'])
 
-    const fullCSV = `ANALYTICS REPORT - ${new Date().toLocaleDateString()}\n\n` +
+    const fullCSV =
+      `ANALYTICS REPORT - ${new Date().toLocaleDateString()}\n\n` +
       `SUMMARY METRICS\n${summaryCSV}\n\n` +
       `TOP PRODUCTS\n${productsCSV}\n\n` +
       `TOP EVENTS\n${eventsCSV}`
@@ -127,7 +128,7 @@ export default function AdminAnalytics() {
   }
 
   const exportToPDF = () => {
-    const element = document.getElementById('analytics-report')
+    const element = reportRef.current
     if (!element) return
 
     import('html2pdf.js').then((html2pdf) => {
@@ -145,38 +146,33 @@ export default function AdminAnalytics() {
 
   if (error) {
     return (
-      <AdminLayout>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 flex gap-3">
-          <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0" />
-          <div>
-            <h3 className="text-red-900 font-semibold mb-2">Error Loading Analytics</h3>
-            <p className="text-red-700 text-sm mb-4">{error}</p>
-            <button
-              onClick={fetchAnalytics}
-              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
-            >
-              Try Again
-            </button>
-          </div>
+      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 flex gap-3">
+        <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0" />
+        <div>
+          <h3 className="text-red-900 dark:text-red-300 font-semibold mb-2">Error Loading Analytics</h3>
+          <p className="text-red-700 dark:text-red-400 text-sm mb-4">{error}</p>
+          <button
+            onClick={fetchAnalytics}
+            className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
+          >
+            Try Again
+          </button>
         </div>
-      </AdminLayout>
+      </div>
     )
   }
 
   return (
-    <AdminLayout>
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-4xl font-bold mb-2">Analytics Dashboard</h1>
-            <p className="text-gray-600">Track your business performance and metrics</p>
-          </div>
-          <div className="flex gap-2">
+    <div ref={reportRef} className="space-y-8">
+      <AdminPageHeader
+        title="Analytics"
+        subtitle="Track your business performance and metrics"
+        actions={
+          <>
             <button
               onClick={exportToCSV}
               disabled={loading}
-              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+              className="flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 min-h-[44px] rounded-lg hover:bg-green-700 transition disabled:opacity-50 w-full sm:w-auto"
             >
               <Download className="w-4 h-4" />
               CSV
@@ -184,7 +180,7 @@ export default function AdminAnalytics() {
             <button
               onClick={exportToPDF}
               disabled={loading}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+              className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 min-h-[44px] rounded-lg hover:bg-blue-700 transition disabled:opacity-50 w-full sm:w-auto"
             >
               <Download className="w-4 h-4" />
               PDF
@@ -192,185 +188,132 @@ export default function AdminAnalytics() {
             <button
               onClick={fetchAnalytics}
               disabled={loading}
-              className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition disabled:opacity-50"
+              className="flex items-center justify-center gap-2 bg-primary dark:bg-primary-dark text-white dark:text-black px-4 py-2 min-h-[44px] rounded-lg hover:opacity-90 transition disabled:opacity-50 w-full sm:w-auto"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </button>
-          </div>
-        </div>
+          </>
+        }
+      />
 
-        {/* Date Range Selector */}
-        <div className="bg-white rounded-lg shadow p-4">
-          <label className="block text-sm font-semibold mb-3">Date Range</label>
-          <div className="flex gap-3">
-            {['7', '30', '90'].map((range) => (
-              <button
-                key={range}
-                onClick={() => setDateRange(range as '7' | '30' | '90')}
-                className={`px-4 py-2 rounded transition ${
-                  dateRange === range
-                    ? 'bg-primary text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Last {range} days
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <MetricCard
-            title="Total Revenue"
-            value={`KES ${data.summary?.totalRevenue?.toLocaleString() || 0}`}
-            unit=""
-            trend="up"
-            trendPercent={8.5}
-            loading={loading}
-          />
-          <MetricCard
-            title="This Month Revenue"
-            value={`KES ${data.summary?.thisMonthRevenue?.toLocaleString() || 0}`}
-            unit=""
-            trend="up"
-            trendPercent={12.3}
-            loading={loading}
-          />
-          <MetricCard
-            title="Total Orders"
-            value={data.summary?.totalOrders || 0}
-            unit="orders"
-            trend="up"
-            trendPercent={5.2}
-            loading={loading}
-          />
-          <MetricCard
-            title="Payment Success Rate"
-            value={`${data.summary?.paymentSuccessRate?.toFixed(1) || 0}%`}
-            unit=""
-            trend="up"
-            trendPercent={3.1}
-            loading={loading}
-          />
-          <MetricCard
-            title="Active Users"
-            value={data.userStats?.total || 0}
-            unit="users"
-            trend="up"
-            trendPercent={6.8}
-            loading={loading}
-          />
-          <MetricCard
-            title="Average Order Value"
-            value={`KES ${data.summary?.avgOrderValue?.toFixed(0) || 0}`}
-            unit=""
-            trend="neutral"
-            loading={loading}
-          />
-        </div>
-
-        {/* Charts Section Placeholder */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Revenue Trend */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Revenue Trend</h3>
-            {loading ? (
-              <div className="h-64 bg-gray-100 rounded animate-pulse flex items-center justify-center">
-                <Loader className="w-8 h-8 text-gray-400 animate-spin" />
-              </div>
-            ) : data.revenueTimeline.length > 0 ? (
-              <RevenueChart data={data.revenueTimeline} />
-            ) : (
-              <div className="h-64 flex items-center justify-center text-gray-500">
-                <p>No revenue data available</p>
-              </div>
-            )}
-          </div>
-
-          {/* Payment Distribution */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Payment Status Distribution</h3>
-            {loading ? (
-              <div className="h-64 bg-gray-100 rounded animate-pulse flex items-center justify-center">
-                <Loader className="w-8 h-8 text-gray-400 animate-spin" />
-              </div>
-            ) : data.paymentStats && data.paymentStats.length > 0 ? (
-              <PaymentDistribution data={data.paymentStats} />
-            ) : (
-              <div className="h-64 flex items-center justify-center text-gray-500">
-                <p>No payment data available</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Top Products Chart */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Top Products by Revenue</h3>
-            {loading ? (
-              <div className="h-64 bg-gray-100 rounded animate-pulse flex items-center justify-center">
-                <Loader className="w-8 h-8 text-gray-400 animate-spin" />
-              </div>
-            ) : data.topProducts.length > 0 ? (
-              <TopProducts data={data.topProducts} />
-            ) : (
-              <div className="h-64 flex items-center justify-center text-gray-500">
-                <p>No product data available</p>
-              </div>
-            )}
-          </div>
-
-          {/* Top Events Chart */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Top Events by Tickets Sold</h3>
-            {loading ? (
-              <div className="h-64 bg-gray-100 rounded animate-pulse flex items-center justify-center">
-                <Loader className="w-8 h-8 text-gray-400 animate-spin" />
-              </div>
-            ) : data.topEvents.length > 0 ? (
-              <TopEvents data={data.topEvents} />
-            ) : (
-              <div className="h-64 flex items-center justify-center text-gray-500">
-                <p>No event data available</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Summary Stats */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-6">Summary Statistics</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">Total Orders</p>
-              <p className="text-2xl font-bold text-blue-600">{data.orderStats?.total || 0}</p>
-              <p className="text-xs text-gray-500 mt-2">
-                {data.orderStats?.completed || 0} completed
-              </p>
-            </div>
-            <div className="p-4 bg-green-50 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">Avg Order Value</p>
-              <p className="text-2xl font-bold text-green-600">
-                KES {data.summary?.avgOrderValue?.toFixed(0) || 0}
-              </p>
-            </div>
-            <div className="p-4 bg-purple-50 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">Success Rate</p>
-              <p className="text-2xl font-bold text-purple-600">
-                {data.summary?.paymentSuccessRate?.toFixed(1) || 0}%
-              </p>
-            </div>
-            <div className="p-4 bg-orange-50 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">Total Users</p>
-              <p className="text-2xl font-bold text-orange-600">{data.userStats?.total || 0}</p>
-            </div>
-          </div>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-lg p-4">
+        <label className="block text-sm font-semibold mb-3 text-gray-900 dark:text-gray-100">Date Range</label>
+        <div className="flex flex-wrap gap-3">
+          {['7', '30', '90'].map((range) => (
+            <button
+              key={range}
+              onClick={() => setDateRange(range as '7' | '30' | '90')}
+              className={`px-4 py-2 rounded transition ${
+                dateRange === range
+                  ? 'bg-primary dark:bg-primary-dark text-white dark:text-black'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+              }`}
+            >
+              Last {range} days
+            </button>
+          ))}
         </div>
       </div>
-    </AdminLayout>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <MetricCard
+          title="Total Revenue"
+          value={`KES ${data.summary?.totalRevenue?.toLocaleString() || 0}`}
+          loading={loading}
+        />
+        <MetricCard
+          title="This Month Revenue"
+          value={`KES ${data.summary?.thisMonthRevenue?.toLocaleString() || 0}`}
+          loading={loading}
+        />
+        <MetricCard
+          title="Total Orders"
+          value={data.summary?.totalOrders || 0}
+          unit="orders"
+          loading={loading}
+        />
+        <MetricCard
+          title="Payment Success Rate"
+          value={`${data.summary?.paymentSuccessRate?.toFixed(1) || 0}%`}
+          loading={loading}
+        />
+        <MetricCard
+          title="Active Users"
+          value={data.userStats?.total || 0}
+          unit="users"
+          loading={loading}
+        />
+        <MetricCard
+          title="Average Order Value"
+          value={`KES ${data.summary?.avgOrderValue?.toFixed(0) || 0}`}
+          loading={loading}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-lg p-6">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Revenue Trend</h3>
+          {loading ? (
+            <div className="h-64 bg-gray-100 dark:bg-gray-700 rounded animate-pulse flex items-center justify-center">
+              <Loader className="w-8 h-8 text-gray-400 animate-spin" />
+            </div>
+          ) : data.revenueTimeline.length > 0 ? (
+            <RevenueChart data={data.revenueTimeline} />
+          ) : (
+            <div className="h-64 flex items-center justify-center text-gray-500 dark:text-gray-400">
+              <p>No revenue data available</p>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-lg p-6">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Payment Status Distribution</h3>
+          {loading ? (
+            <div className="h-64 bg-gray-100 dark:bg-gray-700 rounded animate-pulse flex items-center justify-center">
+              <Loader className="w-8 h-8 text-gray-400 animate-spin" />
+            </div>
+          ) : data.paymentStats && data.paymentStats.length > 0 ? (
+            <PaymentDistribution data={data.paymentStats} />
+          ) : (
+            <div className="h-64 flex items-center justify-center text-gray-500 dark:text-gray-400">
+              <p>No payment data available</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-lg p-6">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Top Products by Revenue</h3>
+          {loading ? (
+            <div className="h-64 bg-gray-100 dark:bg-gray-700 rounded animate-pulse flex items-center justify-center">
+              <Loader className="w-8 h-8 text-gray-400 animate-spin" />
+            </div>
+          ) : data.topProducts.length > 0 ? (
+            <TopProducts data={data.topProducts} />
+          ) : (
+            <div className="h-64 flex items-center justify-center text-gray-500 dark:text-gray-400">
+              <p>No product data available</p>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-lg p-6">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Top Events by Tickets Sold</h3>
+          {loading ? (
+            <div className="h-64 bg-gray-100 dark:bg-gray-700 rounded animate-pulse flex items-center justify-center">
+              <Loader className="w-8 h-8 text-gray-400 animate-spin" />
+            </div>
+          ) : data.topEvents.length > 0 ? (
+            <TopEvents data={data.topEvents} />
+          ) : (
+            <div className="h-64 flex items-center justify-center text-gray-500 dark:text-gray-400">
+              <p>No event data available</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }

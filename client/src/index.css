@@ -1,4 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bebas+Neue&family=Barlow:ital,wght@0,400;0,600;0,700;1,400&family=Barlow+Condensed:wght@500;700;900&display=swap');
+:root {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-body: 'Barlow', sans-serif;
+  --font-condensed: 'Barlow Condensed', sans-serif;
+}
 
 @tailwind base;
 @tailwind components;
@@ -8,8 +13,36 @@ html {
   scroll-behavior: smooth;
 }
 
-body {
-  font-family: 'Inter', system-ui, sans-serif;
+@layer base {
+  body {
+    @apply font-sans antialiased text-gray-900 dark:text-gray-100;
+  }
+
+  /* Public pages set font-barlow via pageRoot; headings use Bebas where marked */
+  h1,
+  h2,
+  h3,
+  .font-display {
+    @apply font-bebas tracking-tight;
+  }
+}
+
+@layer components {
+  .type-eyebrow {
+    @apply font-barlow-condensed font-bold text-xs tracking-widest uppercase;
+  }
+
+  .type-headline {
+    @apply font-bebas leading-tight tracking-tight;
+  }
+
+  .type-body {
+    @apply font-barlow leading-relaxed;
+  }
+
+  .type-label {
+    @apply font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light;
+  }
 }
 
 @layer utilities {

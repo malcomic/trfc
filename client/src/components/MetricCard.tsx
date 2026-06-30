@@ -48,7 +48,7 @@ export default function MetricCard({
           <p className="text-chalk-light/70 dark:text-fog text-sm font-medium">{title}</p>
           {subtitle && <p className="text-chalk-light/50 dark:text-fog/70 text-xs mt-1">{subtitle}</p>}
         </div>
-        {icon && <div className="text-fire dark:text-fire ml-2">{icon}</div>}
+        {icon && <div className="text-accent light:text-accent-light dark:text-accent light:text-accent-light ml-2">{icon}</div>}
       </div>
 
       {/* Value */}

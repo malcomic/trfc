@@ -26,8 +26,9 @@ CREATE TABLE IF NOT EXISTS events (
 -- Tickets
 CREATE TABLE IF NOT EXISTS tickets (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id),
-  event_id UUID REFERENCES events(id),
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  event_id UUID REFERENCES events(id) ON DELETE SET NULL,
+  purchase_batch_id UUID,
   phone VARCHAR(20),
   payment_status VARCHAR(20) DEFAULT 'pending',
   mpesa_receipt VARCHAR(100),
@@ -76,6 +77,8 @@ CREATE TABLE IF NOT EXISTS gallery (
   media_url TEXT NOT NULL,
   media_type VARCHAR(10) DEFAULT 'image',
   caption TEXT,
+  show_on_hero BOOLEAN DEFAULT false,
+  hero_sort_order INT DEFAULT 0,
   uploaded_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -92,15 +95,29 @@ CREATE TABLE IF NOT EXISTS testimonials (
 -- Equipment Hire
 CREATE TABLE IF NOT EXISTS equipment_hire (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id),
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
   equipment_name VARCHAR(150),
   package_type VARCHAR(50),
   hire_date DATE NOT NULL,
   return_date DATE NOT NULL,
   total_cost NUMERIC(10,2),
+  phone VARCHAR(20),
   payment_status VARCHAR(20) DEFAULT 'pending',
   mpesa_receipt VARCHAR(100),
   checkout_request_id VARCHAR(100),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Sponsorship Tiers
+CREATE TABLE IF NOT EXISTS sponsorship_tiers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug VARCHAR(50) UNIQUE NOT NULL,
+  name VARCHAR(200) NOT NULL,
+  price_display VARCHAR(50) NOT NULL,
+  benefits JSONB NOT NULL DEFAULT '[]',
+  icon VARCHAR(50) DEFAULT 'Handshake',
+  sort_order INT DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -116,6 +133,19 @@ CREATE TABLE IF NOT EXISTS partnerships (
   status VARCHAR(20) DEFAULT 'pending',
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Site Typography
+CREATE TABLE IF NOT EXISTS site_typography (
+  id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  display_font VARCHAR(100) NOT NULL DEFAULT 'Bebas Neue',
+  body_font VARCHAR(100) NOT NULL DEFAULT 'Barlow',
+  condensed_font VARCHAR(100) NOT NULL DEFAULT 'Barlow Condensed',
+  sans_font VARCHAR(100) NOT NULL DEFAULT 'Inter',
+  updated_at TIMESTAMP DEFAULT NOW(),
+  updated_by UUID REFERENCES users(id)
+);
+
+INSERT INTO site_typography (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
 
 -- Payment Callbacks
 CREATE TABLE IF NOT EXISTS payment_callbacks (
@@ -138,8 +168,14 @@ CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
 CREATE INDEX IF NOT EXISTS idx_orders_checkout ON orders(checkout_request_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
 CREATE INDEX IF NOT EXISTS idx_gallery_type ON gallery(media_type);
+CREATE INDEX IF NOT EXISTS idx_gallery_hero ON gallery(hero_sort_order) WHERE show_on_hero = true;
 CREATE INDEX IF NOT EXISTS idx_tickets_checkout ON tickets(checkout_request_id);
 CREATE INDEX IF NOT EXISTS idx_equipment_user ON equipment_hire(user_id);
 CREATE INDEX IF NOT EXISTS idx_equipment_checkout ON equipment_hire(checkout_request_id);
-CREATE INDEX IF NOT EXISTS idx_partnerships_status ON partnerships(status);
-CREATE INDEX IF NOT EXISTS idx_payment_callbacks_checkout ON payment_callbacks(checkout_request_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_batch ON tickets(purchase_batch_id);
+CREATE INDEX IF NOT EXISTS idx_events_active ON events(is_active);
+CREATE INDEX IF NOT EXISTS idx_products_active ON products(is_active);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(payment_status);
+CREATE INDEX IF NOT EXISTS idx_testimonials_approved ON testimonials(is_approved);
+CREATE INDEX IF NOT EXISTS idx_sponsorship_tiers_active ON sponsorship_tiers(is_active);
+CREATE INDEX IF NOT EXISTS idx_sponsorship_tiers_sort ON sponsorship_tiers(sort_order);

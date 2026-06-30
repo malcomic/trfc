@@ -9,7 +9,7 @@ interface PaymentDistributionProps {
 
 const COLORS: Record<string, string> = {
   paid: '#10b981',
-  pending: '#f59e0b',
+  pending: '#9CA3AF',
   failed: '#ef4444',
 }
 
@@ -34,7 +34,7 @@ export default function PaymentDistribution({ data }: PaymentDistributionProps) 
           dataKey="value"
         >
           {formattedData.map((entry) => (
-            <Cell key={`cell-${entry.status}`} fill={COLORS[entry.status] || '#E8401C'} />
+            <Cell key={`cell-${entry.status}`} fill={COLORS[entry.status] || '#6B7280'} />
           ))}
         </Pie>
         <Tooltip

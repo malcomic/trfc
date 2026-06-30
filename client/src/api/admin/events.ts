@@ -1,7 +1,7 @@
 import api from '../index';
 
 export const getEventsForAdmin = async () => {
-  const response = await api.get('/events');
+  const response = await api.get('/admin/events');
   return response.data;
 };
 

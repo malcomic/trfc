@@ -1,1 +1,5 @@
+<<<<<<< HEAD
 {"version":3,"file":"EventDetail.d.ts","sourceRoot":"","sources":["EventDetail.tsx"],"names":[],"mappings":"AAQA,MAAM,CAAC,OAAO,UAAU,WAAW,4CAiRlC"}
+=======
+{"version":3,"file":"EventDetail.d.ts","sourceRoot":"","sources":["EventDetail.tsx"],"names":[],"mappings":"AAWA,MAAM,CAAC,OAAO,UAAU,WAAW,4CAmJlC"}
+>>>>>>> ae707d8c0a73e5527b29afbb8289c6a4bfcd1793

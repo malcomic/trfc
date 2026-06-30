@@ -15,7 +15,8 @@ export async function getMPesaToken(): Promise<string> {
       `${config.mpesa.consumerKey}:${config.mpesa.consumerSecret}`
     ).toString('base64')
 
-    const response = await axios.get(SANDBOX_AUTH_URL, {
+    const { auth: authUrl } = getUrls()
+    const response = await axios.get(authUrl, {
       headers: {
         Authorization: `Basic ${auth}`,
       },
@@ -150,8 +151,13 @@ export async function queryPaymentStatus(
     )
 
     return response.data
-  } catch (error) {
-    console.error('Error querying payment status:', error)
+  } catch (error: unknown) {
+    const axiosError = error as { response?: { data?: unknown }; message?: string }
+    if (axiosError.response?.data) {
+      console.error('M-Pesa status query error response:', axiosError.response.data)
+    } else {
+      console.error('Error querying payment status:', axiosError.message ?? error)
+    }
     throw error
   }
 }

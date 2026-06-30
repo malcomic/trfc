@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { Users, Calendar, Package, ShoppingCart } from 'lucide-react'
 import { getEventsForAdmin } from '../../api/admin/events'
 import { getProductsForAdmin } from '../../api/admin/products'
 import api from '../../api/index'
+import AdminPageHeader from '../../components/admin/AdminPageHeader'
 
 interface StatCard {
   label: string
@@ -10,6 +12,22 @@ interface StatCard {
   icon: React.ReactNode
   color: string
 }
+
+const quickActions = [
+  { to: '/admin/events', label: 'Events', desc: 'Create, edit, or delete events', color: 'blue' },
+  { to: '/admin/products', label: 'Products', desc: 'Create, edit, or delete products', color: 'green' },
+  { to: '/admin/gallery', label: 'Gallery', desc: 'Upload and manage media', color: 'purple' },
+  { to: '/admin/orders', label: 'Orders', desc: 'Track and manage orders', color: 'orange' },
+  { to: '/admin/analytics', label: 'Analytics', desc: 'View performance metrics', color: 'indigo' },
+  { to: '/admin/reports', label: 'Reports', desc: 'Generate custom reports', color: 'teal' },
+  { to: '/admin/users', label: 'Users', desc: 'Manage user roles', color: 'pink' },
+  { to: '/admin/testimonials', label: 'Testimonials', desc: 'Review pending submissions', color: 'yellow' },
+  { to: '/admin/equipment', label: 'Equipment', desc: 'Equipment hire statistics', color: 'cyan' },
+  { to: '/admin/tickets', label: 'Tickets', desc: 'View event ticket sales', color: 'blue' },
+  { to: '/admin/partnerships', label: 'Partnerships', desc: 'Review sponsorship inquiries', color: 'indigo' },
+  { to: '/admin/sponsorship-tiers', label: 'Sponsorship Tiers', desc: 'Manage tier pricing and benefits', color: 'violet' },
+  { to: '/admin/appearance', label: 'Appearance', desc: 'Customize public site fonts', color: 'slate' },
+]
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<StatCard[]>([])
@@ -74,7 +92,7 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <h1 className="text-4xl font-bold mb-8 text-gray-800 dark:text-white">Admin Dashboard</h1>
+      <AdminPageHeader title="Dashboard" />
 
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-6">
@@ -88,7 +106,7 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">{stat.label}</p>
-                <p className="text-4xl font-bold text-gray-800 dark:text-white mt-2">{stat.value}</p>
+                <p className="text-2xl sm:text-4xl font-bold text-gray-800 dark:text-white mt-2">{stat.value}</p>
               </div>
               <div className={`${stat.color} text-white p-3 rounded-lg opacity-80`}>
                 {stat.icon}
@@ -99,24 +117,18 @@ export default function AdminDashboard() {
       </div>
 
       <div className="mt-12 bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <a href="/admin/events" className="block p-4 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition">
-            <p className="font-semibold text-blue-900 dark:text-blue-300">Manage Events</p>
-            <p className="text-sm text-blue-700 dark:text-blue-400">Create, edit, or delete events</p>
-          </a>
-          <a href="/admin/products" className="block p-4 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 rounded-lg transition">
-            <p className="font-semibold text-green-900 dark:text-green-300">Manage Products</p>
-            <p className="text-sm text-green-700 dark:text-green-400">Create, edit, or delete products</p>
-          </a>
-          <a href="/admin/gallery" className="block p-4 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/40 rounded-lg transition">
-            <p className="font-semibold text-purple-900 dark:text-purple-300">Manage Gallery</p>
-            <p className="text-sm text-purple-700 dark:text-purple-400">Upload and manage media</p>
-          </a>
-          <a href="/admin/orders" className="block p-4 bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/40 rounded-lg transition">
-            <p className="font-semibold text-orange-900 dark:text-orange-300">View Orders</p>
-            <p className="text-sm text-orange-700 dark:text-orange-400">Track and manage orders</p>
-          </a>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {quickActions.map((action) => (
+            <Link
+              key={action.to}
+              to={action.to}
+              className="block p-4 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+            >
+              <p className="font-semibold text-gray-900 dark:text-white">{action.label}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{action.desc}</p>
+            </Link>
+          ))}
         </div>
       </div>
     </div>

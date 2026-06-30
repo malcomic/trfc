@@ -1,1 +1,5 @@
+<<<<<<< HEAD
 {"version":3,"file":"Checkout.d.ts","sourceRoot":"","sources":["Checkout.tsx"],"names":[],"mappings":"AASA,MAAM,CAAC,OAAO,UAAU,QAAQ,4CA0Q/B"}
+=======
+{"version":3,"file":"Checkout.d.ts","sourceRoot":"","sources":["Checkout.tsx"],"names":[],"mappings":"AAYA,MAAM,CAAC,OAAO,UAAU,QAAQ,4CAkL/B"}
+>>>>>>> ae707d8c0a73e5527b29afbb8289c6a4bfcd1793

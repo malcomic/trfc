@@ -1,37 +1,38 @@
-import axios from 'axios';
-const API = axios.create({
-    baseURL: 'http://localhost:5000/api',
-    headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-    },
-});
+import api from './index';
 export const getAnalyticsSummary = async () => {
-    const response = await API.get('/analytics/summary');
+    const response = await api.get('/analytics/summary');
     return response.data;
 };
 export const getRevenueTimeline = async (params) => {
-    const response = await API.get('/analytics/revenue/timeline', { params });
+    const response = await api.get('/analytics/revenue/timeline', { params });
     return response.data;
 };
 export const getPaymentStats = async () => {
-    const response = await API.get('/analytics/payments/stats');
+    const response = await api.get('/analytics/payments/stats');
     return response.data;
 };
 export const getTopProducts = async (params) => {
-    const response = await API.get('/analytics/revenue/by-product', { params });
+    const response = await api.get('/analytics/revenue/by-product', { params });
     return response.data;
 };
 export const getTopEvents = async (params) => {
-    const response = await API.get('/analytics/revenue/by-event', { params });
+    const response = await api.get('/analytics/revenue/by-event', { params });
     return response.data;
 };
 export const getUserStats = async () => {
-    const response = await API.get('/analytics/users/stats');
+    const response = await api.get('/analytics/users/stats');
     return response.data;
 };
 export const getOrderStats = async () => {
-    const response = await API.get('/analytics/orders/stats');
+    const response = await api.get('/analytics/orders/stats');
+    return response.data;
+};
+export const getEquipmentStats = async () => {
+    const response = await api.get('/analytics/equipment/stats');
+    return response.data;
+};
+export const getEventAttendance = async () => {
+    const response = await api.get('/analytics/events/attendance');
     return response.data;
 };
 //# sourceMappingURL=analytics.js.map

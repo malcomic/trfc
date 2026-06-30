@@ -6,8 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "esbuild src/server.ts --bundle --platform=node --target=node18 --outfile=dist/server.js --format=esm --packages=external",
     "start": "node dist/server.js",
+    "migrate": "tsx src/scripts/migrate.ts",
     "test": "vitest",
     "test:unit": "vitest run src/__tests__/unit",
     "test:integration": "vitest run src/__tests__/integration",
@@ -44,6 +45,7 @@
     "@types/pg": "^8.20.0",
     "@types/qrcode": "^1.5.6",
     "@vitest/ui": "^1.0.0",
+    "vitest": "^1.0.0",
     "tsx": "^3.12.7",
     "typescript": "^5.0.0",
     "vitest": "^1.0.0"

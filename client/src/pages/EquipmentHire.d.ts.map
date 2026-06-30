@@ -1,1 +1,5 @@
+<<<<<<< HEAD
 {"version":3,"file":"EquipmentHire.d.ts","sourceRoot":"","sources":["EquipmentHire.tsx"],"names":[],"mappings":"AAYA,MAAM,CAAC,OAAO,UAAU,aAAa,4CAsLpC"}
+=======
+{"version":3,"file":"EquipmentHire.d.ts","sourceRoot":"","sources":["EquipmentHire.tsx"],"names":[],"mappings":"AAWA,MAAM,CAAC,OAAO,UAAU,aAAa,4CAiEpC"}
+>>>>>>> ae707d8c0a73e5527b29afbb8289c6a4bfcd1793

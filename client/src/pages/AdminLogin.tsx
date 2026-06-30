@@ -1,5 +1,5 @@
 import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { loginUser } from '../api/auth'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
@@ -9,11 +9,24 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { login, user } = useAuth()
+
+  const getRedirectPath = () => {
+    const redirect = searchParams.get('redirect')
+    if (!redirect) return '/admin'
+    try {
+      const decoded = decodeURIComponent(redirect)
+      if (decoded.startsWith('/admin') && !decoded.startsWith('//')) return decoded
+    } catch {
+      /* ignore malformed redirect */
+    }
+    return '/admin'
+  }
 
   useEffect(() => {
     if (user && user.role === 'admin') {
-      navigate('/admin')
+      navigate(getRedirectPath())
     }
   }, [user, navigate])
 
@@ -29,7 +42,7 @@ export default function AdminLogin() {
       }
 
       login(response.token, response.user, response.refreshToken)
-      navigate('/admin')
+      navigate(getRedirectPath())
     } catch (error: any) {
       console.error('Login failed:', error)
       setErrorMessage(error.response?.data?.error || 'Login failed. Please try again.')
@@ -43,7 +56,7 @@ export default function AdminLogin() {
       <div className="w-full max-w-md">
         <div className="bg-white dark:bg-[#1C1C1C] rounded-2xl shadow-xl p-8">
           <div className="flex justify-center mb-6">
-            <div className="bg-primary text-white px-6 py-3 rounded-full font-bold text-lg">
+            <div className="bg-primary dark:bg-primary-dark text-white dark:text-black px-6 py-3 rounded-full font-bold text-lg">
               ADMIN PORTAL
             </div>
           </div>
@@ -83,7 +96,7 @@ export default function AdminLogin() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary text-white py-2 rounded-lg font-semibold hover:opacity-90 transition disabled:opacity-50 mt-6"
+              className="w-full bg-primary dark:bg-primary-dark text-white dark:text-black py-2 rounded-lg font-semibold hover:opacity-90 transition disabled:opacity-50 mt-6"
             >
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
@@ -91,7 +104,7 @@ export default function AdminLogin() {
 
           <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
             <p className="text-center text-gray-600 dark:text-gray-400 text-sm">
-              Need member login? <a href="/login" className="text-primary font-semibold hover:underline">Click here</a>
+              Need member login? <Link to="/login" className="text-primary font-semibold hover:underline">Click here</Link>
             </p>
           </div>
         </div>

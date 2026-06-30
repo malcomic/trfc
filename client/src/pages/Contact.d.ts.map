@@ -1,1 +1,5 @@
+<<<<<<< HEAD
 {"version":3,"file":"Contact.d.ts","sourceRoot":"","sources":["Contact.tsx"],"names":[],"mappings":"AAKA,MAAM,CAAC,OAAO,UAAU,OAAO,4CAgP9B"}
+=======
+{"version":3,"file":"Contact.d.ts","sourceRoot":"","sources":["Contact.tsx"],"names":[],"mappings":"AAKA,MAAM,CAAC,OAAO,UAAU,OAAO,4CA2E9B"}
+>>>>>>> ae707d8c0a73e5527b29afbb8289c6a4bfcd1793

@@ -1,0 +1,8 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { Check, AlertCircle, X } from 'lucide-react';
+export function ToastStack({ toasts, onDismiss }) {
+    if (toasts.length === 0)
+        return null;
+    return (_jsx("div", { className: "fixed bottom-8 right-8 flex flex-col gap-2.5 z-[1000]", children: toasts.map((toast) => (_jsxs("div", { className: "bg-ash light:bg-ash-light border border-white/10 light:border-black/10 border-l-4 border-l-accent light:border-l-accent-light px-5 py-3.5 flex items-start gap-3 clip-angled-sm w-72 shadow-lg animate-toastIn", children: [_jsxs("div", { className: "w-7 h-7 flex items-center justify-center flex-shrink-0 mt-0.5", children: [toast.type === 'success' && (_jsx(Check, { size: 16, className: "text-green-400" })), toast.type === 'error' && (_jsx(AlertCircle, { size: 16, className: "text-red-400" })), toast.type === 'info' && (_jsx(AlertCircle, { size: 16, className: "text-accent light:text-accent-light" }))] }), _jsxs("div", { className: "flex-1 font-barlow-condensed min-w-0", children: [_jsx("div", { className: "font-bold text-base text-chalk light:text-chalk-light tracking-tighter", children: toast.title }), toast.message && (_jsx("div", { className: "text-xs text-fog light:text-fog-light mt-0.5", children: toast.message }))] }), _jsx("button", { type: "button", onClick: () => onDismiss(toast.id), className: "text-fog light:text-fog-light hover:text-chalk light:hover:text-chalk-light bg-transparent border-0 cursor-pointer p-0", "aria-label": "Dismiss", children: _jsx(X, { size: 14 }) })] }, toast.id))) }));
+}
+//# sourceMappingURL=Toast.js.map

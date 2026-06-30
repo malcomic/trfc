@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react'
 import { User } from '../types'
+import { getUserProfile, logoutUser } from '../api/auth'
+import api from '../api/index'
 
 interface AuthContextType {
   user: User | null
@@ -17,31 +19,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const savedToken = localStorage.getItem('token')
-    const savedUser = localStorage.getItem('user')
-    if (savedToken && savedUser) {
+    const init = async () => {
+      const savedToken = localStorage.getItem('token')
+      const savedUser = localStorage.getItem('user')
+      if (!savedToken) {
+        setIsLoading(false)
+        return
+      }
       setToken(savedToken)
-      setUser(JSON.parse(savedUser))
+      if (savedUser) setUser(JSON.parse(savedUser))
+
+      try {
+        const profile = await getUserProfile()
+        const refreshedToken = localStorage.getItem('token')
+        if (refreshedToken) setToken(refreshedToken)
+        setUser(profile)
+        localStorage.setItem('user', JSON.stringify(profile))
+      } catch (err: any) {
+        if (err?.response?.status === 401) {
+          localStorage.removeItem('token')
+          localStorage.removeItem('refreshToken')
+          localStorage.removeItem('user')
+          setToken(null)
+          setUser(null)
+          delete api.defaults.headers.common['Authorization']
+        }
+      } finally {
+        setIsLoading(false)
+      }
     }
-    setIsLoading(false)
+    init()
   }, [])
 
   const login = (newToken: string, newUser: User, refreshToken?: string) => {
     setToken(newToken)
     setUser(newUser)
     localStorage.setItem('token', newToken)
-    if (refreshToken) {
-      localStorage.setItem('refreshToken', refreshToken)
-    }
+    if (refreshToken) localStorage.setItem('refreshToken', refreshToken)
     localStorage.setItem('user', JSON.stringify(newUser))
   }
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      if (token) await logoutUser()
+    } catch {
+      /* ignore */
+    }
     setToken(null)
     setUser(null)
     localStorage.removeItem('token')
     localStorage.removeItem('refreshToken')
     localStorage.removeItem('user')
+    delete api.defaults.headers.common['Authorization']
   }
 
   return (
@@ -53,8 +82,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext)
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider')
-  }
+  if (!context) throw new Error('useAuth must be used within AuthProvider')
   return context
 }

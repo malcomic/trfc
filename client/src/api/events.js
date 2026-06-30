@@ -19,4 +19,18 @@ export const deleteEvent = async (id) => {
     const response = await api.delete(`/events/${id}`);
     return response.data;
 };
+export const buyEventTickets = async (eventId, data) => {
+    const response = await api.post(`/events/${eventId}/tickets`, data);
+    return response.data;
+};
+export const getUserTickets = async () => {
+    const response = await api.get('/events/tickets/list/user');
+    return response.data;
+};
+export const getTicketsByCheckoutRequestId = async (checkoutRequestId, phone) => {
+    const response = await api.get(`/events/tickets/checkout/${checkoutRequestId}`, {
+        params: { phone },
+    });
+    return response.data;
+};
 //# sourceMappingURL=events.js.map

@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getEvents } from '../api/events'
-import EventCard from '../components/EventCard'
+import { AlertCircle, ChevronRight, Search, X, MapPin } from 'lucide-react'
 import { Event } from '../types'
-import { AlertCircle, ChevronRight, Search, X } from 'lucide-react'
+import { pageRoot, inputField } from '../utils/themeClasses'
+import { getSafeImageUrl } from '../utils/imageUrl'
+
+const EVENT_IMAGE_FALLBACK =
+  'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=800&q=80'
 
 const FILTERS = ['All', 'Race', 'Training', 'Social', 'Charity']
 
@@ -43,59 +47,63 @@ export default function Events() {
       !search ||
       e.title?.toLowerCase().includes(search.toLowerCase()) ||
       e.location?.toLowerCase().includes(search.toLowerCase())
-    return matchSearch
+    const category = (e as any).category || ''
+    const matchFilter =
+      activeFilter === 'All' ||
+      category.toLowerCase() === activeFilter.toLowerCase()
+    return matchSearch && matchFilter
   })
 
   return (
-    <div className="min-h-screen bg-night text-chalk font-barlow">
+    <div className={pageRoot}>
 
       {/* ── Hero ── */}
-      <section className="relative overflow-hidden bg-ink border-b border-white/5 px-[6%] py-16 md:py-20">
-        <div className="absolute left-0 top-0 bottom-0 w-0.75 bg-gradient-to-b from-transparent via-fire to-transparent opacity-70" />
-        <div className="absolute right-[-1%] bottom-[-20px] font-bebas text-clamp-3xl text-fire/5 leading-none pointer-events-none select-none letter-spacing-tighter">
+      <section className="relative overflow-hidden bg-ink light:bg-ink-light border-b border-white/5 light:border-black/8 px-[6%] py-16 md:py-20">
+        <div className="absolute left-0 top-0 bottom-0 w-0.75 bg-gradient-to-b from-transparent via-accent light:via-accent-light to-transparent opacity-70" />
+        <div className="absolute right-[-1%] bottom-[-20px] font-bebas text-clamp-3xl text-accent/5 light:text-accent-light/5 leading-none pointer-events-none select-none tracking-tighter">
           {loading ? '00' : String(events.length).padStart(2, '0')}
         </div>
         <div className="max-w-5xl mx-auto relative z-1">
-          <div className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fire flex items-center gap-2 mb-3.5 before:w-5 before:h-0.5 before:bg-fire">On The Calendar</div>
-          <h1 className="font-bebas text-clamp-lg leading-tight text-chalk mb-6 letter-spacing-tighter">
-            UPCOMING<br /><span className="text-transparent" style={{ WebkitTextStroke: '2px #FF4500' }}>EVENTS</span>
+          <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light flex items-center gap-2 mb-3.5 before:w-5 before:h-0.5 before:bg-accent light:before:bg-accent-light">On The Calendar</div>
+          <h1 className="font-bebas text-clamp-lg leading-tight text-chalk light:text-chalk-light mb-6 tracking-tighter">
+            UPCOMING<br /><span className="text-transparent [-webkit-text-stroke:2px_#fff] light:[-webkit-text-stroke:2px_#000]">EVENTS</span>
           </h1>
           <div className="flex items-center gap-7 flex-wrap">
             <div className="flex items-baseline gap-1.5">
-              <span className="font-bebas text-4xl text-fire leading-none">
+              <span className="font-bebas text-4xl text-accent light:text-accent-light leading-none">
                 {loading ? '—' : events.length}
               </span>
-              <span className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fog">Events Scheduled</span>
+              <span className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light">Events Scheduled</span>
             </div>
-            <div className="w-px h-7 bg-white/10" />
+            <div className="w-px h-7 bg-white/10 light:bg-black/10" />
             <div className="flex items-baseline gap-1.5">
-              <span className="font-bebas text-4xl text-fire leading-none">NBI</span>
-              <span className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fog">Nairobi & Beyond</span>
+              <span className="font-bebas text-4xl text-accent light:text-accent-light leading-none">NBI</span>
+              <span className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light">Nairobi & Beyond</span>
             </div>
-            <div className="w-px h-7 bg-white/10" />
+            <div className="w-px h-7 bg-white/10 light:bg-black/10" />
             <div className="flex items-baseline gap-1.5">
-              <span className="font-bebas text-4xl text-fire leading-none">FREE</span>
-              <span className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fog">To Register</span>
+              <span className="font-bebas text-4xl text-accent light:text-accent-light leading-none">FREE</span>
+              <span className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light">To Register</span>
             </div>
           </div>
         </div>
       </section>
 
       {/* ── Toolbar ── */}
-      <div className="bg-ash border-b border-white/5 px-[6%] py-5">
+      <div className="bg-ash light:bg-ash-light border-b border-white/5 light:border-black/8 px-[6%] py-5">
         <div className="max-w-5xl mx-auto flex items-center gap-3 flex-wrap">
           {/* Search */}
           <div className="relative flex-1 min-w-52 max-w-sm">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-fog pointer-events-none transition-colors duration-200"><Search size={14} /></span>
             <input
-              className="w-full bg-smoke border border-white/10 text-chalk font-barlow text-sm px-3.5 py-2.5 pl-10 outline-none clip-angled-sm transition-colors duration-200 focus:border-fire/40"
+              className={`w-full ${inputField} font-barlow text-sm px-3.5 py-2.5 pl-10 clip-angled-sm transition-colors duration-200 focus:border-accent/40 light:focus:border-accent-light/40`}
               type="text"
               placeholder="Search events or locations…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
             {search && (
-              <button className="absolute right-3 top-1/2 -translate-y-1/2 bg-none border-0 text-fog cursor-pointer p-0.5 flex transition-colors duration-200 hover:text-chalk" onClick={() => setSearch('')}>
+              <button className="absolute right-3 top-1/2 -translate-y-1/2 bg-none border-0 text-fog light:text-fog-light cursor-pointer p-0.5 flex transition-colors duration-200 hover:text-chalk light:hover:text-chalk-light" onClick={() => setSearch('')}>
                 <X size={13} />
               </button>
             )}
@@ -106,10 +114,10 @@ export default function Events() {
             <button
               key={f}
               onClick={() => setActiveFilter(f)}
-              className={`font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase px-4.5 py-2 transition-all duration-200 clip-angled-sm white-space-nowrap ${
+              className={`font-barlow-condensed font-bold text-xs tracking-widest uppercase px-4.5 py-2 transition-all duration-200 clip-angled-sm whitespace-nowrap ${
                 activeFilter === f
-                  ? 'bg-fire text-white border border-fire'
-                  : 'bg-smoke text-fog border border-white/10 hover:border-white/20 hover:text-chalk'
+                  ? 'bg-accent light:bg-accent-light text-black light:text-white border border-accent light:border-accent-light'
+                  : 'bg-smoke light:bg-smoke-light text-fog light:text-fog-light border border-white/10 light:border-black/10 hover:border-white/20 light:hover:border-black/20 hover:text-chalk light:hover:text-chalk-light'
               }`}
             >
               {f}
@@ -133,12 +141,12 @@ export default function Events() {
         {loading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0.5">
             {Array(6).fill(null).map((_, i) => (
-              <div key={i} className="bg-ash overflow-hidden">
-                <div className="h-55 bg-smoke animate-pulse" style={{ animation: 'evtShimmer 1.5s ease infinite' }} />
+              <div key={i} className="bg-ash light:bg-ash-light overflow-hidden">
+                <div className="h-55 bg-smoke light:bg-smoke-light animate-pulse" style={{ animation: 'evtShimmer 1.5s ease infinite' }} />
                 <div className="p-5 flex flex-col gap-2.5">
-                  <div className="h-3 bg-smoke rounded animate-pulse" style={{ width: '70%' }} />
-                  <div className="h-3 bg-smoke rounded animate-pulse" style={{ width: '45%' }} />
-                  <div className="h-3 bg-smoke rounded animate-pulse" style={{ width: '55%' }} />
+                  <div className="h-3 bg-smoke light:bg-smoke-light rounded animate-pulse" style={{ width: '70%' }} />
+                  <div className="h-3 bg-smoke light:bg-smoke-light rounded animate-pulse" style={{ width: '45%' }} />
+                  <div className="h-3 bg-smoke light:bg-smoke-light rounded animate-pulse" style={{ width: '55%' }} />
                 </div>
               </div>
             ))}
@@ -147,20 +155,20 @@ export default function Events() {
 
         {/* Results label */}
         {!loading && !error && (
-          <p className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fog mb-6">
-            Showing <span className="text-fire">{filtered.length}</span> of {events.length} event{events.length !== 1 ? 's' : ''}
-            {search && <> matching "<span className="text-fire">{search}</span>"</>}
+          <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light mb-6">
+            Showing <span className="text-accent light:text-accent-light">{filtered.length}</span> of {events.length} event{events.length !== 1 ? 's' : ''}
+            {search && <> matching "<span className="text-accent light:text-accent-light">{search}</span>"</>}
           </p>
         )}
 
         {/* Empty state */}
         {!loading && !error && filtered.length === 0 && (
           <div className="text-center py-25">
-            <div className="font-bebas text-clamp-2xl text-fire/10 leading-none mb-4 letter-spacing-tighter">NO<br />EVENTS</div>
-            <p className="font-barlow-condensed font-bold text-xl letter-spacing-widest text-transform-uppercase text-fog mb-2">
+            <div className="font-bebas text-clamp-2xl text-accent/10 light:text-accent-light/10 leading-none mb-4 tracking-tighter">NO<br />EVENTS</div>
+            <p className="font-barlow-condensed font-bold text-xl tracking-widest uppercase text-fog light:text-fog-light mb-2">
               {search || activeFilter !== 'All' ? 'No matches found' : 'Nothing scheduled yet'}
             </p>
-            <p className="text-sm text-mist">
+            <p className="text-sm text-mist light:text-mist-light">
               {search || activeFilter !== 'All'
                 ? 'Try a different search or filter'
                 : 'New events are added regularly — check back soon'}
@@ -172,57 +180,64 @@ export default function Events() {
         {!loading && !error && filtered.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0.5">
             {filtered.map((event, idx) => {
-              const { day, mon } = formatDate((event as any).date || (event as any).start_date)
+              const { day, mon } = formatDate((event as any).event_date || (event as any).date || (event as any).start_date)
               const isFeatured = idx === 0
 
               return (
                 <Link
                   to={`/events/${event.id}`}
                   key={event.id}
-                  className={`block text-decoration-none bg-ash relative overflow-hidden border border-transparent hover:border-fire/30 transition-all duration-250 hover:-translate-y-1 hover:z-10 ${isFeatured ? 'md:col-span-2 lg:col-span-2' : ''}`}
+                  className={`block no-underline bg-ash light:bg-ash-light relative overflow-hidden border border-transparent hover:border-accent/30 light:hover:border-accent-light/30 transition-all duration-250 hover:-translate-y-1 hover:z-10 ${isFeatured ? 'md:col-span-2 lg:col-span-2' : ''}`}
                 >
                   {/* Image */}
-                  <div className="relative overflow-hidden bg-smoke" style={{ height: isFeatured ? '320px' : '220px' }}>
+                  <div className="relative overflow-hidden bg-smoke light:bg-smoke-light" style={{ height: isFeatured ? '320px' : '220px' }}>
                     <img
-                      src={(event as any).image_url || 'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=800&q=80'}
+                      src={getSafeImageUrl((event as any).image_url, EVENT_IMAGE_FALLBACK)}
                       alt={event.title}
                       className="w-full h-full object-cover brightness-75 saturate-80 transition-all duration-500 ease-out group-hover:scale-107 group-hover:brightness-90 group-hover:saturate-100"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src =
-                          'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=800&q=80'
+                        (e.target as HTMLImageElement).src = EVENT_IMAGE_FALLBACK
                       }}
                     />
                     <div className="absolute bottom-0 left-0 right-0 h-3/5 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
 
                     {/* Date badge */}
-                    <div className="absolute top-3.5 left-3.5 bg-night border border-white/10 px-3 py-2 text-center min-w-12 clip-angled-sm z-10">
-                      <div className="font-bebas text-2xl text-fire leading-none">{day}</div>
-                      <div className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fog mt-0.5">{mon}</div>
+                    <div className="absolute top-3.5 left-3.5 bg-night light:bg-night-light border border-white/10 light:border-black/10 px-3 py-2 text-center min-w-12 clip-angled-sm z-10">
+                      <div className="font-bebas text-2xl text-accent light:text-accent-light leading-none">{day}</div>
+                      <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light mt-0.5">{mon}</div>
                     </div>
 
                     {/* Category tag */}
                     {(event as any).category && (
-                      <span className="absolute top-3.5 right-3.5 font-barlow-condensed font-black text-xs letter-spacing-widest text-transform-uppercase px-2.5 py-1 bg-fire text-white z-10">
+                      <span className="absolute top-3.5 right-3.5 font-barlow-condensed font-black text-xs tracking-widest uppercase px-2.5 py-1 bg-accent light:bg-accent-light text-black light:text-white z-10">
                         {(event as any).category}
                       </span>
                     )}
                   </div>
 
                   {/* Body */}
-                  <div className="px-5.5 py-5.5 border-t border-white/5 flex flex-col gap-3.5">
-                    {/* EventCard renders existing content (description, etc.) */}
-                    <EventCard event={event} />
+                  <div className="px-5.5 py-5.5 border-t border-white/5 light:border-black/8 flex flex-col gap-3.5">
+                    <h3 className="font-barlow-condensed font-bold text-lg tracking-tighter text-chalk light:text-chalk-light leading-tight">{event.title}</h3>
+                    {event.location && (
+                      <div className="flex items-center gap-1.75 text-sm text-fog light:text-fog-light">
+                        <MapPin size={11} className="text-accent light:text-accent-light flex-shrink-0" />
+                        <span>{event.location}</span>
+                      </div>
+                    )}
+                    {event.description && (
+                      <p className="text-sm text-chalk/45 light:text-chalk-light/45 leading-relaxed line-clamp-2">{event.description}</p>
+                    )}
 
-                    <div className="flex items-center justify-between pt-3.5 border-t border-white/5 mt-auto">
+                    <div className="flex items-center justify-between pt-3.5 border-t border-white/5 light:border-black/8 mt-auto">
                       <div>
-                        <div className="font-bebas text-3xl text-fire leading-none">
+                        <div className="font-bebas text-3xl text-accent light:text-accent-light leading-none">
                           {(event as any).price === 0 || !(event as any).price
                             ? 'FREE'
                             : `KES ${Number((event as any).price).toLocaleString()}`}
                         </div>
-                        <div className="font-barlow-condensed text-xs letter-spacing-widest text-transform-uppercase text-fog mt-0.5">Entry Fee</div>
+                        <div className="font-barlow-condensed text-xs tracking-widest uppercase text-fog light:text-fog-light mt-0.5">Entry Fee</div>
                       </div>
-                      <div className="flex items-center gap-1.5 font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-fire transition-gap duration-200 group-hover:gap-2.5">
+                      <div className="flex items-center gap-1.5 font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light transition-gap duration-200 group-hover:gap-2.5">
                         Register <ChevronRight size={14} />
                       </div>
                     </div>

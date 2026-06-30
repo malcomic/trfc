@@ -13,6 +13,7 @@ RUN npm ci
 COPY src ./src
 COPY index.html ./
 COPY tsconfig.json ./
+COPY tsconfig.node.json ./
 COPY vite.config.ts ./
 COPY tailwind.config.js ./
 COPY postcss.config.js ./
@@ -30,17 +31,7 @@ COPY nginx.conf /etc/nginx/nginx.conf
 # Copy built files from builder
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Create non-root user
-RUN addgroup -g 1001 -S nginx_user && \
-    adduser -S nginx_user -u 1001 && \
-    chown -R nginx_user:nginx_user /usr/share/nginx/html && \
-    chown -R nginx_user:nginx_user /var/cache/nginx && \
-    chown -R nginx_user:nginx_user /var/log/nginx
-
-# Switch to non-root user
-USER nginx_user
-
-# Expose port
+# Start Nginx (default nginx user in official image)
 EXPOSE 3000
 
 # Health check

@@ -5,6 +5,7 @@ export interface PaymentInitiateRequest {
   amount: number
   orderId?: string
   ticketId?: string
+  ticketBatchId?: string
   equipmentHireId?: string
 }
 
@@ -84,11 +85,11 @@ export async function getPaymentHistory(): Promise<PaymentHistoryItem[]> {
 export async function initiateTicketPayment(data: {
   phone: string
   amount: number
-  ticketId: string
+  ticketBatchId: string
 }) {
   return initiateSTKPush({
     ...data,
-    ticketId: data.ticketId,
+    ticketBatchId: data.ticketBatchId,
   })
 }
 

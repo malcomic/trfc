@@ -40,7 +40,7 @@ export async function getPaymentHistory() {
 export async function initiateTicketPayment(data) {
     return initiateSTKPush({
         ...data,
-        ticketId: data.ticketId,
+        ticketBatchId: data.ticketBatchId,
     });
 }
 export async function initiateEquipmentPayment(data) {

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import { query } from '../config/db.js'
+import { phonesMatch } from '../utils/phone.js'
 
 const EQUIPMENT_PACKAGES = {
   daily: { price: 500, description: 'Daily rate' },
@@ -47,16 +48,12 @@ export async function createEquipmentHireRequest(
   res: Response
 ) {
   try {
-    const { equipmentName, packageType, hireDate, returnDate } = req.body
-    const userId = req.user?.id
+    const { equipmentName, packageType, hireDate, returnDate, phone } = req.body
+    const userId = req.user?.id ?? null
 
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' })
-    }
-
-    if (!equipmentName || !packageType || !hireDate || !returnDate) {
+    if (!equipmentName || !packageType || !hireDate || !returnDate || !phone) {
       return res.status(400).json({
-        error: 'equipmentName, packageType, hireDate, and returnDate are required',
+        error: 'equipmentName, packageType, hireDate, returnDate, and phone are required',
       })
     }
 
@@ -79,8 +76,8 @@ export async function createEquipmentHireRequest(
 
     const result = await query(
       `INSERT INTO equipment_hire
-       (user_id, equipment_name, package_type, hire_date, return_date, total_cost, payment_status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       (user_id, equipment_name, package_type, hire_date, return_date, total_cost, phone, payment_status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
       [
         userId,
@@ -89,6 +86,7 @@ export async function createEquipmentHireRequest(
         hireDate,
         returnDate,
         totalCost,
+        phone,
         'pending',
       ]
     )
@@ -100,6 +98,7 @@ export async function createEquipmentHireRequest(
       hireDate,
       returnDate,
       totalCost,
+      phone,
       paymentStatus: 'pending',
     })
   } catch (error) {
@@ -137,22 +136,34 @@ export async function getEquipmentHireRequests(
 export async function getEquipmentHireById(req: Request, res: Response) {
   try {
     const { id } = req.params
+    const phoneQuery = typeof req.query.phone === 'string' ? req.query.phone : undefined
     const userId = req.user?.id
 
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' })
-    }
-
     const result = await query(
-      'SELECT * FROM equipment_hire WHERE id = $1 AND user_id = $2',
-      [id, userId]
+      'SELECT * FROM equipment_hire WHERE id = $1',
+      [id]
     )
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Hire request not found' })
     }
 
-    res.json(result.rows[0])
+    const hire = result.rows[0]
+    const isOwner = userId && hire.user_id === userId
+    const isAdmin = req.user?.role === 'admin'
+    const phoneVerified = phoneQuery && hire.phone && phonesMatch(phoneQuery, hire.phone)
+
+    if (!isOwner && !isAdmin && !phoneVerified) {
+      return res.json({
+        id: hire.id,
+        status: hire.payment_status,
+        total: hire.total_cost,
+        equipment_name: hire.equipment_name,
+        created_at: hire.created_at,
+      })
+    }
+
+    res.json(hire)
   } catch (error) {
     console.error('Error fetching equipment hire:', error)
     res.status(500).json({ error: 'Failed to fetch hire request' })

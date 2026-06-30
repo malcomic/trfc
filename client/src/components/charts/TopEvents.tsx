@@ -39,7 +39,7 @@ export default function TopEvents({ data }: TopEventsProps) {
           formatter={(value: any) => `${value} tickets`}
         />
         <Legend />
-        <Bar dataKey="ticketsSold" fill="#FF4500" name="Tickets Sold" radius={[8, 8, 0, 0]} />
+        <Bar dataKey="ticketsSold" fill="#111827" name="Tickets Sold" radius={[8, 8, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   )
