@@ -1,31 +1,49 @@
 import { Link } from 'react-router-dom'
-import { Users, Trophy, Apple, Sunrise, ArrowRight } from 'lucide-react'
+import { Footprints, Calendar, Mountain, PartyPopper, Target, Users, HeartHandshake, ArrowRight } from 'lucide-react'
 import { pageRoot, cardSurface } from '../utils/themeClasses'
 
 const PROGRAMS = [
   {
-    icon: Sunrise,
-    title: 'Group Runs',
-    desc: 'Weekly community runs along Thika Road and beyond. All paces welcome — nobody gets left behind.',
+    icon: Footprints,
+    title: 'Weekly Community Runs & Walks',
+    desc: 'Regular sessions for all paces — run, jog, or walk together with accountability and encouragement.',
     cta: { to: '/events', label: 'See Upcoming Runs' },
   },
   {
-    icon: Trophy,
-    title: 'Race Challenges',
-    desc: 'Monthly distance and pace challenges with leaderboard recognition and TRFC merch prizes.',
-    cta: { to: '/events', label: 'Join a Challenge' },
+    icon: Calendar,
+    title: 'Monthly Community Runs',
+    desc: 'Bigger monthly gatherings that bring the full TRFC community together on the road.',
+    cta: { to: '/events', label: 'View Monthly Runs' },
   },
   {
-    icon: Apple,
-    title: 'Nutrition Workshops',
-    desc: 'Fuel your training with expert-led sessions on race-day nutrition and recovery eating.',
-    cta: { to: '/register', label: 'Become a Member' },
+    icon: Mountain,
+    title: 'Hiking Adventures',
+    desc: 'Explore trails and outdoor routes as a community — fitness, fresh air, and shared adventure.',
+    cta: { to: '/events', label: 'Find a Hike' },
+  },
+  {
+    icon: PartyPopper,
+    title: 'Fit Festivals',
+    desc: 'High-energy community events celebrating movement, wellness, and togetherness.',
+    cta: { to: '/events', label: 'Upcoming Festivals' },
+  },
+  {
+    icon: Target,
+    title: 'Wellness Challenges',
+    desc: 'Structured challenges that keep members motivated, consistent, and growing together.',
+    cta: { to: '/register', label: 'Join a Challenge' },
   },
   {
     icon: Users,
-    title: 'Beginner Bootcamp',
-    desc: 'Structured 8-week programme for new runners — couch to 5K with coached sessions.',
-    cta: { to: '/register', label: 'Sign Up' },
+    title: 'Team Building Activities',
+    desc: 'Group activations designed for corporate teams, friends, and community groups.',
+    cta: { to: '/partnerships', label: 'Partner With Us' },
+  },
+  {
+    icon: HeartHandshake,
+    title: 'Accountability Programs',
+    desc: 'Support systems and check-ins that help members stay on track with their health goals.',
+    cta: { to: '/register', label: 'Get Started' },
   },
 ]
 
@@ -37,7 +55,9 @@ export default function Programs() {
         <div className="max-w-5xl mx-auto relative z-1">
           <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light flex items-center gap-2 mb-3 before:w-5 before:h-0.5 before:bg-accent light:before:bg-accent-light">Train With Us</div>
           <h1 className="font-bebas text-5xl leading-tight text-chalk light:text-chalk-light">TRFC<br /><span className="text-accent light:text-accent-light">PROGRAMS</span></h1>
-          <p className="text-fog light:text-fog-light mt-4 max-w-xl">Structured training, community accountability, and programmes built for every level — from first 5K to marathon prep.</p>
+          <p className="text-fog light:text-fog-light mt-4 max-w-xl">
+            From weekly runs and hikes to fit festivals and accountability programmes — TRFC offers experiences for every fitness level.
+          </p>
         </div>
       </section>
 

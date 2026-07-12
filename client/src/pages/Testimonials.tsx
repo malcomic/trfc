@@ -47,7 +47,9 @@ export default function Testimonials() {
       <section className="bg-ink light:bg-ink-light border-b border-white/5 light:border-black/8 px-[6%] pt-14 pb-11">
         <div className="max-w-5xl mx-auto">
           <h1 className="font-bebas text-5xl text-chalk light:text-chalk-light">COMMUNITY <span className="text-accent light:text-accent-light">VOICES</span></h1>
-          <p className="text-fog light:text-fog-light mt-2">Stories from TRFC members</p>
+          <p className="text-fog light:text-fog-light mt-2 max-w-2xl">
+            Hear inspiring stories from members whose lives have been transformed through accountability, friendship, and fitness within the TRFC community.
+          </p>
         </div>
       </section>
 

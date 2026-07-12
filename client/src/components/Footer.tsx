@@ -68,7 +68,7 @@ export default function Footer() {
 
       {/* Watermark */}
       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 font-bebas text-clamp-3xl text-accent/5 light:text-accent-light/5 tracking-tighter whitespace-nowrap pointer-events-none select-none leading-none transform -translate-y-0.5">
-        THIKA ROAD FC
+        MOVE TOGETHER · GROW TOGETHER
       </div>
 
       <div className="max-w-5xl mx-auto px-[6%] pt-16 relative z-10">
@@ -83,9 +83,9 @@ export default function Footer() {
           {/* ── Brand ── */}
           <div className="col-span-1">
             <Logo size="lg" className="mb-3" />
-            <p className="font-barlow-condensed font-medium text-xs tracking-widest uppercase text-fog light:text-fog-light mb-5">Nairobi · Est. 2019</p>
+            <p className="font-barlow-condensed font-medium text-xs tracking-widest uppercase text-fog light:text-fog-light mb-5">Nairobi · Est. July 2025</p>
             <p className="text-sm leading-loose text-fog light:text-fog-light max-w-56">
-              Building Nairobi's strongest running community — one kilometre, one race, one sunrise at a time.
+              Move Together. Grow Together.
             </p>
             <div className="flex gap-2.5 mt-7">
               {socials.map((s) => (
@@ -181,7 +181,7 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="border-t border-white/5 light:border-black/8 flex items-center justify-between pt-5 pb-5 flex-wrap gap-3">
           <p className="text-xs text-fog light:text-fog-light tracking-tighter">
-            © {new Date().getFullYear()} <strong className="text-accent light:text-accent-light font-bebas text-sm tracking-widest">TRFC</strong> · Thika Road Fitness Community · Nairobi, Kenya
+            © {new Date().getFullYear()} Thika Road Fitness Community. All Rights Reserved.
           </p>
           <div className="flex gap-5">
             <Link to="/privacy" className="text-xs tracking-widest uppercase text-fog light:text-fog-light no-underline font-barlow-condensed font-bold transition-all duration-200 hover:text-accent light:hover:text-accent-light">Privacy</Link>

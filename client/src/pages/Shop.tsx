@@ -92,10 +92,18 @@ export default function Shop() {
             <h1 className="font-bebas text-clamp-lg leading-tight text-chalk light:text-chalk-light tracking-tighter">
               TRFC<br /><span className="text-accent light:text-accent-light">SHOP</span>
             </h1>
+            <p className="text-fog light:text-fog-light mt-4 max-w-md leading-relaxed">
+              Represent the movement with official TRFC merchandise.
+            </p>
           </div>
-          <p className="font-barlow-condensed font-bold text-sm tracking-widest text-fog light:text-fog-light pb-2">
-            {loading ? '—' : `${products.length} product${products.length !== 1 ? 's' : ''}`} available
-          </p>
+          <div className="pb-2">
+            <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light mb-2">
+              Jerseys · Hoodies · Caps · Bucket Hats · Water Bottles · Waist Bags · Phone Holders · Medals
+            </p>
+            <p className="font-barlow-condensed font-bold text-sm tracking-widest text-fog light:text-fog-light">
+              {loading ? '—' : `${products.length} product${products.length !== 1 ? 's' : ''}`} available
+            </p>
+          </div>
         </div>
       </section>
 

@@ -176,7 +176,7 @@ export default function AdminAppearance() {
                 className="text-xs font-bold tracking-widest uppercase text-gray-500 dark:text-gray-400 mb-2"
                 style={{ fontFamily: settings.condensed_font }}
               >
-                Thika Road FC
+                Thika Road Fitness Community
               </p>
               <h3
                 className="text-4xl leading-tight text-gray-900 dark:text-white"
@@ -189,8 +189,7 @@ export default function AdminAppearance() {
               className="text-base leading-relaxed text-gray-700 dark:text-gray-300"
               style={{ fontFamily: settings.body_font }}
             >
-              Thika Road Fitness Community brings runners together through events, programs, and a
-              shared love of movement across Nairobi.
+              Thika Road Fitness Community brings runners, walkers, and hikers together through events, programs, and a shared commitment to wellness across Kenya.
             </p>
             <p
               className="text-sm text-gray-600 dark:text-gray-400"

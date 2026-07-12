@@ -52,14 +52,14 @@ export default function Login() {
       <div className="flex-1 hidden md:flex flex-col justify-between p-16 relative z-10 border-r border-white/5 light:border-black/8 light:border-black/8">
         <Link to="/" className="no-underline">
           <Logo size="xl" />
-          <p className="font-barlow-condensed font-medium text-sm tracking-widest uppercase text-fog mt-5">Nairobi · Est. 2019</p>
+          <p className="font-barlow-condensed font-medium text-sm tracking-widest uppercase text-fog mt-5">Nairobi · Est. July 2025</p>
         </Link>
 
         <div className="flex gap-10">
           {[
-            { val: '500+', label: 'Members' },
-            { val: '50+',  label: 'Events' },
-            { val: '5 Yrs', label: 'Running' },
+            { val: '20,000+', label: 'Members' },
+            { val: '16+',  label: 'Events' },
+            { val: '300K+', label: 'Monthly Reach' },
           ].map((s) => (
             <div key={s.label}>
               <div className="font-bebas text-5xl text-accent light:text-accent-light leading-none">{s.val}</div>

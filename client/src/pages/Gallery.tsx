@@ -155,6 +155,9 @@ export default function Gallery() {
               OUR<br />
               <span className="text-transparent [-webkit-text-stroke:2px_#fff] light:[-webkit-text-stroke:2px_#000]">GALLERY</span>
             </h1>
+            <p className="text-fog light:text-fog-light mt-4 max-w-lg leading-relaxed">
+              Explore moments captured from our runs, hikes, fit festivals, and community events.
+            </p>
           </div>
           <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light pb-0.5">
             {loading ? '—' : `${items.length} ${itemLabel}${items.length !== 1 ? 's' : ''}`}

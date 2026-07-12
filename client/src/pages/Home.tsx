@@ -115,19 +115,18 @@ export default function Home() {
 
           <div className="font-barlow-condensed font-bold text-xs tracking-widest text-accent light:text-accent-light mb-7 flex items-center gap-2.5">
             <span className="block w-6 h-0.5 bg-accent light:bg-accent-light" />
-            Thika Road · Nairobi · Est. 2026
+            Thika Road Fitness Community · Est. July 2025
           </div>
 
           {/* Giant headline */}
-          <h1 className="text-[clamp(72px,12vw,180px)] mb-8">
-            <span className="hero-word text-white">RUN</span>
-            <span className="hero-word text-transparent [-webkit-text-stroke:2px_#fff] light:[-webkit-text-stroke:2px_#000]">TOGETHER</span>
-            <span className="hero-word text-white">THRIVE</span>
+          <h1 className="text-[clamp(40px,7vw,120px)] mb-8">
+            <span className="hero-word text-white">KENYA&apos;S FASTEST-</span>
+            <span className="hero-word text-transparent [-webkit-text-stroke:2px_#fff] light:[-webkit-text-stroke:2px_#000]">GROWING FITNESS</span>
+            <span className="hero-word text-white">&amp; WELLNESS COMMUNITY</span>
           </h1>
 
-          <p className="hero-sub max-w-[520px] text-lg leading-relaxed text-white/75 mb-10">
-            Nairobi's most energetic running and fitness community.
-            Train hard, race smart, celebrate every kilometre.
+          <p className="hero-sub max-w-[560px] text-lg leading-relaxed text-white/75 mb-10">
+            Join thousands of individuals who run, jog, walk, hike, and grow together through fitness, accountability, and community.
           </p>
 
           <div className="hero-ctas flex flex-wrap gap-4 mb-15">
@@ -135,19 +134,19 @@ export default function Home() {
               Join the Community
             </Link>
             <Link to="/events" className="font-barlow-condensed font-bold text-base tracking-wider text-white px-8 py-3 border-1.5 border-white/40 transition-all duration-200 hover:border-accent light:hover:border-accent-light hover:text-accent light:hover:text-accent-light inline-block">
-              View Events
+              Upcoming Events
             </Link>
             <Link to="/shop" className="font-barlow-condensed font-bold text-base tracking-wider text-white px-8 py-3 border-1.5 border-white/40 transition-all duration-200 hover:border-accent light:hover:border-accent-light hover:text-accent light:hover:text-accent-light inline-block">
-              Shop Merch
+              Shop Merchandise
             </Link>
           </div>
 
           {/* Hero badges */}
           <div className="hero-badge flex flex-wrap gap-6">
             {[
-              { val: '500+', desc: 'Active Members' },
-              { val: '50+', desc: 'Events Run' },
-              { val: '5 Yrs', desc: 'Community Built' },
+              { val: '20,000+', desc: 'Community Members' },
+              { val: '16+', desc: 'Successful Events' },
+              { val: '300K+', desc: 'Monthly Online Reach' },
             ].map((b) => (
               <div key={b.val} className="flex items-center gap-2.5">
                 <span className="font-bebas text-5xl text-accent light:text-accent-light leading-none">{b.val}</span>
@@ -176,13 +175,13 @@ export default function Home() {
         <div className="ticker-inner">
           {Array(4).fill(null).map((_, i) => (
             <span key={i} className="flex items-center">
-              <span className="font-bebas text-lg tracking-widest text-black light:text-white px-12">RUN STRONGER</span>
+              <span className="font-bebas text-lg tracking-widest text-black light:text-white px-12">MOVE TOGETHER</span>
               <span className="text-black/50 light:text-white/50 px-12">✦</span>
-              <span className="font-bebas text-lg tracking-widest text-black light:text-white px-12">TRAIN TOGETHER</span>
+              <span className="font-bebas text-lg tracking-widest text-black light:text-white px-12">GROW TOGETHER</span>
               <span className="text-black/50 light:text-white/50 px-12">✦</span>
-              <span className="font-bebas text-lg tracking-widest text-black light:text-white px-12">THIKA ROAD FC</span>
+              <span className="font-bebas text-lg tracking-widest text-black light:text-white px-12">THIKA ROAD FITNESS COMMUNITY</span>
               <span className="text-black/50 light:text-white/50 px-12">✦</span>
-              <span className="font-bebas text-lg tracking-widest text-black light:text-white px-12">NAIROBI COMMUNITY</span>
+              <span className="font-bebas text-lg tracking-widest text-black light:text-white px-12">TRFC</span>
               <span className="text-black/50 light:text-white/50 px-12">✦</span>
             </span>
           ))}
@@ -196,26 +195,31 @@ export default function Home() {
           <div>
             <div className="font-barlow-condensed font-bold text-xs tracking-widest text-accent light:text-accent-light mb-7 flex items-center gap-2.5">
               <span className="block w-6 h-0.5 bg-accent light:bg-accent-light" />
-              What We Offer
+              About TRFC
             </div>
             <h2 className="font-bebas text-[clamp(44px,6vw,80px)] leading-[0.95] text-chalk light:text-chalk-light mb-7">
               MORE THAN<br />
-              <span className="text-accent light:text-accent-light">A GYM.</span><br />
+              <span className="text-accent light:text-accent-light">FITNESS.</span><br />
               A MOVEMENT.
             </h2>
-            <p className="text-white/60 light:text-black/60 text-base leading-relaxed max-w-sm">
-              From sunrise track sessions to charity races and weekend long runs —
-              TRFC is where Nairobi shows up, laces up, and levels up.
+            <p className="text-white/60 light:text-black/60 text-base leading-relaxed max-w-md mb-4">
+              Thika Road Fitness Community (TRFC) is a vibrant fitness and wellness community that brings together people from all walks of life with one shared goal — becoming healthier, stronger, and better together.
+            </p>
+            <p className="text-white/60 light:text-black/60 text-base leading-relaxed max-w-md mb-4">
+              Founded in July 2025 by Coach Maurice, TRFC was created to provide accountability, support, and belonging for individuals pursuing healthier lifestyles.
+            </p>
+            <p className="font-barlow-condensed font-bold text-sm tracking-widest uppercase text-accent light:text-accent-light">
+              Move Together. Grow Together.
             </p>
           </div>
 
           <div>
             {[
-              { n: '01', label: 'Group Runs & Track Sessions', to: '/programs' },
-              { n: '02', label: 'Fitness Challenges & Bootcamps', to: '/programs' },
-              { n: '03', label: 'Race Events & Competitions', to: '/events' },
-              { n: '04', label: 'Nutrition & Coaching Plans', to: '/programs' },
-              { n: '05', label: 'Community Merch & Gear', to: '/shop' },
+              { n: '01', label: 'Weekly Community Runs & Walks', to: '/programs' },
+              { n: '02', label: 'Hiking Adventures & Fit Festivals', to: '/events' },
+              { n: '03', label: 'Wellness Challenges & Bootcamps', to: '/programs' },
+              { n: '04', label: 'Team Building & Accountability', to: '/programs' },
+              { n: '05', label: 'Official TRFC Merchandise', to: '/shop' },
             ].map((f) => (
               <Link to={f.to} key={f.n} className="flex items-center gap-3 py-4.5 border-b border-white/7 light:border-black/7 no-underline transition-all duration-200 hover:gap-4.5 group" style={{ color: 'inherit' }}>
                 <span className="font-bebas text-xs text-fog light:text-fog-light w-7">{f.n}</span>
@@ -231,10 +235,10 @@ export default function Home() {
       <section className="py-20 px-[6%] bg-ink light:bg-ink-light border-t border-white/5 light:border-black/5">
         <div className="max-w-[1200px] mx-auto grid grid-cols-4 gap-px">
           {[
-            { val: '500+', label: 'Members', sub: 'and growing' },
-            { val: '50+',  label: 'Events', sub: 'races & meetups' },
-            { val: '10+',  label: 'Programs', sub: 'for all levels' },
-            { val: '5+',   label: 'Years', sub: 'of community' },
+            { val: '20,000+', label: 'Community Members', sub: 'and growing' },
+            { val: '7,000+', label: 'WhatsApp Members', sub: 'staying connected' },
+            { val: '16+',    label: 'Successful Events', sub: 'runs, hikes & festivals' },
+            { val: '300K+',  label: 'Monthly Reach', sub: 'online community' },
           ].map((s, i) => (
             <div
               key={s.label}
@@ -325,7 +329,7 @@ export default function Home() {
               READY TO RUN<br />WITH US?
             </h2>
             <p className="text-fog light:text-fog-light text-base max-w-sm">
-              Sign up today and join 500+ athletes who chose community over the treadmill.
+              Sign up today and join 20,000+ members who chose community, accountability, and growth together.
             </p>
           </div>
           <Link

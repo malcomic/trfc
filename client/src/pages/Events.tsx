@@ -68,6 +68,9 @@ export default function Events() {
           <h1 className="font-bebas text-clamp-lg leading-tight text-chalk light:text-chalk-light mb-6 tracking-tighter">
             UPCOMING<br /><span className="text-transparent [-webkit-text-stroke:2px_#fff] light:[-webkit-text-stroke:2px_#000]">EVENTS</span>
           </h1>
+          <p className="text-fog light:text-fog-light max-w-2xl leading-relaxed mb-6">
+            Stay connected and be part of our exciting lineup of community runs, hikes, fit festivals, bootcamps, and wellness experiences designed for all fitness levels.
+          </p>
           <div className="flex items-center gap-7 flex-wrap">
             <div className="flex items-baseline gap-1.5">
               <span className="font-bebas text-4xl text-accent light:text-accent-light leading-none">

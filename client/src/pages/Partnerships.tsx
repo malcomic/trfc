@@ -5,6 +5,14 @@ import { getSponsorshipTiers, type SponsorshipTier } from '../api/sponsorshipTie
 import { getSponsorshipIcon } from '../utils/sponsorshipIcons'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 
+const PARTNERSHIP_BENEFITS = [
+  'Brand visibility across TRFC events and digital channels',
+  'Product sampling at community runs, hikes, and fit festivals',
+  'Social media exposure to an active, health-conscious audience',
+  'Corporate wellness activations tailored to your team',
+  'Community engagement opportunities with 20,000+ members',
+]
+
 const POLICIES = [
   'All sponsorships are subject to TRFC brand guidelines and approval.',
   'Logo usage is limited to agreed event materials and digital channels for the contract period.',
@@ -90,12 +98,23 @@ export default function Partnerships() {
           </div>
           <h1 className="font-bebas text-5xl leading-tight text-chalk light:text-chalk-light">PARTNER WITH<br /><span className="text-accent light:text-accent-light">TRFC</span></h1>
           <p className="text-fog light:text-fog-light mt-4 max-w-xl">
-            Align your brand with Nairobi&apos;s most energetic running community. Reach 500+ active members at events, online, and on the road.
+            Partner with one of Kenya&apos;s fastest-growing fitness communities and connect your brand with an active, engaged, and health-conscious audience.
           </p>
         </div>
       </section>
 
       <div className="max-w-5xl mx-auto px-[6%] py-10 pb-20 space-y-16">
+        <section>
+          <h2 className="font-bebas text-4xl text-chalk light:text-chalk-light mb-6">PARTNERSHIP BENEFITS</h2>
+          <div className={`${cardSurface} p-6`}>
+            <ul className="text-sm text-fog light:text-fog-light space-y-3">
+              {PARTNERSHIP_BENEFITS.map((b) => (
+                <li key={b}>• {b}</li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
         <section>
           <h2 className="font-bebas text-4xl text-chalk light:text-chalk-light mb-6">SPONSORSHIP TIERS</h2>
           {tiersLoading ? (

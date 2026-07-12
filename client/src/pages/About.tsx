@@ -34,8 +34,13 @@ export default function About() {
           <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light flex items-center gap-2 mb-3 before:w-5 before:h-0.5 before:bg-accent light:before:bg-accent-light">Our Story</div>
           <h1 className="font-bebas text-5xl leading-tight text-chalk light:text-chalk-light">THIKA ROAD<br /><span className="text-accent light:text-accent-light">FITNESS COMMUNITY</span></h1>
           <p className="text-fog light:text-fog-light mt-4 max-w-2xl leading-relaxed">
-            Born along Nairobi&apos;s Thika Road corridor in 2019, TRFC started as a handful of runners meeting before dawn.
-            Today we are 500+ members strong — a movement built on sweat, consistency, and the belief that fitness is better together.
+            Thika Road Fitness Community (TRFC) is a vibrant fitness and wellness community that brings together people from all walks of life with one shared goal — becoming healthier, stronger, and better together.
+          </p>
+          <p className="text-fog light:text-fog-light mt-4 max-w-2xl leading-relaxed">
+            Founded in July 2025 by Coach Maurice, TRFC was created to provide accountability, support, and belonging for individuals pursuing healthier lifestyles.
+          </p>
+          <p className="font-barlow-condensed font-bold text-sm tracking-widest uppercase text-accent light:text-accent-light mt-6">
+            Move Together. Grow Together.
           </p>
         </div>
       </section>
@@ -44,8 +49,7 @@ export default function About() {
         <section>
           <h2 className="font-bebas text-4xl text-chalk light:text-chalk-light mb-4">OUR MISSION</h2>
           <p className="text-fog light:text-fog-light leading-relaxed max-w-3xl">
-            To build Nairobi&apos;s strongest running community by making fitness accessible, social, and sustainable.
-            We create spaces — on the road, at events, and online — where every member feels seen, supported, and challenged to grow.
+            To unite people through fitness and wellness — creating a space where accountability, support, and community help every member become healthier, stronger, and better together.
           </p>
         </section>
 
@@ -70,21 +74,20 @@ export default function About() {
             <div className="w-32 h-32 md:w-40 md:h-40 flex-shrink-0 bg-ash light:bg-ash-light border border-accent/20 light:border-accent-light/20 overflow-hidden">
               <img
                 src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&q=80"
-                alt="Coach James Mwangi"
+                alt="Coach Maurice"
                 className="w-full h-full object-cover"
               />
             </div>
             <div className="flex-1">
-              <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light mb-2">Head Coach</p>
-              <h3 className="font-barlow-condensed font-bold text-3xl tracking-tighter text-chalk light:text-chalk-light mb-3">James Mwangi</h3>
+              <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light mb-2">Founder & Head Coach</p>
+              <h3 className="font-barlow-condensed font-bold text-3xl tracking-tighter text-chalk light:text-chalk-light mb-3">Coach Maurice</h3>
               <p className="text-fog light:text-fog-light text-sm leading-relaxed mb-4">
-                Certified running coach with 8+ years coaching recreational and competitive athletes across Nairobi.
-                James founded TRFC to give Thika Road residents a home for structured training, race prep, and community accountability.
+                Coach Maurice founded TRFC in July 2025 to build a fitness and wellness community rooted in accountability, support, and belonging — helping members run, jog, walk, hike, and grow together.
               </p>
               <ul className="text-sm text-fog light:text-fog-light space-y-1.5 mb-6">
-                <li>• Athletics Kenya Level 2 Coach</li>
-                <li>• Former Nairobi Half Marathon finisher (sub-1:30)</li>
-                <li>• Specialises in beginner programmes and marathon build-ups</li>
+                <li>• Leads weekly community runs, walks, and wellness programmes</li>
+                <li>• Organises hikes, fit festivals, and team-building activations</li>
+                <li>• Champions inclusive fitness for all levels across the Thika Road corridor</li>
               </ul>
               <Link to="/programs" className="inline-flex items-center gap-2 text-accent light:text-accent-light font-barlow-condensed font-bold text-sm tracking-widest uppercase no-underline hover:gap-3 transition-all">
                 Explore Programs <ArrowRight size={14} />

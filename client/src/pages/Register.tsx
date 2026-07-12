@@ -19,10 +19,10 @@ function getPasswordStrength(pw: string): { score: number; label: string; cls: s
 }
 
 const BENEFITS = [
-  { icon: '🏃', title: 'Weekly Group Runs', desc: 'Join sunrise sessions and evening track workouts across Nairobi.' },
-  { icon: '🏅', title: 'Priority Event Access', desc: 'Early registration and member-only race slots.' },
-  { icon: '👕', title: 'Member Merch Discounts', desc: '15% off all TRFC official gear in the shop.' },
-  { icon: '📊', title: 'Training & Coaching', desc: 'Access personalised plans from certified coaches.' },
+  { icon: '🏃', title: 'Weekly Community Runs & Walks', desc: 'Join regular sessions for all paces — run, jog, or walk together.' },
+  { icon: '🥾', title: 'Hiking & Fit Festivals', desc: 'Adventures, festivals, and wellness experiences for every level.' },
+  { icon: '👕', title: 'Official TRFC Merchandise', desc: 'Represent the movement with jerseys, hoodies, caps, and more.' },
+  { icon: '🤝', title: 'Accountability & Support', desc: 'Stay motivated through community check-ins and shared goals.' },
 ]
 
 export default function Register() {
@@ -71,12 +71,12 @@ export default function Register() {
           JOIN<br /><span className="text-transparent [-webkit-text-stroke:2px_#fff] light:[-webkit-text-stroke:2px_#000]">TRFC</span>
         </h1>
         <p className="text-sm text-fog light:text-fog-light leading-loose mb-9">
-          Become part of Nairobi's most energetic running community — free to join, for life.
+          Become part of Kenya&apos;s fastest-growing fitness and wellness community — free to join, for life.
         </p>
 
         {/* Perks */}
         <div className="flex gap-2.5 flex-wrap mb-8">
-          {['Free to Join', 'Nairobi Based', '500+ Members', 'Est. 2019'].map((p) => (
+          {['Free to Join', 'Nairobi Based', '20,000+ Members', 'Est. July 2025'].map((p) => (
             <span key={p} className="flex items-center gap-1.5 font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog bg-accent/10 light:bg-accent-light/10 border border-accent/15 light:border-accent-light/15 px-2.5 py-1.25 clip-angled-sm">
               <Check size={10} className="text-accent light:text-accent-light flex-shrink-0" /> {p}
             </span>
@@ -237,10 +237,9 @@ export default function Register() {
       <div className="flex-1 hidden md:flex flex-col justify-between p-16 relative z-10">
         <div>
           <Link to="/" className="no-underline">
-            <div className="font-bebas text-7xl leading-tight text-chalk light:text-chalk-light tracking-tighter">
-              TH<em className="not-italic text-transparent [-webkit-text-stroke:2px_#fff] light:[-webkit-text-stroke:2px_#000]">I</em>KA<br />ROAD<br /><em className="not-italic text-transparent [-webkit-text-stroke:2px_#fff] light:[-webkit-text-stroke:2px_#000]">FC</em>
-            </div>
-            <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog mt-4">Nairobi · Est. 2019</p>
+            <Logo size="xl" />
+            <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog mt-4">Nairobi · Est. July 2025</p>
+            <p className="font-barlow-condensed font-bold text-sm tracking-widest uppercase text-accent light:text-accent-light mt-3">Move Together. Grow Together.</p>
           </Link>
         </div>
 

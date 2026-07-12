@@ -28,12 +28,12 @@ export function Logo({
     <div className={`flex flex-col items-start ${className}`}>
       <img
         src="/trfc-logo.png"
-        alt="Thika Road FC"
+        alt="Thika Road Fitness Community"
         className={`${SIZES[size]} w-auto object-contain dark:invert`}
       />
       {showTagline && (
         <span className="font-barlow-condensed font-bold text-[8px] tracking-wider text-fog light:text-fog-light leading-none mt-0.5">
-          Thika Road FC
+          Thika Road Fitness Community
         </span>
       )}
     </div>
