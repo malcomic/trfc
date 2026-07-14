@@ -94,8 +94,7 @@ describe('E2E: Complete Payment Flow', () => {
   })
 
   describe('Event Ticket Checkout Flow', () => {
-    it('should complete event ticket purchase', async () => {
-      // Step 1: Load event details
+    it('should complete event ticket purchase via Paystack', async () => {
       const event = {
         id: 'event-123',
         title: 'Fitness Workshop',
@@ -105,12 +104,10 @@ describe('E2E: Complete Payment Flow', () => {
       }
       expect(event.id).toBeDefined()
 
-      // Step 2: Select ticket quantity
       const ticketQuantity = 2
       const totalAmount = event.price * ticketQuantity
       expect(totalAmount).toBe(1000)
 
-      // Step 3: Fill attendee details
       const attendeeData = {
         name: 'John Doe',
         email: 'john@example.com',
@@ -119,21 +116,23 @@ describe('E2E: Complete Payment Flow', () => {
       const validateEmail = (email: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
       expect(validateEmail(attendeeData.email)).toBe(true)
 
-      // Step 4: Process payment
       const mockTicketPayment = {
-        checkoutRequestId: 'ticket-checkout-111',
-        ResponseCode: '0',
+        accessCode: 'access_test_abc',
+        reference: 'trfc_ticket_ref_111',
+        status: 'success',
       }
-      expect(mockTicketPayment.ResponseCode).toBe('0')
+      expect(mockTicketPayment.status).toBe('success')
+      expect(mockTicketPayment.reference).toBeDefined()
 
-      // Step 5: Show confirmation
       const ticketConfirmation = {
         event: event.title,
         quantity: ticketQuantity,
         total: totalAmount,
         status: 'confirmed',
+        email: attendeeData.email,
       }
       expect(ticketConfirmation.status).toBe('confirmed')
+      expect(ticketConfirmation.email).toBe('john@example.com')
     })
 
     it('should handle ticket quantity limits', async () => {

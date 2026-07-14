@@ -28,7 +28,7 @@ export const deleteEvent = async (id: string) => {
 
 export const buyEventTickets = async (
   eventId: string,
-  data: { quantity: number; phone: string }
+  data: { quantity: number; email: string; phone?: string }
 ) => {
   const response = await api.post(`/events/${eventId}/tickets`, data);
   return response.data as {
@@ -49,10 +49,13 @@ export const getUserTickets = async () => {
 
 export const getTicketsByCheckoutRequestId = async (
   checkoutRequestId: string,
-  phone: string
+  options: { email?: string; phone?: string }
 ) => {
   const response = await api.get(`/events/tickets/checkout/${checkoutRequestId}`, {
-    params: { phone },
+    params: {
+      ...(options.email ? { email: options.email } : {}),
+      ...(options.phone ? { phone: options.phone } : {}),
+    },
   });
   return response.data as {
     event_title: string;
@@ -60,7 +63,8 @@ export const getTicketsByCheckoutRequestId = async (
     quantity: number;
     total_price: number;
     payment_status: string;
-    phone: string;
+    phone: string | null;
+    email: string | null;
     checkout_request_id: string;
   };
 };

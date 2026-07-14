@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
+import PaystackPop from '@paystack/inline-js'
 import { getEventById, buyEventTickets } from '../api/events'
-import { initiateTicketPayment } from '../api/payments'
-import PaymentStatusModal from '../components/PaymentStatusModal'
+import { initializePaystackPayment, verifyPaystackPayment } from '../api/payments'
 import { AlertCircle, Loader, ArrowLeft } from 'lucide-react'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 
@@ -17,24 +17,27 @@ interface Event {
   capacity: number
 }
 
+type CheckoutForm = {
+  quantity: number
+  email: string
+  phone?: string
+}
+
 export default function EventCheckout() {
   const { eventId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
   const initialQty = (location.state as { quantity?: number })?.quantity || 1
 
-  const { register, handleSubmit, formState: { errors }, watch } = useForm({
-    defaultValues: { quantity: initialQty, phone: '' },
+  const { register, handleSubmit, formState: { errors }, watch } = useForm<CheckoutForm>({
+    defaultValues: { quantity: initialQty, email: '', phone: '' },
   })
 
   const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [confirming, setConfirming] = useState(false)
   const [error, setError] = useState('')
-  const [showPaymentModal, setShowPaymentModal] = useState(false)
-  const [checkoutRequestId, setCheckoutRequestId] = useState('')
-  const [phone, setPhone] = useState('')
-  const [ticketMeta, setTicketMeta] = useState<{ eventTitle: string; quantity: number; totalPrice: number } | null>(null)
 
   const quantity = watch('quantity')
   const totalPrice = event ? Number(event.price) * Number(quantity) : 0
@@ -58,47 +61,74 @@ export default function EventCheckout() {
     fetchEvent()
   }, [eventId])
 
-  const onSubmit = async (data: { quantity: number; phone: string }) => {
+  const onSubmit = async (data: CheckoutForm) => {
     try {
       setSubmitting(true)
       setError('')
-      setPhone(data.phone)
+
+      const phone = data.phone?.trim() || undefined
+      const email = data.email.trim().toLowerCase()
 
       const ticketResult = await buyEventTickets(eventId!, {
         quantity: Number(data.quantity),
-        phone: data.phone,
+        email,
+        phone,
       })
 
-      const paymentResponse = await initiateTicketPayment({
-        phone: data.phone,
+      const payment = await initializePaystackPayment({
+        email,
         amount: Math.round(ticketResult.totalPrice),
         ticketBatchId: ticketResult.purchaseBatchId,
       })
 
-      if (paymentResponse.checkoutRequestId) {
-        setCheckoutRequestId(paymentResponse.checkoutRequestId)
-        setTicketMeta({
-          eventTitle: ticketResult.eventTitle,
-          quantity: ticketResult.quantity,
-          totalPrice: ticketResult.totalPrice,
-        })
-        setShowPaymentModal(true)
-      } else {
-        setError('Failed to initiate payment. Please try again.')
-      }
+      const popup = new PaystackPop()
+      popup.resumeTransaction(payment.accessCode, {
+        onSuccess: async (transaction: { reference?: string }) => {
+          const reference = transaction.reference || payment.reference
+          try {
+            setConfirming(true)
+            await verifyPaystackPayment(reference)
+            navigate(`/ticket-confirmation/${reference}?email=${encodeURIComponent(email)}`, {
+              state: {
+                eventTitle: ticketResult.eventTitle,
+                quantity: ticketResult.quantity,
+                totalPrice: ticketResult.totalPrice,
+                email,
+                phone,
+              },
+            })
+          } catch (err: any) {
+            setError(
+              err.response?.data?.error ||
+                'Payment received but confirmation failed. Check your email or refresh the confirmation page.'
+            )
+            navigate(`/ticket-confirmation/${reference}?email=${encodeURIComponent(email)}`, {
+              state: {
+                eventTitle: ticketResult.eventTitle,
+                quantity: ticketResult.quantity,
+                totalPrice: ticketResult.totalPrice,
+                email,
+                phone,
+              },
+            })
+          } finally {
+            setConfirming(false)
+            setSubmitting(false)
+          }
+        },
+        onCancel: () => {
+          setError('Payment was cancelled. You can try again when ready.')
+          setSubmitting(false)
+        },
+      })
     } catch (err: any) {
-      setError(err.response?.data?.error || err.response?.data?.customerMessage || 'Payment initiation failed.')
-    } finally {
+      setError(
+        err.response?.data?.error ||
+          err.response?.data?.customerMessage ||
+          'Payment initiation failed.'
+      )
       setSubmitting(false)
     }
-  }
-
-  const handleModalClose = () => {
-    setShowPaymentModal(false)
-    const params = new URLSearchParams({ phone })
-    navigate(`/ticket-confirmation/${checkoutRequestId}?${params.toString()}`, {
-      state: { ...ticketMeta, phone, eventTitle: ticketMeta?.eventTitle || event?.title },
-    })
   }
 
   if (loading) {
@@ -151,24 +181,52 @@ export default function EventCheckout() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-semibold mb-2">Phone (254XXXXXXXXX)</label>
+            <label className="block text-sm font-semibold mb-2">Email</label>
+            <input
+              type="email"
+              {...register('email', {
+                required: 'Email is required',
+                pattern: {
+                  value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                  message: 'Enter a valid email address',
+                },
+              })}
+              placeholder="you@example.com"
+              className={`w-full px-4 py-2 ${inputField}`}
+            />
+            {errors.email && <p className="text-red-400 text-sm mt-1">{errors.email.message}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-semibold mb-2">Phone (optional)</label>
             <input
               {...register('phone', {
-                required: 'Phone is required',
-                pattern: { value: /^254\d{9}$/, message: 'Format: 254XXXXXXXXX' },
+                validate: (value) =>
+                  !value ||
+                  /^254\d{9}$/.test(value) ||
+                  'Format: 254XXXXXXXXX',
               })}
               placeholder="254712345678"
               className={`w-full px-4 py-2 ${inputField}`}
             />
-            {errors.phone && <p className="text-red-400 text-sm mt-1">{errors.phone.message}</p>}
+            {errors.phone && <p className="text-red-400 text-sm mt-1">{errors.phone.message as string}</p>}
           </div>
           {error && (
             <div className="bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-300 flex gap-2">
               <AlertCircle size={16} className="flex-shrink-0" /> {error}
             </div>
           )}
-          <button type="submit" disabled={submitting} className="w-full bg-accent light:bg-accent-light text-black light:text-white py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-accent/90 light:hover:bg-accent-light/90 disabled:opacity-50 flex items-center justify-center gap-2">
-            {submitting ? <><Loader className="w-4 h-4 animate-spin" /> Processing…</> : 'Complete Purchase'}
+          <button
+            type="submit"
+            disabled={submitting || confirming}
+            className="w-full bg-accent light:bg-accent-light text-black light:text-white py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-accent/90 light:hover:bg-accent-light/90 disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {confirming ? (
+              <><Loader className="w-4 h-4 animate-spin" /> Confirming payment…</>
+            ) : submitting ? (
+              <><Loader className="w-4 h-4 animate-spin" /> Opening Paystack…</>
+            ) : (
+              'Complete Purchase'
+            )}
           </button>
         </form>
 
@@ -176,16 +234,11 @@ export default function EventCheckout() {
           <h3 className="font-barlow-condensed font-bold text-accent light:text-accent-light tracking-widest uppercase mb-4">Summary</h3>
           <p className="text-sm text-fog light:text-fog-light mb-2">{quantity} ticket(s)</p>
           <p className="font-bebas text-3xl text-accent light:text-accent-light">KES {totalPrice.toLocaleString()}</p>
-          <p className="text-xs text-fog light:text-fog-light mt-4">M-Pesa prompt will appear on your phone after checkout.</p>
+          <p className="text-xs text-fog light:text-fog-light mt-4">
+            You will complete payment securely with Paystack (card or mobile money).
+          </p>
         </div>
       </div>
-
-      <PaymentStatusModal
-        isOpen={showPaymentModal}
-        checkoutRequestId={checkoutRequestId}
-        phone={phone}
-        onClose={handleModalClose}
-      />
     </div>
   )
 }

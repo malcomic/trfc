@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS tickets (
   event_id UUID REFERENCES events(id) ON DELETE SET NULL,
   purchase_batch_id UUID,
   phone VARCHAR(20),
+  email VARCHAR(150),
+  payment_provider VARCHAR(20),
   payment_status VARCHAR(20) DEFAULT 'pending',
   mpesa_receipt VARCHAR(100),
   checkout_request_id VARCHAR(100),
@@ -170,6 +172,7 @@ CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
 CREATE INDEX IF NOT EXISTS idx_gallery_type ON gallery(media_type);
 CREATE INDEX IF NOT EXISTS idx_gallery_hero ON gallery(hero_sort_order) WHERE show_on_hero = true;
 CREATE INDEX IF NOT EXISTS idx_tickets_checkout ON tickets(checkout_request_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_email ON tickets(email);
 CREATE INDEX IF NOT EXISTS idx_equipment_user ON equipment_hire(user_id);
 CREATE INDEX IF NOT EXISTS idx_equipment_checkout ON equipment_hire(checkout_request_id);
 CREATE INDEX IF NOT EXISTS idx_tickets_batch ON tickets(purchase_batch_id);

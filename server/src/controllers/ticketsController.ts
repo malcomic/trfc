@@ -8,7 +8,7 @@ import { randomUUID } from 'crypto'
 export async function buyTicket(req: Request, res: Response) {
   try {
     const eventId = req.params.eventId || req.body.eventId
-    const { quantity, phone } = req.body
+    const { quantity, phone, email } = req.body
     let userId = req.user?.id ?? null
 
     if (userId) {
@@ -18,10 +18,21 @@ export async function buyTicket(req: Request, res: Response) {
       }
     }
 
-    if (!eventId || !quantity || !phone) {
+    if (!eventId || !quantity || !email) {
       return res
         .status(400)
-        .json({ error: 'eventId, quantity, and phone are required' })
+        .json({ error: 'eventId, quantity, and email are required' })
+    }
+
+    const normalizedEmail = String(email).trim().toLowerCase()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      return res.status(400).json({ error: 'A valid email is required' })
+    }
+
+    if (phone && !/^254\d{9}$/.test(String(phone))) {
+      return res.status(400).json({
+        error: 'Invalid phone number format. Expected format: 254XXXXXXXXX',
+      })
     }
 
     if (quantity <= 0 || quantity > 100) {
@@ -56,9 +67,9 @@ export async function buyTicket(req: Request, res: Response) {
     const ticketIds: string[] = []
     for (let i = 0; i < quantity; i++) {
       const ticketResult = await query(
-        `INSERT INTO tickets (user_id, event_id, purchase_batch_id, phone, payment_status)
-         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-        [userId, eventId, purchaseBatchId, phone, 'pending']
+        `INSERT INTO tickets (user_id, event_id, purchase_batch_id, phone, email, payment_provider, payment_status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+        [userId, eventId, purchaseBatchId, phone || null, normalizedEmail, 'paystack', 'pending']
       )
       ticketIds.push(ticketResult.rows[0].id)
     }
@@ -115,17 +126,19 @@ export async function getTicketsByCheckoutRequestId(req: Request, res: Response)
   try {
     const { checkoutRequestId } = req.params
     const phoneQuery = typeof req.query.phone === 'string' ? req.query.phone : undefined
+    const emailQuery =
+      typeof req.query.email === 'string' ? req.query.email.trim().toLowerCase() : undefined
 
     if (!checkoutRequestId) {
       return res.status(400).json({ error: 'checkoutRequestId is required' })
     }
-    if (!phoneQuery) {
-      return res.status(400).json({ error: 'phone query parameter is required' })
+    if (!phoneQuery && !emailQuery) {
+      return res.status(400).json({ error: 'email or phone query parameter is required' })
     }
 
     const result = await query(
       `SELECT
-        t.id, t.phone, t.payment_status, t.checkout_request_id,
+        t.id, t.phone, t.email, t.payment_status, t.checkout_request_id,
         e.title as event_title, e.event_date, e.price
        FROM tickets t
        JOIN events e ON t.event_id = e.id
@@ -138,8 +151,12 @@ export async function getTicketsByCheckoutRequestId(req: Request, res: Response)
     }
 
     const ticket = result.rows[0]
-    if (!phonesMatch(phoneQuery, ticket.phone)) {
-      return res.status(403).json({ error: 'Phone number does not match ticket purchase' })
+    const phoneOk = phoneQuery && ticket.phone && phonesMatch(phoneQuery, ticket.phone)
+    const emailOk =
+      emailQuery && ticket.email && ticket.email.toLowerCase() === emailQuery
+
+    if (!phoneOk && !emailOk) {
+      return res.status(403).json({ error: 'Email or phone does not match ticket purchase' })
     }
 
     const quantity = result.rows.length
@@ -152,6 +169,7 @@ export async function getTicketsByCheckoutRequestId(req: Request, res: Response)
       total_price: totalPrice,
       payment_status: ticket.payment_status,
       phone: ticket.phone,
+      email: ticket.email,
       checkout_request_id: ticket.checkout_request_id,
     })
   } catch (error) {

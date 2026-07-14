@@ -4,6 +4,9 @@ import {
   handleCallback,
   queryPaymentStatus,
   getPaymentHistory,
+  initializePaystackPayment,
+  verifyPaystackPayment,
+  handlePaystackWebhook,
 } from '../controllers/paymentsController.js'
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth.js'
 import { validatePaymentRequest } from '../middleware/paymentValidation.js'
@@ -24,6 +27,10 @@ router.post(
   validateWebhookSignature,
   handleCallback
 )
+
+router.post('/paystack/initialize', optionalAuthMiddleware, initializePaystackPayment)
+router.get('/paystack/verify/:reference', optionalAuthMiddleware, verifyPaystackPayment)
+router.post('/paystack/webhook', rateLimit, handlePaystackWebhook)
 
 router.get('/status/:checkoutRequestId', optionalAuthMiddleware, queryPaymentStatus)
 

@@ -74,22 +74,32 @@ describe('guest commerce', () => {
   })
 
   it('buyTicket works without authenticated user', async () => {
-    vi.mocked(query)
-      .mockResolvedValueOnce({ rows: [{ id: 'ev-1', title: 'Run', price: 500 }] } as any)
-      .mockResolvedValueOnce({ rows: [{ id: 'ticket-1' }] } as any)
+    vi.mocked(query).mockImplementation(async (sql: string) => {
+      if (sql.includes('FROM events')) {
+        return { rows: [{ id: 'ev-1', title: 'Run', price: 500 }] } as any
+      }
+      if (sql.includes('INSERT INTO tickets')) {
+        return { rows: [{ id: 'ticket-1' }] } as any
+      }
+      return { rows: [] } as any
+    })
 
     const req = {
       params: { eventId: 'ev-1' },
       user: undefined,
-      body: { quantity: 1, phone: '254712345678' },
+      body: { quantity: 1, email: 'guest@example.com', phone: '254712345678' },
     } as any
     const res = { json: vi.fn(), status: vi.fn().mockReturnThis() } as any
 
     await buyTicket(req, res)
 
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO tickets'),
+      [null, 'ev-1', expect.any(String), '254712345678', 'guest@example.com', 'paystack', 'pending']
+    )
     expect(res.status).toHaveBeenCalledWith(201)
     expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ ticketIds: ['ticket-1'] })
+      expect.objectContaining({ ticketIds: ['ticket-1'], eventTitle: 'Run' })
     )
   })
 

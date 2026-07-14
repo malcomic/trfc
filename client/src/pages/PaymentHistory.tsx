@@ -289,7 +289,7 @@ export default function PaymentHistory() {
                 <div className="space-y-2 text-sm">
                   {selectedPayment.mpesa_receipt && (
                     <div>
-                      <p className="text-fog light:text-fog-light font-barlow-condensed text-xs tracking-widest uppercase">M-Pesa Receipt</p>
+                      <p className="text-fog light:text-fog-light font-barlow-condensed text-xs tracking-widest uppercase">Payment Receipt</p>
                       <p className="font-mono font-semibold break-all">{selectedPayment.mpesa_receipt}</p>
                     </div>
                   )}

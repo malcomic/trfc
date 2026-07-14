@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
-import { pollPaymentStatus } from '../api/payments'
+import { pollPaymentStatus, verifyPaystackPayment } from '../api/payments'
 import { getTicketsByCheckoutRequestId } from '../api/events'
 import { getUserTickets } from '../api/tickets'
 import { AlertCircle, CheckCircle, Clock, Ticket } from 'lucide-react'
@@ -11,6 +11,7 @@ interface TicketDetails {
   quantity?: number
   totalPrice?: number
   phone?: string
+  email?: string
 }
 
 export default function TicketConfirmation() {
@@ -19,23 +20,29 @@ export default function TicketConfirmation() {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const state = (location.state || {}) as TicketDetails
+  const emailFromUrl = searchParams.get('email') || ''
   const phoneFromUrl = searchParams.get('phone') || ''
+  const [email, setEmail] = useState(emailFromUrl || state.email || '')
   const [phone, setPhone] = useState(phoneFromUrl || state.phone || '')
-  const [phonePrompt, setPhonePrompt] = useState(!phoneFromUrl && !state.phone)
+  const [gatePrompt, setGatePrompt] = useState(!emailFromUrl && !state.email && !phoneFromUrl && !state.phone)
   const [details, setDetails] = useState<TicketDetails>(state)
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'paid'>('pending')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [ticketIds, setTicketIds] = useState<string[]>([])
 
-  const loadDetails = async (verifyPhone: string) => {
+  const loadDetails = async (verifyEmail?: string, verifyPhone?: string) => {
     if (!checkoutRequestId) return null
-    const data = await getTicketsByCheckoutRequestId(checkoutRequestId, verifyPhone)
+    const data = await getTicketsByCheckoutRequestId(checkoutRequestId, {
+      email: verifyEmail || undefined,
+      phone: verifyPhone || undefined,
+    })
     setDetails({
       eventTitle: data.event_title,
       quantity: data.quantity,
       totalPrice: data.total_price,
-      phone: data.phone,
+      phone: data.phone || undefined,
+      email: data.email || undefined,
     })
     if (data.payment_status === 'paid') setPaymentStatus('paid')
     return data
@@ -58,7 +65,7 @@ export default function TicketConfirmation() {
       setLoading(false)
       return
     }
-    if (phonePrompt) {
+    if (gatePrompt) {
       setLoading(false)
       return
     }
@@ -67,14 +74,20 @@ export default function TicketConfirmation() {
       try {
         setLoading(true)
         setError('')
-        const data = await loadDetails(phone)
+        const data = await loadDetails(email || undefined, phone || undefined)
         if (data?.payment_status !== 'paid') {
           try {
-            await pollPaymentStatus(checkoutRequestId)
+            await verifyPaystackPayment(checkoutRequestId)
             setPaymentStatus('paid')
-            await loadDetails(phone)
+            await loadDetails(email || undefined, phone || undefined)
           } catch {
-            /* polling timeout */
+            try {
+              await pollPaymentStatus(checkoutRequestId)
+              setPaymentStatus('paid')
+              await loadDetails(email || undefined, phone || undefined)
+            } catch {
+              /* still pending */
+            }
           }
         }
         await loadDownloadableTicketIds()
@@ -85,22 +98,37 @@ export default function TicketConfirmation() {
       }
     }
     load()
-  }, [checkoutRequestId, phone, phonePrompt])
+  }, [checkoutRequestId, email, phone, gatePrompt])
 
-  const handlePhoneVerify = async (e: React.FormEvent) => {
+  const handleGateVerify = async (e: React.FormEvent) => {
     e.preventDefault()
-    const normalized = phone.replace(/\s+/g, '')
-    if (!/^254\d{9}$/.test(normalized)) {
+    const normalizedEmail = email.trim().toLowerCase()
+    const normalizedPhone = phone.replace(/\s+/g, '')
+
+    if (!normalizedEmail && !normalizedPhone) {
+      setError('Enter the email used at checkout')
+      return
+    }
+    if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setError('Enter a valid email address')
+      return
+    }
+    if (normalizedPhone && !/^254\d{9}$/.test(normalizedPhone)) {
       setError('Enter a valid phone number (254XXXXXXXXX)')
       return
     }
+
     try {
       setLoading(true)
       setError('')
-      setPhone(normalized)
-      setSearchParams({ phone: normalized })
-      await loadDetails(normalized)
-      setPhonePrompt(false)
+      setEmail(normalizedEmail)
+      setPhone(normalizedPhone)
+      const params: Record<string, string> = {}
+      if (normalizedEmail) params.email = normalizedEmail
+      if (normalizedPhone) params.phone = normalizedPhone
+      setSearchParams(params)
+      await loadDetails(normalizedEmail || undefined, normalizedPhone || undefined)
+      setGatePrompt(false)
     } catch (err: any) {
       setError(err.response?.data?.error || 'Could not verify ticket purchase')
     } finally {
@@ -108,19 +136,19 @@ export default function TicketConfirmation() {
     }
   }
 
-  if (phonePrompt) {
+  if (gatePrompt) {
     return (
       <div className="min-h-screen bg-night text-chalk font-barlow py-16 px-6">
         <div className="max-w-md mx-auto bg-ash border border-white/5 p-8">
           <h1 className="font-bebas text-4xl mb-2">TICKET <span className="text-accent light:text-accent-light">CONFIRMATION</span></h1>
-          <p className="text-fog text-sm mb-6">Enter the phone number used at checkout to view your tickets.</p>
+          <p className="text-fog text-sm mb-6">Enter the email used at checkout to view your tickets.</p>
           {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
-          <form onSubmit={handlePhoneVerify} className="space-y-4">
+          <form onSubmit={handleGateVerify} className="space-y-4">
             <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value.replace(/\s+/g, ''))}
-              placeholder="254712345678"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
               className="w-full bg-smoke border border-white/10 px-4 py-3 text-chalk focus:outline-none focus:border-accent light:focus:border-accent-light"
             />
             <button type="submit" className="w-full bg-accent light:bg-accent-light text-black light:text-white py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-accent/90 light:hover:bg-accent-light/90">
@@ -157,8 +185,8 @@ export default function TicketConfirmation() {
           </div>
           <p className="text-fog text-sm">
             {paymentStatus === 'paid'
-              ? 'Your ticket payment was successful. See you at the event!'
-              : 'Complete the M-Pesa payment on your phone to confirm your tickets.'}
+              ? 'Your ticket payment was successful. Check your email for your tickets.'
+              : 'Complete payment in the Paystack window to confirm your tickets.'}
           </p>
         </div>
 
@@ -170,7 +198,8 @@ export default function TicketConfirmation() {
           {details.eventTitle && <p><span className="text-fog">Event: </span>{details.eventTitle}</p>}
           {details.quantity && <p><span className="text-fog">Tickets: </span>{details.quantity}</p>}
           {details.totalPrice != null && <p><span className="text-fog">Total: </span>KES {details.totalPrice.toLocaleString()}</p>}
-          {phone && <p><span className="text-fog">Phone: </span>{phone}</p>}
+          {(details.email || email) && <p><span className="text-fog">Email: </span>{details.email || email}</p>}
+          {(details.phone || phone) && <p><span className="text-fog">Phone: </span>{details.phone || phone}</p>}
           {checkoutRequestId && (
             <p className="text-xs text-fog font-mono break-all">Ref: {checkoutRequestId}</p>
           )}
