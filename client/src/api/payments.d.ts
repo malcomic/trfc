@@ -28,11 +28,25 @@ export declare function pollPaymentStatus(checkoutRequestId: string, options?: {
     timeout: number;
 }): Promise<any>;
 export declare function getPaymentHistory(): Promise<PaymentHistoryItem[]>;
-export declare function initiateTicketPayment(data: {
-    phone: string;
+export declare function initializePaystackPayment(data: {
+    email: string;
     amount: number;
     ticketBatchId: string;
-}): Promise<PaymentInitiateResponse>;
+}): Promise<{
+    accessCode: string;
+    reference: string;
+    authorizationUrl: string;
+    publicKey: string;
+}>;
+export declare function verifyPaystackPayment(reference: string): Promise<{
+    status: string;
+    payment_status: string;
+    reference: string;
+    receipt?: string | null;
+    amount?: number;
+    channel?: string;
+    error?: string;
+}>;
 export declare function initiateEquipmentPayment(data: {
     phone: string;
     amount: number;

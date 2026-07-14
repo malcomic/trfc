@@ -37,11 +37,13 @@ export async function getPaymentHistory() {
     const response = await api.get('/payments/history');
     return response.data;
 }
-export async function initiateTicketPayment(data) {
-    return initiateSTKPush({
-        ...data,
-        ticketBatchId: data.ticketBatchId,
-    });
+export async function initializePaystackPayment(data) {
+    const response = await api.post('/payments/paystack/initialize', data);
+    return response.data;
+}
+export async function verifyPaystackPayment(reference) {
+    const response = await api.get(`/payments/paystack/verify/${encodeURIComponent(reference)}`);
+    return response.data;
 }
 export async function initiateEquipmentPayment(data) {
     return initiateSTKPush({

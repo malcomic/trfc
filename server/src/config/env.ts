@@ -27,7 +27,20 @@ export const config = {
   },
   email: {
     user: process.env.EMAIL_USER || '',
-    pass: process.env.EMAIL_PASS || '',
+    /** App password — prefer EMAIL_PASSWORD; EMAIL_PASS is supported as an alias */
+    pass: process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS || '',
+  },
+  frontendUrl:
+    process.env.FRONTEND_URL || 'https://trfc-website-d41f18cf654e.herokuapp.com',
+  contact: {
+    email:
+      process.env.CONTACT_EMAIL ||
+      process.env.VITE_CONTACT_EMAIL ||
+      'thikaroadfitness@gmail.com',
+    phone:
+      process.env.CONTACT_PHONE ||
+      process.env.VITE_CONTACT_PHONE ||
+      '+254 762 550214',
   },
   afrikasTalking: {
     apiKey: process.env.AT_API_KEY || '',

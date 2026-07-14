@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import multer from 'multer';
 import pool from './config/db.js';
 import { runMigrations } from './utils/runMigrations.js';
+import { verifyEmailTransporter } from './utils/emailService.js';
 
 export { pool };
 
@@ -70,6 +71,10 @@ const startServer = async () => {
     client.release();
 
     await runMigrations();
+
+    verifyEmailTransporter().catch((err) => {
+      console.warn('Email transporter check skipped:', err?.message || err);
+    });
 
     app.listen(PORT, () => {
       console.log(`✓ Server running on http://localhost:${PORT}`);

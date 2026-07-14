@@ -185,7 +185,7 @@ export default function TicketConfirmation() {
           </div>
           <p className="text-fog text-sm">
             {paymentStatus === 'paid'
-              ? 'Your ticket payment was successful. Check your email for your tickets.'
+              ? 'Your ticket payment was successful. We sent your ticket PDF(s) to your email — open the attachment for the entry QR. If you don’t see it, check spam/junk.'
               : 'Complete payment in the Paystack window to confirm your tickets.'}
           </p>
         </div>

@@ -74,7 +74,24 @@ psql $DATABASE_URL -f server/migrations/007_ticket_paystack.sql
 2. Enter email + quantity
 3. Complete Paystack Popup with a [test card](https://paystack.com/docs/payments/test-payments/)
 4. Confirm redirect to ticket confirmation and that `payment_status` becomes `paid`
-5. Confirm guest buyers receive the ticket email (requires `EMAIL_USER` / `EMAIL_PASS`)
+5. Confirm guest buyers receive the ticket email (requires `EMAIL_USER` and `EMAIL_PASSWORD` or `EMAIL_PASS`)
+
+### Email delivery (ticket PDFs)
+
+After a successful Paystack payment, the server sends **one confirmation email** with PDF ticket attachment(s).
+
+On the server (and Heroku), set:
+
+```bash
+EMAIL_USER=your_gmail@gmail.com
+EMAIL_PASSWORD=your_gmail_app_password
+# EMAIL_PASS=...   # also accepted as an alias for EMAIL_PASSWORD
+FRONTEND_URL=https://trfc-website-d41f18cf654e.herokuapp.com
+CONTACT_EMAIL=thikaroadfitness@gmail.com
+CONTACT_PHONE=+254 762 550214
+```
+
+Restart the dyno after changing config. On boot the server logs whether the email transporter verified successfully.
 
 ### Useful test cards (Paystack)
 
