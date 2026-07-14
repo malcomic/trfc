@@ -1,69 +1,111 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { pollPaymentStatus } from '../api/payments';
+import { getTicketsByCheckoutRequestId } from '../api/events';
 import { getUserTickets } from '../api/tickets';
-import { AlertCircle, CheckCircle, Loader } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Ticket } from 'lucide-react';
 import TicketDownloadButton from '../components/TicketDownloadButton';
 export default function TicketConfirmation() {
     const { checkoutRequestId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
-    const [paymentStatus, setPaymentStatus] = useState('checking');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const state = (location.state || {});
+    const phoneFromUrl = searchParams.get('phone') || '';
+    const [phone, setPhone] = useState(phoneFromUrl || state.phone || '');
+    const [phonePrompt, setPhonePrompt] = useState(!phoneFromUrl && !state.phone);
+    const [details, setDetails] = useState(state);
+    const [paymentStatus, setPaymentStatus] = useState('pending');
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [ticketIds, setTicketIds] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const state = location.state;
+    const loadDetails = async (verifyPhone) => {
+        if (!checkoutRequestId)
+            return null;
+        const data = await getTicketsByCheckoutRequestId(checkoutRequestId, verifyPhone);
+        setDetails({
+            eventTitle: data.event_title,
+            quantity: data.quantity,
+            totalPrice: data.total_price,
+            phone: data.phone,
+        });
+        if (data.payment_status === 'paid')
+            setPaymentStatus('paid');
+        return data;
+    };
+    const loadDownloadableTicketIds = async () => {
+        try {
+            const tickets = await getUserTickets();
+            const matching = tickets.filter((t) => t.checkout_request_id === checkoutRequestId && t.payment_status === 'paid');
+            setTicketIds(matching.map((t) => t.id));
+        }
+        catch {
+            /* guest checkout — no authenticated account, downloads unavailable */
+        }
+    };
     useEffect(() => {
-        const checkPayment = async () => {
-            if (!checkoutRequestId) {
-                setError('Payment reference not found');
-                setLoading(false);
-                return;
-            }
+        if (!checkoutRequestId) {
+            setLoading(false);
+            return;
+        }
+        if (phonePrompt) {
+            setLoading(false);
+            return;
+        }
+        const load = async () => {
             try {
-                // Poll for payment status
-                await pollPaymentStatus(checkoutRequestId, {
-                    interval: 3000,
-                    timeout: 120000, // 2 minutes timeout
-                });
-                setPaymentStatus('paid');
-                // Fetch user's tickets to get the ticket IDs
-                const tickets = await getUserTickets();
-                const recentTickets = tickets
-                    .filter((t) => t.payment_status === 'paid')
-                    .sort((a, b) => new Date(b.created_at).getTime() -
-                    new Date(a.created_at).getTime())
-                    .slice(0, state?.quantity || 1);
-                setTicketIds(recentTickets.map((t) => t.id));
+                setLoading(true);
+                setError('');
+                const data = await loadDetails(phone);
+                if (data?.payment_status !== 'paid') {
+                    try {
+                        await pollPaymentStatus(checkoutRequestId);
+                        setPaymentStatus('paid');
+                        await loadDetails(phone);
+                    }
+                    catch {
+                        /* polling timeout */
+                    }
+                }
+                await loadDownloadableTicketIds();
             }
             catch (err) {
-                console.error('Payment check error:', err);
-                if (err.message.includes('timeout')) {
-                    setError('Payment verification timed out. Please check your payment history.');
-                }
-                else {
-                    setError(err.message ||
-                        'Failed to verify payment. Please check your payment history.');
-                }
-                setPaymentStatus('failed');
+                setError(err.response?.data?.error || 'Failed to load ticket details');
             }
             finally {
                 setLoading(false);
             }
         };
-        checkPayment();
-    }, [checkoutRequestId, state?.quantity]);
-    if (loading) {
-        return (_jsx("div", { className: "min-h-screen py-12 px-4 flex items-center justify-center bg-gray-50 dark:bg-gray-900", children: _jsxs("div", { className: "text-center max-w-md", children: [_jsx(Loader, { className: "w-16 h-16 animate-spin text-primary mx-auto mb-4" }), _jsx("h2", { className: "text-2xl font-bold mb-2 text-gray-900 dark:text-white", children: "Verifying Payment" }), _jsx("p", { className: "text-gray-600 dark:text-gray-400 mb-4", children: "Please wait while we confirm your payment with M-Pesa..." }), _jsx("p", { className: "text-sm text-gray-500 dark:text-gray-500", children: "This may take a few moments. Do not refresh the page." }), "======= load() }, [checkoutRequestId, phone, phonePrompt]) const handlePhoneVerify = async (e: React.FormEvent) => ", e.preventDefault(), "const normalized = phone.replace(/\\s+/g, '') if (!/^254\\d", 9, "$/.test(normalized)) ", setError('Enter a valid phone number (254XXXXXXXXX)'), "return } try ", setLoading(true), "setError('') setPhone(normalized) setSearchParams(", phone, ": normalized }) await loadDetails(normalized) setPhonePrompt(false) } catch (err: any) ", setError(err.response?.data?.error || 'Could not verify ticket purchase'), " finally ", setLoading(false), "} if (phonePrompt) ", , "return (", _jsx("div", { className: "min-h-screen bg-night text-chalk font-barlow py-16 px-6", children: _jsxs("div", { className: "max-w-md mx-auto bg-ash border border-white/5 p-8", children: [_jsxs("h1", { className: "font-bebas text-4xl mb-2", children: ["TICKET ", _jsx("span", { className: "text-accent light:text-accent-light", children: "CONFIRMATION" })] }), _jsx("p", { className: "text-fog text-sm mb-6", children: "Enter the phone number used at checkout to view your tickets." }), error && _jsx("p", { className: "text-red-400 text-sm mb-4", children: error }), _jsxs("form", { onSubmit: handlePhoneVerify, className: "space-y-4", children: [_jsx("input", { type: "tel", value: phone, onChange: (e) => setPhone(e.target.value.replace(/\s+/g, '')), placeholder: "254712345678", className: "w-full bg-smoke border border-white/10 px-4 py-3 text-chalk focus:outline-none focus:border-accent light:focus:border-accent-light" }), _jsx("button", { type: "submit", className: "w-full bg-accent light:bg-accent-light text-black light:text-white py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-accent/90 light:hover:bg-accent-light/90", children: "View Tickets" })] }), ">>>>>>> ae707d8c0a73e5527b29afbb8289c6a4bfcd1793"] }) })] }) }));
-        if (paymentStatus === 'paid') {
-            return (_jsx("div", { className: "min-h-screen py-12 px-4 bg-gray-50 dark:bg-gray-900", children: _jsx("div", { className: "max-w-2xl mx-auto", children: _jsxs("div", { className: "bg-white dark:bg-[#1C1C1C] rounded-lg shadow-lg p-8 mb-8", children: [_jsx("div", { className: "flex items-center justify-center mb-6", children: _jsx(CheckCircle, { className: "w-16 h-16 text-green-600" }) }), _jsx("h1", { className: "text-3xl font-bold text-center mb-2 text-gray-900 dark:text-white", children: "Payment Successful! \uD83C\uDF89" }), _jsx("p", { className: "text-center text-gray-600 dark:text-gray-400 mb-6", children: "Your ticket purchase has been confirmed." }), _jsxs("div", { className: "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6 mb-8", children: [_jsx("h2", { className: "font-bold text-lg mb-4 text-gray-900 dark:text-white", children: "What's Next?" }), _jsxs("ul", { className: "space-y-3 text-sm text-gray-700 dark:text-gray-300", children: [_jsxs("li", { className: "flex items-start gap-3", children: [_jsx("span", { className: "text-blue-600 dark:text-blue-400 font-bold", children: "\uD83D\uDCE7" }), _jsx("span", { children: "Check your email - Your ticket with QR code has been sent to you" })] }), _jsxs("li", { className: "flex items-start gap-3", children: [_jsx("span", { className: "text-blue-600 dark:text-blue-400 font-bold", children: "\uD83D\uDCE5" }), _jsx("span", { children: "Download your PDF ticket below (keep it handy for event entry)" })] }), _jsxs("li", { className: "flex items-start gap-3", children: [_jsx("span", { className: "text-blue-600 dark:text-blue-400 font-bold", children: "\uD83C\uDFAB" }), _jsx("span", { children: "Present the QR code at the event entrance for verification" })] }), _jsxs("li", { className: "flex items-start gap-3", children: [_jsx("span", { className: "text-blue-600 dark:text-blue-400 font-bold", children: "\u23F0" }), _jsx("span", { children: "Arrive 15 minutes before the event starts" })] })] })] }), ticketIds.length > 0 && (_jsxs("div", { className: "mb-8", children: [_jsx("h3", { className: "font-bold text-lg mb-4 text-gray-900 dark:text-white", children: "Download Your Tickets:" }), _jsx("div", { className: "space-y-3", children: ticketIds.map((ticketId, index) => (_jsxs("div", { className: "flex items-center gap-4", children: [_jsxs("span", { className: "text-gray-600 dark:text-gray-400 font-medium", children: ["Ticket ", index + 1, ":"] }), _jsx(TicketDownloadButton, { ticketId: ticketId, paymentStatus: "paid", eventTitle: `Ticket ${index + 1}` })] }, ticketId))) })] })), _jsxs("div", { className: "bg-gray-50 dark:bg-gray-800 rounded-lg p-6 mb-8", children: [_jsx("h3", { className: "font-bold text-lg mb-4 text-gray-900 dark:text-white", children: "Transaction Details" }), _jsxs("div", { className: "space-y-2 text-sm", children: [_jsxs("div", { className: "flex justify-between", children: [_jsx("span", { className: "text-gray-600 dark:text-gray-400", children: "Reference ID:" }), _jsx("span", { className: "font-mono font-semibold text-gray-900 dark:text-white", children: checkoutRequestId })] }), _jsxs("div", { className: "flex justify-between", children: [_jsx("span", { className: "text-gray-600 dark:text-gray-400", children: "Number of Tickets:" }), _jsx("span", { className: "font-semibold text-gray-900 dark:text-white", children: state?.quantity || 1 })] }), _jsxs("div", { className: "flex justify-between pt-2 border-t border-gray-200 dark:border-gray-700", children: [_jsx("span", { className: "text-gray-600 dark:text-gray-400 font-semibold", children: "Total Amount Paid:" }), _jsxs("span", { className: "text-lg font-bold text-primary", children: ["KES ", (state?.totalPrice || 0).toFixed(2)] })] })] })] }), _jsxs("div", { className: "flex gap-4", children: [_jsx("button", { onClick: () => navigate('/payment-history'), className: "flex-1 bg-primary text-white px-6 py-3 rounded-lg hover:bg-opacity-90 font-semibold", children: "View Payment History" }), _jsx("button", { onClick: () => navigate('/events'), className: "flex-1 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white px-6 py-3 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 font-semibold", children: "Back to Events" })] })] }) }) }));
+        load();
+    }, [checkoutRequestId, phone, phonePrompt]);
+    const handlePhoneVerify = async (e) => {
+        e.preventDefault();
+        const normalized = phone.replace(/\s+/g, '');
+        if (!/^254\d{9}$/.test(normalized)) {
+            setError('Enter a valid phone number (254XXXXXXXXX)');
+            return;
         }
-        // Payment Failed or Error
-        return (_jsx("div", { className: "min-h-screen py-12 px-4 bg-gray-50 dark:bg-gray-900", children: _jsxs("div", { className: "max-w-2xl mx-auto", children: [_jsxs("div", { className: "bg-white dark:bg-[#1C1C1C] rounded-lg shadow-lg p-8", children: [_jsx("div", { className: "flex items-center justify-center mb-6", children: _jsx(AlertCircle, { className: "w-16 h-16 text-red-600" }) }), _jsx("h1", { className: "text-3xl font-bold text-center mb-2 text-gray-900 dark:text-white", children: "Payment Verification Failed" }), _jsx("p", { className: "text-center text-gray-600 dark:text-gray-400 mb-6", children: error ||
-                                    'We were unable to verify your payment. Please try again or contact support.' }), _jsxs("div", { className: "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 mb-8", children: [_jsx("h3", { className: "font-bold text-lg mb-3 text-red-800 dark:text-red-300", children: "What to do next?" }), _jsxs("ul", { className: "space-y-2 text-sm text-red-700 dark:text-red-400", children: [_jsx("li", { children: "\u2022 Check your M-Pesa app to confirm if the payment went through" }), _jsx("li", { children: "\u2022 Visit your Payment History to check the status of your payment" }), _jsx("li", { children: "\u2022 If the payment was deducted but tickets not received, contact support" }), _jsx("li", { children: "\u2022 Try the purchase again if no payment was made" })] })] }), _jsxs("div", { className: "flex gap-4", children: [_jsx("button", { onClick: () => navigate('/payment-history'), className: "flex-1 bg-primary text-white px-6 py-3 rounded-lg hover:bg-opacity-90 font-semibold", children: "Check Payment History" }), _jsx("button", { onClick: () => navigate('/events'), className: "flex-1 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white px-6 py-3 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 font-semibold", children: "Back to Events" })] }), _jsxs("p", { className: "text-center text-sm text-gray-600 dark:text-gray-400 mt-6", children: ["Need help?", ' ', _jsx("a", { href: "mailto:support@trfc.com", className: "text-primary hover:underline font-semibold", children: "Contact Support" })] })] }), "======= return (", _jsx("div", { className: "min-h-screen bg-night text-chalk font-barlow py-12 px-6", children: _jsxs("div", { className: "max-w-2xl mx-auto", children: [error && (_jsxs("div", { className: "flex items-start gap-2.5 bg-red-500/10 border border-red-500/20 border-l-4 border-l-red-500 px-4 py-3.5 mb-6 text-sm text-red-400", children: [_jsx(AlertCircle, { size: 16, className: "flex-shrink-0 mt-0.25" }), _jsx("span", { children: error })] })), _jsxs("div", { className: `p-6 mb-6 border-l-4 ${paymentStatus === 'paid' ? 'bg-green-500/10 border-green-500' : 'bg-accent/10 light:bg-accent-light/10 border-accent light:border-accent-light'}`, children: [_jsxs("div", { className: "flex items-center gap-3 mb-2", children: [loading ? (_jsx("div", { className: "animate-spin rounded-full h-6 w-6 border-b-2 border-accent light:border-accent-light" })) : paymentStatus === 'paid' ? (_jsx(CheckCircle, { className: "w-6 h-6 text-green-400" })) : (_jsx(Clock, { className: "w-6 h-6 text-accent light:text-accent-light" })), _jsx("h1", { className: "font-bebas text-3xl", children: loading ? 'Confirming Payment…' : paymentStatus === 'paid' ? 'Tickets Confirmed!' : 'Payment Pending' })] }), _jsx("p", { className: "text-fog text-sm", children: paymentStatus === 'paid'
-                                                ? 'Your ticket payment was successful. See you at the event!'
-                                                : 'Complete the M-Pesa payment on your phone to confirm your tickets.' })] }), _jsxs("div", { className: "bg-ash border border-white/5 p-6 mb-6 space-y-3", children: [_jsxs("div", { className: "flex items-center gap-2 text-accent light:text-accent-light mb-4", children: [_jsx(Ticket, { size: 18 }), _jsx("h2", { className: "font-barlow-condensed font-bold tracking-widest uppercase", children: "Ticket Details" })] }), details.eventTitle && _jsxs("p", { children: [_jsx("span", { className: "text-fog", children: "Event: " }), details.eventTitle] }), details.quantity && _jsxs("p", { children: [_jsx("span", { className: "text-fog", children: "Tickets: " }), details.quantity] }), details.totalPrice != null && _jsxs("p", { children: [_jsx("span", { className: "text-fog", children: "Total: " }), "KES ", details.totalPrice.toLocaleString()] }), phone && _jsxs("p", { children: [_jsx("span", { className: "text-fog", children: "Phone: " }), phone] }), checkoutRequestId && (_jsxs("p", { className: "text-xs text-fog font-mono break-all", children: ["Ref: ", checkoutRequestId] }))] }), _jsxs("div", { className: "flex gap-3", children: [_jsx("button", { onClick: () => navigate('/events'), className: "flex-1 bg-accent light:bg-accent-light text-black light:text-white py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-accent/90 light:hover:bg-accent-light/90", children: "Back to Events" }), paymentStatus === 'pending' && !loading && (_jsx("button", { onClick: () => window.location.reload(), className: "flex-1 bg-smoke border border-white/10 py-3 font-barlow-condensed font-bold text-sm hover:border-accent light:hover:border-accent-light", children: "Refresh" }))] }), paymentStatus === 'pending' && !loading && (_jsxs("div", { className: "mt-6 flex gap-3 bg-red-500/10 border border-red-500/20 p-4 text-sm", children: [_jsx(AlertCircle, { className: "w-5 h-5 text-red-400 flex-shrink-0" }), _jsx("p", { className: "text-red-300", children: "If payment was not received, return to the event page and try again." })] })), ">>>>>>> ae707d8c0a73e5527b29afbb8289c6a4bfcd1793"] }) }), ") }"] }) }));
+        try {
+            setLoading(true);
+            setError('');
+            setPhone(normalized);
+            setSearchParams({ phone: normalized });
+            await loadDetails(normalized);
+            setPhonePrompt(false);
+        }
+        catch (err) {
+            setError(err.response?.data?.error || 'Could not verify ticket purchase');
+        }
+        finally {
+            setLoading(false);
+        }
+    };
+    if (phonePrompt) {
+        return (_jsx("div", { className: "min-h-screen bg-night text-chalk font-barlow py-16 px-6", children: _jsxs("div", { className: "max-w-md mx-auto bg-ash border border-white/5 p-8", children: [_jsxs("h1", { className: "font-bebas text-4xl mb-2", children: ["TICKET ", _jsx("span", { className: "text-accent light:text-accent-light", children: "CONFIRMATION" })] }), _jsx("p", { className: "text-fog text-sm mb-6", children: "Enter the phone number used at checkout to view your tickets." }), error && _jsx("p", { className: "text-red-400 text-sm mb-4", children: error }), _jsxs("form", { onSubmit: handlePhoneVerify, className: "space-y-4", children: [_jsx("input", { type: "tel", value: phone, onChange: (e) => setPhone(e.target.value.replace(/\s+/g, '')), placeholder: "254712345678", className: "w-full bg-smoke border border-white/10 px-4 py-3 text-chalk focus:outline-none focus:border-accent light:focus:border-accent-light" }), _jsx("button", { type: "submit", className: "w-full bg-accent light:bg-accent-light text-black light:text-white py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-accent/90 light:hover:bg-accent-light/90", children: "View Tickets" })] })] }) }));
     }
+    return (_jsx("div", { className: "min-h-screen bg-night text-chalk font-barlow py-12 px-6", children: _jsxs("div", { className: "max-w-2xl mx-auto", children: [error && (_jsxs("div", { className: "flex items-start gap-2.5 bg-red-500/10 border border-red-500/20 border-l-4 border-l-red-500 px-4 py-3.5 mb-6 text-sm text-red-400", children: [_jsx(AlertCircle, { size: 16, className: "flex-shrink-0 mt-0.25" }), _jsx("span", { children: error })] })), _jsxs("div", { className: `p-6 mb-6 border-l-4 ${paymentStatus === 'paid' ? 'bg-green-500/10 border-green-500' : 'bg-accent/10 light:bg-accent-light/10 border-accent light:border-accent-light'}`, children: [_jsxs("div", { className: "flex items-center gap-3 mb-2", children: [loading ? (_jsx("div", { className: "animate-spin rounded-full h-6 w-6 border-b-2 border-accent light:border-accent-light" })) : paymentStatus === 'paid' ? (_jsx(CheckCircle, { className: "w-6 h-6 text-green-400" })) : (_jsx(Clock, { className: "w-6 h-6 text-accent light:text-accent-light" })), _jsx("h1", { className: "font-bebas text-3xl", children: loading ? 'Confirming Payment…' : paymentStatus === 'paid' ? 'Tickets Confirmed!' : 'Payment Pending' })] }), _jsx("p", { className: "text-fog text-sm", children: paymentStatus === 'paid'
+                                ? 'Your ticket payment was successful. See you at the event!'
+                                : 'Complete the M-Pesa payment on your phone to confirm your tickets.' })] }), _jsxs("div", { className: "bg-ash border border-white/5 p-6 mb-6 space-y-3", children: [_jsxs("div", { className: "flex items-center gap-2 text-accent light:text-accent-light mb-4", children: [_jsx(Ticket, { size: 18 }), _jsx("h2", { className: "font-barlow-condensed font-bold tracking-widest uppercase", children: "Ticket Details" })] }), details.eventTitle && _jsxs("p", { children: [_jsx("span", { className: "text-fog", children: "Event: " }), details.eventTitle] }), details.quantity && _jsxs("p", { children: [_jsx("span", { className: "text-fog", children: "Tickets: " }), details.quantity] }), details.totalPrice != null && _jsxs("p", { children: [_jsx("span", { className: "text-fog", children: "Total: " }), "KES ", details.totalPrice.toLocaleString()] }), phone && _jsxs("p", { children: [_jsx("span", { className: "text-fog", children: "Phone: " }), phone] }), checkoutRequestId && (_jsxs("p", { className: "text-xs text-fog font-mono break-all", children: ["Ref: ", checkoutRequestId] }))] }), paymentStatus === 'paid' && ticketIds.length > 0 && (_jsxs("div", { className: "bg-ash border border-white/5 p-6 mb-6 space-y-3", children: [_jsxs("div", { className: "flex items-center gap-2 text-accent light:text-accent-light mb-2", children: [_jsx(Ticket, { size: 18 }), _jsx("h2", { className: "font-barlow-condensed font-bold tracking-widest uppercase", children: "Download Your Tickets" })] }), _jsx("div", { className: "space-y-3", children: ticketIds.map((ticketId, index) => (_jsxs("div", { className: "flex items-center gap-4", children: [_jsxs("span", { className: "text-fog text-sm", children: ["Ticket ", index + 1, ":"] }), _jsx(TicketDownloadButton, { ticketId: ticketId, paymentStatus: "paid", eventTitle: details.eventTitle || `Ticket ${index + 1}` })] }, ticketId))) })] })), _jsxs("div", { className: "flex gap-3", children: [_jsx("button", { onClick: () => navigate('/events'), className: "flex-1 bg-accent light:bg-accent-light text-black light:text-white py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-accent/90 light:hover:bg-accent-light/90", children: "Back to Events" }), paymentStatus === 'pending' && !loading && (_jsx("button", { onClick: () => window.location.reload(), className: "flex-1 bg-smoke border border-white/10 py-3 font-barlow-condensed font-bold text-sm hover:border-accent light:hover:border-accent-light", children: "Refresh" }))] }), paymentStatus === 'pending' && !loading && (_jsxs("div", { className: "mt-6 flex gap-3 bg-red-500/10 border border-red-500/20 p-4 text-sm", children: [_jsx(AlertCircle, { className: "w-5 h-5 text-red-400 flex-shrink-0" }), _jsx("p", { className: "text-red-300", children: "If payment was not received, return to the event page and try again." })] }))] }) }));
 }
 //# sourceMappingURL=TicketConfirmation.js.map
