@@ -3,7 +3,8 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { loginUser } from '../api/auth'
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
+import { Button, FormInput } from '../components/ui'
 import { Logo } from '../components/Logo'
 
 export default function Login() {
@@ -98,62 +99,46 @@ export default function Login() {
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           {/* Email */}
-          <div className="mb-5">
-            <label className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-chalk/45 light:text-chalk-light/50 mb-2.5 block" htmlFor="login-email">Email Address</label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-fog pointer-events-none transition-colors duration-200"><Mail size={15} /></span>
-              <input
-                id="login-email"
-                type="email"
-                className="w-full bg-ash light:bg-smoke-light border border-white/10 light:border-black/10 text-chalk light:text-chalk-light placeholder:text-fog/70 light:placeholder:text-fog-light/70 font-barlow text-base px-4 py-3.5 pl-12 outline-none transition-all duration-200 focus:border-accent/50 light:focus:border-accent-light/50 focus:bg-ash/80 clip-angled group-focus-within:text-accent light:group-focus-within:text-accent-light"
-                placeholder="you@example.com"
-                autoComplete="email"
-                {...register('email', { required: 'Email is required' })}
-              />
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-accent light:from-accent-light to-accent light:to-accent-light scale-x-0 origin-left transition-transform duration-300" />
-            </div>
-            {errors.email && (
-              <p className="text-xs text-red-500 mt-1.5 font-barlow-condensed font-bold tracking-tighter flex items-center gap-1"><span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-red-500 text-white text-xs font-black">!</span>{errors.email.message as string}</p>
-            )}
-          </div>
+          <FormInput
+            label="Email Address"
+            id="login-email"
+            type="email"
+            placeholder="you@example.com"
+            autoComplete="email"
+            error={errors.email ? (errors.email.message as string) : undefined}
+            {...register('email', { required: 'Email is required' })}
+          />
 
           {/* Password */}
-          <div className="mb-2">
-            <label className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-chalk/45 light:text-chalk-light/50 mb-2.5 block" htmlFor="login-password">Password</label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-fog pointer-events-none transition-colors duration-200"><Lock size={15} /></span>
-              <input
-                id="login-password"
-                type="password"
-                className="w-full bg-ash light:bg-smoke-light border border-white/10 light:border-black/10 text-chalk light:text-chalk-light placeholder:text-fog/70 light:placeholder:text-fog-light/70 font-barlow text-base px-4 py-3.5 pl-12 outline-none transition-all duration-200 focus:border-accent/50 light:focus:border-accent-light/50 focus:bg-ash/80 clip-angled"
-                placeholder="••••••••"
-                autoComplete="current-password"
-                {...register('password', { required: 'Password is required' })}
-              />
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-accent light:from-accent-light to-accent light:to-accent-light scale-x-0 origin-left transition-transform duration-300" />
-            </div>
-            {errors.password && (
-              <p className="text-xs text-red-500 mt-1.5 font-barlow-condensed font-bold tracking-tighter flex items-center gap-1"><span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-red-500 text-white text-xs font-black">!</span>{errors.password.message as string}</p>
-            )}
+          <div className="mb-2 mt-6">
+            <FormInput
+              label="Password"
+              id="login-password"
+              type="password"
+              placeholder="••••••••"
+              autoComplete="current-password"
+              error={errors.password ? (errors.password.message as string) : undefined}
+              {...register('password', { required: 'Password is required' })}
+            />
           </div>
 
           {/* Forgot password */}
-          <div className="flex justify-end mb-2">
-            <Link to="/contact" className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog no-underline transition-colors duration-200 hover:text-accent light:hover:text-accent-light">Forgot password?</Link>
+          <div className="flex justify-end mb-8">
+            <Link to="/contact" className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog transition-colors duration-200 hover:text-accent light:hover:text-accent-light no-underline">Forgot password?</Link>
           </div>
 
           {/* Submit */}
-          <button
+          <Button
             type="submit"
             disabled={loading}
-            className={`w-full mt-7 bg-accent light:bg-accent-light border-0 text-black light:text-white font-barlow-condensed font-black text-base tracking-widest uppercase px-8 py-4 cursor-pointer clip-angled transition-all duration-200 flex items-center justify-center gap-2.5 relative overflow-hidden disabled:opacity-55 disabled:cursor-not-allowed disabled:transform-none hover:bg-accent/90 light:hover:bg-accent-light/90 hover:scale-105 ${loading ? 'loading' : ''}`}
+            isLoading={loading}
+            variant="primary"
+            size="lg"
+            fullWidth
+            className="h-13"
           >
-            {loading ? (
-              <>Signing in...</>
-            ) : (
-              <>Sign In <ArrowRight size={16} /></>
-            )}
-          </button>
+            Sign In
+          </Button>
         </form>
 
         <div className="flex items-center gap-3.5 my-7">

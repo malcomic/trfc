@@ -1,5 +1,7 @@
 import { Request, Response } from 'express'
 import { query } from '../config/db.js'
+import { generateQRCodeBuffer } from '../utils/qrCodeGenerator.js'
+import { generateTicketPDF } from '../utils/ticketPDFGenerator.js'
 import { phonesMatch } from '../utils/phone.js'
 import { randomUUID } from 'crypto'
 
@@ -224,5 +226,79 @@ export async function updateTicketPaymentStatus(req: Request, res: Response) {
   } catch (error) {
     console.error('Error updating ticket payment status:', error)
     res.status(500).json({ error: 'Failed to update ticket' })
+  }
+}
+
+export async function downloadTicketPDF(req: Request, res: Response) {
+  try {
+    const { ticketId } = req.params
+    const userId = req.user?.id
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' })
+    }
+
+    if (!ticketId) {
+      return res.status(400).json({ error: 'Ticket ID is required' })
+    }
+
+    // Fetch ticket with user and event details
+    const ticketResult = await query(
+      `SELECT
+        t.id, t.user_id, t.event_id, t.payment_status, t.phone,
+        u.name as user_name,
+        e.title as event_title, e.event_date, e.location, e.price
+       FROM tickets t
+       JOIN users u ON t.user_id = u.id
+       JOIN events e ON t.event_id = e.id
+       WHERE t.id = $1 AND t.user_id = $2`,
+      [ticketId, userId]
+    )
+
+    if (ticketResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Ticket not found' })
+    }
+
+    const ticket = ticketResult.rows[0]
+
+    // Only allow download if payment is completed
+    if (ticket.payment_status !== 'paid') {
+      return res.status(403).json({
+        error: 'Ticket is not yet paid. Please complete payment first.',
+        status: ticket.payment_status,
+      })
+    }
+
+    // Generate QR code buffer for PDF
+    const qrCodeBuffer = await generateQRCodeBuffer({
+      ticketId: ticket.id,
+      eventId: ticket.event_id,
+      userId: ticket.user_id,
+    })
+
+    // Generate PDF
+    const pdfBuffer = await generateTicketPDF({
+      ticketId: ticket.id,
+      eventTitle: ticket.event_title,
+      eventDate: ticket.event_date,
+      eventLocation: ticket.location,
+      eventPrice: parseFloat(ticket.price),
+      userName: ticket.user_name,
+      userPhone: ticket.phone,
+      qrCodeBuffer: qrCodeBuffer,
+    })
+
+    // Send PDF as downloadable file
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="ticket-${ticketId}.pdf"`
+    )
+    res.setHeader('Content-Length', pdfBuffer.length)
+
+    res.send(pdfBuffer)
+  } catch (error) {
+    console.error('Error downloading ticket PDF:', error)
+    res.status(500).json({ error: 'Failed to generate ticket PDF' })
   }
 }

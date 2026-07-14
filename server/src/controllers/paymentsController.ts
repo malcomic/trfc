@@ -14,6 +14,10 @@ import {
   logError,
   logDuplicateCallback,
 } from '../utils/paymentLogger.js'
+import { sendEmail } from '../utils/emailService.js'
+import { buildTicketEmailHTML } from '../utils/emailTemplates.js'
+import { generateQRCodeBase64, generateQRCodeBuffer } from '../utils/qrCodeGenerator.js'
+import { generateTicketPDF } from '../utils/ticketPDFGenerator.js'
 import {
   validatePaymentReference,
   markEntitiesFailedByCheckoutId,
@@ -276,6 +280,7 @@ export async function handleCallback(req: Request, res: Response) {
         : undefined
 
     let updateCount = 0
+
     if (accountRefMatch) {
       updateCount = await applyPaymentFromAccountRef(
         String(accountRefMatch),
@@ -295,6 +300,22 @@ export async function handleCallback(req: Request, res: Response) {
       )
       for (const order of paidOrders.rows) {
         await decrementOrderStock(order.id)
+      }
+    }
+
+    // Send ticket emails asynchronously (non-blocking) for single or batch tickets
+    if (updateCount > 0) {
+      const paidTickets = await query(
+        `SELECT id FROM tickets
+         WHERE checkout_request_id = $1 AND payment_status = 'paid'`,
+        [checkoutRequestId]
+      )
+      for (const ticket of paidTickets.rows) {
+        sendTicketEmail(ticket.id).catch((error) => {
+          console.error(
+            `Error sending ticket email for ${ticket.id}: ${error.message}`
+          )
+        })
       }
     }
 
@@ -453,5 +474,98 @@ export async function getPaymentHistory(req: Request, res: Response) {
   } catch (error) {
     console.error('Error fetching payment history:', error)
     res.status(500).json({ error: 'Failed to fetch payment history' })
+  }
+}
+
+/**
+ * Helper function to send ticket email with PDF and QR code
+ * Non-blocking: errors are logged but don't affect payment callback
+ */
+async function sendTicketEmail(ticketId: string): Promise<void> {
+  try {
+    // Fetch complete ticket with user and event details
+    const ticketResult = await query(
+      `SELECT
+        t.id, t.user_id, t.event_id, t.phone,
+        u.email, u.name as user_name,
+        e.title as event_title, e.event_date, e.location, e.price
+       FROM tickets t
+       JOIN users u ON t.user_id = u.id
+       JOIN events e ON t.event_id = e.id
+       WHERE t.id = $1`,
+      [ticketId]
+    )
+
+    if (ticketResult.rows.length === 0) {
+      console.error(`⚠️  Ticket not found for email sending: ${ticketId}`)
+      return
+    }
+
+    const ticket = ticketResult.rows[0]
+
+    // Generate QR code
+    const qrCodeBase64 = await generateQRCodeBase64({
+      ticketId: ticket.id,
+      eventId: ticket.event_id,
+      userId: ticket.user_id,
+    })
+
+    const qrCodeBuffer = await generateQRCodeBuffer({
+      ticketId: ticket.id,
+      eventId: ticket.event_id,
+      userId: ticket.user_id,
+    })
+
+    // Generate PDF ticket
+    const pdfBuffer = await generateTicketPDF({
+      ticketId: ticket.id,
+      eventTitle: ticket.event_title,
+      eventDate: ticket.event_date,
+      eventLocation: ticket.location,
+      eventPrice: parseFloat(ticket.price),
+      userName: ticket.user_name,
+      userPhone: ticket.phone,
+      qrCodeBuffer: qrCodeBuffer,
+    })
+
+    // Build email template
+    const emailHTML = buildTicketEmailHTML({
+      userEmail: ticket.email,
+      userName: ticket.user_name,
+      ticketId: ticket.id,
+      eventTitle: ticket.event_title,
+      eventDate: ticket.event_date,
+      eventLocation: ticket.location,
+      eventPrice: parseFloat(ticket.price),
+      qrCodeBase64: qrCodeBase64,
+    })
+
+    // Send email with retry logic
+    const emailResult = await sendEmail({
+      to: ticket.email,
+      subject: `Your TRFC Event Ticket - ${ticket.event_title}`,
+      html: emailHTML,
+      attachments: [
+        {
+          filename: `ticket-${ticket.id}.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf',
+        },
+      ],
+    })
+
+    if (emailResult.success) {
+      console.log(
+        `✅ Ticket email sent successfully to ${ticket.email} for ticket ${ticketId}`
+      )
+    } else {
+      console.error(
+        `⚠️  Failed to send ticket email to ${ticket.email} after retries: ${emailResult.error}`
+      )
+    }
+  } catch (error: any) {
+    console.error(
+      `⚠️  Error in sendTicketEmail for ${ticketId}: ${error.message}`
+    )
   }
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getPaymentHistory, PaymentHistoryItem } from '../api/payments'
 import { Calendar, DollarSign, Download, Eye, Loader, AlertCircle, FileText } from 'lucide-react'
 import { downloadReceiptAsText, downloadReceiptAsCSV } from '../utils/receiptGenerator'
+import TicketDownloadButton from '../components/TicketDownloadButton'
 import { ToastStack, ToastMessage } from '../components/Toast'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 
@@ -214,7 +215,8 @@ export default function PaymentHistory() {
                     </span>
                   </div>
 
-                  <div className="flex gap-2 justify-end">
+                  {/* Actions */}
+                  <div className="flex gap-2 justify-end flex-wrap">
                     <button
                       onClick={() => openReceiptModal(payment)}
                       className="inline-flex items-center gap-2 px-3 py-2 text-accent light:text-accent-light hover:bg-accent/10 light:hover:bg-accent-light/10 border border-transparent hover:border-accent/20 light:hover:border-accent-light/20 transition clip-angled-sm"
@@ -224,14 +226,24 @@ export default function PaymentHistory() {
                       <span className="text-sm font-barlow-condensed font-bold">View</span>
                     </button>
                     {payment.payment_status === 'paid' && (
-                      <button
-                        onClick={() => downloadReceipt(payment)}
-                        className="inline-flex items-center gap-2 px-3 py-2 text-green-400 hover:bg-green-500/10 border border-transparent hover:border-green-500/20 transition clip-angled-sm"
-                        title="Download receipt"
-                      >
-                        <Download className="w-4 h-4" />
-                        <span className="text-sm font-barlow-condensed font-bold">Download</span>
-                      </button>
+                      <>
+                        <button
+                          onClick={() => downloadReceipt(payment)}
+                          className="inline-flex items-center gap-2 px-3 py-2 text-green-400 hover:bg-green-500/10 border border-transparent hover:border-green-500/20 transition clip-angled-sm"
+                          title="Download receipt"
+                        >
+                          <Download className="w-4 h-4" />
+                          <span className="text-sm font-barlow-condensed font-bold">Download</span>
+                        </button>
+                        {payment.type === 'ticket' && (
+                          <TicketDownloadButton
+                            ticketId={payment.id}
+                            paymentStatus={payment.payment_status as 'paid' | 'pending' | 'failed'}
+                            eventTitle="Event Ticket"
+                            className="inline-flex"
+                          />
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

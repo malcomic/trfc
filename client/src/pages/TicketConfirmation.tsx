@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { pollPaymentStatus } from '../api/payments'
 import { getTicketsByCheckoutRequestId } from '../api/events'
+import { getUserTickets } from '../api/tickets'
 import { AlertCircle, CheckCircle, Clock, Ticket } from 'lucide-react'
+import TicketDownloadButton from '../components/TicketDownloadButton'
 
 interface TicketDetails {
   eventTitle?: string
@@ -24,6 +26,7 @@ export default function TicketConfirmation() {
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'paid'>('pending')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [ticketIds, setTicketIds] = useState<string[]>([])
 
   const loadDetails = async (verifyPhone: string) => {
     if (!checkoutRequestId) return null
@@ -36,6 +39,18 @@ export default function TicketConfirmation() {
     })
     if (data.payment_status === 'paid') setPaymentStatus('paid')
     return data
+  }
+
+  const loadDownloadableTicketIds = async () => {
+    try {
+      const tickets = await getUserTickets()
+      const matching = tickets.filter(
+        (t) => t.checkout_request_id === checkoutRequestId && t.payment_status === 'paid'
+      )
+      setTicketIds(matching.map((t) => t.id))
+    } catch {
+      /* guest checkout — no authenticated account, downloads unavailable */
+    }
   }
 
   useEffect(() => {
@@ -62,6 +77,7 @@ export default function TicketConfirmation() {
             /* polling timeout */
           }
         }
+        await loadDownloadableTicketIds()
       } catch (err: any) {
         setError(err.response?.data?.error || 'Failed to load ticket details')
       } finally {
@@ -159,6 +175,27 @@ export default function TicketConfirmation() {
             <p className="text-xs text-fog font-mono break-all">Ref: {checkoutRequestId}</p>
           )}
         </div>
+
+        {paymentStatus === 'paid' && ticketIds.length > 0 && (
+          <div className="bg-ash border border-white/5 p-6 mb-6 space-y-3">
+            <div className="flex items-center gap-2 text-accent light:text-accent-light mb-2">
+              <Ticket size={18} />
+              <h2 className="font-barlow-condensed font-bold tracking-widest uppercase">Download Your Tickets</h2>
+            </div>
+            <div className="space-y-3">
+              {ticketIds.map((ticketId, index) => (
+                <div key={ticketId} className="flex items-center gap-4">
+                  <span className="text-fog text-sm">Ticket {index + 1}:</span>
+                  <TicketDownloadButton
+                    ticketId={ticketId}
+                    paymentStatus="paid"
+                    eventTitle={details.eventTitle || `Ticket ${index + 1}`}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-3">
           <button onClick={() => navigate('/events')} className="flex-1 bg-accent light:bg-accent-light text-black light:text-white py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-accent/90 light:hover:bg-accent-light/90">

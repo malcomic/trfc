@@ -24,29 +24,29 @@ export default function MetricCard({
   loading = false,
 }: MetricCardProps) {
   const getTrendColor = () => {
-    if (trend === 'up') return 'text-green-600 dark:text-green-400'
-    if (trend === 'down') return 'text-red-600 dark:text-red-400'
-    return 'text-gray-500 dark:text-gray-400'
+    if (trend === 'up') return 'text-success-green'
+    if (trend === 'down') return 'text-danger-red'
+    return 'text-fog'
   }
 
   const getTrendBgColor = () => {
-    if (trend === 'up') return 'bg-green-50 dark:bg-green-900/20'
-    if (trend === 'down') return 'bg-red-50 dark:bg-red-900/20'
-    return 'bg-gray-50 dark:bg-gray-800'
+    if (trend === 'up') return 'bg-success-green/10'
+    if (trend === 'down') return 'bg-danger-red/10'
+    return 'bg-smoke'
   }
 
   return (
     <div
       onClick={onClick}
-      className={`bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-xl p-6 ${
-        onClick ? 'cursor-pointer hover:shadow-lg dark:hover:shadow-2xl transition' : ''
+      className={`bg-night-light dark:bg-ash rounded-lg shadow dark:shadow-xl p-6 border border-ash-light dark:border-mist ${
+        onClick ? 'cursor-pointer hover:shadow-lg dark:hover:shadow-2xl transition-all duration-300 hover:scale-[1.01]' : ''
       }`}
     >
       {/* Header */}
       <div className="flex justify-between items-start mb-4">
         <div className="flex-1">
-          <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">{title}</p>
-          {subtitle && <p className="text-gray-500 dark:text-gray-500 text-xs mt-1">{subtitle}</p>}
+          <p className="text-chalk-light/70 dark:text-fog text-sm font-medium">{title}</p>
+          {subtitle && <p className="text-chalk-light/50 dark:text-fog/70 text-xs mt-1">{subtitle}</p>}
         </div>
         {icon && <div className="text-accent light:text-accent-light dark:text-accent light:text-accent-light ml-2">{icon}</div>}
       </div>
@@ -54,13 +54,13 @@ export default function MetricCard({
       {/* Value */}
       {loading ? (
         <div className="animate-pulse">
-          <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-32 mb-2"></div>
+          <div className="h-10 bg-ash-light dark:bg-mist rounded w-32 mb-2"></div>
         </div>
       ) : (
         <div className="mb-4">
-          <p className="text-4xl font-bold text-gray-900 dark:text-white mb-1">
+          <p className="text-4xl font-bold text-chalk-light dark:text-chalk mb-1">
             {typeof value === 'number' ? value.toLocaleString() : value}
-            {unit && <span className="text-2xl font-normal text-gray-500 dark:text-gray-400 ml-1">{unit}</span>}
+            {unit && <span className="text-2xl font-normal text-fog ml-1">{unit}</span>}
           </p>
         </div>
       )}
@@ -81,7 +81,7 @@ export default function MetricCard({
       {trend !== 'neutral' && !loading && (
         <div className={`mt-3 h-1 w-full ${getTrendBgColor()} rounded-full overflow-hidden`}>
           <div
-            className={`h-full ${trend === 'up' ? 'bg-green-500' : 'bg-red-500'}`}
+            className={`h-full ${trend === 'up' ? 'bg-success-green' : 'bg-danger-red'}`}
             style={{ width: `${Math.min(Math.abs(trendPercent), 100)}%` }}
           ></div>
         </div>
