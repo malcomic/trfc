@@ -94,7 +94,7 @@ describe('E2E: Complete Payment Flow', () => {
   })
 
   describe('Event Ticket Checkout Flow', () => {
-    it('should complete event ticket purchase via Paystack', async () => {
+    it('should complete event ticket purchase via M-Pesa', async () => {
       const event = {
         id: 'event-123',
         title: 'Fitness Workshop',
@@ -114,15 +114,18 @@ describe('E2E: Complete Payment Flow', () => {
         phone: '254700000000',
       }
       const validateEmail = (email: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+      const validatePhone = (phone: string): boolean => /^254\d{9}$/.test(phone)
       expect(validateEmail(attendeeData.email)).toBe(true)
+      expect(validatePhone(attendeeData.phone)).toBe(true)
 
       const mockTicketPayment = {
-        accessCode: 'access_test_abc',
-        reference: 'trfc_ticket_ref_111',
-        status: 'success',
+        checkoutRequestId: 'ws_CO_test_ticket_111',
+        merchantRequestId: 'merchant-ticket-111',
+        responseCode: '0',
+        customerMessage: 'Success. Request accepted for processing',
       }
-      expect(mockTicketPayment.status).toBe('success')
-      expect(mockTicketPayment.reference).toBeDefined()
+      expect(mockTicketPayment.responseCode).toBe('0')
+      expect(mockTicketPayment.checkoutRequestId).toBeDefined()
 
       const ticketConfirmation = {
         event: event.title,
@@ -130,9 +133,11 @@ describe('E2E: Complete Payment Flow', () => {
         total: totalAmount,
         status: 'confirmed',
         email: attendeeData.email,
+        phone: attendeeData.phone,
       }
       expect(ticketConfirmation.status).toBe('confirmed')
       expect(ticketConfirmation.email).toBe('john@example.com')
+      expect(ticketConfirmation.phone).toBe('254700000000')
     })
 
     it('should handle ticket quantity limits', async () => {

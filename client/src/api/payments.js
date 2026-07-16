@@ -3,6 +3,12 @@ export async function initiateSTKPush(data) {
     const response = await api.post('/payments/mpesa/stkpush', data);
     return response.data;
 }
+export async function initiateTicketPayment(data) {
+    return initiateSTKPush({
+        ...data,
+        ticketBatchId: data.ticketBatchId,
+    });
+}
 export async function checkPaymentStatus(checkoutRequestId) {
     const response = await api.get(`/payments/status/${checkoutRequestId}`);
     return response.data;
@@ -35,14 +41,6 @@ export async function pollPaymentStatus(checkoutRequestId, options = { interval:
 }
 export async function getPaymentHistory() {
     const response = await api.get('/payments/history');
-    return response.data;
-}
-export async function initializePaystackPayment(data) {
-    const response = await api.post('/payments/paystack/initialize', data);
-    return response.data;
-}
-export async function verifyPaystackPayment(reference) {
-    const response = await api.get(`/payments/paystack/verify/${encodeURIComponent(reference)}`);
     return response.data;
 }
 export async function initiateEquipmentPayment(data) {

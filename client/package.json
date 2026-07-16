@@ -12,7 +12,6 @@
     "test:coverage": "vitest --coverage"
   },
   "dependencies": {
-    "@paystack/inline-js": "^2.23.1",
     "axios": "^1.4.0",
     "html2pdf.js": "^0.10.1",
     "lucide-react": "^1.14.0",
@@ -28,7 +27,6 @@
     "@testing-library/react": "^14.0.0",
     "@testing-library/user-event": "^14.5.1",
     "@types/node": "^25.9.0",
-    "@types/paystack__inline-js": "^1.0.3",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@vitejs/plugin-react": "^4.0.0",

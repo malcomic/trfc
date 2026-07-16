@@ -22,31 +22,17 @@ export interface PaymentHistoryItem {
     created_at: string;
 }
 export declare function initiateSTKPush(data: PaymentInitiateRequest): Promise<PaymentInitiateResponse>;
+export declare function initiateTicketPayment(data: {
+    phone: string;
+    amount: number;
+    ticketBatchId: string;
+}): Promise<PaymentInitiateResponse>;
 export declare function checkPaymentStatus(checkoutRequestId: string): Promise<any>;
 export declare function pollPaymentStatus(checkoutRequestId: string, options?: {
     interval: number;
     timeout: number;
 }): Promise<any>;
 export declare function getPaymentHistory(): Promise<PaymentHistoryItem[]>;
-export declare function initializePaystackPayment(data: {
-    email: string;
-    amount: number;
-    ticketBatchId: string;
-}): Promise<{
-    accessCode: string;
-    reference: string;
-    authorizationUrl: string;
-    publicKey: string;
-}>;
-export declare function verifyPaystackPayment(reference: string): Promise<{
-    status: string;
-    payment_status: string;
-    reference: string;
-    receipt?: string | null;
-    amount?: number;
-    channel?: string;
-    error?: string;
-}>;
 export declare function initiateEquipmentPayment(data: {
     phone: string;
     amount: number;

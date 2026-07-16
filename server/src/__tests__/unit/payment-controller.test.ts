@@ -5,7 +5,7 @@ const mockPaymentController = {
   initiateSTKPush: async (req: any, res: any) => {
     const { phone, amount, orderId } = req.body
 
-    if (!phone || !amount || !orderId) {
+    if (!phone || amount == null || amount === '' || !orderId) {
       return res.status(400).json({ error: 'Missing required fields' })
     }
 
@@ -13,7 +13,7 @@ const mockPaymentController = {
       return res.status(400).json({ error: 'Invalid phone format' })
     }
 
-    if (amount < 1 || amount > 150000) {
+    if (Number(amount) < 1 || Number(amount) > 150000) {
       return res.status(400).json({ error: 'Invalid amount' })
     }
 

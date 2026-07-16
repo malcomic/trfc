@@ -34,6 +34,17 @@ export async function initiateSTKPush(data: PaymentInitiateRequest) {
   return response.data
 }
 
+export async function initiateTicketPayment(data: {
+  phone: string
+  amount: number
+  ticketBatchId: string
+}) {
+  return initiateSTKPush({
+    ...data,
+    ticketBatchId: data.ticketBatchId,
+  })
+}
+
 export async function checkPaymentStatus(checkoutRequestId: string) {
   const response = await api.get(`/payments/status/${checkoutRequestId}`)
   return response.data
@@ -79,33 +90,6 @@ export async function pollPaymentStatus(
 
 export async function getPaymentHistory(): Promise<PaymentHistoryItem[]> {
   const response = await api.get<PaymentHistoryItem[]>('/payments/history')
-  return response.data
-}
-
-export async function initializePaystackPayment(data: {
-  email: string
-  amount: number
-  ticketBatchId: string
-}) {
-  const response = await api.post<{
-    accessCode: string
-    reference: string
-    authorizationUrl: string
-    publicKey: string
-  }>('/payments/paystack/initialize', data)
-  return response.data
-}
-
-export async function verifyPaystackPayment(reference: string) {
-  const response = await api.get<{
-    status: string
-    payment_status: string
-    reference: string
-    receipt?: string | null
-    amount?: number
-    channel?: string
-    error?: string
-  }>(`/payments/paystack/verify/${encodeURIComponent(reference)}`)
   return response.data
 }
 

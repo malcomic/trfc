@@ -18,10 +18,10 @@ export async function buyTicket(req: Request, res: Response) {
       }
     }
 
-    if (!eventId || !quantity || !email) {
+    if (!eventId || !quantity || !email || !phone) {
       return res
         .status(400)
-        .json({ error: 'eventId, quantity, and email are required' })
+        .json({ error: 'eventId, quantity, email, and phone are required' })
     }
 
     const normalizedEmail = String(email).trim().toLowerCase()
@@ -29,7 +29,7 @@ export async function buyTicket(req: Request, res: Response) {
       return res.status(400).json({ error: 'A valid email is required' })
     }
 
-    if (phone && !/^254\d{9}$/.test(String(phone))) {
+    if (!/^254\d{9}$/.test(String(phone))) {
       return res.status(400).json({
         error: 'Invalid phone number format. Expected format: 254XXXXXXXXX',
       })
@@ -69,7 +69,7 @@ export async function buyTicket(req: Request, res: Response) {
       const ticketResult = await query(
         `INSERT INTO tickets (user_id, event_id, purchase_batch_id, phone, email, payment_provider, payment_status)
          VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-        [userId, eventId, purchaseBatchId, phone || null, normalizedEmail, 'paystack', 'pending']
+        [userId, eventId, purchaseBatchId, phone, normalizedEmail, 'mpesa', 'pending']
       )
       ticketIds.push(ticketResult.rows[0].id)
     }

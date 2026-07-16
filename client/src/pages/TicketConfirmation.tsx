@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
-import { pollPaymentStatus, verifyPaystackPayment } from '../api/payments'
+import { pollPaymentStatus } from '../api/payments'
 import { getTicketsByCheckoutRequestId } from '../api/events'
 import { getUserTickets } from '../api/tickets'
 import { AlertCircle, CheckCircle, Clock, Ticket } from 'lucide-react'
@@ -77,17 +77,11 @@ export default function TicketConfirmation() {
         const data = await loadDetails(email || undefined, phone || undefined)
         if (data?.payment_status !== 'paid') {
           try {
-            await verifyPaystackPayment(checkoutRequestId)
+            await pollPaymentStatus(checkoutRequestId)
             setPaymentStatus('paid')
             await loadDetails(email || undefined, phone || undefined)
           } catch {
-            try {
-              await pollPaymentStatus(checkoutRequestId)
-              setPaymentStatus('paid')
-              await loadDetails(email || undefined, phone || undefined)
-            } catch {
-              /* still pending */
-            }
+            /* still pending */
           }
         }
         await loadDownloadableTicketIds()
@@ -106,7 +100,7 @@ export default function TicketConfirmation() {
     const normalizedPhone = phone.replace(/\s+/g, '')
 
     if (!normalizedEmail && !normalizedPhone) {
-      setError('Enter the email used at checkout')
+      setError('Enter the email or phone used at checkout')
       return
     }
     if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
@@ -141,7 +135,7 @@ export default function TicketConfirmation() {
       <div className="min-h-screen bg-night text-chalk font-barlow py-16 px-6">
         <div className="max-w-md mx-auto bg-ash border border-white/5 p-8">
           <h1 className="font-bebas text-4xl mb-2">TICKET <span className="text-accent light:text-accent-light">CONFIRMATION</span></h1>
-          <p className="text-fog text-sm mb-6">Enter the email used at checkout to view your tickets.</p>
+          <p className="text-fog text-sm mb-6">Enter the email or M-Pesa phone used at checkout to view your tickets.</p>
           {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
           <form onSubmit={handleGateVerify} className="space-y-4">
             <input
@@ -149,6 +143,13 @@ export default function TicketConfirmation() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
+              className="w-full bg-smoke border border-white/10 px-4 py-3 text-chalk focus:outline-none focus:border-accent light:focus:border-accent-light"
+            />
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="254712345678"
               className="w-full bg-smoke border border-white/10 px-4 py-3 text-chalk focus:outline-none focus:border-accent light:focus:border-accent-light"
             />
             <button type="submit" className="w-full bg-accent light:bg-accent-light text-black light:text-white py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-accent/90 light:hover:bg-accent-light/90">
@@ -186,7 +187,7 @@ export default function TicketConfirmation() {
           <p className="text-fog text-sm">
             {paymentStatus === 'paid'
               ? 'Your ticket payment was successful. We sent your ticket PDF(s) to your email — open the attachment for the entry QR. If you don’t see it, check spam/junk.'
-              : 'Complete payment in the Paystack window to confirm your tickets.'}
+              : 'Complete the M-Pesa payment on your phone to confirm your tickets.'}
           </p>
         </div>
 

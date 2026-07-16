@@ -21,10 +21,6 @@ export const config = {
     callbackUrl: process.env.MPESA_CALLBACK_URL || '',
     env: process.env.MPESA_ENV || 'sandbox',
   },
-  paystack: {
-    secretKey: process.env.PAYSTACK_SECRET_KEY || '',
-    publicKey: process.env.PAYSTACK_PUBLIC_KEY || '',
-  },
   email: {
     user: process.env.EMAIL_USER || '',
     /** App password — prefer EMAIL_PASSWORD; EMAIL_PASS is supported as an alias */

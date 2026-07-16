@@ -101,7 +101,7 @@ export default function EquipmentHire() {
 
                 <Button
                   onClick={() =>
-                    navigate('/equipment-checkout', {
+                    navigate('/equipment/checkout', {
                       state: { packageType: pkg.packageType, pricePerDay: pkg.price },
                     })
                   }

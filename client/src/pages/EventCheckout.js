@@ -2,9 +2,9 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import PaystackPop from '@paystack/inline-js';
 import { getEventById, buyEventTickets } from '../api/events';
-import { initializePaystackPayment, verifyPaystackPayment } from '../api/payments';
+import { initiateTicketPayment } from '../api/payments';
+import PaymentStatusModal from '../components/PaymentStatusModal';
 import { AlertCircle, Loader, ArrowLeft } from 'lucide-react';
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses';
 export default function EventCheckout() {
@@ -18,8 +18,12 @@ export default function EventCheckout() {
     const [event, setEvent] = useState(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
-    const [confirming, setConfirming] = useState(false);
     const [error, setError] = useState('');
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [checkoutRequestId, setCheckoutRequestId] = useState('');
+    const [phone, setPhone] = useState('');
+    const [email, setEmail] = useState('');
+    const [ticketMeta, setTicketMeta] = useState(null);
     const quantity = watch('quantity');
     const totalPrice = event ? Number(event.price) * Number(quantity) : 0;
     useEffect(() => {
@@ -46,65 +50,52 @@ export default function EventCheckout() {
         try {
             setSubmitting(true);
             setError('');
-            const phone = data.phone?.trim() || undefined;
-            const email = data.email.trim().toLowerCase();
+            const normalizedEmail = data.email.trim().toLowerCase();
+            setPhone(data.phone);
+            setEmail(normalizedEmail);
             const ticketResult = await buyEventTickets(eventId, {
                 quantity: Number(data.quantity),
-                email,
-                phone,
+                email: normalizedEmail,
+                phone: data.phone,
             });
-            const payment = await initializePaystackPayment({
-                email,
+            const paymentResponse = await initiateTicketPayment({
+                phone: data.phone,
                 amount: Math.round(ticketResult.totalPrice),
                 ticketBatchId: ticketResult.purchaseBatchId,
             });
-            const popup = new PaystackPop();
-            popup.resumeTransaction(payment.accessCode, {
-                onSuccess: async (transaction) => {
-                    const reference = transaction.reference || payment.reference;
-                    try {
-                        setConfirming(true);
-                        await verifyPaystackPayment(reference);
-                        navigate(`/ticket-confirmation/${reference}?email=${encodeURIComponent(email)}`, {
-                            state: {
-                                eventTitle: ticketResult.eventTitle,
-                                quantity: ticketResult.quantity,
-                                totalPrice: ticketResult.totalPrice,
-                                email,
-                                phone,
-                            },
-                        });
-                    }
-                    catch (err) {
-                        setError(err.response?.data?.error ||
-                            'Payment received but confirmation failed. Check your email or refresh the confirmation page.');
-                        navigate(`/ticket-confirmation/${reference}?email=${encodeURIComponent(email)}`, {
-                            state: {
-                                eventTitle: ticketResult.eventTitle,
-                                quantity: ticketResult.quantity,
-                                totalPrice: ticketResult.totalPrice,
-                                email,
-                                phone,
-                            },
-                        });
-                    }
-                    finally {
-                        setConfirming(false);
-                        setSubmitting(false);
-                    }
-                },
-                onCancel: () => {
-                    setError('Payment was cancelled. You can try again when ready.');
-                    setSubmitting(false);
-                },
-            });
+            if (paymentResponse.checkoutRequestId) {
+                setCheckoutRequestId(paymentResponse.checkoutRequestId);
+                setTicketMeta({
+                    eventTitle: ticketResult.eventTitle,
+                    quantity: ticketResult.quantity,
+                    totalPrice: ticketResult.totalPrice,
+                });
+                setShowPaymentModal(true);
+            }
+            else {
+                setError('Failed to initiate payment. Please try again.');
+            }
         }
         catch (err) {
             setError(err.response?.data?.error ||
                 err.response?.data?.customerMessage ||
                 'Payment initiation failed.');
+        }
+        finally {
             setSubmitting(false);
         }
+    };
+    const handleModalClose = () => {
+        setShowPaymentModal(false);
+        const params = new URLSearchParams({ phone, email });
+        navigate(`/ticket-confirmation/${checkoutRequestId}?${params.toString()}`, {
+            state: {
+                ...ticketMeta,
+                phone,
+                email,
+                eventTitle: ticketMeta?.eventTitle || event?.title,
+            },
+        });
     };
     if (loading) {
         return (_jsx("div", { className: `${pageRoot} flex items-center justify-center`, children: _jsx(Loader, { className: "w-12 h-12 animate-spin text-accent light:text-accent-light" }) }));
@@ -120,10 +111,9 @@ export default function EventCheckout() {
                                                 value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
                                                 message: 'Enter a valid email address',
                                             },
-                                        }), placeholder: "you@example.com", className: `w-full px-4 py-2 ${inputField}` }), errors.email && _jsx("p", { className: "text-red-400 text-sm mt-1", children: errors.email.message })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-semibold mb-2", children: "Phone (optional)" }), _jsx("input", { ...register('phone', {
-                                            validate: (value) => !value ||
-                                                /^254\d{9}$/.test(value) ||
-                                                'Format: 254XXXXXXXXX',
-                                        }), placeholder: "254712345678", className: `w-full px-4 py-2 ${inputField}` }), errors.phone && _jsx("p", { className: "text-red-400 text-sm mt-1", children: errors.phone.message })] }), error && (_jsxs("div", { className: "bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-300 flex gap-2", children: [_jsx(AlertCircle, { size: 16, className: "flex-shrink-0" }), " ", error] })), _jsx("button", { type: "submit", disabled: submitting || confirming, className: "w-full bg-accent light:bg-accent-light text-black light:text-white py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-accent/90 light:hover:bg-accent-light/90 disabled:opacity-50 flex items-center justify-center gap-2", children: confirming ? (_jsxs(_Fragment, { children: [_jsx(Loader, { className: "w-4 h-4 animate-spin" }), " Confirming payment\u2026"] })) : submitting ? (_jsxs(_Fragment, { children: [_jsx(Loader, { className: "w-4 h-4 animate-spin" }), " Opening Paystack\u2026"] })) : ('Complete Purchase') })] }), _jsxs("div", { className: `${cardSurface} p-6 sticky top-20 h-fit`, children: [_jsx("h3", { className: "font-barlow-condensed font-bold text-accent light:text-accent-light tracking-widest uppercase mb-4", children: "Summary" }), _jsxs("p", { className: "text-sm text-fog light:text-fog-light mb-2", children: [quantity, " ticket(s)"] }), _jsxs("p", { className: "font-bebas text-3xl text-accent light:text-accent-light", children: ["KES ", totalPrice.toLocaleString()] }), _jsx("p", { className: "text-xs text-fog light:text-fog-light mt-4", children: "You will complete payment securely with Paystack (card or mobile money)." })] })] })] }));
+                                        }), placeholder: "you@example.com", className: `w-full px-4 py-2 ${inputField}` }), errors.email && _jsx("p", { className: "text-red-400 text-sm mt-1", children: errors.email.message }), _jsx("p", { className: "text-xs text-fog light:text-fog-light mt-1", children: "Ticket PDF(s) will be sent to this email." })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-semibold mb-2", children: "M-Pesa Phone (254XXXXXXXXX)" }), _jsx("input", { ...register('phone', {
+                                            required: 'Phone is required',
+                                            pattern: { value: /^254\d{9}$/, message: 'Format: 254XXXXXXXXX' },
+                                        }), placeholder: "254712345678", className: `w-full px-4 py-2 ${inputField}` }), errors.phone && _jsx("p", { className: "text-red-400 text-sm mt-1", children: errors.phone.message })] }), error && (_jsxs("div", { className: "bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-300 flex gap-2", children: [_jsx(AlertCircle, { size: 16, className: "flex-shrink-0" }), " ", error] })), _jsx("button", { type: "submit", disabled: submitting, className: "w-full bg-accent light:bg-accent-light text-black light:text-white py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-accent/90 light:hover:bg-accent-light/90 disabled:opacity-50 flex items-center justify-center gap-2", children: submitting ? _jsxs(_Fragment, { children: [_jsx(Loader, { className: "w-4 h-4 animate-spin" }), " Processing\u2026"] }) : 'Pay with M-Pesa' })] }), _jsxs("div", { className: `${cardSurface} p-6 sticky top-20 h-fit`, children: [_jsx("h3", { className: "font-barlow-condensed font-bold text-accent light:text-accent-light tracking-widest uppercase mb-4", children: "Summary" }), _jsxs("p", { className: "text-sm text-fog light:text-fog-light mb-2", children: [quantity, " ticket(s)"] }), _jsxs("p", { className: "font-bebas text-3xl text-accent light:text-accent-light", children: ["KES ", totalPrice.toLocaleString()] }), _jsx("p", { className: "text-xs text-fog light:text-fog-light mt-4", children: "An M-Pesa prompt will appear on your phone after checkout. Enter your PIN to complete payment." })] })] }), _jsx(PaymentStatusModal, { isOpen: showPaymentModal, checkoutRequestId: checkoutRequestId, phone: phone, onClose: handleModalClose })] }));
 }
 //# sourceMappingURL=EventCheckout.js.map

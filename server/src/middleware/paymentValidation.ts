@@ -88,15 +88,9 @@ export function validatePaymentRequest(
     })
   }
 
-  if (!orderId && !equipmentHireId) {
+  if (!orderId && !ticketId && !ticketBatchId && !equipmentHireId) {
     return res.status(400).json({
-      error: 'One of orderId or equipmentHireId is required',
-    })
-  }
-
-  if (ticketId || ticketBatchId) {
-    return res.status(400).json({
-      error: 'Event tickets must be paid via Paystack',
+      error: 'One of orderId, ticketBatchId, ticketId, or equipmentHireId is required',
     })
   }
 

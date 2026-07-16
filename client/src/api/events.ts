@@ -28,7 +28,7 @@ export const deleteEvent = async (id: string) => {
 
 export const buyEventTickets = async (
   eventId: string,
-  data: { quantity: number; email: string; phone?: string }
+  data: { quantity: number; email: string; phone: string }
 ) => {
   const response = await api.post(`/events/${eventId}/tickets`, data);
   return response.data as {

@@ -7,7 +7,7 @@ export declare const deleteEvent: (id: string) => Promise<any>;
 export declare const buyEventTickets: (eventId: string, data: {
     quantity: number;
     email: string;
-    phone?: string;
+    phone: string;
 }) => Promise<{
     ticketIds: string[];
     purchaseBatchId: string;

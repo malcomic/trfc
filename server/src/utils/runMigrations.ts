@@ -94,6 +94,15 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       CREATE INDEX IF NOT EXISTS idx_tickets_email ON tickets(email);
     `,
   },
+  {
+    name: '008_fail_pending_paystack_tickets',
+    sql: `
+      UPDATE tickets
+      SET payment_status = 'failed'
+      WHERE payment_provider = 'paystack'
+        AND payment_status = 'pending';
+    `,
+  },
 ]
 
 export async function runMigrations() {

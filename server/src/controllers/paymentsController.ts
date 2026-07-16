@@ -1,6 +1,5 @@
 import { Request, Response } from 'express'
 import { query } from '../config/db.js'
-import { config } from '../config/env.js'
 import {
   getMPesaToken,
   initiateStkPush as mpesaInitiateStkPush,
@@ -8,11 +7,6 @@ import {
   parseCallbackResponse,
   STKPushResponse,
 } from '../utils/mpesa.js'
-import {
-  initializeTransaction,
-  verifyTransaction,
-  verifyWebhookSignature,
-} from '../utils/paystack.js'
 import {
   logSTKInitiation,
   logCallbackProcessing,
@@ -39,6 +33,22 @@ async function decrementOrderStock(orderId: string) {
       'UPDATE products SET stock = GREATEST(0, stock - $1) WHERE id = $2',
       [item.quantity, item.product_id]
     )
+  }
+}
+
+async function maybeSendTicketEmail(checkoutRequestId: string) {
+  const paidTickets = await query(
+    `SELECT id FROM tickets
+     WHERE checkout_request_id = $1 AND payment_status = 'paid'
+     LIMIT 1`,
+    [checkoutRequestId]
+  )
+  if (paidTickets.rows.length > 0) {
+    sendTicketBatchEmail(checkoutRequestId).catch((error: Error) => {
+      console.error(
+        `Error sending ticket batch email for ${checkoutRequestId}: ${error.message}`
+      )
+    })
   }
 }
 
@@ -89,49 +99,9 @@ async function applyPaymentFromAccountRef(
   return 0
 }
 
-async function fulfillTicketBatchPayment(
-  reference: string,
-  receipt: string | null,
-  ticketBatchId?: string
-): Promise<number> {
-  let updateCount = 0
-
-  if (ticketBatchId) {
-    const result = await query(
-      `UPDATE tickets
-       SET payment_status = 'paid',
-           mpesa_receipt = COALESCE($2, mpesa_receipt),
-           checkout_request_id = $3
-       WHERE purchase_batch_id = $1 AND payment_status = 'pending'`,
-      [ticketBatchId, receipt, reference]
-    )
-    updateCount = result.rowCount || 0
-  }
-
-  if (updateCount === 0) {
-    updateCount = await markEntitiesPaidByCheckoutId(reference, receipt)
-  }
-
-  if (updateCount > 0) {
-    sendTicketBatchEmail(reference).catch((error: Error) => {
-      console.error(
-        `Error sending ticket batch email for ${reference}: ${error.message}`
-      )
-    })
-  }
-
-  return updateCount
-}
-
 export async function initiateSTKPush(req: Request, res: Response) {
   try {
     const { phone, amount, orderId, ticketId, ticketBatchId, equipmentHireId } = req.body
-
-    if (ticketId || ticketBatchId) {
-      return res.status(400).json({
-        error: 'Event tickets must be paid via Paystack. Use /payments/paystack/initialize.',
-      })
-    }
 
     if (!phone || !amount) {
       logSTKInitiation(phone || 'N/A', amount || 0, orderId, ticketId, equipmentHireId, null, 'Missing required fields')
@@ -148,19 +118,25 @@ export async function initiateSTKPush(req: Request, res: Response) {
     let accountReference = ''
     if (orderId) {
       accountReference = `ORDER-${orderId}`
+    } else if (ticketBatchId) {
+      accountReference = `TICKET-BATCH-${ticketBatchId}`
+    } else if (ticketId) {
+      accountReference = `TICKET-${ticketId}`
     } else if (equipmentHireId) {
       accountReference = `HIRE-${equipmentHireId}`
     } else {
       logSTKInitiation(phone, amount, orderId, ticketId, equipmentHireId, null, 'No reference provided')
       return res
         .status(400)
-        .json({ error: 'One of orderId or equipmentHireId is required' })
+        .json({
+          error: 'One of orderId, ticketBatchId, ticketId, or equipmentHireId is required',
+        })
     }
 
     const validation = await validatePaymentReference(
       orderId,
-      undefined,
-      undefined,
+      ticketId,
+      ticketBatchId,
       equipmentHireId,
       phone,
       amount
@@ -226,6 +202,16 @@ export async function initiateSTKPush(req: Request, res: Response) {
         'UPDATE orders SET checkout_request_id = $1 WHERE id = $2',
         [checkoutRequestId, orderId]
       )
+    } else if (ticketBatchId) {
+      await query(
+        'UPDATE tickets SET checkout_request_id = $1, payment_provider = $2 WHERE purchase_batch_id = $3',
+        [checkoutRequestId, 'mpesa', ticketBatchId]
+      )
+    } else if (ticketId) {
+      await query(
+        'UPDATE tickets SET checkout_request_id = $1, payment_provider = $2 WHERE id = $3',
+        [checkoutRequestId, 'mpesa', ticketId]
+      )
     } else if (equipmentHireId) {
       await query(
         'UPDATE equipment_hire SET checkout_request_id = $1 WHERE id = $2',
@@ -255,194 +241,6 @@ export async function initiateSTKPush(req: Request, res: Response) {
     }
 
     res.status(500).json({ error: errorMessage })
-  }
-}
-
-export async function initializePaystackPayment(req: Request, res: Response) {
-  try {
-    const { email, amount, ticketBatchId } = req.body
-
-    if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ error: 'A valid email is required' })
-    }
-
-    if (!ticketBatchId) {
-      return res.status(400).json({ error: 'ticketBatchId is required' })
-    }
-
-    const numAmount = Number(amount)
-    if (!amount || isNaN(numAmount) || numAmount <= 0 || numAmount > 999999) {
-      return res.status(400).json({ error: 'Amount must be a number between 1 and 999999' })
-    }
-
-    const ticketsResult = await query(
-      `SELECT t.*, e.price FROM tickets t
-       JOIN events e ON t.event_id = e.id
-       WHERE t.purchase_batch_id = $1`,
-      [ticketBatchId]
-    )
-
-    if (ticketsResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Ticket batch not found' })
-    }
-
-    const batch = ticketsResult.rows
-    const expectedTotal = Math.round(Number(batch[0].price) * batch.length)
-    if (expectedTotal !== Math.round(numAmount)) {
-      return res.status(400).json({ error: 'Amount does not match ticket batch total' })
-    }
-
-    if (batch[0].payment_status === 'paid') {
-      return res.status(400).json({ error: 'This ticket batch has already been paid' })
-    }
-
-    const accountReference = `TICKET-BATCH-${ticketBatchId}`
-    const initData = await initializeTransaction({
-      email: email.trim().toLowerCase(),
-      amountKes: numAmount,
-      metadata: {
-        ticketBatchId,
-        accountReference,
-        custom_fields: [
-          {
-            display_name: 'Ticket Batch',
-            variable_name: 'ticket_batch_id',
-            value: ticketBatchId,
-          },
-        ],
-      },
-    })
-
-    await query(
-      `UPDATE tickets
-       SET checkout_request_id = $1, email = COALESCE(email, $2), payment_provider = 'paystack'
-       WHERE purchase_batch_id = $3`,
-      [initData.reference, email.trim().toLowerCase(), ticketBatchId]
-    )
-
-    res.json({
-      accessCode: initData.access_code,
-      reference: initData.reference,
-      authorizationUrl: initData.authorization_url,
-      publicKey: config.paystack.publicKey,
-    })
-  } catch (error: any) {
-    console.error('Error initializing Paystack payment:', error)
-    logError('PAYSTACK_INIT_EXCEPTION', String(error?.message || error), {
-      ticketBatchId: req.body.ticketBatchId,
-    })
-    const message =
-      error.response?.data?.message ||
-      error.message ||
-      'Failed to initialize Paystack payment'
-    res.status(500).json({ error: message })
-  }
-}
-
-export async function verifyPaystackPayment(req: Request, res: Response) {
-  try {
-    const { reference } = req.params
-
-    if (!reference) {
-      return res.status(400).json({ error: 'reference is required' })
-    }
-
-    const localStatus = await getLocalPaymentStatus(reference)
-    if (localStatus && localStatus.payment_status === 'paid') {
-      return res.json({
-        status: 'success',
-        payment_status: 'paid',
-        reference,
-        receipt: localStatus.mpesa_receipt,
-      })
-    }
-
-    const verified = await verifyTransaction(reference)
-
-    if (verified.status !== 'success') {
-      return res.json({
-        status: verified.status,
-        payment_status: 'pending',
-        reference,
-      })
-    }
-
-    const ticketBatchId =
-      typeof verified.metadata?.ticketBatchId === 'string'
-        ? verified.metadata.ticketBatchId
-        : undefined
-
-    const receipt = verified.reference
-    await fulfillTicketBatchPayment(reference, receipt, ticketBatchId)
-
-    return res.json({
-      status: 'success',
-      payment_status: 'paid',
-      reference,
-      receipt,
-      amount: verified.amount / 100,
-      channel: verified.channel,
-    })
-  } catch (error: any) {
-    console.error('Error verifying Paystack payment:', error)
-    logError('PAYSTACK_VERIFY_EXCEPTION', String(error?.message || error), {
-      reference: req.params.reference,
-    })
-    res.status(500).json({
-      error: error.response?.data?.message || error.message || 'Failed to verify payment',
-    })
-  }
-}
-
-export async function handlePaystackWebhook(req: Request, res: Response) {
-  try {
-    const signature = req.headers['x-paystack-signature'] as string | undefined
-    const rawBody = (req as Request & { rawBody?: Buffer }).rawBody
-
-    if (!rawBody || !verifyWebhookSignature(rawBody, signature)) {
-      return res.status(401).json({ error: 'Invalid Paystack signature' })
-    }
-
-    const event = req.body
-    if (event?.event !== 'charge.success') {
-      return res.sendStatus(200)
-    }
-
-    const data = event.data
-    const reference = data?.reference as string | undefined
-    if (!reference) {
-      return res.sendStatus(200)
-    }
-
-    const existingCallback = await query(
-      'SELECT id FROM payment_callbacks WHERE checkout_request_id = $1',
-      [reference]
-    )
-    if (existingCallback.rows.length > 0) {
-      logDuplicateCallback(reference)
-      return res.sendStatus(200)
-    }
-
-    await query(
-      `INSERT INTO payment_callbacks
-        (checkout_request_id, mpesa_receipt_number, merchant_request_id, response_body, payment_status)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [reference, reference, String(data?.id || ''), JSON.stringify(event), 'paid']
-    )
-
-    const ticketBatchId =
-      typeof data?.metadata?.ticketBatchId === 'string'
-        ? data.metadata.ticketBatchId
-        : undefined
-
-    const updateCount = await fulfillTicketBatchPayment(reference, reference, ticketBatchId)
-    logCallbackProcessing(reference, 'SUCCESS', reference, updateCount, null)
-
-    res.sendStatus(200)
-  } catch (error) {
-    console.error('Error handling Paystack webhook:', error)
-    logError('PAYSTACK_WEBHOOK_ERROR', String(error), { body: req.body })
-    res.status(500).json({ error: 'Failed to process webhook' })
   }
 }
 
@@ -520,21 +318,8 @@ export async function handleCallback(req: Request, res: Response) {
       }
     }
 
-    // Send ticket emails asynchronously (non-blocking) for paid ticket purchases
     if (updateCount > 0) {
-      const paidTickets = await query(
-        `SELECT id FROM tickets
-         WHERE checkout_request_id = $1 AND payment_status = 'paid'
-         LIMIT 1`,
-        [checkoutRequestId]
-      )
-      if (paidTickets.rows.length > 0) {
-        sendTicketBatchEmail(checkoutRequestId).catch((error: Error) => {
-          console.error(
-            `Error sending ticket batch email for ${checkoutRequestId}: ${error.message}`
-          )
-        })
-      }
+      await maybeSendTicketEmail(checkoutRequestId)
     }
 
     logCallbackProcessing(
@@ -576,39 +361,6 @@ export async function queryPaymentStatus(req: Request, res: Response) {
       return res.json(response)
     }
 
-    // Paystack ticket payments: verify against Paystack instead of M-Pesa
-    if (localStatus?.source === 'ticket') {
-      try {
-        const verified = await verifyTransaction(checkoutRequestId)
-        if (verified.status === 'success') {
-          const ticketBatchId =
-            typeof verified.metadata?.ticketBatchId === 'string'
-              ? verified.metadata.ticketBatchId
-              : undefined
-          await fulfillTicketBatchPayment(
-            checkoutRequestId,
-            verified.reference,
-            ticketBatchId
-          )
-          return res.json({
-            ResultCode: 0,
-            payment_status: 'paid',
-            CheckoutRequestID: checkoutRequestId,
-            MpesaReceiptNumber: verified.reference,
-          })
-        }
-      } catch {
-        /* fall through to pending */
-      }
-
-      return res.json({
-        ResultCode: '1032',
-        ResultDesc: 'Payment still pending. Complete checkout in the Paystack window.',
-        payment_status: 'pending',
-        CheckoutRequestID: checkoutRequestId,
-      })
-    }
-
     try {
       const token = await getMPesaToken()
       const statusResponse = await mpesaQueryPaymentStatus(checkoutRequestId, token)
@@ -620,7 +372,7 @@ export async function queryPaymentStatus(req: Request, res: Response) {
           statusResponse.MpesaReceiptNumber ??
           statusResponse.mpesaReceiptNumber ??
           null
-        await markEntitiesPaidByCheckoutId(checkoutRequestId, mpesaReceipt)
+        const updateCount = await markEntitiesPaidByCheckoutId(checkoutRequestId, mpesaReceipt)
         const paidOrders = await query(
           `SELECT id FROM orders
            WHERE checkout_request_id = $1 AND payment_status = 'paid'`,
@@ -628,6 +380,10 @@ export async function queryPaymentStatus(req: Request, res: Response) {
         )
         for (const order of paidOrders.rows) {
           await decrementOrderStock(order.id)
+        }
+
+        if (updateCount > 0) {
+          await maybeSendTicketEmail(checkoutRequestId)
         }
 
         return res.json({
@@ -727,4 +483,3 @@ export async function getPaymentHistory(req: Request, res: Response) {
     res.status(500).json({ error: 'Failed to fetch payment history' })
   }
 }
-

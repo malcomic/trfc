@@ -29,10 +29,10 @@ describe('ticket batch email templates', () => {
     pricePerTicket: 500,
     quantity: 2,
     totalPaid: 1000,
-    paymentReference: 'paystack_ref_abc',
+    paymentReference: 'ws_CO_mpesa_ref_abc',
     tickets: [{ ticketId: 't-1' }, { ticketId: 't-2' }],
     confirmationUrl:
-      'https://example.com/ticket-confirmation/paystack_ref_abc?email=buyer%40example.com',
+      'https://example.com/ticket-confirmation/ws_CO_mpesa_ref_abc?email=buyer%40example.com',
   }
 
   it('includes purchase summary fields in HTML', () => {
@@ -41,7 +41,7 @@ describe('ticket batch email templates', () => {
     expect(html).toContain('Saturday Run')
     expect(html).toContain('Thika Road')
     expect(html).toContain('KES 1,000')
-    expect(html).toContain('paystack_ref_abc')
+    expect(html).toContain('ws_CO_mpesa_ref_abc')
     expect(html).toContain('t-1')
     expect(html).toContain('t-2')
     expect(html).toContain(baseData.confirmationUrl)
@@ -55,7 +55,7 @@ describe('ticket batch email templates', () => {
     expect(text).toContain("You're confirmed")
     expect(text).toContain('Saturday Run')
     expect(text).toContain('Total paid: KES 1,000')
-    expect(text).toContain('paystack_ref_abc')
+    expect(text).toContain('ws_CO_mpesa_ref_abc')
     expect(text).toContain(baseData.confirmationUrl)
     expect(text).toContain('support@example.com')
   })
