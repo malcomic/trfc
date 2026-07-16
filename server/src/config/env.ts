@@ -16,7 +16,17 @@ export const config = {
   mpesa: {
     consumerKey: process.env.MPESA_CONSUMER_KEY || '',
     consumerSecret: process.env.MPESA_CONSUMER_SECRET || '',
+    // BusinessShortCode: Paybill number, or Head Office (store) number for Buy Goods
     shortcode: process.env.MPESA_SHORTCODE || '',
+    // PartyB for Buy Goods STK: the operating till number (defaults to shortcode)
+    tillNumber: process.env.MPESA_TILL_NUMBER || '',
+    // 'CustomerPayBillOnline' (paybill) or 'CustomerBuyGoodsOnline' (till).
+    // Accepts shorthand values: till / buygoods / paybill
+    transactionType: ['customerbuygoodsonline', 'buygoods', 'buy_goods', 'till'].includes(
+      (process.env.MPESA_TRANSACTION_TYPE || '').trim().toLowerCase()
+    )
+      ? 'CustomerBuyGoodsOnline'
+      : 'CustomerPayBillOnline',
     passkey: process.env.MPESA_PASSKEY || '',
     callbackUrl: process.env.MPESA_CALLBACK_URL || '',
     // Normalize so 'Live', 'live', 'prod', 'PRODUCTION' etc. all count as production

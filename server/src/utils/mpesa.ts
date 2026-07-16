@@ -97,16 +97,23 @@ export async function initiateStkPush(
     const password = generatePassword(timestamp)
     const urls = getUrls()
 
+    // Buy Goods (till) STK: BusinessShortCode is the Head Office/store number,
+    // PartyB is the operating till number. Paybill uses the shortcode for both.
+    const partyB =
+      config.mpesa.transactionType === 'CustomerBuyGoodsOnline' && config.mpesa.tillNumber
+        ? config.mpesa.tillNumber
+        : config.mpesa.shortcode
+
     const response = await axios.post(
       urls.stkPush,
       {
         BusinessShortCode: config.mpesa.shortcode,
         Password: password,
         Timestamp: timestamp,
-        TransactionType: 'CustomerPayBillOnline',
+        TransactionType: config.mpesa.transactionType,
         Amount: amount,
         PartyA: phoneNumber,
-        PartyB: config.mpesa.shortcode,
+        PartyB: partyB,
         PhoneNumber: phoneNumber,
         CallBackURL: config.mpesa.callbackUrl,
         AccountReference: accountReference,

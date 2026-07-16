@@ -18,26 +18,26 @@ const validateCallbackFields = (callback: any): { valid: boolean; errors: string
   const errors: string[] = []
 
   // Required fields
-  if (!callback.Body?.stkCallback?.CheckoutRequestID) {
+  if (!callback?.Body?.stkCallback?.CheckoutRequestID) {
     errors.push('Missing CheckoutRequestID')
   }
-  if (!callback.Body?.stkCallback?.MerchantRequestID) {
+  if (!callback?.Body?.stkCallback?.MerchantRequestID) {
     errors.push('Missing MerchantRequestID')
   }
-  if (callback.Body?.stkCallback?.ResultCode === undefined) {
+  if (callback?.Body?.stkCallback?.ResultCode === undefined) {
     errors.push('Missing ResultCode')
   }
 
   // Validate result code format
   if (
-    callback.Body?.stkCallback?.ResultCode !== undefined &&
+    callback?.Body?.stkCallback?.ResultCode !== undefined &&
     ![0, 1, -1].includes(callback.Body.stkCallback.ResultCode)
   ) {
     errors.push('Invalid ResultCode format')
   }
 
   // If successful, check metadata
-  if (callback.Body?.stkCallback?.ResultCode === 0) {
+  if (callback?.Body?.stkCallback?.ResultCode === 0) {
     const items = callback.Body.stkCallback.CallbackMetadata?.Item || []
     const itemNames = items.map((item: any) => item.Name)
 
