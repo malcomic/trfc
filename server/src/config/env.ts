@@ -19,7 +19,12 @@ export const config = {
     shortcode: process.env.MPESA_SHORTCODE || '',
     passkey: process.env.MPESA_PASSKEY || '',
     callbackUrl: process.env.MPESA_CALLBACK_URL || '',
-    env: process.env.MPESA_ENV || 'sandbox',
+    // Normalize so 'Live', 'live', 'prod', 'PRODUCTION' etc. all count as production
+    env: ['production', 'live', 'prod'].includes(
+      (process.env.MPESA_ENV || 'sandbox').trim().toLowerCase()
+    )
+      ? 'production'
+      : 'sandbox',
   },
   email: {
     user: process.env.EMAIL_USER || '',
