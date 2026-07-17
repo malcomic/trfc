@@ -3,31 +3,27 @@ import QRCode from 'qrcode'
 interface QRCodeData {
   ticketId: string
   eventId: string
-  userId: string
+  userId?: string | null
+}
+
+function encodePayload(data: QRCodeData): string {
+  const parts = [data.ticketId, data.eventId]
+  if (data.userId) {
+    parts.push(data.userId)
+  }
+  return parts.join(':')
 }
 
 /**
- * Generate QR code as base64 string
- * QR code encodes: ticketId:eventId:userId for entry verification
- * @param data QR code data (ticketId, eventId, userId)
- * @returns Base64 encoded QR code image
+ * Generate QR code as base64 string (raw base64, no data-URL prefix)
  */
 export async function generateQRCodeBase64(data: QRCodeData): Promise<string> {
   try {
-    const qrData = `${data.ticketId}:${data.eventId}:${data.userId}`
-
-    const qrCodeDataUrl = await QRCode.toDataURL(qrData, {
+    const qrCodeDataUrl = await QRCode.toDataURL(encodePayload(data), {
       width: 300,
       margin: 1,
     })
-
-    // Extract base64 from data URL (remove the "data:image/png;base64," prefix)
     const base64 = qrCodeDataUrl.split(',')[1]
-
-    console.log(
-      `✅ QR code generated for ticket ${data.ticketId}`
-    )
-
     return base64
   } catch (error: any) {
     console.error('❌ Error generating QR code:', error.message)
@@ -36,24 +32,30 @@ export async function generateQRCodeBase64(data: QRCodeData): Promise<string> {
 }
 
 /**
+ * Generate QR code as a full data URL (for browser display)
+ */
+export async function generateQRCodeDataUrl(data: QRCodeData): Promise<string> {
+  try {
+    return await QRCode.toDataURL(encodePayload(data), {
+      width: 300,
+      margin: 1,
+    })
+  } catch (error: any) {
+    console.error('❌ Error generating QR code data URL:', error.message)
+    throw new Error(`QR code generation failed: ${error.message}`)
+  }
+}
+
+/**
  * Generate QR code as PNG buffer (for PDF embedding)
- * @param data QR code data (ticketId, eventId, userId)
- * @returns PNG buffer
  */
 export async function generateQRCodeBuffer(data: QRCodeData): Promise<Buffer> {
   try {
-    const qrData = `${data.ticketId}:${data.eventId}:${data.userId}`
-
-    const qrCodeBuffer = await QRCode.toBuffer(qrData, {
+    const qrCodeBuffer = await QRCode.toBuffer(encodePayload(data), {
       type: 'png',
       width: 300,
       margin: 1,
     })
-
-    console.log(
-      `✅ QR code buffer generated for ticket ${data.ticketId}`
-    )
-
     return qrCodeBuffer as Buffer
   } catch (error: any) {
     console.error('❌ Error generating QR code buffer:', error.message)
@@ -61,15 +63,18 @@ export async function generateQRCodeBuffer(data: QRCodeData): Promise<Buffer> {
   }
 }
 
-/**
- * Verify QR code data format
- */
 export function verifyQRCodeData(data: QRCodeData): boolean {
-  return !!(data.ticketId && data.eventId && data.userId)
+  return !!(data.ticketId && data.eventId)
+}
+
+export function shortTicketCode(ticketId: string): string {
+  return ticketId.replace(/-/g, '').slice(0, 8).toUpperCase()
 }
 
 export default {
   generateQRCodeBase64,
+  generateQRCodeDataUrl,
   generateQRCodeBuffer,
   verifyQRCodeData,
+  shortTicketCode,
 }

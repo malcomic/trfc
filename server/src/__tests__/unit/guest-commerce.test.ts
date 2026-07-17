@@ -83,7 +83,12 @@ describe('guest commerce', () => {
     const req = {
       params: { eventId: 'ev-1' },
       user: undefined,
-      body: { quantity: 1, email: 'guest@example.com', phone: '254712345678' },
+      body: {
+        quantity: 1,
+        email: 'guest@example.com',
+        phone: '254712345678',
+        attendeeName: 'Guest Runner',
+      },
     } as any
     const res = { json: vi.fn(), status: vi.fn().mockReturnThis() } as any
 
@@ -91,7 +96,16 @@ describe('guest commerce', () => {
 
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO tickets'),
-      [null, 'ev-1', expect.any(String), '254712345678', 'guest@example.com', 'mpesa', 'pending']
+      [
+        null,
+        'ev-1',
+        expect.any(String),
+        '254712345678',
+        'guest@example.com',
+        'Guest Runner',
+        'mpesa',
+        'pending',
+      ]
     )
     expect(res.status).toHaveBeenCalledWith(201)
     expect(res.json).toHaveBeenCalledWith(
@@ -99,6 +113,7 @@ describe('guest commerce', () => {
         ticketIds: ['ticket-1'],
         eventTitle: 'Run',
         totalPrice: 500,
+        attendeeName: 'Guest Runner',
       })
     )
   })

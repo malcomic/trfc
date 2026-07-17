@@ -28,7 +28,7 @@ export const deleteEvent = async (id: string) => {
 
 export const buyEventTickets = async (
   eventId: string,
-  data: { quantity: number; email: string; phone: string }
+  data: { quantity: number; email: string; phone: string; attendeeName: string }
 ) => {
   const response = await api.post(`/events/${eventId}/tickets`, data);
   return response.data as {
@@ -39,8 +39,33 @@ export const buyEventTickets = async (
     eventDate: string;
     pricePerTicket: number;
     totalPrice: number;
+    attendeeName: string;
   };
 };
+
+export interface ConfirmationTicket {
+  id: string;
+  short_code: string;
+  attendee_name: string;
+  payment_status: string;
+  qr_data_url: string | null;
+}
+
+export interface TicketConfirmationDetails {
+  event_title: string;
+  event_date: string;
+  location: string | null;
+  unit_price: number;
+  quantity: number;
+  total_price: number;
+  payment_status: string;
+  phone: string | null;
+  email: string | null;
+  attendee_name: string;
+  mpesa_receipt: string | null;
+  checkout_request_id: string;
+  tickets: ConfirmationTicket[];
+}
 
 export const getUserTickets = async () => {
   const response = await api.get('/events/tickets/list/user');
@@ -57,14 +82,5 @@ export const getTicketsByCheckoutRequestId = async (
       ...(options.phone ? { phone: options.phone } : {}),
     },
   });
-  return response.data as {
-    event_title: string;
-    event_date: string;
-    quantity: number;
-    total_price: number;
-    payment_status: string;
-    phone: string | null;
-    email: string | null;
-    checkout_request_id: string;
-  };
+  return response.data as TicketConfirmationDetails;
 };

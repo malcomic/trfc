@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS tickets (
   purchase_batch_id UUID,
   phone VARCHAR(20),
   email VARCHAR(150),
+  attendee_name VARCHAR(150),
   payment_provider VARCHAR(20),
   payment_status VARCHAR(20) DEFAULT 'pending',
   mpesa_receipt VARCHAR(100),

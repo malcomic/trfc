@@ -7,13 +7,20 @@ import {
   buildTicketEmailHTML,
   buildTicketEmailText,
 } from './emailTemplates.js'
-import { generateQRCodeBase64, generateQRCodeBuffer } from './qrCodeGenerator.js'
+import {
+  generateQRCodeBase64,
+  generateQRCodeBuffer,
+  shortTicketCode,
+} from './qrCodeGenerator.js'
 import { generateTicketPDF } from './ticketPDFGenerator.js'
 
-function displayName(userName: string | null | undefined, email: string): string {
-  if (userName && userName.trim() && userName !== 'Guest') {
-    return userName.trim()
-  }
+function displayName(
+  attendeeName: string | null | undefined,
+  userName: string | null | undefined,
+  email: string
+): string {
+  if (attendeeName && attendeeName.trim()) return attendeeName.trim()
+  if (userName && userName.trim() && userName !== 'Guest') return userName.trim()
   const local = email.split('@')[0]
   return local || 'there'
 }
@@ -26,7 +33,7 @@ export async function sendTicketBatchEmail(reference: string): Promise<void> {
     const result = await query(
       `SELECT
         t.id, t.user_id, t.event_id, t.phone, t.email as ticket_email,
-        t.checkout_request_id,
+        t.attendee_name, t.mpesa_receipt, t.checkout_request_id,
         COALESCE(u.email, t.email) as email,
         COALESCE(NULLIF(TRIM(u.name), ''), NULL) as user_name,
         e.title as event_title, e.event_date, e.location, e.price
@@ -50,13 +57,14 @@ export async function sendTicketBatchEmail(reference: string): Promise<void> {
       return
     }
 
-    const userName = displayName(rows[0].user_name, email)
+    const userName = displayName(rows[0].attendee_name, rows[0].user_name, email)
     const eventTitle = rows[0].event_title as string
     const eventDate = rows[0].event_date as string
     const eventLocation = rows[0].location as string
     const pricePerTicket = parseFloat(rows[0].price)
     const quantity = rows.length
     const totalPaid = Math.round(pricePerTicket * quantity)
+    const mpesaReceipt = (rows[0].mpesa_receipt as string) || null
 
     const attachments: Array<{
       filename: string
@@ -65,6 +73,7 @@ export async function sendTicketBatchEmail(reference: string): Promise<void> {
     }> = []
 
     for (const ticket of rows) {
+      const ticketName = displayName(ticket.attendee_name, ticket.user_name, email)
       const qrCodeBuffer = await generateQRCodeBuffer({
         ticketId: ticket.id,
         eventId: ticket.event_id,
@@ -73,17 +82,21 @@ export async function sendTicketBatchEmail(reference: string): Promise<void> {
 
       const pdfBuffer = await generateTicketPDF({
         ticketId: ticket.id,
+        shortCode: shortTicketCode(ticket.id),
         eventTitle,
         eventDate,
         eventLocation,
         eventPrice: pricePerTicket,
-        userName,
+        userName: ticketName,
         userPhone: ticket.phone,
+        mpesaReceipt: ticket.mpesa_receipt || mpesaReceipt,
+        supportEmail: config.contact.email,
+        supportPhone: config.contact.phone,
         qrCodeBuffer,
       })
 
       attachments.push({
-        filename: `ticket-${ticket.id}.pdf`,
+        filename: `ticket-${shortTicketCode(ticket.id)}.pdf`,
         content: pdfBuffer,
         contentType: 'application/pdf',
       })
@@ -142,7 +155,7 @@ export async function sendTicketEmail(ticketId: string): Promise<void> {
     const ticketResult = await query(
       `SELECT
         t.id, t.user_id, t.event_id, t.phone, t.email as ticket_email,
-        t.checkout_request_id,
+        t.attendee_name, t.mpesa_receipt, t.checkout_request_id,
         COALESCE(u.email, t.email) as email,
         COALESCE(NULLIF(TRIM(u.name), ''), NULL) as user_name,
         e.title as event_title, e.event_date, e.location, e.price
@@ -164,7 +177,7 @@ export async function sendTicketEmail(ticketId: string): Promise<void> {
       return
     }
 
-    const userName = displayName(ticket.user_name, ticket.email)
+    const userName = displayName(ticket.attendee_name, ticket.user_name, ticket.email)
     const reference = (ticket.checkout_request_id as string) || ticket.id
 
     const qrCodeBase64 = await generateQRCodeBase64({
@@ -181,12 +194,16 @@ export async function sendTicketEmail(ticketId: string): Promise<void> {
 
     const pdfBuffer = await generateTicketPDF({
       ticketId: ticket.id,
+      shortCode: shortTicketCode(ticket.id),
       eventTitle: ticket.event_title,
       eventDate: ticket.event_date,
       eventLocation: ticket.location,
       eventPrice: parseFloat(ticket.price),
       userName,
       userPhone: ticket.phone,
+      mpesaReceipt: ticket.mpesa_receipt,
+      supportEmail: config.contact.email,
+      supportPhone: config.contact.phone,
       qrCodeBuffer,
     })
 
@@ -209,7 +226,7 @@ export async function sendTicketEmail(ticketId: string): Promise<void> {
       text: buildTicketEmailText(templateData),
       attachments: [
         {
-          filename: `ticket-${ticket.id}.pdf`,
+          filename: `ticket-${shortTicketCode(ticket.id)}.pdf`,
           content: pdfBuffer,
           contentType: 'application/pdf',
         },

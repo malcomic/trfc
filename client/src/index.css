@@ -68,3 +68,27 @@ html {
     clip-path: polygon(0 0, 100% 0, 100% 100%, 0 30%);
   }
 }
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  nav,
+  footer,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  .ticket-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    border: 1px solid #111 !important;
+    margin-bottom: 1rem;
+  }
+
+  .ticket-actions {
+    display: none !important;
+  }
+}

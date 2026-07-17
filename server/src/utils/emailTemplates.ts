@@ -129,6 +129,7 @@ export function buildTicketBatchEmailHTML(data: TicketBatchEmailData): string {
       <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#374151;">
         Your ticket purchase was successful. Your entry QR codes are in the PDF attachment${data.quantity > 1 ? 's' : ''} —
         open ${data.quantity > 1 ? 'them' : 'it'} on your phone (or print) for event entry.
+        You can also view, download, and print your tickets anytime from the confirmation page below.
       </p>
 
       <div style="background:#f9fafb;border-left:4px solid #f59e0b;padding:16px;margin:0 0 20px;border-radius:4px;">
@@ -171,11 +172,11 @@ export function buildTicketBatchEmailHTML(data: TicketBatchEmailData): string {
       <p style="text-align:center;margin:0 0 8px;">
         <a href="${escapeHtml(data.confirmationUrl)}"
            style="display:inline-block;background:#f59e0b;color:#111827;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:700;font-size:14px;">
-          View confirmation
+          View your tickets
         </a>
       </p>
       <p style="text-align:center;font-size:12px;color:#6b7280;margin:0 0 16px;">
-        You can reopen this page anytime with your payment reference and email.
+        Reopen this page anytime with your payment reference and the email used at checkout.
       </p>
     </div>
 
@@ -214,6 +215,7 @@ Thika Road Fitness Community
 Hi ${greetingName},
 
 Your ticket purchase was successful. Open the attached PDF ticket(s) for your entry QR code(s).
+You can also view, download, and print your tickets from the confirmation page.
 
 PURCHASE SUMMARY
 Event: ${data.eventTitle}
@@ -235,7 +237,7 @@ WHAT TO BRING
 SEE YOU THERE
 ${data.eventTitle} — ${formattedDate} at ${formattedTime}, ${data.eventLocation}
 
-View confirmation: ${data.confirmationUrl}
+View your tickets: ${data.confirmationUrl}
 
 Support: ${config.contact.email} | ${config.contact.phone}
 Website: ${config.frontendUrl}

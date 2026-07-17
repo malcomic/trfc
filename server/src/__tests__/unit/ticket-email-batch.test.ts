@@ -18,6 +18,7 @@ vi.mock('../../utils/emailService.js', () => ({
 vi.mock('../../utils/qrCodeGenerator.js', () => ({
   generateQRCodeBase64: vi.fn().mockResolvedValue('base64'),
   generateQRCodeBuffer: vi.fn().mockResolvedValue(Buffer.from('qr')),
+  shortTicketCode: (id: string) => id.replace(/-/g, '').slice(0, 8).toUpperCase(),
 }))
 
 vi.mock('../../utils/ticketPDFGenerator.js', () => ({
@@ -43,6 +44,8 @@ describe('sendTicketBatchEmail', () => {
           event_id: 'e-1',
           phone: null,
           email: 'buyer@example.com',
+          attendee_name: 'Alex Buyer',
+          mpesa_receipt: 'ABC123',
           checkout_request_id: 'ref-1',
           user_name: null,
           event_title: 'Run Club',
@@ -56,6 +59,8 @@ describe('sendTicketBatchEmail', () => {
           event_id: 'e-1',
           phone: null,
           email: 'buyer@example.com',
+          attendee_name: 'Alex Buyer',
+          mpesa_receipt: 'ABC123',
           checkout_request_id: 'ref-1',
           user_name: null,
           event_title: 'Run Club',
@@ -69,15 +74,22 @@ describe('sendTicketBatchEmail', () => {
     await sendTicketBatchEmail('ref-1')
 
     expect(generateTicketPDF).toHaveBeenCalledTimes(2)
+    expect(generateTicketPDF).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userName: 'Alex Buyer',
+        shortCode: 'T1',
+        mpesaReceipt: 'ABC123',
+      })
+    )
     expect(sendEmail).toHaveBeenCalledTimes(1)
     expect(sendEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         to: 'buyer@example.com',
         subject: 'Your TRFC tickets — Run Club',
-        text: expect.stringContaining('Run Club'),
+        text: expect.stringContaining('Alex Buyer'),
         attachments: [
-          expect.objectContaining({ filename: 'ticket-t-1.pdf' }),
-          expect.objectContaining({ filename: 'ticket-t-2.pdf' }),
+          expect.objectContaining({ filename: 'ticket-T1.pdf' }),
+          expect.objectContaining({ filename: 'ticket-T2.pdf' }),
         ],
       })
     )

@@ -6,6 +6,7 @@ import { initiateTicketPayment } from '../api/payments'
 import PaymentStatusModal from '../components/PaymentStatusModal'
 import { AlertCircle, Loader, ArrowLeft } from 'lucide-react'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
+import { useAuth } from '../context/AuthContext'
 
 interface Event {
   id: string
@@ -19,6 +20,7 @@ interface Event {
 
 type CheckoutForm = {
   quantity: number
+  attendeeName: string
   email: string
   phone: string
 }
@@ -27,10 +29,16 @@ export default function EventCheckout() {
   const { eventId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
+  const { user } = useAuth()
   const initialQty = (location.state as { quantity?: number })?.quantity || 1
 
-  const { register, handleSubmit, formState: { errors }, watch } = useForm<CheckoutForm>({
-    defaultValues: { quantity: initialQty, email: '', phone: '' },
+  const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<CheckoutForm>({
+    defaultValues: {
+      quantity: initialQty,
+      attendeeName: '',
+      email: '',
+      phone: '',
+    },
   })
 
   const [event, setEvent] = useState<Event | null>(null)
@@ -49,6 +57,12 @@ export default function EventCheckout() {
 
   const quantity = watch('quantity')
   const totalPrice = event ? Number(event.price) * Number(quantity) : 0
+
+  useEffect(() => {
+    if (user?.name) setValue('attendeeName', user.name)
+    if (user?.email) setValue('email', user.email)
+    if (user?.phone && /^254\d{9}$/.test(user.phone)) setValue('phone', user.phone)
+  }, [user, setValue])
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -74,6 +88,7 @@ export default function EventCheckout() {
       setSubmitting(true)
       setError('')
       const normalizedEmail = data.email.trim().toLowerCase()
+      const normalizedName = data.attendeeName.trim()
       setPhone(data.phone)
       setEmail(normalizedEmail)
 
@@ -81,6 +96,7 @@ export default function EventCheckout() {
         quantity: Number(data.quantity),
         email: normalizedEmail,
         phone: data.phone,
+        attendeeName: normalizedName,
       })
 
       const paymentResponse = await initiateTicketPayment({
@@ -172,6 +188,24 @@ export default function EventCheckout() {
                 <option key={n} value={n}>{n} {n === 1 ? 'Ticket' : 'Tickets'}</option>
               ))}
             </select>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold mb-2">Full name</label>
+            <input
+              type="text"
+              {...register('attendeeName', {
+                required: 'Name is required',
+                minLength: { value: 2, message: 'Enter your full name' },
+                maxLength: { value: 150, message: 'Name is too long' },
+              })}
+              placeholder="Jane Wanjiku"
+              className={`w-full px-4 py-2 ${inputField}`}
+              autoComplete="name"
+            />
+            {errors.attendeeName && (
+              <p className="text-red-400 text-sm mt-1">{errors.attendeeName.message}</p>
+            )}
+            <p className="text-xs text-fog light:text-fog-light mt-1">Shown on your ticket at entry.</p>
           </div>
           <div>
             <label className="block text-sm font-semibold mb-2">Email</label>

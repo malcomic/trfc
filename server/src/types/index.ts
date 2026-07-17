@@ -22,10 +22,16 @@ export interface Event {
 
 export interface Ticket {
   id: string;
-  user_id: string;
-  event_id: string;
+  user_id: string | null;
+  event_id: string | null;
+  purchase_batch_id?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  attendee_name?: string | null;
+  payment_provider?: string | null;
   payment_status: 'pending' | 'paid' | 'failed';
-  mpesa_receipt?: string;
+  mpesa_receipt?: string | null;
+  checkout_request_id?: string | null;
   created_at: Date;
 }
 

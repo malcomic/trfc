@@ -2,9 +2,11 @@ import api from './index'
 
 export interface Ticket {
   id: string
-  user_id: string
+  user_id: string | null
   event_id: string
-  phone: string
+  phone?: string | null
+  email?: string | null
+  attendee_name?: string | null
   payment_status: 'pending' | 'paid' | 'failed'
   mpesa_receipt: string | null
   checkout_request_id: string | null
@@ -62,26 +64,30 @@ export async function updateTicketPaymentStatus(
 
 /**
  * Download ticket as PDF
- * Triggers a browser download of the PDF file
+ * Authenticated owners, or guests verifying with checkout email/phone.
  */
-export async function downloadTicket(ticketId: string): Promise<void> {
+export async function downloadTicket(
+  ticketId: string,
+  verify?: { email?: string; phone?: string }
+): Promise<void> {
   try {
     const response = await api.get(`/events/tickets/${ticketId}/download`, {
       responseType: 'blob',
+      params: {
+        ...(verify?.email ? { email: verify.email } : {}),
+        ...(verify?.phone ? { phone: verify.phone } : {}),
+      },
     })
 
-    // Create a blob URL and trigger download
     const blob = new Blob([response.data], { type: 'application/pdf' })
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `ticket-${ticketId}.pdf`
+    link.download = `ticket-${ticketId.replace(/-/g, '').slice(0, 8).toUpperCase()}.pdf`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
-
-    console.log(`✅ Ticket downloaded: ticket-${ticketId}.pdf`)
   } catch (error: any) {
     console.error('❌ Error downloading ticket:', error)
     throw error
