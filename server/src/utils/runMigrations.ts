@@ -103,6 +103,12 @@ const MIGRATIONS: { name: string; sql: string }[] = [
         AND payment_status = 'pending';
     `,
   },
+  {
+    name: '009_ticket_attendee_name',
+    sql: `
+      ALTER TABLE tickets ADD COLUMN IF NOT EXISTS attendee_name VARCHAR(150);
+    `,
+  },
 ]
 
 export async function runMigrations() {
