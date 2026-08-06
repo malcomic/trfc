@@ -18,6 +18,7 @@ export default function Footer() {
     const quickLinks = [
         { to: '/about', label: 'About' },
         { to: '/events', label: 'Events' },
+        { to: '/medals', label: 'Medals' },
         { to: '/programs', label: 'Programs' },
         { to: '/partnerships', label: 'Partnerships' },
         { to: '/equipment', label: 'Equipment' },
@@ -33,6 +34,7 @@ export default function Footer() {
         { to: '/admin/analytics', label: 'Analytics' },
         { to: '/admin/reports', label: 'Reports' },
         { to: '/admin/events', label: 'Events' },
+        { to: '/admin/medals', label: 'Medals' },
         { to: '/admin/products', label: 'Products' },
         { to: '/admin/gallery', label: 'Gallery' },
         { to: '/admin/orders', label: 'Orders' },

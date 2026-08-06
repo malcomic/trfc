@@ -24,6 +24,7 @@ import analyticsRoutes from './routes/analytics.js';
 import adminRoutes from './routes/admin.js';
 import settingsRoutes from './routes/settings.js';
 import uploadRoutes from './routes/upload.js';
+import medalsRoutes from './routes/medals.js';
 
 dotenv.config();
 
@@ -44,6 +45,7 @@ app.get('/api/health', (req: Request, res: Response) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/events', eventsRoutes);
+app.use('/api/medals', medalsRoutes);
 app.use('/api/products', productsRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/payments', paymentsRoutes);

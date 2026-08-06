@@ -64,6 +64,8 @@ export default function PaymentHistory() {
         return 'Event Ticket'
       case 'equipment_hire':
         return 'Equipment Hire'
+      case 'medal':
+        return 'Medal Challenge'
       default:
         return type
     }
@@ -136,6 +138,7 @@ export default function PaymentHistory() {
                 <option value="all">All Types</option>
                 <option value="order">Product Orders</option>
                 <option value="ticket">Event Tickets</option>
+                <option value="medal">Medal Challenges</option>
                 <option value="equipment_hire">Equipment Hire</option>
               </select>
             </div>

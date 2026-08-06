@@ -36,6 +36,7 @@ export default function Navbar() {
         { to: '/', label: 'Home' },
         { to: '/about', label: 'About' },
         { to: '/events', label: 'Events' },
+        { to: '/medals', label: 'Medals' },
         { to: '/programs', label: 'Programs' },
         { to: '/partnerships', label: 'Partnerships' },
         { to: '/equipment', label: 'Equipment' },

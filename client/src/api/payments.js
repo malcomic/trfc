@@ -43,6 +43,12 @@ export async function getPaymentHistory() {
     const response = await api.get('/payments/history');
     return response.data;
 }
+export async function initiateMedalPayment(data) {
+    return initiateSTKPush({
+        ...data,
+        medalBatchId: data.medalBatchId,
+    });
+}
 export async function initiateEquipmentPayment(data) {
     return initiateSTKPush({
         ...data,

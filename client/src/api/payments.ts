@@ -7,6 +7,7 @@ export interface PaymentInitiateRequest {
   ticketId?: string
   ticketBatchId?: string
   equipmentHireId?: string
+  medalBatchId?: string
 }
 
 export interface PaymentInitiateResponse {
@@ -18,7 +19,7 @@ export interface PaymentInitiateResponse {
 
 export interface PaymentHistoryItem {
   id: string
-  type: 'order' | 'ticket' | 'equipment_hire'
+  type: 'order' | 'ticket' | 'equipment_hire' | 'medal'
   amount: number | null
   payment_status: string
   mpesa_receipt: string | null
@@ -91,6 +92,17 @@ export async function pollPaymentStatus(
 export async function getPaymentHistory(): Promise<PaymentHistoryItem[]> {
   const response = await api.get<PaymentHistoryItem[]>('/payments/history')
   return response.data
+}
+
+export async function initiateMedalPayment(data: {
+  phone: string
+  amount: number
+  medalBatchId: string
+}) {
+  return initiateSTKPush({
+    ...data,
+    medalBatchId: data.medalBatchId,
+  })
 }
 
 export async function initiateEquipmentPayment(data: {

@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom'
-import { CreditCard, Ticket, User, ArrowRight } from 'lucide-react'
+import { CreditCard, Ticket, Award, User, ArrowRight } from 'lucide-react'
 import { pageRoot, cardSurface } from '../utils/themeClasses'
 
 export default function Account() {
   const links = [
-    { to: '/account/payments', label: 'Payment History', desc: 'View orders, tickets, and hire payments', icon: CreditCard },
+    { to: '/account/payments', label: 'Payment History', desc: 'View orders, tickets, medals, and hire payments', icon: CreditCard },
     { to: '/account/tickets', label: 'My Tickets', desc: 'Your event tickets and registration status', icon: Ticket },
+    { to: '/account/medals', label: 'My Medals', desc: 'Your challenge medal purchases', icon: Award },
   ]
 
   return (

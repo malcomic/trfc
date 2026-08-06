@@ -7,13 +7,20 @@ import { initiateTicketPayment } from '../api/payments';
 import PaymentStatusModal from '../components/PaymentStatusModal';
 import { AlertCircle, Loader, ArrowLeft } from 'lucide-react';
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses';
+import { useAuth } from '../context/AuthContext';
 export default function EventCheckout() {
     const { eventId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
+    const { user } = useAuth();
     const initialQty = location.state?.quantity || 1;
-    const { register, handleSubmit, formState: { errors }, watch } = useForm({
-        defaultValues: { quantity: initialQty, email: '', phone: '' },
+    const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm({
+        defaultValues: {
+            quantity: initialQty,
+            attendeeName: '',
+            email: '',
+            phone: '',
+        },
     });
     const [event, setEvent] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -26,6 +33,14 @@ export default function EventCheckout() {
     const [ticketMeta, setTicketMeta] = useState(null);
     const quantity = watch('quantity');
     const totalPrice = event ? Number(event.price) * Number(quantity) : 0;
+    useEffect(() => {
+        if (user?.name)
+            setValue('attendeeName', user.name);
+        if (user?.email)
+            setValue('email', user.email);
+        if (user?.phone && /^254\d{9}$/.test(user.phone))
+            setValue('phone', user.phone);
+    }, [user, setValue]);
     useEffect(() => {
         const fetchEvent = async () => {
             try {
@@ -51,12 +66,14 @@ export default function EventCheckout() {
             setSubmitting(true);
             setError('');
             const normalizedEmail = data.email.trim().toLowerCase();
+            const normalizedName = data.attendeeName.trim();
             setPhone(data.phone);
             setEmail(normalizedEmail);
             const ticketResult = await buyEventTickets(eventId, {
                 quantity: Number(data.quantity),
                 email: normalizedEmail,
                 phone: data.phone,
+                attendeeName: normalizedName,
             });
             const paymentResponse = await initiateTicketPayment({
                 phone: data.phone,
@@ -105,7 +122,11 @@ export default function EventCheckout() {
     }
     if (!event)
         return null;
-    return (_jsxs("div", { className: pageRoot, children: [_jsx("section", { className: "bg-ink light:bg-ink-light border-b border-white/5 light:border-black/8 px-[6%] pt-14 pb-8", children: _jsxs("div", { className: "max-w-2xl mx-auto", children: [_jsxs("button", { onClick: () => navigate(`/events/${eventId}`), className: "inline-flex items-center gap-2 text-accent light:text-accent-light text-sm mb-4 bg-transparent border-0 cursor-pointer hover:underline", children: [_jsx(ArrowLeft, { size: 14 }), " Back to Event"] }), _jsxs("h1", { className: "font-bebas text-4xl text-chalk light:text-chalk-light", children: ["BUY ", _jsx("span", { className: "text-accent light:text-accent-light", children: "TICKETS" })] }), _jsx("p", { className: "text-fog light:text-fog-light mt-1", children: event.title })] }) }), _jsxs("div", { className: "max-w-2xl mx-auto px-[6%] py-10 pb-20 grid grid-cols-1 md:grid-cols-3 gap-6", children: [_jsxs("form", { onSubmit: handleSubmit(onSubmit), className: `md:col-span-2 ${cardSurface} p-6 space-y-4`, children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-semibold mb-2", children: "Number of Tickets" }), _jsx("select", { ...register('quantity', { required: true, min: 1, max: 10, valueAsNumber: true }), className: `w-full px-4 py-2 ${inputField}`, children: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (_jsxs("option", { value: n, children: [n, " ", n === 1 ? 'Ticket' : 'Tickets'] }, n))) })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-semibold mb-2", children: "Email" }), _jsx("input", { type: "email", ...register('email', {
+    return (_jsxs("div", { className: pageRoot, children: [_jsx("section", { className: "bg-ink light:bg-ink-light border-b border-white/5 light:border-black/8 px-[6%] pt-14 pb-8", children: _jsxs("div", { className: "max-w-2xl mx-auto", children: [_jsxs("button", { onClick: () => navigate(`/events/${eventId}`), className: "inline-flex items-center gap-2 text-accent light:text-accent-light text-sm mb-4 bg-transparent border-0 cursor-pointer hover:underline", children: [_jsx(ArrowLeft, { size: 14 }), " Back to Event"] }), _jsxs("h1", { className: "font-bebas text-4xl text-chalk light:text-chalk-light", children: ["BUY ", _jsx("span", { className: "text-accent light:text-accent-light", children: "TICKETS" })] }), _jsx("p", { className: "text-fog light:text-fog-light mt-1", children: event.title })] }) }), _jsxs("div", { className: "max-w-2xl mx-auto px-[6%] py-10 pb-20 grid grid-cols-1 md:grid-cols-3 gap-6", children: [_jsxs("form", { onSubmit: handleSubmit(onSubmit), className: `md:col-span-2 ${cardSurface} p-6 space-y-4`, children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-semibold mb-2", children: "Number of Tickets" }), _jsx("select", { ...register('quantity', { required: true, min: 1, max: 10, valueAsNumber: true }), className: `w-full px-4 py-2 ${inputField}`, children: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (_jsxs("option", { value: n, children: [n, " ", n === 1 ? 'Ticket' : 'Tickets'] }, n))) })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-semibold mb-2", children: "Full name" }), _jsx("input", { type: "text", ...register('attendeeName', {
+                                            required: 'Name is required',
+                                            minLength: { value: 2, message: 'Enter your full name' },
+                                            maxLength: { value: 150, message: 'Name is too long' },
+                                        }), placeholder: "Jane Wanjiku", className: `w-full px-4 py-2 ${inputField}`, autoComplete: "name" }), errors.attendeeName && (_jsx("p", { className: "text-red-400 text-sm mt-1", children: errors.attendeeName.message })), _jsx("p", { className: "text-xs text-fog light:text-fog-light mt-1", children: "Shown on your ticket at entry." })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-semibold mb-2", children: "Email" }), _jsx("input", { type: "email", ...register('email', {
                                             required: 'Email is required',
                                             pattern: {
                                                 value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,

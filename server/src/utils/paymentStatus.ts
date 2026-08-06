@@ -3,7 +3,7 @@ import { query } from '../config/db.js'
 export interface LocalPaymentStatus {
   payment_status: 'paid' | 'failed' | 'pending'
   mpesa_receipt?: string | null
-  source: 'callback' | 'order' | 'ticket' | 'equipment_hire'
+  source: 'callback' | 'order' | 'ticket' | 'equipment_hire' | 'medal'
 }
 
 export async function getLocalPaymentStatus(
@@ -37,6 +37,22 @@ export async function getLocalPaymentStatus(
       payment_status: row.payment_status,
       mpesa_receipt: row.mpesa_receipt,
       source: 'ticket',
+    }
+  }
+
+  const medalResult = await query(
+    `SELECT payment_status, mpesa_receipt
+     FROM medal_purchases
+     WHERE checkout_request_id = $1
+     LIMIT 1`,
+    [checkoutRequestId]
+  )
+  if (medalResult.rows.length > 0) {
+    const row = medalResult.rows[0]
+    return {
+      payment_status: row.payment_status,
+      mpesa_receipt: row.mpesa_receipt,
+      source: 'medal',
     }
   }
 

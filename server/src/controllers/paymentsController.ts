@@ -67,6 +67,16 @@ async function applyPaymentFromAccountRef(
     return result.rowCount || 0
   }
 
+  if (accountRef.startsWith('MEDAL-BATCH-')) {
+    const batchId = accountRef.replace('MEDAL-BATCH-', '')
+    const result = await query(
+      `UPDATE medal_purchases SET payment_status = $1, mpesa_receipt = $2, checkout_request_id = $3
+       WHERE purchase_batch_id = $4`,
+      ['paid', mpesaReceipt, checkoutRequestId, batchId]
+    )
+    return result.rowCount || 0
+  }
+
   const dashIdx = accountRef.indexOf('-')
   if (dashIdx === -1) return 0
   const type = accountRef.slice(0, dashIdx)
@@ -101,7 +111,8 @@ async function applyPaymentFromAccountRef(
 
 export async function initiateSTKPush(req: Request, res: Response) {
   try {
-    const { phone, amount, orderId, ticketId, ticketBatchId, equipmentHireId } = req.body
+    const { phone, amount, orderId, ticketId, ticketBatchId, equipmentHireId, medalBatchId } =
+      req.body
 
     if (!phone || !amount) {
       logSTKInitiation(phone || 'N/A', amount || 0, orderId, ticketId, equipmentHireId, null, 'Missing required fields')
@@ -120,6 +131,8 @@ export async function initiateSTKPush(req: Request, res: Response) {
       accountReference = `ORDER-${orderId}`
     } else if (ticketBatchId) {
       accountReference = `TICKET-BATCH-${ticketBatchId}`
+    } else if (medalBatchId) {
+      accountReference = `MEDAL-BATCH-${medalBatchId}`
     } else if (ticketId) {
       accountReference = `TICKET-${ticketId}`
     } else if (equipmentHireId) {
@@ -129,7 +142,8 @@ export async function initiateSTKPush(req: Request, res: Response) {
       return res
         .status(400)
         .json({
-          error: 'One of orderId, ticketBatchId, ticketId, or equipmentHireId is required',
+          error:
+            'One of orderId, ticketBatchId, ticketId, equipmentHireId, or medalBatchId is required',
         })
     }
 
@@ -139,7 +153,8 @@ export async function initiateSTKPush(req: Request, res: Response) {
       ticketBatchId,
       equipmentHireId,
       phone,
-      amount
+      amount,
+      medalBatchId
     )
     if (!validation.ok) {
       logSTKInitiation(phone, amount, orderId, ticketId, equipmentHireId, null, validation.error)
@@ -206,6 +221,11 @@ export async function initiateSTKPush(req: Request, res: Response) {
       await query(
         'UPDATE tickets SET checkout_request_id = $1, payment_provider = $2 WHERE purchase_batch_id = $3',
         [checkoutRequestId, 'mpesa', ticketBatchId]
+      )
+    } else if (medalBatchId) {
+      await query(
+        'UPDATE medal_purchases SET checkout_request_id = $1, payment_provider = $2 WHERE purchase_batch_id = $3',
+        [checkoutRequestId, 'mpesa', medalBatchId]
       )
     } else if (ticketId) {
       await query(
@@ -468,10 +488,22 @@ export async function getPaymentHistory(req: Request, res: Response) {
       [userId]
     )
 
+    const medalPayments = await query(
+      `SELECT
+        p.id, 'medal' as type, o.price as amount, p.payment_status,
+        p.mpesa_receipt, p.checkout_request_id, p.created_at
+       FROM medal_purchases p
+       JOIN medal_options o ON p.medal_option_id = o.id
+       WHERE p.user_id = $1
+       ORDER BY p.created_at DESC`,
+      [userId]
+    )
+
     const allPayments = [
       ...orderPayments.rows,
       ...ticketPayments.rows,
       ...equipmentPayments.rows,
+      ...medalPayments.rows,
     ].sort(
       (a, b) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()

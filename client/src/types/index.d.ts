@@ -45,4 +45,24 @@ export interface AuthState {
     login: (token: string, user: User) => void;
     logout: () => void;
 }
+export interface MedalOption {
+    id: string;
+    tier_id: string;
+    distance_km: number;
+    price: number;
+    capacity: number | null;
+    is_active: boolean;
+}
+export interface MedalTier {
+    id: string;
+    slug: string;
+    name: string;
+    description?: string | null;
+    benefits: string[];
+    image_url?: string | null;
+    sort_order: number;
+    is_active: boolean;
+    options: MedalOption[];
+    min_price: number | null;
+}
 //# sourceMappingURL=index.d.ts.map

@@ -1,6 +1,5 @@
 import { query } from '../config/db.js'
 import { phonesMatch } from './phone.js'
-import { getGrandTotal } from './shipping.js'
 
 export async function validatePaymentReference(
   orderId?: string,
@@ -8,7 +7,8 @@ export async function validatePaymentReference(
   ticketBatchId?: string,
   equipmentHireId?: string,
   phone?: string,
-  amount?: number
+  amount?: number,
+  medalBatchId?: string
 ): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
   if (orderId) {
     const result = await query('SELECT * FROM orders WHERE id = $1', [orderId])
@@ -43,6 +43,28 @@ export async function validatePaymentReference(
     const expectedTotal = Math.round(Number(ticket.price) * batch.length)
     if (amount != null && expectedTotal !== Math.round(amount)) {
       return { ok: false, status: 400, error: 'Amount does not match ticket batch total' }
+    }
+    return { ok: true }
+  }
+
+  if (medalBatchId) {
+    const result = await query(
+      `SELECT p.*, o.price FROM medal_purchases p
+       JOIN medal_options o ON p.medal_option_id = o.id
+       WHERE p.purchase_batch_id = $1`,
+      [medalBatchId]
+    )
+    if (result.rows.length === 0) {
+      return { ok: false, status: 404, error: 'Medal batch not found' }
+    }
+    const batch = result.rows
+    const purchase = batch[0]
+    if (phone && purchase.phone && !phonesMatch(phone, purchase.phone)) {
+      return { ok: false, status: 403, error: 'Phone number does not match medal batch' }
+    }
+    const expectedTotal = Math.round(Number(purchase.price) * batch.length)
+    if (amount != null && expectedTotal !== Math.round(amount)) {
+      return { ok: false, status: 400, error: 'Amount does not match medal batch total' }
     }
     return { ok: true }
   }
@@ -82,7 +104,11 @@ export async function validatePaymentReference(
     return { ok: true }
   }
 
-  return { ok: false, status: 400, error: 'One of orderId, ticketBatchId, ticketId, or equipmentHireId is required' }
+  return {
+    ok: false,
+    status: 400,
+    error: 'One of orderId, ticketBatchId, ticketId, equipmentHireId, or medalBatchId is required',
+  }
 }
 
 export function isMpesaSuccessCode(code: unknown): boolean {
@@ -111,11 +137,18 @@ export async function markEntitiesPaidByCheckoutId(
      WHERE checkout_request_id = $1 AND payment_status = 'pending'`,
     [checkoutRequestId, mpesaReceipt || null]
   )
+  const medalResult = await query(
+    `UPDATE medal_purchases
+     SET payment_status = 'paid', mpesa_receipt = COALESCE($2, mpesa_receipt)
+     WHERE checkout_request_id = $1 AND payment_status = 'pending'`,
+    [checkoutRequestId, mpesaReceipt || null]
+  )
 
   return (
     (orderResult.rowCount || 0) +
     (ticketResult.rowCount || 0) +
-    (hireResult.rowCount || 0)
+    (hireResult.rowCount || 0) +
+    (medalResult.rowCount || 0)
   )
 }
 
@@ -130,6 +163,10 @@ async function markEntitiesFailedByCheckoutId(checkoutRequestId: string) {
   )
   await query(
     `UPDATE equipment_hire SET payment_status = 'failed' WHERE checkout_request_id = $1 AND payment_status = 'pending'`,
+    [checkoutRequestId]
+  )
+  await query(
+    `UPDATE medal_purchases SET payment_status = 'failed' WHERE checkout_request_id = $1 AND payment_status = 'pending'`,
     [checkoutRequestId]
   )
 }

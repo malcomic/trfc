@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Package, Image, ShoppingCart, Users, BarChart3, FileText, MessageSquare, Wrench, Ticket, Handshake, Layers, Type, LogOut, ArrowLeft, Menu, X, } from 'lucide-react';
+import { LayoutDashboard, Calendar, Package, Image, ShoppingCart, Users, BarChart3, FileText, MessageSquare, Wrench, Ticket, Award, Handshake, Layers, Type, LogOut, ArrowLeft, Menu, X, } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 export function isAdminNavActive(pathname, path) {
     if (path === '/admin') {
@@ -14,6 +14,7 @@ const navItems = [
     { path: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
     { path: '/admin/reports', label: 'Reports', icon: FileText },
     { path: '/admin/events', label: 'Events', icon: Calendar },
+    { path: '/admin/medals', label: 'Medals', icon: Award },
     { path: '/admin/products', label: 'Products', icon: Package },
     { path: '/admin/gallery', label: 'Gallery', icon: Image },
     { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },

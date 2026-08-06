@@ -1,8 +1,10 @@
 export interface Ticket {
     id: string;
-    user_id: string;
+    user_id: string | null;
     event_id: string;
-    phone: string;
+    phone?: string | null;
+    email?: string | null;
+    attendee_name?: string | null;
     payment_status: 'pending' | 'paid' | 'failed';
     mpesa_receipt: string | null;
     checkout_request_id: string | null;
@@ -32,9 +34,12 @@ export declare function getTicketById(ticketId: string): Promise<Ticket>;
 export declare function updateTicketPaymentStatus(ticketId: string, paymentStatus: string, mpesaReceipt?: string): Promise<any>;
 /**
  * Download ticket as PDF
- * Triggers a browser download of the PDF file
+ * Authenticated owners, or guests verifying with checkout email/phone.
  */
-export declare function downloadTicket(ticketId: string): Promise<void>;
+export declare function downloadTicket(ticketId: string, verify?: {
+    email?: string;
+    phone?: string;
+}): Promise<void>;
 declare const _default: {
     buyTickets: typeof buyTickets;
     getUserTickets: typeof getUserTickets;

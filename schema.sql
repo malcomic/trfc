@@ -183,3 +183,52 @@ CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(payment_status);
 CREATE INDEX IF NOT EXISTS idx_testimonials_approved ON testimonials(is_approved);
 CREATE INDEX IF NOT EXISTS idx_sponsorship_tiers_active ON sponsorship_tiers(is_active);
 CREATE INDEX IF NOT EXISTS idx_sponsorship_tiers_sort ON sponsorship_tiers(sort_order);
+
+-- Medal tiers
+CREATE TABLE IF NOT EXISTS medal_tiers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug VARCHAR(50) UNIQUE NOT NULL,
+  name VARCHAR(200) NOT NULL,
+  description TEXT,
+  benefits JSONB NOT NULL DEFAULT '[]',
+  image_url TEXT,
+  sort_order INT DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Medal options (distance × price per tier)
+CREATE TABLE IF NOT EXISTS medal_options (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tier_id UUID NOT NULL REFERENCES medal_tiers(id) ON DELETE CASCADE,
+  distance_km INT NOT NULL,
+  price NUMERIC(10,2) NOT NULL,
+  capacity INT,
+  is_active BOOLEAN DEFAULT true,
+  UNIQUE (tier_id, distance_km)
+);
+
+-- Medal purchases
+CREATE TABLE IF NOT EXISTS medal_purchases (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  medal_option_id UUID NOT NULL REFERENCES medal_options(id) ON DELETE RESTRICT,
+  purchase_batch_id UUID,
+  buyer_name VARCHAR(150),
+  phone VARCHAR(20),
+  email VARCHAR(150),
+  payment_provider VARCHAR(20),
+  payment_status VARCHAR(20) DEFAULT 'pending',
+  mpesa_receipt VARCHAR(100),
+  checkout_request_id VARCHAR(100),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_medal_tiers_active ON medal_tiers(is_active);
+CREATE INDEX IF NOT EXISTS idx_medal_tiers_sort ON medal_tiers(sort_order);
+CREATE INDEX IF NOT EXISTS idx_medal_options_tier ON medal_options(tier_id);
+CREATE INDEX IF NOT EXISTS idx_medal_purchases_user ON medal_purchases(user_id);
+CREATE INDEX IF NOT EXISTS idx_medal_purchases_option ON medal_purchases(medal_option_id);
+CREATE INDEX IF NOT EXISTS idx_medal_purchases_batch ON medal_purchases(purchase_batch_id);
+CREATE INDEX IF NOT EXISTS idx_medal_purchases_checkout ON medal_purchases(checkout_request_id);
+CREATE INDEX IF NOT EXISTS idx_medal_purchases_email ON medal_purchases(email);

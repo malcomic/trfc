@@ -8,6 +8,11 @@ import Events from './pages/Events'
 import EventDetail from './pages/EventDetail'
 import EventCheckout from './pages/EventCheckout'
 import TicketConfirmation from './pages/TicketConfirmation'
+import Medals from './pages/Medals'
+import MedalDetail from './pages/MedalDetail'
+import MedalCheckout from './pages/MedalCheckout'
+import MedalConfirmation from './pages/MedalConfirmation'
+import MyMedals from './pages/MyMedals'
 import Shop from './pages/Shop'
 import ProductDetail from './pages/ProductDetail'
 import Cart from './pages/Cart'
@@ -43,6 +48,7 @@ import AdminEquipment from './pages/admin/AdminEquipment'
 import AdminTickets from './pages/admin/AdminTickets'
 import AdminPartnerships from './pages/admin/AdminPartnerships'
 import AdminSponsorshipTiers from './pages/admin/AdminSponsorshipTiers'
+import AdminMedals from './pages/admin/AdminMedals'
 import AdminAppearance from './pages/admin/AdminAppearance'
 
 function App() {
@@ -74,6 +80,7 @@ function App() {
           <Route path="testimonials" element={<AdminTestimonials />} />
           <Route path="equipment" element={<AdminEquipment />} />
           <Route path="tickets" element={<AdminTickets />} />
+          <Route path="medals" element={<AdminMedals />} />
           <Route path="partnerships" element={<AdminPartnerships />} />
           <Route path="sponsorship-tiers" element={<AdminSponsorshipTiers />} />
           <Route path="appearance" element={<AdminAppearance />} />
@@ -87,6 +94,10 @@ function App() {
           <Route path="/events/:eventId/checkout" element={<EventCheckout />} />
           <Route path="/events/:id" element={<EventDetail />} />
           <Route path="/ticket-confirmation/:checkoutRequestId" element={<TicketConfirmation />} />
+          <Route path="/medals" element={<Medals />} />
+          <Route path="/medals/:slug/checkout" element={<MedalCheckout />} />
+          <Route path="/medals/:slug" element={<MedalDetail />} />
+          <Route path="/medal-confirmation/:checkoutRequestId" element={<MedalConfirmation />} />
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/programs" element={<Programs />} />
           <Route path="/testimonials" element={<Testimonials />} />
@@ -106,6 +117,7 @@ function App() {
           <Route path="/account" element={<PrivateRoute><Account /></PrivateRoute>} />
           <Route path="/account/payments" element={<PrivateRoute><PaymentHistory /></PrivateRoute>} />
           <Route path="/account/tickets" element={<PrivateRoute><MyTickets /></PrivateRoute>} />
+          <Route path="/account/medals" element={<PrivateRoute><MyMedals /></PrivateRoute>} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

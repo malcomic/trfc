@@ -5,6 +5,7 @@ export interface PaymentInitiateRequest {
     ticketId?: string;
     ticketBatchId?: string;
     equipmentHireId?: string;
+    medalBatchId?: string;
 }
 export interface PaymentInitiateResponse {
     checkoutRequestId: string;
@@ -14,7 +15,7 @@ export interface PaymentInitiateResponse {
 }
 export interface PaymentHistoryItem {
     id: string;
-    type: 'order' | 'ticket' | 'equipment_hire';
+    type: 'order' | 'ticket' | 'equipment_hire' | 'medal';
     amount: number | null;
     payment_status: string;
     mpesa_receipt: string | null;
@@ -33,6 +34,11 @@ export declare function pollPaymentStatus(checkoutRequestId: string, options?: {
     timeout: number;
 }): Promise<any>;
 export declare function getPaymentHistory(): Promise<PaymentHistoryItem[]>;
+export declare function initiateMedalPayment(data: {
+    phone: string;
+    amount: number;
+    medalBatchId: string;
+}): Promise<PaymentInitiateResponse>;
 export declare function initiateEquipmentPayment(data: {
     phone: string;
     amount: number;

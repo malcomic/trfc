@@ -66,6 +66,42 @@ export interface OrderItem {
   unit_price: number;
 }
 
+export interface MedalTier {
+  id: string;
+  slug: string;
+  name: string;
+  description?: string | null;
+  benefits: string[];
+  image_url?: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: Date;
+}
+
+export interface MedalOption {
+  id: string;
+  tier_id: string;
+  distance_km: number;
+  price: number;
+  capacity?: number | null;
+  is_active: boolean;
+}
+
+export interface MedalPurchase {
+  id: string;
+  user_id: string | null;
+  medal_option_id: string;
+  purchase_batch_id?: string | null;
+  buyer_name?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  payment_provider?: string | null;
+  payment_status: 'pending' | 'paid' | 'failed';
+  mpesa_receipt?: string | null;
+  checkout_request_id?: string | null;
+  created_at: Date;
+}
+
 export interface JWTPayload {
   id: string;
   email: string;
