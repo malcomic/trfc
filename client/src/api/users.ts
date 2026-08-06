@@ -1,17 +1,19 @@
 import api from './index';
 
+export type StaffRole = 'member' | 'admin' | 'scanner';
+
 export interface AdminUser {
   id: string;
   name: string;
   email: string;
   phone: string;
-  role: 'member' | 'admin';
+  role: StaffRole;
   created_at: string;
 }
 
 export interface UserListParams {
   search?: string;
-  role?: 'member' | 'admin' | '';
+  role?: StaffRole | '';
 }
 
 export const getAllUsers = async (params?: UserListParams) => {
@@ -24,7 +26,7 @@ export const createUser = async (data: {
   email: string;
   phone: string;
   password: string;
-  role?: 'member' | 'admin';
+  role?: StaffRole;
 }) => {
   const response = await api.post('/users', data);
   return response.data;
@@ -38,7 +40,7 @@ export const updateUser = async (
   return response.data;
 };
 
-export const updateUserRole = async (userId: string, role: 'member' | 'admin') => {
+export const updateUserRole = async (userId: string, role: StaffRole) => {
   const response = await api.put(`/users/${userId}/role`, { role });
   return response.data;
 };

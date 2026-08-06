@@ -16,7 +16,7 @@ import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/AdminMobileCard'
 import AdminResponsiveData from '../../components/admin/AdminResponsiveData'
 
-type RoleFilter = '' | 'member' | 'admin'
+type RoleFilter = '' | 'member' | 'admin' | 'scanner'
 type ModalMode = 'create' | 'edit' | null
 
 interface UserFormData {
@@ -24,7 +24,7 @@ interface UserFormData {
   email: string
   phone: string
   password?: string
-  role: 'member' | 'admin'
+  role: 'member' | 'admin' | 'scanner'
 }
 
 export default function AdminUsers() {
@@ -55,7 +55,7 @@ export default function AdminUsers() {
     try {
       setLoading(true)
       setError('')
-      const params: { search?: string; role?: 'member' | 'admin' } = {}
+      const params: { search?: string; role?: 'member' | 'admin' | 'scanner' } = {}
       if (searchQuery.trim()) params.search = searchQuery.trim()
       if (roleFilter) params.role = roleFilter
       const data = await getAllUsers(params)
@@ -141,11 +141,9 @@ export default function AdminUsers() {
   const requestRoleChange = (userId: string, newRole: string, currentRole: string) => {
     if (newRole === currentRole) return
 
-    if (newRole === 'member') {
-      if (adminCount <= 1 && currentRole === 'admin') {
-        setError('Cannot demote the last admin')
-        return
-      }
+    if (newRole !== 'admin' && currentRole === 'admin' && adminCount <= 1) {
+      setError('Cannot demote the last admin')
+      return
     }
 
     setPendingRoleChange({ userId, newRole })
@@ -159,7 +157,7 @@ export default function AdminUsers() {
       setUpdating(userId)
       setError('')
       setSuccess('')
-      await updateUserRole(userId, newRole as 'member' | 'admin')
+      await updateUserRole(userId, newRole as AdminUser['role'])
       setUsers(users.map((u) => (u.id === userId ? { ...u, role: newRole as AdminUser['role'] } : u)))
       showSuccess(`User role updated to ${newRole}`)
     } catch (err) {
@@ -217,7 +215,10 @@ export default function AdminUsers() {
   const getRoleConfirmMessage = () => {
     if (!pendingRoleChange) return ''
     const target = users.find((u) => u.id === pendingRoleChange.userId)
-    if (pendingRoleChange.userId === currentUser?.id && pendingRoleChange.newRole === 'member') {
+    if (
+      pendingRoleChange.userId === currentUser?.id &&
+      pendingRoleChange.newRole !== 'admin'
+    ) {
       return 'You are about to remove your own admin access. You will be locked out of the admin panel.'
     }
     return `Change ${target?.name || 'this user'}'s role to ${pendingRoleChange.newRole}?`
@@ -232,7 +233,9 @@ export default function AdminUsers() {
       className={`px-3 py-1 rounded-full text-sm font-semibold ${
         role === 'admin'
           ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300'
-          : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
+          : role === 'scanner'
+            ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300'
+            : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
       }`}
     >
       {role}
@@ -249,6 +252,7 @@ export default function AdminUsers() {
         aria-label={`Change role for ${user.name}`}
       >
         <option value="member">Member</option>
+        <option value="scanner">Scanner</option>
         <option value="admin">Admin</option>
       </select>
       <button
@@ -321,6 +325,7 @@ export default function AdminUsers() {
         >
           <option value="">All roles</option>
           <option value="member">Members</option>
+          <option value="scanner">Scanners</option>
           <option value="admin">Admins</option>
         </select>
       </div>
@@ -451,6 +456,7 @@ export default function AdminUsers() {
                       className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     >
                       <option value="member">Member</option>
+                      <option value="scanner">Scanner</option>
                       <option value="admin">Admin</option>
                     </select>
                   </div>
@@ -551,7 +557,7 @@ export default function AdminUsers() {
         title="Change user role"
         message={getRoleConfirmMessage()}
         confirmLabel="Change role"
-        variant={pendingRoleChange?.newRole === 'member' ? 'danger' : 'default'}
+        variant={pendingRoleChange?.newRole !== 'admin' ? 'danger' : 'default'}
         onConfirm={confirmRoleChange}
         onCancel={() => setPendingRoleChange(null)}
       />

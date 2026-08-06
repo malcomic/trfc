@@ -723,6 +723,7 @@ export async function getAdminMedalPurchases(_req: Request, res: Response) {
       `SELECT
          p.id, p.buyer_name, p.email, p.phone, p.payment_status, p.mpesa_receipt,
          p.checkout_request_id, p.purchase_batch_id, p.created_at,
+         p.redeemed_at, p.redeemed_by,
          o.distance_km, o.price,
          t.name AS tier_name, t.slug AS tier_slug
        FROM medal_purchases p

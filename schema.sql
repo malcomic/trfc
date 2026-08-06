@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS tickets (
   payment_status VARCHAR(20) DEFAULT 'pending',
   mpesa_receipt VARCHAR(100),
   checkout_request_id VARCHAR(100),
+  checked_in_at TIMESTAMPTZ,
+  checked_in_by UUID REFERENCES users(id),
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -221,6 +223,8 @@ CREATE TABLE IF NOT EXISTS medal_purchases (
   payment_status VARCHAR(20) DEFAULT 'pending',
   mpesa_receipt VARCHAR(100),
   checkout_request_id VARCHAR(100),
+  redeemed_at TIMESTAMPTZ,
+  redeemed_by UUID REFERENCES users(id),
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -232,3 +236,5 @@ CREATE INDEX IF NOT EXISTS idx_medal_purchases_option ON medal_purchases(medal_o
 CREATE INDEX IF NOT EXISTS idx_medal_purchases_batch ON medal_purchases(purchase_batch_id);
 CREATE INDEX IF NOT EXISTS idx_medal_purchases_checkout ON medal_purchases(checkout_request_id);
 CREATE INDEX IF NOT EXISTS idx_medal_purchases_email ON medal_purchases(email);
+CREATE INDEX IF NOT EXISTS idx_tickets_checked_in ON tickets(checked_in_at);
+CREATE INDEX IF NOT EXISTS idx_medal_purchases_redeemed ON medal_purchases(redeemed_at);

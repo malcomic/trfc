@@ -16,6 +16,7 @@ import {
   Handshake,
   Layers,
   Type,
+  QrCode,
   LogOut,
   ArrowLeft,
   Menu,
@@ -32,6 +33,7 @@ export function isAdminNavActive(pathname: string, path: string) {
 
 const navItems = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/admin/scan', label: 'Scanner', icon: QrCode },
   { path: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
   { path: '/admin/reports', label: 'Reports', icon: FileText },
   { path: '/admin/events', label: 'Events', icon: Calendar },

@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-export default function PrivateRoute({ children, role, loginPath = '/login' }) {
+export default function PrivateRoute({ children, role, roles, loginPath = '/login' }) {
     const { token, user, isLoading } = useAuth();
     const location = useLocation();
     if (isLoading) {
@@ -12,7 +12,8 @@ export default function PrivateRoute({ children, role, loginPath = '/login' }) {
         const loginUrl = `${loginPath}?redirect=${redirect}`;
         return _jsx(Navigate, { to: loginUrl, replace: true });
     }
-    if (role && user && user.role !== role) {
+    const allowedRoles = roles ?? (role ? [role] : null);
+    if (allowedRoles && user && !allowedRoles.includes(user.role)) {
         return _jsx(Navigate, { to: "/" });
     }
     return _jsx(_Fragment, { children: children });

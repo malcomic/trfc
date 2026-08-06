@@ -40,3 +40,10 @@ export const adminMiddleware = (req: Request, res: Response, next: NextFunction)
   }
   next();
 };
+
+export const staffMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'scanner')) {
+    return res.status(403).json({ error: 'Staff access required' });
+  }
+  next();
+};

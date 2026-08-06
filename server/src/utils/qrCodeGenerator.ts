@@ -111,6 +111,41 @@ export function shortMedalCode(purchaseId: string): string {
   return purchaseId.replace(/-/g, '').slice(0, 8).toUpperCase()
 }
 
+export type ParsedScanPayload =
+  | { kind: 'ticket'; ticketId: string; eventId?: string }
+  | { kind: 'medal'; purchaseId: string }
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+export function normalizeShortCode(raw: string): string | null {
+  const cleaned = raw.replace(/[^0-9a-fA-F]/g, '').toUpperCase()
+  if (cleaned.length < 8) return null
+  return cleaned.slice(0, 8)
+}
+
+export function parseScanPayload(raw: string): ParsedScanPayload | null {
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+
+  if (trimmed.toLowerCase().startsWith('medal:')) {
+    const parts = trimmed.split(':')
+    if (parts.length < 2 || !UUID_RE.test(parts[1])) return null
+    return { kind: 'medal', purchaseId: parts[1] }
+  }
+
+  const parts = trimmed.split(':')
+  if (parts.length >= 1 && UUID_RE.test(parts[0])) {
+    return {
+      kind: 'ticket',
+      ticketId: parts[0],
+      eventId: parts[1] && UUID_RE.test(parts[1]) ? parts[1] : undefined,
+    }
+  }
+
+  return null
+}
+
 export default {
   generateQRCodeBase64,
   generateQRCodeDataUrl,
@@ -120,4 +155,6 @@ export default {
   verifyQRCodeData,
   shortTicketCode,
   shortMedalCode,
+  parseScanPayload,
+  normalizeShortCode,
 }

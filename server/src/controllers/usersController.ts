@@ -26,7 +26,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
       conditions.push(`(name ILIKE $${params.length} OR email ILIKE $${params.length} OR phone ILIKE $${params.length})`);
     }
 
-    if (role === 'member' || role === 'admin') {
+    if (role === 'member' || role === 'admin' || role === 'scanner') {
       params.push(role);
       conditions.push(`role = $${params.length}`);
     }
@@ -51,7 +51,7 @@ export const createUser = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Name, email, phone, and password are required' });
     }
 
-    if (!['member', 'admin'].includes(role)) {
+    if (!['member', 'admin', 'scanner'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
     }
 
@@ -117,11 +117,11 @@ export const updateUserRole = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { role } = req.body;
 
-    if (!['member', 'admin'].includes(role)) {
+    if (!['member', 'admin', 'scanner'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
     }
 
-    if (role === 'member' && !(await ensureNotLastAdmin(id))) {
+    if (role !== 'admin' && !(await ensureNotLastAdmin(id))) {
       return res.status(400).json({ error: 'Cannot demote the last admin user' });
     }
 

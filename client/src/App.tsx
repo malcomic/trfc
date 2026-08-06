@@ -50,6 +50,7 @@ import AdminPartnerships from './pages/admin/AdminPartnerships'
 import AdminSponsorshipTiers from './pages/admin/AdminSponsorshipTiers'
 import AdminMedals from './pages/admin/AdminMedals'
 import AdminAppearance from './pages/admin/AdminAppearance'
+import AdminScan from './pages/admin/AdminScan'
 
 function App() {
   return (
@@ -61,6 +62,14 @@ function App() {
     >
       <Routes>
         <Route path="/admin/login" element={<AdminLogin />} />
+        <Route
+          path="/admin/scan"
+          element={
+            <PrivateRoute roles={['admin', 'scanner']} loginPath="/admin/login">
+              <AdminScan />
+            </PrivateRoute>
+          }
+        />
         <Route
           path="/admin"
           element={

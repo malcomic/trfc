@@ -105,6 +105,7 @@ export default function AdminTickets() {
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Event</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Phone</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Status</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Check-in</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Batch</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Date</th>
               </tr>
@@ -127,6 +128,15 @@ export default function AdminTickets() {
                   <td className={`px-6 py-4 capitalize font-medium ${statusColor(t.payment_status)}`}>
                     {t.payment_status}
                   </td>
+                  <td className="px-6 py-4">
+                    {t.checked_in_at ? (
+                      <span className="inline-flex px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300">
+                        Checked in
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-sm">—</span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 text-xs font-mono text-gray-500 dark:text-gray-400">
                     {t.purchase_batch_id ? t.purchase_batch_id.slice(0, 8) + '…' : '—'}
                   </td>
@@ -144,6 +154,18 @@ export default function AdminTickets() {
             <AdminMobileCardRow
               label="Status"
               value={<span className={`capitalize font-medium ${statusColor(t.payment_status)}`}>{t.payment_status}</span>}
+            />
+            <AdminMobileCardRow
+              label="Check-in"
+              value={
+                t.checked_in_at ? (
+                  <span className="inline-flex px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300">
+                    Checked in
+                  </span>
+                ) : (
+                  '—'
+                )
+              }
             />
             <AdminMobileCardRow
               label="Batch"

@@ -3,7 +3,7 @@ export interface User {
   name: string;
   email: string;
   phone: string;
-  role: 'member' | 'admin';
+  role: 'member' | 'admin' | 'scanner';
   created_at: Date;
 }
 
@@ -32,6 +32,8 @@ export interface Ticket {
   payment_status: 'pending' | 'paid' | 'failed';
   mpesa_receipt?: string | null;
   checkout_request_id?: string | null;
+  checked_in_at?: Date | null;
+  checked_in_by?: string | null;
   created_at: Date;
 }
 
@@ -99,6 +101,8 @@ export interface MedalPurchase {
   payment_status: 'pending' | 'paid' | 'failed';
   mpesa_receipt?: string | null;
   checkout_request_id?: string | null;
+  redeemed_at?: Date | null;
+  redeemed_by?: string | null;
   created_at: Date;
 }
 

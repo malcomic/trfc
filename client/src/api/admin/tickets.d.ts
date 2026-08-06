@@ -6,6 +6,8 @@ export interface AdminTicket {
     phone?: string;
     payment_status: string;
     purchase_batch_id?: string;
+    checked_in_at?: string | null;
+    checked_in_by?: string | null;
     created_at: string;
 }
 export declare const getTicketsForAdmin: () => Promise<AdminTicket[]>;

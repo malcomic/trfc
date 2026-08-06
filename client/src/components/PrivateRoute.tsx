@@ -4,10 +4,11 @@ import { useAuth } from '../context/AuthContext'
 interface PrivateRouteProps {
   children: React.ReactNode
   role?: string
+  roles?: string[]
   loginPath?: string
 }
 
-export default function PrivateRoute({ children, role, loginPath = '/login' }: PrivateRouteProps) {
+export default function PrivateRoute({ children, role, roles, loginPath = '/login' }: PrivateRouteProps) {
   const { token, user, isLoading } = useAuth()
   const location = useLocation()
 
@@ -28,7 +29,8 @@ export default function PrivateRoute({ children, role, loginPath = '/login' }: P
     return <Navigate to={loginUrl} replace />
   }
 
-  if (role && user && user.role !== role) {
+  const allowedRoles = roles ?? (role ? [role] : null)
+  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
     return <Navigate to="/" />
   }
 

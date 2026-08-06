@@ -283,6 +283,18 @@ export default function AdminMedals() {
                   <AdminMobileCardRow label="Buyer" value={p.buyer_name || '—'} />
                   <AdminMobileCardRow label="Status" value={p.payment_status} />
                   <AdminMobileCardRow
+                    label="Redeem"
+                    value={
+                      p.redeemed_at ? (
+                        <span className="inline-flex px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300">
+                          Redeemed
+                        </span>
+                      ) : (
+                        '—'
+                      )
+                    }
+                  />
+                  <AdminMobileCardRow
                     label="Amount"
                     value={`KES ${Number(p.price).toLocaleString()}`}
                   />
@@ -303,6 +315,7 @@ export default function AdminMedals() {
                     <th className="py-2 pr-3">Buyer</th>
                     <th className="py-2 pr-3">Email</th>
                     <th className="py-2 pr-3">Status</th>
+                    <th className="py-2 pr-3">Redeem</th>
                     <th className="py-2 pr-3">Receipt</th>
                     <th className="py-2">Date</th>
                   </tr>
@@ -315,6 +328,15 @@ export default function AdminMedals() {
                       <td className="py-2 pr-3">{p.buyer_name || '—'}</td>
                       <td className="py-2 pr-3">{p.email || '—'}</td>
                       <td className="py-2 pr-3">{p.payment_status}</td>
+                      <td className="py-2 pr-3">
+                        {p.redeemed_at ? (
+                          <span className="inline-flex px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300">
+                            Redeemed
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
                       <td className="py-2 pr-3">{p.mpesa_receipt || '—'}</td>
                       <td className="py-2">
                         {p.created_at ? new Date(p.created_at).toLocaleString() : '—'}

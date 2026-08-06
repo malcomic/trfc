@@ -4,6 +4,8 @@ import { loginUser } from '../api/auth'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 
+const STAFF_ROLES = ['admin', 'scanner'] as const
+
 export default function AdminLogin() {
   const { register, handleSubmit, formState: { errors } } = useForm()
   const [loading, setLoading] = useState(false)
@@ -12,21 +14,28 @@ export default function AdminLogin() {
   const [searchParams] = useSearchParams()
   const { login, user } = useAuth()
 
-  const getRedirectPath = () => {
+  const defaultPathForRole = (role: string) => (role === 'scanner' ? '/admin/scan' : '/admin')
+
+  const getRedirectPath = (role: string) => {
     const redirect = searchParams.get('redirect')
-    if (!redirect) return '/admin'
+    if (!redirect) return defaultPathForRole(role)
     try {
       const decoded = decodeURIComponent(redirect)
-      if (decoded.startsWith('/admin') && !decoded.startsWith('//')) return decoded
+      if (decoded.startsWith('/admin') && !decoded.startsWith('//')) {
+        if (role === 'scanner' && decoded !== '/admin/scan' && !decoded.startsWith('/admin/scan?')) {
+          return '/admin/scan'
+        }
+        return decoded
+      }
     } catch {
       /* ignore malformed redirect */
     }
-    return '/admin'
+    return defaultPathForRole(role)
   }
 
   useEffect(() => {
-    if (user && user.role === 'admin') {
-      navigate(getRedirectPath())
+    if (user && STAFF_ROLES.includes(user.role as typeof STAFF_ROLES[number])) {
+      navigate(getRedirectPath(user.role))
     }
   }, [user, navigate])
 
@@ -36,13 +45,13 @@ export default function AdminLogin() {
       setErrorMessage('')
       const response = await loginUser(data)
 
-      if (response.user.role !== 'admin') {
-        setErrorMessage('Admin access required. Only admins can login here.')
+      if (!STAFF_ROLES.includes(response.user.role)) {
+        setErrorMessage('Staff access required. Only admins and scanners can login here.')
         return
       }
 
       login(response.token, response.user, response.refreshToken)
-      navigate(getRedirectPath())
+      navigate(getRedirectPath(response.user.role))
     } catch (error: any) {
       console.error('Login failed:', error)
       setErrorMessage(error.response?.data?.error || 'Login failed. Please try again.')
@@ -57,12 +66,12 @@ export default function AdminLogin() {
         <div className="bg-white dark:bg-[#1C1C1C] rounded-2xl shadow-xl p-8">
           <div className="flex justify-center mb-6">
             <div className="bg-primary dark:bg-primary-dark text-white dark:text-black px-6 py-3 rounded-full font-bold text-lg">
-              ADMIN PORTAL
+              STAFF PORTAL
             </div>
           </div>
 
-          <h1 className="text-3xl font-bold mb-2 text-center text-gray-800 dark:text-white">Admin Login</h1>
-          <p className="text-gray-600 dark:text-gray-400 text-center mb-8">Access the administration panel</p>
+          <h1 className="text-3xl font-bold mb-2 text-center text-gray-800 dark:text-white">Staff Login</h1>
+          <p className="text-gray-600 dark:text-gray-400 text-center mb-8">Access admin and scanner tools</p>
 
           {errorMessage && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-6">

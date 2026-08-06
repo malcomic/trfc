@@ -3,7 +3,7 @@ export interface User {
   name: string;
   email: string;
   phone: string;
-  role: 'member' | 'admin';
+  role: 'member' | 'admin' | 'scanner';
 }
 
 export interface Event {

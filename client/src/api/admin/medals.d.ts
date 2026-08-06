@@ -26,6 +26,8 @@ export interface AdminMedalPurchase {
     checkout_request_id: string | null;
     purchase_batch_id: string | null;
     created_at: string;
+    redeemed_at?: string | null;
+    redeemed_by?: string | null;
     distance_km: number;
     price: number;
     tier_name: string;
