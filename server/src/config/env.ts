@@ -37,9 +37,9 @@ export const config = {
       : 'sandbox',
   },
   email: {
-    user: process.env.EMAIL_USER || '',
-    /** App password — prefer EMAIL_PASSWORD; EMAIL_PASS is supported as an alias */
-    pass: process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS || '',
+    apiKey: process.env.RESEND_API_KEY || '',
+    /** Verified sender, e.g. TRFC <tickets@yourdomain.com> */
+    from: process.env.EMAIL_FROM || '',
   },
   frontendUrl:
     process.env.FRONTEND_URL || 'https://trfc-website-d41f18cf654e.herokuapp.com',

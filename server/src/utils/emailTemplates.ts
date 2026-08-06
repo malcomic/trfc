@@ -247,9 +247,151 @@ This is an automated message — please do not reply.
   `.trim()
 }
 
+export interface MedalBatchEmailData {
+  userEmail: string
+  userName: string
+  tierName: string
+  distanceKm: number
+  pricePerMedal: number
+  quantity: number
+  totalPaid: number
+  paymentReference: string
+  mpesaReceipt?: string | null
+  purchases: { purchaseId: string; shortCode: string }[]
+  confirmationUrl: string
+}
+
+export function buildMedalBatchEmailHTML(data: MedalBatchEmailData): string {
+  const purchaseList = data.purchases
+    .map(
+      (p, i) =>
+        `<li style="margin: 6px 0;">Medal ${i + 1}: <code style="font-size:12px;">${escapeHtml(p.shortCode)}</code></li>`
+    )
+    .join('')
+  const greetingName =
+    data.userName && data.userName !== 'Guest'
+      ? escapeHtml(data.userName)
+      : escapeHtml(data.userEmail.split('@')[0] || 'there')
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Medal confirmation</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#111827;">
+  <div style="max-width:600px;margin:24px auto;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;">
+    <div style="background:#0a0a0a;color:#ffffff;padding:28px 24px;text-align:center;">
+      <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#f59e0b;">TRFC</p>
+      <h1 style="margin:0;font-size:24px;font-weight:700;">Medal confirmed</h1>
+      <p style="margin:8px 0 0;font-size:14px;color:#d1d5db;">Thika Road Fitness Community</p>
+    </div>
+
+    <div style="padding:28px 24px;">
+      <p style="margin:0 0 16px;font-size:16px;">Hi <strong>${greetingName}</strong>,</p>
+      <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#374151;">
+        Your medal challenge purchase was successful. Your certificate QR code${data.quantity > 1 ? 's are' : ' is'} in the PDF attachment${data.quantity > 1 ? 's' : ''} —
+        keep ${data.quantity > 1 ? 'them' : 'it'} as proof of entitlement.
+        You can also view and download your certificate${data.quantity > 1 ? 's' : ''} anytime from the confirmation page below.
+      </p>
+
+      <div style="background:#f9fafb;border-left:4px solid #f59e0b;padding:16px;margin:0 0 20px;border-radius:4px;">
+        <h2 style="margin:0 0 12px;font-size:16px;">Purchase summary</h2>
+        <p style="margin:6px 0;font-size:14px;"><span style="color:#6b7280;">Medal:</span> <strong>${escapeHtml(data.tierName)}</strong></p>
+        <p style="margin:6px 0;font-size:14px;"><span style="color:#6b7280;">Distance:</span> <strong>${data.distanceKm} km</strong></p>
+        <p style="margin:6px 0;font-size:14px;"><span style="color:#6b7280;">Quantity:</span> <strong>${data.quantity}</strong> × KES ${data.pricePerMedal.toLocaleString('en-KE')}</p>
+        <p style="margin:6px 0;font-size:14px;"><span style="color:#6b7280;">Total paid:</span> <strong>KES ${data.totalPaid.toLocaleString('en-KE')}</strong></p>
+        ${
+          data.mpesaReceipt
+            ? `<p style="margin:6px 0;font-size:14px;"><span style="color:#6b7280;">M-Pesa receipt:</span> <strong>${escapeHtml(data.mpesaReceipt)}</strong></p>`
+            : ''
+        }
+        <p style="margin:6px 0;font-size:14px;"><span style="color:#6b7280;">Payment ref:</span> <code style="font-size:12px;">${escapeHtml(data.paymentReference)}</code></p>
+      </div>
+
+      <div style="margin:0 0 20px;">
+        <h2 style="margin:0 0 8px;font-size:16px;">Your medals</h2>
+        <ul style="margin:0;padding-left:20px;font-size:14px;color:#374151;">
+          ${purchaseList}
+        </ul>
+        <p style="margin:12px 0 0;font-size:13px;color:#6b7280;">
+          PDF certificate${data.quantity > 1 ? 's are' : ' is'} attached. Each PDF has a unique QR for verification.
+        </p>
+      </div>
+
+      <p style="text-align:center;margin:0 0 8px;">
+        <a href="${escapeHtml(data.confirmationUrl)}"
+           style="display:inline-block;background:#f59e0b;color:#111827;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:700;font-size:14px;">
+          View your medals
+        </a>
+      </p>
+      <p style="text-align:center;font-size:12px;color:#6b7280;margin:0 0 16px;">
+        Reopen this page anytime with your payment reference and the email used at checkout.
+      </p>
+    </div>
+
+    <div style="background:#f9fafb;padding:20px 24px;text-align:center;font-size:12px;color:#6b7280;border-top:1px solid #e5e7eb;">
+      <p style="margin:0 0 8px;">
+        Questions? Email <a href="mailto:${escapeHtml(config.contact.email)}" style="color:#b45309;">${escapeHtml(config.contact.email)}</a>
+        or call <a href="tel:${escapeHtml(config.contact.phone.replace(/\s+/g, ''))}" style="color:#b45309;">${escapeHtml(config.contact.phone)}</a>
+      </p>
+      <p style="margin:0 0 8px;">
+        <a href="${escapeHtml(config.frontendUrl)}" style="color:#b45309;">Visit the TRFC website</a>
+      </p>
+      <p style="margin:12px 0 0;color:#9ca3af;">This is an automated message — please do not reply to this email.</p>
+      <p style="margin:8px 0 0;">© ${new Date().getFullYear()} TRFC — Thika Road Fitness Community</p>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim()
+}
+
+export function buildMedalBatchEmailText(data: MedalBatchEmailData): string {
+  const greetingName =
+    data.userName && data.userName !== 'Guest'
+      ? data.userName
+      : data.userEmail.split('@')[0] || 'there'
+  const purchaseLines = data.purchases
+    .map((p, i) => `  ${i + 1}. ${p.shortCode}`)
+    .join('\n')
+
+  return `
+TRFC — Medal confirmed
+Thika Road Fitness Community
+
+Hi ${greetingName},
+
+Your medal challenge purchase was successful. Open the attached PDF certificate(s) for your QR code(s).
+You can also view and download your certificates from the confirmation page.
+
+PURCHASE SUMMARY
+Medal: ${data.tierName}
+Distance: ${data.distanceKm} km
+Quantity: ${data.quantity} x KES ${data.pricePerMedal.toLocaleString('en-KE')}
+Total paid: KES ${data.totalPaid.toLocaleString('en-KE')}
+${data.mpesaReceipt ? `M-Pesa receipt: ${data.mpesaReceipt}\n` : ''}Payment ref: ${data.paymentReference}
+
+YOUR MEDALS
+${purchaseLines}
+
+View your medals: ${data.confirmationUrl}
+
+Support: ${config.contact.email} | ${config.contact.phone}
+Website: ${config.frontendUrl}
+
+This is an automated message — please do not reply.
+© ${new Date().getFullYear()} TRFC — Thika Road Fitness Community
+  `.trim()
+}
+
 export default {
   buildTicketEmailHTML,
   buildTicketEmailText,
   buildTicketBatchEmailHTML,
   buildTicketBatchEmailText,
+  buildMedalBatchEmailHTML,
+  buildMedalBatchEmailText,
 }

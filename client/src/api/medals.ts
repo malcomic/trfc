@@ -47,7 +47,13 @@ export interface MedalConfirmationDetails {
   buyer_name: string
   mpesa_receipt: string | null
   checkout_request_id: string
-  purchases: { id: string; buyer_name: string; payment_status: string }[]
+  purchases: {
+    id: string
+    buyer_name: string
+    payment_status: string
+    short_code: string
+    qr_data_url: string | null
+  }[]
 }
 
 export interface UserMedalPurchase {
@@ -104,6 +110,47 @@ export const getMedalPurchasesByCheckoutRequestId = async (
         ...(options.phone ? { phone: options.phone } : {}),
       },
     }
+  )
+  return response.data
+}
+
+export async function downloadMedalPdf(
+  purchaseId: string,
+  verify?: { email?: string; phone?: string }
+): Promise<void> {
+  try {
+    const response = await api.get(`/medals/purchases/${purchaseId}/download`, {
+      responseType: 'blob',
+      params: {
+        ...(verify?.email ? { email: verify.email } : {}),
+        ...(verify?.phone ? { phone: verify.phone } : {}),
+      },
+    })
+
+    const blob = new Blob([response.data], { type: 'application/pdf' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `medal-${purchaseId.replace(/-/g, '').slice(0, 8).toUpperCase()}.pdf`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (error: any) {
+    console.error('❌ Error downloading medal PDF:', error)
+    throw error
+  }
+}
+
+export async function resendMedalEmail(data: {
+  checkoutRequestId?: string
+  purchaseId?: string
+  email?: string
+  phone?: string
+}) {
+  const response = await api.post<{ success: boolean; message: string }>(
+    '/medals/purchases/resend',
+    data
   )
   return response.data
 }

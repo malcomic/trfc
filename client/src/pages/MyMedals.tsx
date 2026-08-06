@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { getUserMedalPurchases, UserMedalPurchase } from '../api/medals'
 import { AlertCircle, Loader, Award, ArrowLeft } from 'lucide-react'
 import { pageRoot, cardSurface } from '../utils/themeClasses'
+import MedalDownloadButton from '../components/MedalDownloadButton'
+import MedalResendButton from '../components/MedalResendButton'
 
 export default function MyMedals() {
   const [purchases, setPurchases] = useState<UserMedalPurchase[]>([])
@@ -75,7 +77,7 @@ export default function MyMedals() {
                   {p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}
                 </p>
               </div>
-              <div className="text-right">
+              <div className="text-right space-y-3">
                 <span
                   className={`inline-block px-3 py-1 text-xs font-bold uppercase ${
                     p.payment_status === 'paid'
@@ -88,9 +90,23 @@ export default function MyMedals() {
                   {p.payment_status}
                 </span>
                 {p.price != null && (
-                  <p className="font-bebas text-xl text-accent light:text-accent-light mt-2">
+                  <p className="font-bebas text-xl text-accent light:text-accent-light">
                     KES {Number(p.price).toLocaleString()}
                   </p>
+                )}
+                {p.payment_status === 'paid' && (
+                  <div className="flex flex-wrap gap-2 justify-end">
+                    <MedalDownloadButton
+                      purchaseId={p.id}
+                      paymentStatus={p.payment_status}
+                      compact
+                    />
+                    <MedalResendButton
+                      purchaseId={p.id}
+                      paymentStatus={p.payment_status}
+                      compact
+                    />
+                  </div>
                 )}
               </div>
             </div>

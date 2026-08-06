@@ -2,6 +2,14 @@ import { Request, Response } from 'express'
 import { query } from '../config/db.js'
 import { phonesMatch } from '../utils/phone.js'
 import { randomUUID } from 'crypto'
+import { config } from '../config/env.js'
+import {
+  generateMedalQRCodeBuffer,
+  generateMedalQRCodeDataUrl,
+  shortMedalCode,
+} from '../utils/qrCodeGenerator.js'
+import { generateMedalPDF } from '../utils/medalPDFGenerator.js'
+import { sendMedalBatchEmail } from '../utils/medalEmail.js'
 
 function parseBenefits(benefits: unknown): string[] {
   if (Array.isArray(benefits)) {
@@ -288,6 +296,27 @@ export async function getPurchasesByCheckoutRequestId(req: Request, res: Respons
     const unitPrice = Number(purchase.price)
     const totalPrice = Math.round(unitPrice * quantity)
 
+    const purchases = await Promise.all(
+      result.rows.map(async (row) => {
+        let qr_data_url: string | null = null
+        const short_code = shortMedalCode(row.id)
+        if (row.payment_status === 'paid') {
+          qr_data_url = await generateMedalQRCodeDataUrl({
+            purchaseId: row.id,
+            tierSlug: row.tier_slug,
+            distanceKm: Number(row.distance_km),
+          })
+        }
+        return {
+          id: row.id,
+          buyer_name: row.buyer_name,
+          payment_status: row.payment_status,
+          short_code,
+          qr_data_url,
+        }
+      })
+    )
+
     res.json({
       tier_name: purchase.tier_name,
       tier_slug: purchase.tier_slug,
@@ -301,15 +330,217 @@ export async function getPurchasesByCheckoutRequestId(req: Request, res: Respons
       buyer_name: purchase.buyer_name,
       mpesa_receipt: purchase.mpesa_receipt,
       checkout_request_id: purchase.checkout_request_id,
-      purchases: result.rows.map((row) => ({
-        id: row.id,
-        buyer_name: row.buyer_name,
-        payment_status: row.payment_status,
-      })),
+      purchases,
     })
   } catch (error) {
     console.error('Error fetching medal purchases by checkout:', error)
     res.status(500).json({ error: 'Failed to fetch medal purchase details' })
+  }
+}
+
+function resolveBuyerName(
+  buyerName: string | null | undefined,
+  userName: string | null | undefined,
+  email: string | null | undefined
+): string {
+  if (buyerName && buyerName.trim()) return buyerName.trim()
+  if (userName && userName.trim() && userName !== 'Guest') return userName.trim()
+  if (email) {
+    const local = email.split('@')[0]
+    if (local) return local
+  }
+  return 'Guest'
+}
+
+async function buildMedalPdfBuffer(purchaseId: string) {
+  const result = await query(
+    `SELECT
+       p.id, p.user_id, p.phone, p.email, p.buyer_name, p.payment_status, p.mpesa_receipt,
+       COALESCE(NULLIF(TRIM(u.name), ''), NULL) as user_name,
+       o.distance_km, o.price,
+       t.name as tier_name, t.slug as tier_slug
+     FROM medal_purchases p
+     LEFT JOIN users u ON p.user_id = u.id
+     JOIN medal_options o ON p.medal_option_id = o.id
+     JOIN medal_tiers t ON o.tier_id = t.id
+     WHERE p.id = $1`,
+    [purchaseId]
+  )
+
+  if (result.rows.length === 0) {
+    return null
+  }
+
+  const purchase = result.rows[0]
+  if (purchase.payment_status !== 'paid') {
+    return { unpaid: true as const, purchase }
+  }
+
+  const buyerName = resolveBuyerName(
+    purchase.buyer_name,
+    purchase.user_name,
+    purchase.email
+  )
+  const shortCode = shortMedalCode(purchase.id)
+  const qrCodeBuffer = await generateMedalQRCodeBuffer({
+    purchaseId: purchase.id,
+    tierSlug: purchase.tier_slug,
+    distanceKm: Number(purchase.distance_km),
+  })
+
+  const pdfBuffer = await generateMedalPDF({
+    purchaseId: purchase.id,
+    shortCode,
+    tierName: purchase.tier_name,
+    distanceKm: Number(purchase.distance_km),
+    unitPrice: parseFloat(purchase.price),
+    buyerName,
+    buyerPhone: purchase.phone || '',
+    mpesaReceipt: purchase.mpesa_receipt || null,
+    supportEmail: config.contact.email,
+    supportPhone: config.contact.phone,
+    qrCodeBuffer,
+  })
+
+  return { unpaid: false as const, purchase, pdfBuffer, buyerName, shortCode }
+}
+
+export async function downloadMedalPDF(req: Request, res: Response) {
+  try {
+    const { purchaseId } = req.params
+    const userId = req.user?.id
+    const phoneQuery = typeof req.query.phone === 'string' ? req.query.phone : undefined
+    const emailQuery =
+      typeof req.query.email === 'string' ? req.query.email.trim().toLowerCase() : undefined
+
+    if (!purchaseId) {
+      return res.status(400).json({ error: 'Purchase ID is required' })
+    }
+
+    const built = await buildMedalPdfBuffer(purchaseId)
+    if (!built) {
+      return res.status(404).json({ error: 'Medal purchase not found' })
+    }
+
+    const purchase = built.purchase
+    const isOwner = userId && purchase.user_id === userId
+    const phoneOk = phoneQuery && purchase.phone && phonesMatch(phoneQuery, purchase.phone)
+    const emailOk =
+      emailQuery && purchase.email && purchase.email.toLowerCase() === emailQuery
+
+    if (!isOwner && !phoneOk && !emailOk) {
+      return res.status(403).json({
+        error: 'Unauthorized. Sign in or verify with the email/phone used at checkout.',
+      })
+    }
+
+    if (built.unpaid) {
+      return res.status(403).json({
+        error: 'Medal is not yet paid. Please complete payment first.',
+        status: purchase.payment_status,
+      })
+    }
+
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="medal-${built.shortCode}.pdf"`
+    )
+    res.setHeader('Content-Length', built.pdfBuffer!.length)
+    res.send(built.pdfBuffer)
+  } catch (error) {
+    console.error('Error downloading medal PDF:', error)
+    res.status(500).json({ error: 'Failed to generate medal PDF' })
+  }
+}
+
+const medalResendCooldown = new Map<string, number>()
+const RESEND_COOLDOWN_MS = 60_000
+
+export async function resendMedalEmail(req: Request, res: Response) {
+  try {
+    const userId = req.user?.id
+    const { checkoutRequestId, purchaseId, email, phone } = req.body as {
+      checkoutRequestId?: string
+      purchaseId?: string
+      email?: string
+      phone?: string
+    }
+
+    let resolvedCheckoutId = checkoutRequestId?.trim() || ''
+
+    if (!resolvedCheckoutId && purchaseId) {
+      const purchaseResult = await query(
+        `SELECT checkout_request_id, user_id, email, phone, payment_status
+         FROM medal_purchases WHERE id = $1`,
+        [purchaseId]
+      )
+      if (purchaseResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Medal purchase not found' })
+      }
+      const row = purchaseResult.rows[0]
+      if (row.payment_status !== 'paid') {
+        return res.status(403).json({ error: 'Medal is not yet paid' })
+      }
+      if (!row.checkout_request_id) {
+        return res.status(400).json({ error: 'No payment reference on this purchase' })
+      }
+      resolvedCheckoutId = row.checkout_request_id
+    }
+
+    if (!resolvedCheckoutId) {
+      return res.status(400).json({
+        error: 'checkoutRequestId or purchaseId is required',
+      })
+    }
+
+    const batchResult = await query(
+      `SELECT id, user_id, email, phone, payment_status, checkout_request_id
+       FROM medal_purchases
+       WHERE checkout_request_id = $1
+       ORDER BY created_at ASC`,
+      [resolvedCheckoutId]
+    )
+
+    if (batchResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Medal purchases not found for this payment reference' })
+    }
+
+    const first = batchResult.rows[0]
+    const allPaid = batchResult.rows.every((r) => r.payment_status === 'paid')
+    if (!allPaid) {
+      return res.status(403).json({ error: 'Medal purchase is not yet paid' })
+    }
+
+    const isOwner = userId && batchResult.rows.some((r) => r.user_id === userId)
+    const emailQuery = typeof email === 'string' ? email.trim().toLowerCase() : undefined
+    const phoneQuery = typeof phone === 'string' ? phone : undefined
+    const phoneOk = phoneQuery && first.phone && phonesMatch(phoneQuery, first.phone)
+    const emailOk =
+      emailQuery && first.email && first.email.toLowerCase() === emailQuery
+
+    if (!isOwner && !phoneOk && !emailOk) {
+      return res.status(403).json({
+        error: 'Unauthorized. Sign in or verify with the email/phone used at checkout.',
+      })
+    }
+
+    const lastSent = medalResendCooldown.get(resolvedCheckoutId) || 0
+    const now = Date.now()
+    if (now - lastSent < RESEND_COOLDOWN_MS) {
+      const waitSec = Math.ceil((RESEND_COOLDOWN_MS - (now - lastSent)) / 1000)
+      return res.status(429).json({
+        error: `Please wait ${waitSec} second(s) before resending`,
+      })
+    }
+
+    medalResendCooldown.set(resolvedCheckoutId, now)
+    await sendMedalBatchEmail(resolvedCheckoutId)
+
+    res.json({ success: true, message: 'Confirmation email sent' })
+  } catch (error) {
+    console.error('Error resending medal email:', error)
+    res.status(500).json({ error: 'Failed to resend medal email' })
   }
 }
 

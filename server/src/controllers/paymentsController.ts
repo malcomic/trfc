@@ -15,6 +15,7 @@ import {
   logDuplicateCallback,
 } from '../utils/paymentLogger.js'
 import { sendTicketBatchEmail } from '../utils/ticketEmail.js'
+import { sendMedalBatchEmail } from '../utils/medalEmail.js'
 import {
   validatePaymentReference,
   markEntitiesFailedByCheckoutId,
@@ -47,6 +48,22 @@ async function maybeSendTicketEmail(checkoutRequestId: string) {
     sendTicketBatchEmail(checkoutRequestId).catch((error: Error) => {
       console.error(
         `Error sending ticket batch email for ${checkoutRequestId}: ${error.message}`
+      )
+    })
+  }
+}
+
+async function maybeSendMedalEmail(checkoutRequestId: string) {
+  const paidMedals = await query(
+    `SELECT id FROM medal_purchases
+     WHERE checkout_request_id = $1 AND payment_status = 'paid'
+     LIMIT 1`,
+    [checkoutRequestId]
+  )
+  if (paidMedals.rows.length > 0) {
+    sendMedalBatchEmail(checkoutRequestId).catch((error: Error) => {
+      console.error(
+        `Error sending medal batch email for ${checkoutRequestId}: ${error.message}`
       )
     })
   }
@@ -340,6 +357,7 @@ export async function handleCallback(req: Request, res: Response) {
 
     if (updateCount > 0) {
       await maybeSendTicketEmail(checkoutRequestId)
+      await maybeSendMedalEmail(checkoutRequestId)
     }
 
     logCallbackProcessing(
@@ -404,6 +422,7 @@ export async function queryPaymentStatus(req: Request, res: Response) {
 
         if (updateCount > 0) {
           await maybeSendTicketEmail(checkoutRequestId)
+          await maybeSendMedalEmail(checkoutRequestId)
         }
 
         return res.json({

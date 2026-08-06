@@ -7,6 +7,8 @@ import {
 } from '../api/medals'
 import { AlertCircle, CheckCircle, Clock, Award } from 'lucide-react'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
+import MedalDownloadButton from '../components/MedalDownloadButton'
+import MedalResendButton from '../components/MedalResendButton'
 
 interface NavState {
   tierName?: string
@@ -34,6 +36,11 @@ export default function MedalConfirmation() {
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'paid'>('pending')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  const verify = {
+    ...(email ? { email } : {}),
+    ...(phone ? { phone } : {}),
+  }
 
   const loadDetails = async (verifyEmail?: string, verifyPhone?: string) => {
     if (!checkoutRequestId) return null
@@ -194,6 +201,7 @@ export default function MedalConfirmation() {
   }
 
   const paid = paymentStatus === 'paid' || details?.payment_status === 'paid'
+  const displayEmail = details?.email || email
 
   return (
     <div className={pageRoot}>
@@ -215,6 +223,12 @@ export default function MedalConfirmation() {
               </>
             )}
           </h1>
+          {paid && displayEmail && (
+            <p className="text-fog light:text-fog-light text-sm mt-3 max-w-md mx-auto">
+              A confirmation email with your PDF certificate was sent to{' '}
+              <span className="text-chalk light:text-chalk-light">{displayEmail}</span>.
+            </p>
+          )}
         </div>
       </section>
 
@@ -264,6 +278,53 @@ export default function MedalConfirmation() {
             </div>
           </dl>
         </div>
+
+        {paid && details?.purchases && details.purchases.length > 0 && (
+          <div className="space-y-4">
+            {details.purchases.map((purchase, index) => (
+              <div key={purchase.id} className={`${cardSurface} p-5`}>
+                <div className="flex flex-wrap gap-4 items-start justify-between">
+                  <div className="flex gap-4 items-start">
+                    {purchase.qr_data_url && (
+                      <img
+                        src={purchase.qr_data_url}
+                        alt={`Medal QR ${purchase.short_code}`}
+                        className="w-28 h-28 bg-white p-1"
+                      />
+                    )}
+                    <div>
+                      <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light mb-1">
+                        Certificate {index + 1}
+                      </p>
+                      <p className="font-bebas text-2xl tracking-wider">
+                        {purchase.short_code}
+                      </p>
+                      <p className="text-sm text-fog light:text-fog-light mt-1">
+                        {details.tier_name} · {details.distance_km} km
+                      </p>
+                    </div>
+                  </div>
+                  <MedalDownloadButton
+                    purchaseId={purchase.id}
+                    paymentStatus={purchase.payment_status}
+                    verify={verify}
+                    compact
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {paid && (
+          <div className="flex flex-wrap gap-3 items-start">
+            <MedalResendButton
+              checkoutRequestId={checkoutRequestId}
+              paymentStatus="paid"
+              verify={verify}
+            />
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-3">
           <Link

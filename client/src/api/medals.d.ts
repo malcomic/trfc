@@ -46,6 +46,8 @@ export interface MedalConfirmationDetails {
         id: string;
         buyer_name: string;
         payment_status: string;
+        short_code: string;
+        qr_data_url: string | null;
     }[];
 }
 export interface UserMedalPurchase {
@@ -80,4 +82,17 @@ export declare const getMedalPurchasesByCheckoutRequestId: (checkoutRequestId: s
     email?: string;
     phone?: string;
 }) => Promise<MedalConfirmationDetails>;
+export declare function downloadMedalPdf(purchaseId: string, verify?: {
+    email?: string;
+    phone?: string;
+}): Promise<void>;
+export declare function resendMedalEmail(data: {
+    checkoutRequestId?: string;
+    purchaseId?: string;
+    email?: string;
+    phone?: string;
+}): Promise<{
+    success: boolean;
+    message: string;
+}>;
 //# sourceMappingURL=medals.d.ts.map

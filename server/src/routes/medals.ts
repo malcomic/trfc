@@ -5,6 +5,8 @@ import {
   createMedalPurchases,
   getUserMedalPurchases,
   getPurchasesByCheckoutRequestId,
+  downloadMedalPDF,
+  resendMedalEmail,
 } from '../controllers/medalsController.js'
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth.js'
 
@@ -16,6 +18,12 @@ router.get(
   '/purchases/checkout/:checkoutRequestId',
   optionalAuthMiddleware,
   getPurchasesByCheckoutRequestId
+)
+router.post('/purchases/resend', optionalAuthMiddleware, resendMedalEmail)
+router.get(
+  '/purchases/:purchaseId/download',
+  optionalAuthMiddleware,
+  downloadMedalPDF
 )
 router.post('/:slug/purchases', optionalAuthMiddleware, createMedalPurchases)
 router.get('/:slug', getMedalBySlug)
