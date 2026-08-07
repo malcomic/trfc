@@ -1,39 +1,42 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-const emailsSend = vi.fn()
-const domainsList = vi.fn()
+const sendMail = vi.fn()
+const verify = vi.fn()
 
-vi.mock('resend', () => ({
-  Resend: vi.fn().mockImplementation(() => ({
-    emails: { send: emailsSend },
-    domains: { list: domainsList },
-  })),
+vi.mock('nodemailer', () => ({
+  default: {
+    createTransport: vi.fn(() => ({
+      sendMail,
+      verify,
+    })),
+  },
 }))
 
 vi.mock('../../config/env.js', () => ({
   config: {
     email: {
-      apiKey: '',
-      from: '',
+      user: '',
+      pass: '',
     },
   },
 }))
 
-describe('emailService (Resend)', () => {
+describe('emailService (Nodemailer)', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
-    delete process.env.RESEND_API_KEY
-    delete process.env.EMAIL_FROM
+    delete process.env.EMAIL_USER
+    delete process.env.EMAIL_PASSWORD
+    delete process.env.EMAIL_PASS
   })
 
   afterEach(() => {
-    delete process.env.RESEND_API_KEY
-    delete process.env.EMAIL_FROM
+    delete process.env.EMAIL_USER
+    delete process.env.EMAIL_PASSWORD
+    delete process.env.EMAIL_PASS
   })
 
-  it('returns a clear failure when RESEND_API_KEY is missing', async () => {
-    process.env.EMAIL_FROM = 'TRFC <tickets@example.com>'
+  it('returns a clear failure when credentials are missing', async () => {
     const { sendEmail } = await import('../../utils/emailService.js')
 
     const result = await sendEmail({
@@ -46,33 +49,13 @@ describe('emailService (Resend)', () => {
       success: false,
       error: 'Email service not configured',
     })
-    expect(emailsSend).not.toHaveBeenCalled()
+    expect(sendMail).not.toHaveBeenCalled()
   })
 
-  it('returns a clear failure when EMAIL_FROM is missing', async () => {
-    process.env.RESEND_API_KEY = 're_test_key'
-    const { sendEmail } = await import('../../utils/emailService.js')
-
-    const result = await sendEmail({
-      to: 'buyer@example.com',
-      subject: 'Test',
-      html: '<p>Hi</p>',
-    })
-
-    expect(result).toEqual({
-      success: false,
-      error: 'EMAIL_FROM is not configured',
-    })
-    expect(emailsSend).not.toHaveBeenCalled()
-  })
-
-  it('sends via Resend and returns messageId on success', async () => {
-    process.env.RESEND_API_KEY = 're_test_key'
-    process.env.EMAIL_FROM = 'TRFC <tickets@example.com>'
-    emailsSend.mockResolvedValueOnce({
-      data: { id: 'email_123' },
-      error: null,
-    })
+  it('sends via Nodemailer and returns messageId on success', async () => {
+    process.env.EMAIL_USER = 'sender@gmail.com'
+    process.env.EMAIL_PASSWORD = 'app-pass'
+    sendMail.mockResolvedValueOnce({ messageId: 'msg-123' })
 
     const { sendEmail } = await import('../../utils/emailService.js')
     const result = await sendEmail({
@@ -82,12 +65,12 @@ describe('emailService (Resend)', () => {
       text: 'Thanks',
     })
 
-    expect(result).toEqual({ success: true, messageId: 'email_123' })
-    expect(emailsSend).toHaveBeenCalledTimes(1)
-    expect(emailsSend).toHaveBeenCalledWith(
+    expect(result).toEqual({ success: true, messageId: 'msg-123' })
+    expect(sendMail).toHaveBeenCalledTimes(1)
+    expect(sendMail).toHaveBeenCalledWith(
       expect.objectContaining({
-        from: 'TRFC <tickets@example.com>',
-        to: ['buyer@example.com'],
+        from: 'sender@gmail.com',
+        to: 'buyer@example.com',
         subject: 'Your TRFC ticket',
         html: '<p>Thanks</p>',
         text: 'Thanks',
@@ -95,13 +78,10 @@ describe('emailService (Resend)', () => {
     )
   })
 
-  it('base64-encodes Buffer attachments for Resend', async () => {
-    process.env.RESEND_API_KEY = 're_test_key'
-    process.env.EMAIL_FROM = 'TRFC <tickets@example.com>'
-    emailsSend.mockResolvedValueOnce({
-      data: { id: 'email_456' },
-      error: null,
-    })
+  it('passes Buffer attachments through to Nodemailer', async () => {
+    process.env.EMAIL_USER = 'sender@gmail.com'
+    process.env.EMAIL_PASS = 'app-pass'
+    sendMail.mockResolvedValueOnce({ messageId: 'msg-456' })
 
     const pdf = Buffer.from('fake-pdf-bytes')
     const { sendEmail } = await import('../../utils/emailService.js')
@@ -118,12 +98,12 @@ describe('emailService (Resend)', () => {
       ],
     })
 
-    expect(emailsSend).toHaveBeenCalledWith(
+    expect(sendMail).toHaveBeenCalledWith(
       expect.objectContaining({
         attachments: [
           {
             filename: 'ticket-1.pdf',
-            content: pdf.toString('base64'),
+            content: pdf,
             contentType: 'application/pdf',
           },
         ],
@@ -134,16 +114,16 @@ describe('emailService (Resend)', () => {
   it('verifyEmailTransporter returns false when credentials are missing', async () => {
     const { verifyEmailTransporter } = await import('../../utils/emailService.js')
     await expect(verifyEmailTransporter()).resolves.toBe(false)
-    expect(domainsList).not.toHaveBeenCalled()
+    expect(verify).not.toHaveBeenCalled()
   })
 
-  it('verifyEmailTransporter returns true when Resend API key works', async () => {
-    process.env.RESEND_API_KEY = 're_test_key'
-    process.env.EMAIL_FROM = 'TRFC <tickets@example.com>'
-    domainsList.mockResolvedValueOnce({ data: [], error: null })
+  it('verifyEmailTransporter returns true when Gmail transporter verifies', async () => {
+    process.env.EMAIL_USER = 'sender@gmail.com'
+    process.env.EMAIL_PASSWORD = 'app-pass'
+    verify.mockResolvedValueOnce(true)
 
     const { verifyEmailTransporter } = await import('../../utils/emailService.js')
     await expect(verifyEmailTransporter()).resolves.toBe(true)
-    expect(domainsList).toHaveBeenCalledTimes(1)
+    expect(verify).toHaveBeenCalledTimes(1)
   })
 })

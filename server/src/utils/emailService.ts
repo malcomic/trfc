@@ -1,4 +1,4 @@
-import { Resend } from 'resend'
+import nodemailer from 'nodemailer'
 import { config } from '../config/env.js'
 
 interface EmailOptions {
@@ -19,25 +19,33 @@ interface SendEmailResult {
   error?: string
 }
 
-let resendClient: Resend | null = null
+let transporter: nodemailer.Transporter | null = null
 
-function getResendClient(): Resend | null {
-  const apiKey = process.env.RESEND_API_KEY || config.email.apiKey
-  if (!apiKey) {
-    console.warn(
-      'Email credentials not configured. Set RESEND_API_KEY and EMAIL_FROM in .env'
-    )
-    return null
-  }
-
-  if (!resendClient) {
-    resendClient = new Resend(apiKey)
-  }
-  return resendClient
+function getEmailPass(): string {
+  return process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS || config.email.pass || ''
 }
 
-function getFromAddress(): string {
-  return process.env.EMAIL_FROM || config.email.from || ''
+function getTransporter() {
+  if (!transporter) {
+    const emailUser = process.env.EMAIL_USER || config.email.user
+    const emailPass = getEmailPass()
+
+    if (!emailUser || !emailPass) {
+      console.warn(
+        'Email credentials not configured. Set EMAIL_USER and EMAIL_PASSWORD (or EMAIL_PASS) in .env'
+      )
+      return null
+    }
+
+    transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: emailUser,
+        pass: emailPass,
+      },
+    })
+  }
+  return transporter
 }
 
 /**
@@ -51,49 +59,32 @@ export async function sendEmail(
   const baseDelay = 1000
 
   try {
-    const client = getResendClient()
-    const from = getFromAddress()
+    const emailTransporter = getTransporter()
 
-    if (!client) {
+    if (!emailTransporter) {
       return {
         success: false,
         error: 'Email service not configured',
       }
     }
 
-    if (!from) {
-      return {
-        success: false,
-        error: 'EMAIL_FROM is not configured',
-      }
-    }
-
-    const { data, error } = await client.emails.send({
-      from,
-      to: [options.to],
+    const mailOptions = {
+      from: process.env.EMAIL_USER || config.email.user || 'no-reply@trfc.com',
+      to: options.to,
       subject: options.subject,
       html: options.html,
       text: options.text,
-      attachments: (options.attachments || []).map((attachment) => ({
-        filename: attachment.filename,
-        content: attachment.content.toString('base64'),
-        contentType: attachment.contentType,
-      })),
-    })
-
-    if (error) {
-      throw new Error(error.message || 'Resend API error')
+      attachments: options.attachments || [],
     }
 
-    const messageId = data?.id
+    const info = await emailTransporter.sendMail(mailOptions)
+
     console.log(`✅ Email sent successfully to ${options.to}`)
-    if (messageId) {
-      console.log(`   Message ID: ${messageId}`)
-    }
+    console.log(`   Message ID: ${info.messageId}`)
 
     return {
       success: true,
-      messageId,
+      messageId: info.messageId,
     }
   } catch (error: any) {
     const errorMessage = error.message || 'Unknown email error'
@@ -125,36 +116,22 @@ export async function sendEmail(
   }
 }
 
-/**
- * Startup check: ensure Resend credentials are present and the API key responds.
- */
 export async function verifyEmailTransporter(): Promise<boolean> {
   try {
-    const apiKey = process.env.RESEND_API_KEY || config.email.apiKey
-    const from = getFromAddress()
+    const emailTransporter = getTransporter()
 
-    if (!apiKey || !from) {
+    if (!emailTransporter) {
       console.warn(
-        '⚠️  Email not configured (RESEND_API_KEY / EMAIL_FROM)'
+        '⚠️  Email transporter not configured (EMAIL_USER / EMAIL_PASSWORD or EMAIL_PASS)'
       )
       return false
     }
 
-    const client = getResendClient()
-    if (!client) {
-      return false
-    }
-
-    const { error } = await client.domains.list()
-    if (error) {
-      console.error('❌ Resend API key verification failed:', error.message)
-      return false
-    }
-
-    console.log('✅ Resend email client verified and ready to send')
+    await emailTransporter.verify()
+    console.log('✅ Email transporter verified and ready to send')
     return true
   } catch (error: any) {
-    console.error('❌ Resend email verification failed:', error.message)
+    console.error('❌ Email transporter verification failed:', error.message)
     return false
   }
 }

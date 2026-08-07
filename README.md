@@ -10,7 +10,7 @@ MVP website for TRFC, a Kenyan fitness community based along Thika Road, Nairobi
 - JWT Authentication
 - M-Pesa (Safaricom Daraja API)
 - Cloudinary for image uploads
-- Resend for transactional emails
+- Nodemailer (Gmail) for transactional emails
 - Africa's Talking SDK for SMS
 
 ### Frontend
@@ -54,17 +54,17 @@ MVP website for TRFC, a Kenyan fitness community based along Thika Road, Nairobi
 │
 └── README.md
 
-## Email (Resend)
+## Email (Nodemailer / Gmail)
 
-Transactional mail (ticket confirmations with PDF attachments) is sent via [Resend](https://resend.com).
+Transactional mail (ticket and medal confirmations with PDF attachments) is sent via Nodemailer using a Gmail app password.
 
-1. Create a Resend account and API key at https://resend.com/api-keys
-2. Add and verify a sending domain (SPF/DKIM in DNS). Until verified, you can use `TRFC <onboarding@resend.dev>` and only send to your own inbox.
-3. In `server/.env` (and production config / Heroku config vars), set:
+In `server/.env` (and production / Heroku config vars), set:
 
 ```
-RESEND_API_KEY=re_xxxxxxxx
-EMAIL_FROM="TRFC <tickets@yourdomain.com>"
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASSWORD=your_app_password
 ```
+
+`EMAIL_PASS` is accepted as an alias for `EMAIL_PASSWORD`.
 
 Copy `server/.env.example` for the full list of server env vars.
