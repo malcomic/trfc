@@ -1,4 +1,4 @@
-import { useEffect, useState, type ImgHTMLAttributes } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertCircle, Star } from 'lucide-react'
 import { getEvents } from '../api/events'
@@ -10,7 +10,6 @@ import HeroCarousel from '../components/HeroCarousel'
 
 const EVENT_IMAGE_FALLBACK =
   'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=600&q=80'
-// import landingHero from '../assets/landing-hero.png'
 
 interface GalleryItem {
   id: string
@@ -89,18 +88,9 @@ export default function Home() {
       `}</style>
 
       <section className="relative min-h-screen w-full flex items-center overflow-hidden">
-        {/* Landing hero — slideshow or static fallback */}
-        <div className="absolute inset-0 w-full h-full">
-          {heroSlides.length > 0 ? (
-            <HeroCarousel slides={heroSlides} />
-          ) : (
-            <img
-              // src={landingHero}
-              alt="TRFC community members training together"
-              className="absolute inset-0 w-full h-full object-cover object-center"
-              {...({ fetchpriority: 'high' } as ImgHTMLAttributes<HTMLImageElement>)}
-            />
-          )}
+        {/* Landing hero — gallery slides only */}
+        <div className="absolute inset-0 w-full h-full bg-ink light:bg-ink-light">
+          {heroSlides.length > 0 && <HeroCarousel slides={heroSlides} />}
         </div>
 
         {/* Text readability overlay — lighter so photo shows edge to edge */}
