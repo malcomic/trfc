@@ -8,6 +8,7 @@ import { Logo } from './Logo'
 export default function Footer() {
   const { user } = useAuth()
   const isAdmin = user && user.role === 'admin'
+  const isScanner = user && user.role === 'scanner'
   const [toasts, setToasts] = useState<ToastMessage[]>([])
 
   const showNewsletterToast = () => {
@@ -15,6 +16,11 @@ export default function Footer() {
     setToasts((t) => [...t, { id, type: 'info', title: 'Coming soon', message: 'Newsletter signup is not available yet.' }])
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3000)
   }
+
+  const staffQuickLinks =
+    isAdmin || isScanner
+      ? [{ to: '/admin/scan', label: 'Open Scanner' }]
+      : [{ to: '/admin/login', label: 'Staff Login' }]
 
   const quickLinks = [
     { to: '/about', label: 'About' },
@@ -28,10 +34,11 @@ export default function Footer() {
     { to: '/testimonials', label: 'Testimonials' },
     { to: '/contact', label: 'Contact' },
     { to: '/register', label: 'Join the Community' },
-    ...(isAdmin ? [] : [{ to: '/admin/login', label: 'Admin Login' }]),
+    ...staffQuickLinks,
   ]
 
   const adminLinks = [
+    { to: '/admin/scan', label: 'Scanner' },
     { to: '/admin', label: 'Dashboard' },
     { to: '/admin/analytics', label: 'Analytics' },
     { to: '/admin/reports', label: 'Reports' },
@@ -78,7 +85,7 @@ export default function Footer() {
         {/* Main grid */}
         <div
           className={`grid gap-x-10 pb-14 ${
-            isAdmin ? 'md:grid-cols-7' : 'md:grid-cols-5'
+            isAdmin || isScanner ? 'md:grid-cols-7' : 'md:grid-cols-5'
           } grid-cols-1 sm:grid-cols-2`}
         >
 
@@ -175,6 +182,26 @@ export default function Footer() {
                     {l.label}
                   </Link>
                 ))}
+              </div>
+            </>
+          )}
+
+          {isScanner && (
+            <>
+              <div className="hidden lg:block w-px bg-gradient-to-b from-transparent via-white/10 light:via-black/10 to-transparent" />
+              <div className="col-span-1">
+                <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light mb-5 flex items-center gap-2">
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                    <polygon points="5,0 10,10 0,10" />
+                  </svg>
+                  Staff Tools
+                </div>
+                <Link
+                  to="/admin/scan"
+                  className="flex items-center gap-2 py-1.75 text-xs text-chalk/40 light:text-chalk-light/40 no-underline font-barlow-condensed font-bold tracking-widest uppercase border-b border-white/5 light:border-black/8 transition-all duration-200 hover:text-accent light:hover:text-accent-light hover:gap-3 before:w-1 before:h-1 before:rounded-full before:bg-mist light:before:bg-mist-light before:flex-shrink-0 before:transition-all before:duration-200 hover:before:bg-accent light:before:bg-accent-light"
+                >
+                  Open Scanner
+                </Link>
               </div>
             </>
           )}

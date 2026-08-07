@@ -15,16 +15,27 @@ export default function Login() {
   const [searchParams] = useSearchParams()
   const { login } = useAuth()
 
-  const getRedirectPath = () => {
+  const defaultPathForRole = (role?: string) => {
+    if (role === 'scanner') return '/admin/scan'
+    if (role === 'admin') return '/admin'
+    return '/'
+  }
+
+  const getRedirectPath = (role?: string) => {
     const redirect = searchParams.get('redirect')
-    if (!redirect) return '/'
+    if (!redirect) return defaultPathForRole(role)
     try {
       const decoded = decodeURIComponent(redirect)
-      if (decoded.startsWith('/') && !decoded.startsWith('//')) return decoded
+      if (decoded.startsWith('/') && !decoded.startsWith('//')) {
+        if (role === 'scanner' && !decoded.startsWith('/admin/scan')) {
+          return '/admin/scan'
+        }
+        return decoded
+      }
     } catch {
       /* ignore malformed redirect */
     }
-    return '/'
+    return defaultPathForRole(role)
   }
 
   const onSubmit = async (data: any) => {
@@ -33,7 +44,7 @@ export default function Login() {
       setErrorMessage('')
       const response = await loginUser(data)
       login(response.token, response.user, response.refreshToken)
-      navigate(getRedirectPath())
+      navigate(getRedirectPath(response.user.role))
     } catch (error: any) {
       console.error('Login failed:', error)
       setErrorMessage(error.response?.data?.error || 'Login failed. Please try again.')

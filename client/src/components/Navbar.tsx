@@ -1,6 +1,6 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { ShoppingCart, X, Menu, LogOut, LogIn, UserPlus } from 'lucide-react'
+import { ShoppingCart, X, Menu, LogOut, LogIn, UserPlus, QrCode } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../store/cartStore'
 import { ThemeToggle } from './ThemeToggle'
@@ -9,11 +9,12 @@ import { Logo } from './Logo'
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
-  const { token, logout } = useAuth()
+  const { token, user, logout } = useAuth()
   const { items } = useCart()
   const navigate = useNavigate()
   const location = useLocation()
   const cartCount = items.reduce((s, i) => s + i.quantity, 0)
+  const canScan = user?.role === 'admin' || user?.role === 'scanner'
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -128,6 +129,15 @@ export default function Navbar() {
 
               {token ? (
                 <>
+                  {canScan && (
+                    <Link
+                      to="/admin/scan"
+                      className="font-barlow-condensed font-bold text-xs tracking-wider text-black light:text-white no-underline px-3.5 py-2 bg-accent light:bg-accent-light transition-all duration-200 flex items-center gap-1.5 hover:bg-accent/90 light:hover:bg-accent-light/90 clip-angled-sm"
+                    >
+                      <QrCode size={13} />
+                      Scanner
+                    </Link>
+                  )}
                   <Link to="/account" className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 dark:text-white/55 light:text-black/55 no-underline px-3.5 py-2 border border-white/7 dark:border-white/7 light:border-black/8 transition-all duration-200 flex items-center gap-1.5 bg-transparent hover:text-chalk light:hover:text-chalk-light hover:border-white/20 dark:hover:border-white/20 clip-angled-sm">
                     Account
                   </Link>
@@ -208,10 +218,27 @@ export default function Navbar() {
             </div>
             {token ? (
               <>
+                {canScan && (
+                  <Link
+                    to="/admin/scan"
+                    className="font-barlow-condensed font-bold text-xs tracking-wider text-black light:text-white no-underline px-3.5 py-3.5 bg-accent light:bg-accent-light flex items-center justify-center gap-1.5 hover:bg-accent/90 light:hover:bg-accent-light/90 clip-angled-lg transition-all duration-200"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <QrCode size={15} />
+                    Open Scanner
+                  </Link>
+                )}
                 <Link to="/account" className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 no-underline px-3.5 py-3.5 border border-white/7 flex items-center justify-center bg-transparent hover:text-chalk clip-angled-lg transition-all duration-200" onClick={() => setIsOpen(false)}>
                   Account
                 </Link>
-                <button onClick={handleLogout} className="font-barlow-condensed font-bold text-xs tracking-wider text-black light:text-white no-underline px-3.5 py-3.5 bg-accent light:bg-accent-light w-full flex items-center justify-center gap-1.5 cursor-pointer hover:bg-accent/90 light:hover:bg-accent-light/90 clip-angled-lg transition-all duration-200">
+                <button
+                  onClick={handleLogout}
+                  className={`font-barlow-condensed font-bold text-xs tracking-wider no-underline px-3.5 py-3.5 w-full flex items-center justify-center gap-1.5 cursor-pointer clip-angled-lg transition-all duration-200 ${
+                    canScan
+                      ? 'text-white/55 dark:text-white/55 light:text-black/55 border border-white/7 dark:border-white/7 light:border-black/8 hover:text-chalk light:hover:text-chalk-light hover:border-white/20'
+                      : 'text-black light:text-white bg-accent light:bg-accent-light hover:bg-accent/90 light:hover:bg-accent-light/90'
+                  }`}
+                >
                   <LogOut size={15} />
                   Logout
                 </button>

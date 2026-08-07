@@ -1,9 +1,20 @@
 import { Link } from 'react-router-dom'
-import { CreditCard, Ticket, Award, User, ArrowRight } from 'lucide-react'
+import { CreditCard, Ticket, Award, User, ArrowRight, QrCode, LayoutDashboard } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 import { pageRoot, cardSurface } from '../utils/themeClasses'
 
 export default function Account() {
+  const { user } = useAuth()
+  const canScan = user?.role === 'admin' || user?.role === 'scanner'
+  const isAdmin = user?.role === 'admin'
+
   const links = [
+    ...(canScan
+      ? [{ to: '/admin/scan', label: 'Open Scanner', desc: 'Scan tickets and redeem medals at the gate', icon: QrCode }]
+      : []),
+    ...(isAdmin
+      ? [{ to: '/admin', label: 'Admin Dashboard', desc: 'Manage events, users, and club operations', icon: LayoutDashboard }]
+      : []),
     { to: '/account/payments', label: 'Payment History', desc: 'View orders, tickets, medals, and hire payments', icon: CreditCard },
     { to: '/account/tickets', label: 'My Tickets', desc: 'Your event tickets and registration status', icon: Ticket },
     { to: '/account/medals', label: 'My Medals', desc: 'Your challenge medal purchases', icon: Award },
