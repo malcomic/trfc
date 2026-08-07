@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import PrivateRoute from './components/PrivateRoute'
 import PublicLayout from './components/PublicLayout'
 import AdminLayout from './components/AdminLayout'
@@ -8,7 +8,6 @@ import Events from './pages/Events'
 import EventDetail from './pages/EventDetail'
 import EventCheckout from './pages/EventCheckout'
 import TicketConfirmation from './pages/TicketConfirmation'
-import Medals from './pages/Medals'
 import MedalDetail from './pages/MedalDetail'
 import MedalCheckout from './pages/MedalCheckout'
 import MedalConfirmation from './pages/MedalConfirmation'
@@ -103,7 +102,7 @@ function App() {
           <Route path="/events/:eventId/checkout" element={<EventCheckout />} />
           <Route path="/events/:id" element={<EventDetail />} />
           <Route path="/ticket-confirmation/:checkoutRequestId" element={<TicketConfirmation />} />
-          <Route path="/medals" element={<Medals />} />
+          <Route path="/medals" element={<Navigate to="/shop?category=Medals" replace />} />
           <Route path="/medals/:slug/checkout" element={<MedalCheckout />} />
           <Route path="/medals/:slug" element={<MedalDetail />} />
           <Route path="/medal-confirmation/:checkoutRequestId" element={<MedalConfirmation />} />

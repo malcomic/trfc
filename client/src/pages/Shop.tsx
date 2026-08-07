@@ -1,22 +1,45 @@
-import { useEffect, useState, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState, useRef, useMemo } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useCart } from '../store/cartStore'
 import { getProducts } from '../api/products'
+import { getMedals, type MedalTier } from '../api/medals'
 import ProductCard from '../components/ProductCard'
 import { Product } from '../types'
-import { ShoppingCart, AlertCircle, SlidersHorizontal, Check, ChevronDown } from 'lucide-react'
+import { ShoppingCart, AlertCircle, SlidersHorizontal, Check, ChevronDown, Award } from 'lucide-react'
 import { pageRoot, cardSurface } from '../utils/themeClasses'
+import { getSafeImageUrl } from '../utils/imageUrl'
 
 interface Toast { id: number; name: string }
 
-const CATEGORIES = ['All', 'Apparel', 'Accessories', 'Footwear', 'Gear']
+const CATEGORIES = ['All', 'Apparel', 'Accessories', 'Footwear', 'Gear', 'Medals'] as const
+type ShopCategory = (typeof CATEGORIES)[number]
+
 const SORT_OPTIONS = ['Featured', 'Price: Low to High', 'Price: High to Low', 'Newest']
 
+const PRODUCT_FALLBACK =
+  'https://images.unsplash.com/photo-1556906781-9a412961a28d?w=500&q=80'
+const MEDAL_FALLBACK =
+  'https://images.unsplash.com/photo-1461896836934-ffe607ba6851?w=800&q=80'
+
+type CatalogItem =
+  | { kind: 'product'; product: Product; sortPrice: number; createdAt: number }
+  | { kind: 'medal'; tier: MedalTier; sortPrice: number; createdAt: number }
+
+function parseCategory(value: string | null): ShopCategory {
+  if (!value) return 'All'
+  const match = CATEGORIES.find((c) => c.toLowerCase() === value.toLowerCase())
+  return match ?? 'All'
+}
+
 export default function Shop() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [products, setProducts] = useState<Product[]>([])
+  const [medals, setMedals] = useState<MedalTier[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [activeCategory, setActiveCategory] = useState('All')
+  const [activeCategory, setActiveCategory] = useState<ShopCategory>(() =>
+    parseCategory(searchParams.get('category'))
+  )
   const [sortBy, setSortBy] = useState('Featured')
   const [showSort, setShowSort] = useState(false)
   const [addedIds, setAddedIds] = useState<Set<string | number>>(new Set())
@@ -24,25 +47,44 @@ export default function Shop() {
   const { addItem } = useCart()
   const toastId = useRef(0)
 
-  useEffect(() => { fetchProducts() }, [])
+  useEffect(() => {
+    fetchCatalog()
+  }, [])
 
-  const fetchProducts = async () => {
+  useEffect(() => {
+    const fromUrl = parseCategory(searchParams.get('category'))
+    setActiveCategory(fromUrl)
+  }, [searchParams])
+
+  const setCategory = (cat: ShopCategory) => {
+    setActiveCategory(cat)
+    if (cat === 'All') {
+      setSearchParams({}, { replace: true })
+    } else {
+      setSearchParams({ category: cat }, { replace: true })
+    }
+  }
+
+  const fetchCatalog = async () => {
     try {
       setLoading(true)
-      const data = await getProducts()
-      setProducts(data)
+      setError('')
+      const [productsData, medalsData] = await Promise.all([getProducts(), getMedals()])
+      setProducts(Array.isArray(productsData) ? productsData : [])
+      setMedals(Array.isArray(medalsData) ? medalsData : [])
     } catch (err) {
-      setError('Failed to load products. Please try again.')
+      setError('Failed to load shop catalog. Please try again.')
       console.error(err)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleAddToCart = (product: Product) => {
+  const handleAddToCart = (product: Product, e?: React.MouseEvent) => {
+    e?.preventDefault()
+    e?.stopPropagation()
     addItem(product, 1)
 
-    // Flash button state
     setAddedIds((prev) => new Set(prev).add(product.id))
     setTimeout(() => {
       setAddedIds((prev) => {
@@ -52,33 +94,76 @@ export default function Shop() {
       })
     }, 1500)
 
-    // Show toast
     const id = ++toastId.current
     setToasts((prev) => [...prev, { id, name: product.name }])
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3000)
   }
 
-  const filteredProducts = products.filter((p) => {
-    if (activeCategory === 'All') return true
-    return (p.category || '').toLowerCase() === activeCategory.toLowerCase()
-  })
+  const catalogItems = useMemo(() => {
+    const showProducts = activeCategory !== 'Medals'
+    const showMedals = activeCategory === 'All' || activeCategory === 'Medals'
 
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    if (sortBy === 'Price: Low to High') return (a.price ?? 0) - (b.price ?? 0)
-    if (sortBy === 'Price: High to Low') return (b.price ?? 0) - (a.price ?? 0)
-    if (sortBy === 'Newest') {
-      const aTime = (a as any).created_at ? new Date((a as any).created_at).getTime() : 0
-      const bTime = (b as any).created_at ? new Date((b as any).created_at).getTime() : 0
-      return bTime - aTime
+    const items: CatalogItem[] = []
+
+    if (showProducts) {
+      const filtered = products.filter((p) => {
+        if (activeCategory === 'All') return true
+        return (p.category || '').toLowerCase() === activeCategory.toLowerCase()
+      })
+      for (const product of filtered) {
+        items.push({
+          kind: 'product',
+          product,
+          sortPrice: product.price ?? 0,
+          createdAt: (product as any).created_at
+            ? new Date((product as any).created_at).getTime()
+            : 0,
+        })
+      }
     }
-    return 0
-  })
+
+    if (showMedals) {
+      for (const tier of medals) {
+        items.push({
+          kind: 'medal',
+          tier,
+          sortPrice: tier.min_price ?? 0,
+          createdAt: 0,
+        })
+      }
+    }
+
+    return items.sort((a, b) => {
+      if (sortBy === 'Price: Low to High') return a.sortPrice - b.sortPrice
+      if (sortBy === 'Price: High to Low') return b.sortPrice - a.sortPrice
+      if (sortBy === 'Newest') return b.createdAt - a.createdAt
+      return 0
+    })
+  }, [products, medals, activeCategory, sortBy])
 
   const isNew = (product: Product) => {
     const created = (product as any).created_at
     if (!created) return false
     return Date.now() - new Date(created).getTime() < 1000 * 60 * 60 * 24 * 14
   }
+
+  const totalAvailable =
+    activeCategory === 'Medals'
+      ? medals.length
+      : activeCategory === 'All'
+        ? products.length + medals.length
+        : products.filter(
+            (p) => (p.category || '').toLowerCase() === activeCategory.toLowerCase()
+          ).length
+
+  const availableLabel =
+    activeCategory === 'Medals'
+      ? `${totalAvailable} medal${totalAvailable !== 1 ? 's' : ''}`
+      : activeCategory === 'All'
+        ? `${products.length} product${products.length !== 1 ? 's' : ''}${
+            medals.length ? ` · ${medals.length} medal${medals.length !== 1 ? 's' : ''}` : ''
+          }`
+        : `${totalAvailable} product${totalAvailable !== 1 ? 's' : ''}`
 
   return (
     <div className={pageRoot}>
@@ -93,7 +178,7 @@ export default function Shop() {
               TRFC<br /><span className="text-accent light:text-accent-light">SHOP</span>
             </h1>
             <p className="text-fog light:text-fog-light mt-4 max-w-md leading-relaxed">
-              Represent the movement with official TRFC merchandise.
+              Represent the movement with official TRFC merchandise and challenge medals.
             </p>
           </div>
           <div className="pb-2">
@@ -101,7 +186,7 @@ export default function Shop() {
               Jerseys · Hoodies · Caps · Bucket Hats · Water Bottles · Waist Bags · Phone Holders · Medals
             </p>
             <p className="font-barlow-condensed font-bold text-sm tracking-widest text-fog light:text-fog-light">
-              {loading ? '—' : `${products.length} product${products.length !== 1 ? 's' : ''}`} available
+              {loading ? '—' : `${availableLabel} available`}
             </p>
           </div>
         </div>
@@ -132,7 +217,7 @@ export default function Shop() {
           {CATEGORIES.map((cat) => (
             <button
               key={cat}
-              onClick={() => setActiveCategory(cat)}
+              onClick={() => setCategory(cat)}
               className={`flex items-center gap-1.75 font-barlow-condensed font-bold text-xs tracking-widest uppercase px-4.5 py-2 transition-all duration-200 clip-angled-sm ${
                 activeCategory === cat
                   ? 'bg-accent light:bg-accent-light text-black light:text-white border border-accent light:border-accent-light'
@@ -174,7 +259,6 @@ export default function Shop() {
       {/* ── Main content ── */}
       <div className="max-w-5xl mx-auto px-[6%] py-9 pb-20">
 
-        {/* Error */}
         {error && (
           <div className="flex items-start gap-2.5 bg-red-500/10 border border-red-500/20 border-l-4 border-l-red-500 px-4 py-3.5 mb-8 text-sm text-red-600 dark:text-red-400">
             <AlertCircle size={16} className="flex-shrink-0 mt-0.25" />
@@ -182,7 +266,6 @@ export default function Shop() {
           </div>
         )}
 
-        {/* Loading skeletons */}
         {loading && (
           <div className="grid grid-cols-auto-fill gap-0.5">
             {Array(8).fill(null).map((_, i) => (
@@ -191,36 +274,99 @@ export default function Shop() {
           </div>
         )}
 
-        {/* Empty state */}
-        {!loading && !error && products.length === 0 && (
+        {!loading && !error && catalogItems.length === 0 && (
           <div className="text-center py-25">
             <div className="font-bebas text-clamp-2xl text-accent/10 light:text-accent-light/10 leading-none mb-4 tracking-tighter">SOLD<br />OUT</div>
-            <p className="font-barlow-condensed font-bold text-xl tracking-widest uppercase text-fog light:text-fog-light mb-2">No products available right now</p>
+            <p className="font-barlow-condensed font-bold text-xl tracking-widest uppercase text-fog light:text-fog-light mb-2">
+              {activeCategory === 'Medals' ? 'No medals available right now' : 'No products available right now'}
+            </p>
             <p className="text-sm text-fog light:text-fog-light">
               Check back soon — new drops coming.
             </p>
           </div>
         )}
 
-        {/* Product grid */}
-        {!loading && !error && sortedProducts.length > 0 && (
+        {!loading && !error && catalogItems.length > 0 && (
           <div className="grid grid-cols-auto-fill gap-0.5">
-            {sortedProducts.map((product) => {
+            {catalogItems.map((item) => {
+              if (item.kind === 'medal') {
+                const { tier } = item
+                return (
+                  <div
+                    key={`medal-${tier.id}`}
+                    className="bg-ash light:bg-ash-light border border-transparent hover:border-accent/30 light:hover:border-accent-light/30 transition-all duration-250 hover:-translate-y-0.75 hover:z-10"
+                  >
+                    <Link
+                      to={`/medals/${tier.slug}`}
+                      className="relative overflow-hidden aspect-square bg-smoke light:bg-smoke-light group block no-underline"
+                    >
+                      <img
+                        src={getSafeImageUrl(tier.image_url, MEDAL_FALLBACK)}
+                        alt={tier.name}
+                        className="w-full h-full object-cover brightness-90 saturate-85 transition-all duration-500 ease-out group-hover:scale-107 group-hover:brightness-100 group-hover:saturate-100"
+                        onError={(e) => {
+                          ;(e.target as HTMLImageElement).src = MEDAL_FALLBACK
+                        }}
+                      />
+                      <span className="absolute top-3 left-3 font-barlow-condensed font-black text-xs tracking-widest uppercase px-2.5 py-1 bg-accent light:bg-accent-light text-black light:text-white z-1">
+                        Medal
+                      </span>
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-250 flex items-center justify-center">
+                        <span className="font-barlow-condensed font-black text-xs tracking-widest uppercase px-7 py-3 clip-angled bg-accent light:bg-accent-light text-black light:text-white border border-accent light:border-accent-light flex items-center gap-2">
+                          <Award size={14} /> View medal
+                        </span>
+                      </div>
+                    </Link>
+                    <div className="px-4.5 py-5 flex flex-col gap-1.5 border-t border-white/5 light:border-black/8">
+                      <Link
+                        to={`/medals/${tier.slug}`}
+                        className="no-underline hover:text-accent light:hover:text-accent-light transition-colors duration-200"
+                      >
+                        <h3 className="font-barlow-condensed font-bold text-[17px] tracking-wide text-chalk light:text-chalk-light leading-snug">
+                          {tier.name}
+                        </h3>
+                        {tier.description && (
+                          <p className="text-xs text-fog light:text-fog-light leading-relaxed line-clamp-2">
+                            {tier.description}
+                          </p>
+                        )}
+                      </Link>
+                      <div className="flex items-center justify-between mt-2">
+                        <div className="font-bebas text-2xl text-accent light:text-accent-light tracking-wider">
+                          {tier.min_price != null
+                            ? `From KES ${Number(tier.min_price).toLocaleString()}`
+                            : 'See options'}
+                        </div>
+                        <Link
+                          to={`/medals/${tier.slug}`}
+                          className="w-8.5 h-8.5 flex items-center justify-center transition-all duration-200 clip-angled-sm bg-accent/10 light:bg-accent-light/10 border border-accent/20 light:border-accent-light/20 text-accent light:text-accent-light hover:bg-accent/20 light:hover:bg-accent-light/20 no-underline"
+                          aria-label={`View ${tier.name} medal`}
+                        >
+                          <Award size={15} />
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                )
+              }
+
+              const { product } = item
               const added = addedIds.has(product.id)
               return (
-                <div key={product.id} className="bg-ash light:bg-ash-light border border-transparent hover:border-accent/30 light:hover:border-accent-light/30 transition-all duration-250 hover:-translate-y-0.75 hover:z-10">
-
-                  {/* Image + overlay */}
+                <div
+                  key={`product-${product.id}`}
+                  className="bg-ash light:bg-ash-light border border-transparent hover:border-accent/30 light:hover:border-accent-light/30 transition-all duration-250 hover:-translate-y-0.75 hover:z-10"
+                >
                   <Link
                     to={`/shop/${product.id}`}
                     className="relative overflow-hidden aspect-square bg-smoke light:bg-smoke-light group block no-underline"
                   >
                     <img
-                      src={product.image_url || 'https://images.unsplash.com/photo-1556906781-9a412961a28d?w=500&q=80'}
+                      src={product.image_url || PRODUCT_FALLBACK}
                       alt={product.name}
                       className="w-full h-full object-cover brightness-90 saturate-85 transition-all duration-500 ease-out group-hover:scale-107 group-hover:brightness-100 group-hover:saturate-100"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1556906781-9a412961a28d?w=500&q=80'
+                        ;(e.target as HTMLImageElement).src = PRODUCT_FALLBACK
                       }}
                     />
                     {isNew(product) && (
@@ -229,11 +375,9 @@ export default function Shop() {
                     {product.stock === 0 && (
                       <span className="absolute top-3 left-3 font-barlow-condensed font-black text-xs tracking-widest uppercase px-2.5 py-1 bg-smoke light:bg-smoke-light text-fog light:text-fog-light z-1">Sold Out</span>
                     )}
-
-                    {/* Quick-add overlay */}
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-250 flex items-center justify-center">
                       <button
-                        onClick={() => handleAddToCart(product)}
+                        onClick={(e) => handleAddToCart(product, e)}
                         disabled={product.stock === 0}
                         className={`font-barlow-condensed font-black text-xs tracking-widest uppercase px-7 py-3 clip-angled transition-all duration-300 ease-out disabled:opacity-50 flex items-center gap-2 ${
                           added
@@ -249,8 +393,6 @@ export default function Shop() {
                       </button>
                     </div>
                   </Link>
-
-                  {/* Card body */}
                   <div className="px-4.5 py-5 flex flex-col gap-1.5 border-t border-white/5 light:border-black/8">
                     <Link to={`/shop/${product.id}`} className="no-underline hover:text-accent light:hover:text-accent-light transition-colors duration-200">
                       <ProductCard product={product} variant="compact" />
@@ -276,7 +418,6 @@ export default function Shop() {
                       </button>
                     </div>
                   </div>
-
                 </div>
               )
             })}

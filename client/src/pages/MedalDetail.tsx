@@ -59,7 +59,7 @@ export default function MedalDetail() {
             <div>
               <p className="text-red-300 mb-4">{error || 'Medal not found'}</p>
               <button
-                onClick={() => (error ? fetchTier() : navigate('/medals'))}
+                onClick={() => (error ? fetchTier() : navigate('/shop?category=Medals'))}
                 className="bg-accent light:bg-accent-light text-black light:text-white px-4 py-2 clip-angled-sm"
               >
                 {error ? 'Retry' : 'Back to Medals'}
@@ -79,7 +79,7 @@ export default function MedalDetail() {
       <section className="bg-ink light:bg-ink-light border-b border-white/5 light:border-black/8 px-[6%] pt-14 pb-8">
         <div className="max-w-4xl mx-auto">
           <button
-            onClick={() => navigate('/medals')}
+            onClick={() => navigate('/shop?category=Medals')}
             className="text-accent light:text-accent-light text-sm mb-4 bg-transparent border-0 cursor-pointer font-barlow-condensed font-bold hover:underline"
           >
             ← Back to Medals

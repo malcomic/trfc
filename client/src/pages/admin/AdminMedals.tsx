@@ -8,6 +8,7 @@ import {
   getAdminMedalPurchases,
   AdminMedalPurchase,
 } from '../../api/admin/medals'
+import { uploadImage } from '../../api/admin/upload'
 import type { MedalTier, MedalOption } from '../../api/medals'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/AdminMobileCard'
@@ -30,6 +31,8 @@ export default function AdminMedals() {
     sort_order: 0,
     is_active: true,
   })
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [filePreview, setFilePreview] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   const [optionTierId, setOptionTierId] = useState<string | null>(null)
@@ -67,6 +70,8 @@ export default function AdminMedals() {
 
   const openEditTier = (tier: MedalTier) => {
     setEditingTier(tier)
+    setImageFile(null)
+    setFilePreview(null)
     setTierForm({
       name: tier.name,
       description: tier.description || '',
@@ -77,21 +82,49 @@ export default function AdminMedals() {
     })
   }
 
+  const closeEditTier = () => {
+    setEditingTier(null)
+    setImageFile(null)
+    setFilePreview(null)
+  }
+
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null
+    setImageFile(file)
+    if (file) {
+      const reader = new FileReader()
+      reader.onloadend = () => setFilePreview(reader.result as string)
+      reader.readAsDataURL(file)
+    } else {
+      setFilePreview(null)
+    }
+  }
+
   const saveTier = async () => {
     if (!editingTier) return
     const benefits = tierForm.benefits.map((b) => b.trim()).filter(Boolean)
     try {
       setSaving(true)
       setError('')
+
+      let imageUrl = tierForm.image_url.trim() || null
+      if (imageFile) {
+        const formData = new FormData()
+        formData.append('file', imageFile)
+        formData.append('folder', 'trfc_medals')
+        const result = await uploadImage(formData)
+        imageUrl = result.url
+      }
+
       await updateAdminMedalTier(editingTier.id, {
         name: tierForm.name.trim(),
         description: tierForm.description.trim() || null,
         benefits,
-        image_url: tierForm.image_url.trim() || null,
+        image_url: imageUrl,
         sort_order: Number(tierForm.sort_order) || 0,
         is_active: tierForm.is_active,
       })
-      setEditingTier(null)
+      closeEditTier()
       await fetchAll()
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to save tier')
@@ -358,7 +391,7 @@ export default function AdminMedals() {
           <div className="bg-white dark:bg-gray-800 rounded-lg max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Edit {editingTier.name}</h3>
-              <button type="button" onClick={() => setEditingTier(null)}>
+              <button type="button" onClick={closeEditTier}>
                 <X size={20} />
               </button>
             </div>
@@ -380,13 +413,37 @@ export default function AdminMedals() {
                   onChange={(e) => setTierForm({ ...tierForm, description: e.target.value })}
                 />
               </div>
-              <div>
-                <label className="block text-sm mb-1">Image URL</label>
-                <input
-                  className="w-full border rounded-lg px-3 py-2 dark:bg-gray-900 dark:border-gray-600"
-                  value={tierForm.image_url}
-                  onChange={(e) => setTierForm({ ...tierForm, image_url: e.target.value })}
-                />
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-sm mb-1">Upload Image</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageFileChange}
+                    className="w-full border rounded-lg px-3 py-2 dark:bg-gray-900 dark:border-gray-600"
+                  />
+                  {filePreview && (
+                    <div className="mt-2 relative w-full h-32 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
+                      <img src={filePreview} alt="Preview" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  {!filePreview && tierForm.image_url && (
+                    <div className="mt-2 relative w-full h-32 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
+                      <img src={tierForm.image_url} alt="Current" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                </div>
+                <div className="text-center text-gray-500 dark:text-gray-400 text-sm">OR</div>
+                <div>
+                  <label className="block text-sm mb-1">Image URL</label>
+                  <input
+                    type="url"
+                    className="w-full border rounded-lg px-3 py-2 dark:bg-gray-900 dark:border-gray-600"
+                    placeholder="https://example.com/image.jpg"
+                    value={tierForm.image_url}
+                    onChange={(e) => setTierForm({ ...tierForm, image_url: e.target.value })}
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-sm mb-1">Benefits</label>

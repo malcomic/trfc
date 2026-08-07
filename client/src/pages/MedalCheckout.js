@@ -130,7 +130,7 @@ export default function MedalCheckout() {
         return (_jsx("div", { className: `${pageRoot} flex items-center justify-center`, children: _jsx(Loader, { className: "w-12 h-12 animate-spin text-accent light:text-accent-light" }) }));
     }
     if (error && !tier) {
-        return (_jsx("div", { className: `${pageRoot} py-16 px-6`, children: _jsxs("div", { className: "max-w-2xl mx-auto bg-red-500/10 border border-red-500/20 p-6 flex gap-4", children: [_jsx(AlertCircle, { className: "w-6 h-6 text-red-400" }), _jsxs("div", { children: [_jsx("p", { className: "text-red-300 mb-4", children: error }), _jsx("button", { onClick: () => navigate('/medals'), className: "bg-accent light:bg-accent-light text-black light:text-white px-4 py-2 clip-angled-sm", children: "Back to Medals" })] })] }) }));
+        return (_jsx("div", { className: `${pageRoot} py-16 px-6`, children: _jsxs("div", { className: "max-w-2xl mx-auto bg-red-500/10 border border-red-500/20 p-6 flex gap-4", children: [_jsx(AlertCircle, { className: "w-6 h-6 text-red-400" }), _jsxs("div", { children: [_jsx("p", { className: "text-red-300 mb-4", children: error }), _jsx("button", { onClick: () => navigate('/shop?category=Medals'), className: "bg-accent light:bg-accent-light text-black light:text-white px-4 py-2 clip-angled-sm", children: "Back to Medals" })] })] }) }));
     }
     if (!tier || !option)
         return null;

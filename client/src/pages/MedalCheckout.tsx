@@ -159,7 +159,7 @@ export default function MedalCheckout() {
           <div>
             <p className="text-red-300 mb-4">{error}</p>
             <button
-              onClick={() => navigate('/medals')}
+              onClick={() => navigate('/shop?category=Medals')}
               className="bg-accent light:bg-accent-light text-black light:text-white px-4 py-2 clip-angled-sm"
             >
               Back to Medals

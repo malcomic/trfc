@@ -127,7 +127,7 @@ export default function MedalConfirmation() {
       <div className={`${pageRoot} py-16 px-6`}>
         <p className="text-center text-fog">Invalid confirmation link.</p>
         <div className="text-center mt-4">
-          <button onClick={() => navigate('/medals')} className="text-accent">
+          <button onClick={() => navigate('/shop?category=Medals')} className="text-accent">
             Back to Medals
           </button>
         </div>
@@ -191,7 +191,7 @@ export default function MedalConfirmation() {
           <AlertCircle className="text-red-400" />
           <div>
             <p className="text-red-300 mb-4">{error}</p>
-            <button onClick={() => navigate('/medals')} className="text-accent underline">
+            <button onClick={() => navigate('/shop?category=Medals')} className="text-accent underline">
               Back to Medals
             </button>
           </div>
@@ -328,7 +328,7 @@ export default function MedalConfirmation() {
 
         <div className="flex flex-wrap gap-3">
           <Link
-            to="/medals"
+            to="/shop?category=Medals"
             className="bg-accent light:bg-accent-light text-black light:text-white px-6 py-3 font-barlow-condensed font-bold tracking-widest uppercase no-underline clip-angled-sm"
           >
             Browse Medals

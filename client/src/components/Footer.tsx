@@ -25,7 +25,7 @@ export default function Footer() {
   const quickLinks = [
     { to: '/about', label: 'About' },
     { to: '/events', label: 'Events' },
-    { to: '/medals', label: 'Medals' },
+    { to: '/shop?category=Medals', label: 'Medals' },
     { to: '/programs', label: 'Programs' },
     { to: '/partnerships', label: 'Partnerships' },
     { to: '/equipment', label: 'Equipment' },
