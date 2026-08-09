@@ -1,4 +1,5 @@
 import { config } from '../config/env.js'
+import { formatEventDate, formatEventTime } from './eventDate.js'
 
 export interface TicketEmailItem {
   ticketId: string
@@ -16,22 +17,6 @@ export interface TicketBatchEmailData {
   paymentReference: string
   tickets: TicketEmailItem[]
   confirmationUrl: string
-}
-
-function formatEventDate(eventDate: string): string {
-  return new Date(eventDate).toLocaleDateString('en-KE', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
-}
-
-function formatEventTime(eventDate: string): string {
-  return new Date(eventDate).toLocaleTimeString('en-KE', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 function escapeHtml(value: string): string {

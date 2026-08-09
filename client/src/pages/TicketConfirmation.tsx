@@ -8,6 +8,7 @@ import {
 import { AlertCircle, CheckCircle, Clock, CalendarPlus } from 'lucide-react'
 import TicketCard from '../components/TicketCard'
 import { googleCalendarUrl, downloadIcs } from '../utils/calendar'
+import { formatEventDateTime } from '../utils/eventDate'
 import { pageRoot } from '../utils/themeClasses'
 
 interface NavState {
@@ -254,14 +255,7 @@ export default function TicketConfirmation() {
           {details?.event_date && (
             <p>
               <span className="text-fog light:text-fog-light">When: </span>
-              {new Date(details.event_date).toLocaleString('en-KE', {
-                weekday: 'short',
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
+              {formatEventDateTime(details.event_date)}
             </p>
           )}
           {details?.location && (

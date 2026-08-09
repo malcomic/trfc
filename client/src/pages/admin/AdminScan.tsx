@@ -10,6 +10,7 @@ import {
   type ScanEvent,
   type ScanLookupResult,
 } from '../../api/scan'
+import { formatEventDate, formatEventDateTime } from '../../utils/eventDate'
 
 const EVENT_FILTER_KEY = 'trfc_scan_event_id'
 const READER_ID = 'qr-reader'
@@ -231,7 +232,7 @@ export default function AdminScan() {
           {events.map((ev) => (
             <option key={ev.id} value={ev.id}>
               {ev.title}
-              {ev.event_date ? ` · ${new Date(ev.event_date).toLocaleDateString()}` : ''}
+              {ev.event_date ? ` · ${formatEventDate(ev.event_date, { year: 'numeric', month: 'short', day: 'numeric' })}` : ''}
             </option>
           ))}
         </select>
@@ -308,7 +309,7 @@ export default function AdminScan() {
                   <p className="text-xl font-bold">{result.ticket.attendeeName || 'Guest'}</p>
                   <p className="text-gray-300">{result.ticket.eventTitle || 'Unknown event'}</p>
                   {result.ticket.eventDate && (
-                    <p className="text-gray-400">{formatWhen(result.ticket.eventDate)}</p>
+                    <p className="text-gray-400">{formatEventDateTime(result.ticket.eventDate)}</p>
                   )}
                   <p className="text-gray-500 font-mono">{result.ticket.shortCode}</p>
                   {result.ticket.checkedInAt && (

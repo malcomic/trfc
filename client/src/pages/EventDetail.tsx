@@ -5,6 +5,7 @@ import { getEventById } from '../api/events'
 import { Event } from '../types'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 import { getSafeImageUrl } from '../utils/imageUrl'
+import { formatEventDate, formatEventTime } from '../utils/eventDate'
 
 const EVENT_IMAGE_FALLBACK =
   'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=800&q=80'
@@ -67,13 +68,8 @@ export default function EventDetail() {
   }
 
   const ev = event as any
-  const eventDate = ev.event_date ? new Date(ev.event_date) : null
-  const formattedDate = eventDate
-    ? eventDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-    : 'Date TBA'
-  const formattedTime = eventDate
-    ? eventDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-    : ''
+  const formattedDate = ev.event_date ? formatEventDate(ev.event_date) : 'Date TBA'
+  const formattedTime = ev.event_date ? formatEventTime(ev.event_date) : ''
   const isFree = !ev.price || Number(ev.price) === 0
 
   return (

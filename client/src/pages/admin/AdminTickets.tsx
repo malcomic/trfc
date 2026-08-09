@@ -4,6 +4,7 @@ import { getTicketsForAdmin, AdminTicket } from '../../api/admin/tickets'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/AdminMobileCard'
 import AdminResponsiveData from '../../components/admin/AdminResponsiveData'
+import { formatEventDate } from '../../utils/eventDate'
 
 export default function AdminTickets() {
   const [tickets, setTickets] = useState<AdminTicket[]>([])
@@ -120,7 +121,7 @@ export default function AdminTickets() {
                     <div className="font-semibold">{t.event_title || '—'}</div>
                     {t.event_date && (
                       <div className="text-sm text-gray-500 dark:text-gray-400">
-                        {new Date(t.event_date).toLocaleDateString()}
+                        {formatEventDate(t.event_date, { year: 'numeric', month: 'short', day: 'numeric' })}
                       </div>
                     )}
                   </td>
@@ -149,7 +150,7 @@ export default function AdminTickets() {
         mobile={filteredTickets.map((t) => (
           <AdminMobileCard key={t.id}>
             <p className="font-semibold text-gray-900 dark:text-white">{t.event_title || '—'}</p>
-            <AdminMobileCardRow label="Event date" value={t.event_date ? new Date(t.event_date).toLocaleDateString() : '—'} />
+            <AdminMobileCardRow label="Event date" value={t.event_date ? formatEventDate(t.event_date, { year: 'numeric', month: 'short', day: 'numeric' }) : '—'} />
             <AdminMobileCardRow label="Phone" value={t.phone || '—'} />
             <AdminMobileCardRow
               label="Status"

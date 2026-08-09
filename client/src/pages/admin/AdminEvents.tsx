@@ -7,6 +7,7 @@ import AdminConfirmDialog from '../../components/AdminConfirmDialog'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/AdminMobileCard'
 import AdminResponsiveData from '../../components/admin/AdminResponsiveData'
+import { formatEventDate, toDatetimeLocalValue } from '../../utils/eventDate'
 
 interface Event {
   id: string
@@ -120,7 +121,10 @@ export default function AdminEvents() {
   const handleEdit = (event: Event) => {
     setEditingId(event.id)
     setFilePreview(null)
-    reset(event)
+    reset({
+      ...event,
+      event_date: toDatetimeLocalValue(event.event_date),
+    })
     setShowModal(true)
   }
 
@@ -177,7 +181,7 @@ export default function AdminEvents() {
               {events.map((event) => (
                 <tr key={event.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-900 dark:text-gray-100">
                   <td className="px-6 py-4">{event.title}</td>
-                  <td className="px-6 py-4">{new Date(event.event_date).toLocaleDateString()}</td>
+                  <td className="px-6 py-4">{formatEventDate(event.event_date, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
                   <td className="px-6 py-4">{event.location || '—'}</td>
                   <td className="px-6 py-4">KES {event.price}</td>
                   <td className="px-6 py-4">
@@ -217,7 +221,7 @@ export default function AdminEvents() {
             }
           >
             <p className="font-semibold text-gray-900 dark:text-white">{event.title}</p>
-            <AdminMobileCardRow label="Date" value={new Date(event.event_date).toLocaleDateString()} />
+            <AdminMobileCardRow label="Date" value={formatEventDate(event.event_date, { year: 'numeric', month: 'short', day: 'numeric' })} />
             <AdminMobileCardRow label="Location" value={event.location || '—'} />
             <AdminMobileCardRow label="Price" value={`KES ${event.price}`} />
             <AdminMobileCardRow

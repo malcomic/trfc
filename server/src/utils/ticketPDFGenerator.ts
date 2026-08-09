@@ -1,4 +1,5 @@
 import PDFDocument from 'pdfkit'
+import { formatEventDateShort, formatEventTime } from './eventDate.js'
 
 interface TicketPDFData {
   ticketId: string
@@ -80,17 +81,8 @@ export function generateTicketPDF(data: TicketPDFData): Promise<Buffer> {
         ellipsis: true,
       })
 
-      const eventDate = new Date(data.eventDate)
-      const dateStr = eventDate.toLocaleDateString('en-KE', {
-        weekday: 'short',
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      })
-      const timeStr = eventDate.toLocaleTimeString('en-KE', {
-        hour: '2-digit',
-        minute: '2-digit',
-      })
+      const dateStr = formatEventDateShort(data.eventDate)
+      const timeStr = formatEventTime(data.eventDate)
 
       let y = 110
       const labelX = pad

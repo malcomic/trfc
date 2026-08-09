@@ -1,6 +1,17 @@
 /**
  * Build a Google Calendar "Add event" URL from event details.
+ * Event times are wall-clock Kenya times stored without a real timezone;
+ * emit floating local datetimes (no Z) so 9:00 stays 9:00 on the calendar.
  */
+function toFloatingLocal(value: string | Date): string {
+  const d = new Date(value)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return (
+    `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}` +
+    `T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}`
+  )
+}
+
 export function googleCalendarUrl(opts: {
   title: string
   start: string | Date
@@ -11,16 +22,10 @@ export function googleCalendarUrl(opts: {
   const start = new Date(opts.start)
   const end = new Date(start.getTime() + (opts.durationHours ?? 3) * 60 * 60 * 1000)
 
-  const fmt = (d: Date) =>
-    d
-      .toISOString()
-      .replace(/[-:]/g, '')
-      .replace(/\.\d{3}Z$/, 'Z')
-
   const params = new URLSearchParams({
     action: 'TEMPLATE',
     text: opts.title,
-    dates: `${fmt(start)}/${fmt(end)}`,
+    dates: `${toFloatingLocal(start)}/${toFloatingLocal(end)}`,
   })
   if (opts.location) params.set('location', opts.location)
   if (opts.details) params.set('details', opts.details)
@@ -42,12 +47,6 @@ export function downloadIcs(opts: {
   const start = new Date(opts.start)
   const end = new Date(start.getTime() + (opts.durationHours ?? 3) * 60 * 60 * 1000)
 
-  const fmt = (d: Date) =>
-    d
-      .toISOString()
-      .replace(/[-:]/g, '')
-      .replace(/\.\d{3}Z$/, 'Z')
-
   const escape = (s: string) =>
     s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n')
 
@@ -56,8 +55,8 @@ export function downloadIcs(opts: {
     'VERSION:2.0',
     'PRODID:-//TRFC//Tickets//EN',
     'BEGIN:VEVENT',
-    `DTSTART:${fmt(start)}`,
-    `DTEND:${fmt(end)}`,
+    `DTSTART:${toFloatingLocal(start)}`,
+    `DTEND:${toFloatingLocal(end)}`,
     `SUMMARY:${escape(opts.title)}`,
   ]
   if (opts.location) lines.push(`LOCATION:${escape(opts.location)}`)

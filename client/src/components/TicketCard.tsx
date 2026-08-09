@@ -1,5 +1,6 @@
 import { Calendar, MapPin, Printer, Ticket } from 'lucide-react'
 import TicketDownloadButton from './TicketDownloadButton'
+import { formatEventDate, formatEventTime } from '../utils/eventDate'
 
 export interface TicketCardData {
   id: string
@@ -25,7 +26,7 @@ interface TicketCardProps {
 
 function formatDate(dateStr?: string | null) {
   if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleDateString('en-KE', {
+  return formatEventDate(dateStr, {
     weekday: 'short',
     year: 'numeric',
     month: 'short',
@@ -35,9 +36,10 @@ function formatDate(dateStr?: string | null) {
 
 function formatTime(dateStr?: string | null) {
   if (!dateStr) return ''
-  return new Date(dateStr).toLocaleTimeString('en-KE', {
+  return formatEventTime(dateStr, {
     hour: '2-digit',
     minute: '2-digit',
+    hour12: true,
   })
 }
 

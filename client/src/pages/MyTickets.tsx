@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { getUserTickets } from '../api/events'
 import { AlertCircle, Loader, Ticket, ArrowLeft } from 'lucide-react'
 import { pageRoot, cardSurface } from '../utils/themeClasses'
+import { formatEventDate } from '../utils/eventDate'
 
 export default function MyTickets() {
   const [tickets, setTickets] = useState<any[]>([])
@@ -59,7 +60,7 @@ export default function MyTickets() {
                 <h3 className="font-barlow-condensed font-bold text-lg">{t.event_title}</h3>
                 <p className="text-sm text-fog light:text-fog-light">{t.location}</p>
                 <p className="text-sm text-fog light:text-fog-light mt-1">
-                  {t.event_date ? new Date(t.event_date).toLocaleDateString() : '—'}
+                  {t.event_date ? formatEventDate(t.event_date, { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}
                 </p>
               </div>
               <div className="text-right">
