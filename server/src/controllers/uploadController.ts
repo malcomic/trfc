@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { uploadToCloudinary } from '../utils/cloudinary.js';
 
-const ALLOWED_FOLDERS = ['trfc_events', 'trfc_products'] as const;
+const ALLOWED_FOLDERS = ['trfc_events', 'trfc_products', 'trfc_medals'] as const;
 
 export const uploadImage = async (req: Request, res: Response) => {
   try {
