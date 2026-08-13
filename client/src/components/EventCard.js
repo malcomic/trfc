@@ -1,17 +1,10 @@
 import { jsx as _jsx, Fragment as _Fragment, jsxs as _jsxs } from "react/jsx-runtime";
 import { MapPin, Clock, Users, ChevronRight } from 'lucide-react';
 import { getSafeImageUrl } from '../utils/imageUrl';
+import { eventDateParts } from '../utils/eventDate';
 const EVENT_IMAGE_FALLBACK = 'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=600&q=80';
 function formatDate(dateStr) {
-    if (!dateStr)
-        return { day: null, mon: null };
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime()))
-        return { day: null, mon: null };
-    return {
-        day: d.getDate().toString().padStart(2, '0'),
-        mon: d.toLocaleString('en-KE', { month: 'short' }).toUpperCase(),
-    };
+    return eventDateParts(dateStr);
 }
 export default function EventCard({ event }) {
     const ev = event;

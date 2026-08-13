@@ -1,0 +1,1 @@
+{"version":3,"file":"UserGrowthChart.d.ts","sourceRoot":"","sources":["UserGrowthChart.tsx"],"names":[],"mappings":"AAWA,UAAU,oBAAoB;IAC5B,IAAI,EAAE,KAAK,CAAC;QAAE,IAAI,EAAE,MAAM,CAAC;QAAC,QAAQ,EAAE,MAAM,CAAC;QAAC,UAAU,EAAE,MAAM,CAAA;KAAE,CAAC,CAAA;CACpE;AAED,MAAM,CAAC,OAAO,UAAU,eAAe,CAAC,EAAE,IAAI,EAAE,EAAE,oBAAoB,2CAuCrE"}

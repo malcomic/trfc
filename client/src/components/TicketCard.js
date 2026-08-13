@@ -1,10 +1,11 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { Calendar, MapPin, Printer, Ticket } from 'lucide-react';
 import TicketDownloadButton from './TicketDownloadButton';
+import { formatEventDate, formatEventTime } from '../utils/eventDate';
 function formatDate(dateStr) {
     if (!dateStr)
         return '—';
-    return new Date(dateStr).toLocaleDateString('en-KE', {
+    return formatEventDate(dateStr, {
         weekday: 'short',
         year: 'numeric',
         month: 'short',
@@ -14,9 +15,10 @@ function formatDate(dateStr) {
 function formatTime(dateStr) {
     if (!dateStr)
         return '';
-    return new Date(dateStr).toLocaleTimeString('en-KE', {
+    return formatEventTime(dateStr, {
         hour: '2-digit',
         minute: '2-digit',
+        hour12: true,
     });
 }
 export default function TicketCard({ ticket, index = 0, total = 1, verify, showActions = true, }) {

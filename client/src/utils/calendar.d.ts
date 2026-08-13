@@ -1,6 +1,3 @@
-/**
- * Build a Google Calendar "Add event" URL from event details.
- */
 export declare function googleCalendarUrl(opts: {
     title: string;
     start: string | Date;

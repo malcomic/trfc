@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Users, Calendar, Package, ShoppingCart } from 'lucide-react'
-import { getEventsForAdmin } from '../../api/admin/events'
-import { getProductsForAdmin } from '../../api/admin/products'
-import api from '../../api/index'
+import { Users, ShoppingCart, DollarSign, TrendingUp } from 'lucide-react'
+import { getAnalyticsSummary } from '../../api/analytics'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 
 interface StatCard {
@@ -38,35 +36,30 @@ export default function AdminDashboard() {
     const fetchStats = async () => {
       try {
         setLoading(true)
-        const [events, products, orders, users] = await Promise.all([
-          getEventsForAdmin(),
-          getProductsForAdmin(),
-          api.get('/orders'),
-          api.get('/users'),
-        ])
+        const summary = await getAnalyticsSummary({ days: '30' })
 
         setStats([
           {
-            label: 'Total Events',
-            value: Array.isArray(events) ? events.length : 0,
-            icon: <Calendar className="w-8 h-8" />,
+            label: 'Total Revenue (30d)',
+            value: `KES ${summary.totalRevenue.toLocaleString()}`,
+            icon: <DollarSign className="w-8 h-8" />,
             color: 'bg-blue-500',
           },
           {
-            label: 'Total Products',
-            value: Array.isArray(products) ? products.length : 0,
-            icon: <Package className="w-8 h-8" />,
+            label: 'Period Revenue (30d)',
+            value: `KES ${summary.periodRevenue.toLocaleString()}`,
+            icon: <TrendingUp className="w-8 h-8" />,
             color: 'bg-green-500',
           },
           {
-            label: 'Total Orders',
-            value: Array.isArray(orders.data) ? orders.data.length : 0,
+            label: 'Total Orders (30d)',
+            value: summary.totalOrders,
             icon: <ShoppingCart className="w-8 h-8" />,
             color: 'bg-purple-500',
           },
           {
             label: 'Total Users',
-            value: Array.isArray(users.data) ? users.data.length : 0,
+            value: summary.totalUsers,
             icon: <Users className="w-8 h-8" />,
             color: 'bg-orange-500',
           },
@@ -114,6 +107,12 @@ export default function AdminDashboard() {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+        <Link to="/admin/analytics" className="text-primary dark:text-primary-dark hover:underline">
+          View full analytics →
+        </Link>
       </div>
 
       <div className="mt-12 bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-lg p-6">

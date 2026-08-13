@@ -9,39 +9,91 @@ import {
   getTopEvents,
   getUserStats,
   getOrderStats,
+  getRevenueByCategory,
+  getUserGrowth,
+  getPaymentTimeline,
+  getEventAttendance,
 } from '../api/analytics'
 import AdminPageHeader from '../components/admin/AdminPageHeader'
 import AdminMobileCard, { AdminMobileCardRow } from '../components/admin/AdminMobileCard'
 import AdminResponsiveData from '../components/admin/AdminResponsiveData'
+import AnalyticsDateRange, {
+  DateRangeValue,
+  describeDateRange,
+  toAnalyticsParams,
+} from '../components/admin/AnalyticsDateRange'
+
+interface ReportMetrics {
+  summary: boolean
+  revenue: boolean
+  payments: boolean
+  products: boolean
+  events: boolean
+  users: boolean
+  orders: boolean
+  category: boolean
+  userGrowth: boolean
+  paymentTimeline: boolean
+  attendance: boolean
+}
 
 interface ReportConfig {
   id: string
   name: string
-  metrics: {
-    summary: boolean
-    revenue: boolean
-    payments: boolean
-    products: boolean
-    events: boolean
-    users: boolean
-    orders: boolean
-  }
-  dateRange: '7' | '30' | '90'
+  metrics: ReportMetrics
+  dateRange: DateRangeValue
   createdAt: string
+}
+
+const DEFAULT_METRICS: ReportMetrics = {
+  summary: true,
+  revenue: true,
+  payments: true,
+  products: true,
+  events: true,
+  users: true,
+  orders: true,
+  category: false,
+  userGrowth: false,
+  paymentTimeline: false,
+  attendance: false,
+}
+
+const METRIC_LABELS: Record<keyof ReportMetrics, string> = {
+  summary: 'Summary Metrics',
+  revenue: 'Revenue Timeline',
+  payments: 'Payment Stats',
+  products: 'Top Products',
+  events: 'Top Events',
+  users: 'User Stats',
+  orders: 'Order Stats',
+  category: 'Revenue by Category',
+  userGrowth: 'User Growth',
+  paymentTimeline: 'Payment Timeline',
+  attendance: 'Event Attendance',
+}
+
+function normalizeMetrics(raw: Partial<ReportMetrics> | undefined): ReportMetrics {
+  return { ...DEFAULT_METRICS, ...raw }
+}
+
+function normalizeDateRange(raw: any): DateRangeValue {
+  if (raw && typeof raw === 'object' && raw.mode === 'custom' && raw.startDate && raw.endDate) {
+    return { mode: 'custom', startDate: raw.startDate, endDate: raw.endDate }
+  }
+  if (raw && typeof raw === 'object' && raw.mode === 'preset' && raw.days) {
+    return { mode: 'preset', days: raw.days }
+  }
+  if (raw === '7' || raw === '30' || raw === '90') {
+    return { mode: 'preset', days: raw }
+  }
+  return { mode: 'preset', days: '30' }
 }
 
 export default function AdminReports() {
   const [reports, setReports] = useState<ReportConfig[]>([])
-  const [selectedMetrics, setSelectedMetrics] = useState({
-    summary: true,
-    revenue: true,
-    payments: true,
-    products: true,
-    events: true,
-    users: true,
-    orders: true,
-  })
-  const [dateRange, setDateRange] = useState<'7' | '30' | '90'>('30')
+  const [selectedMetrics, setSelectedMetrics] = useState<ReportMetrics>({ ...DEFAULT_METRICS })
+  const [dateRange, setDateRange] = useState<DateRangeValue>({ mode: 'preset', days: '30' })
   const [reportName, setReportName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -52,8 +104,20 @@ export default function AdminReports() {
 
   const loadReports = () => {
     const saved = localStorage.getItem('savedReports')
-    if (saved) {
-      setReports(JSON.parse(saved))
+    if (!saved) return
+    try {
+      const parsed = JSON.parse(saved) as any[]
+      setReports(
+        parsed.map((r) => ({
+          id: r.id,
+          name: r.name,
+          metrics: normalizeMetrics(r.metrics),
+          dateRange: normalizeDateRange(r.dateRange),
+          createdAt: r.createdAt,
+        }))
+      )
+    } catch {
+      setReports([])
     }
   }
 
@@ -83,34 +147,24 @@ export default function AdminReports() {
       setLoading(true)
       setError('')
 
-      const metrics = config?.metrics || selectedMetrics
-      const range = config?.dateRange || dateRange
+      const metrics = normalizeMetrics(config?.metrics || selectedMetrics)
+      const range = normalizeDateRange(config?.dateRange || dateRange)
+      const params = toAnalyticsParams(range)
+      const reportData: Record<string, unknown> = {}
 
-      const reportData: any = {}
+      if (metrics.summary) reportData.summary = await getAnalyticsSummary(params)
+      if (metrics.revenue) reportData.revenue = await getRevenueTimeline(params)
+      if (metrics.payments) reportData.payments = await getPaymentStats(params)
+      if (metrics.products) reportData.products = await getTopProducts({ ...params, limit: 10 })
+      if (metrics.events) reportData.events = await getTopEvents({ ...params, limit: 5 })
+      if (metrics.users) reportData.users = await getUserStats(params)
+      if (metrics.orders) reportData.orders = await getOrderStats(params)
+      if (metrics.category) reportData.category = await getRevenueByCategory(params)
+      if (metrics.userGrowth) reportData.userGrowth = await getUserGrowth(params)
+      if (metrics.paymentTimeline) reportData.paymentTimeline = await getPaymentTimeline(params)
+      if (metrics.attendance) reportData.attendance = await getEventAttendance(params)
 
-      if (metrics.summary) {
-        reportData.summary = await getAnalyticsSummary()
-      }
-      if (metrics.revenue) {
-        reportData.revenue = await getRevenueTimeline({ days: range })
-      }
-      if (metrics.payments) {
-        reportData.payments = await getPaymentStats()
-      }
-      if (metrics.products) {
-        reportData.products = await getTopProducts({ limit: 10 })
-      }
-      if (metrics.events) {
-        reportData.events = await getTopEvents({ limit: 5 })
-      }
-      if (metrics.users) {
-        reportData.users = await getUserStats()
-      }
-      if (metrics.orders) {
-        reportData.orders = await getOrderStats()
-      }
-
-      downloadCSV(reportData, config?.name || 'custom-report')
+      downloadCSV(reportData, config?.name || 'custom-report', range)
     } catch (err: any) {
       console.error('Error generating report:', err)
       setError('Failed to generate report')
@@ -119,26 +173,36 @@ export default function AdminReports() {
     }
   }
 
-  const downloadCSV = (reportData: any, name: string) => {
+  const downloadCSV = (reportData: any, name: string, range: DateRangeValue) => {
     const rows: any[] = []
 
     rows.push([`Report: ${name}`])
     rows.push([`Generated: ${new Date().toLocaleString()}`])
+    rows.push([`Date Range: ${describeDateRange(range)}`])
     rows.push([])
 
     if (reportData.summary) {
       rows.push(['SUMMARY METRICS'])
       Object.entries(reportData.summary).forEach(([key, value]) => {
-        rows.push([key, value])
+        if (key === 'trends') return
+        rows.push([key, typeof value === 'object' ? JSON.stringify(value) : value])
       })
       rows.push([])
     }
 
     if (reportData.revenue) {
       rows.push(['REVENUE TIMELINE'])
-      rows.push(['Date', 'Revenue', 'Orders'])
+      rows.push(['Date', 'Revenue', 'Transactions', 'Shop', 'Tickets', 'Hire', 'Medals'])
       reportData.revenue.forEach((row: any) => {
-        rows.push([row.date, row.revenue, row.orders])
+        rows.push([
+          row.date,
+          row.revenue,
+          row.transactions,
+          row.bySource?.shop,
+          row.bySource?.tickets,
+          row.bySource?.hire,
+          row.bySource?.medals,
+        ])
       })
       rows.push([])
     }
@@ -146,6 +210,7 @@ export default function AdminReports() {
     if (reportData.payments) {
       rows.push(['PAYMENT STATISTICS'])
       Object.entries(reportData.payments).forEach(([key, value]) => {
+        if (key === 'breakdown') return
         rows.push([key, value])
       })
       rows.push([])
@@ -162,9 +227,9 @@ export default function AdminReports() {
 
     if (reportData.events) {
       rows.push(['TOP EVENTS'])
-      rows.push(['Event Name', 'Tickets Sold', 'Capacity', 'Utilization'])
+      rows.push(['Event Name', 'Tickets Sold', 'Capacity', 'Utilization', 'Revenue'])
       reportData.events.forEach((e: any) => {
-        rows.push([e.name, e.ticketsSold, e.capacity, e.utilization])
+        rows.push([e.name, e.ticketsSold, e.capacity, e.utilization, e.revenue])
       })
       rows.push([])
     }
@@ -172,7 +237,7 @@ export default function AdminReports() {
     if (reportData.users) {
       rows.push(['USER STATISTICS'])
       Object.entries(reportData.users).forEach(([key, value]) => {
-        rows.push([key, value])
+        rows.push([key, typeof value === 'object' ? JSON.stringify(value) : value])
       })
       rows.push([])
     }
@@ -181,6 +246,42 @@ export default function AdminReports() {
       rows.push(['ORDER STATISTICS'])
       Object.entries(reportData.orders).forEach(([key, value]) => {
         rows.push([key, value])
+      })
+      rows.push([])
+    }
+
+    if (reportData.category) {
+      rows.push(['REVENUE BY CATEGORY'])
+      rows.push(['Category', 'Revenue', 'Items Sold', 'Orders'])
+      reportData.category.forEach((c: any) => {
+        rows.push([c.category, c.revenue, c.itemsSold, c.orders])
+      })
+      rows.push([])
+    }
+
+    if (reportData.userGrowth) {
+      rows.push(['USER GROWTH'])
+      rows.push(['Date', 'New Users', 'Cumulative'])
+      reportData.userGrowth.forEach((r: any) => {
+        rows.push([r.date, r.newUsers, r.cumulative])
+      })
+      rows.push([])
+    }
+
+    if (reportData.paymentTimeline) {
+      rows.push(['PAYMENT TIMELINE'])
+      rows.push(['Date', 'Total', 'Successful', 'Pending', 'Failed'])
+      reportData.paymentTimeline.forEach((r: any) => {
+        rows.push([r.date, r.total, r.successful, r.pending, r.failed])
+      })
+      rows.push([])
+    }
+
+    if (reportData.attendance) {
+      rows.push(['EVENT ATTENDANCE'])
+      rows.push(['Event', 'Tickets Sold', 'Capacity', 'Utilization'])
+      reportData.attendance.forEach((e: any) => {
+        rows.push([e.name, e.ticketsSold, e.capacity, e.utilization])
       })
       rows.push([])
     }
@@ -201,12 +302,11 @@ export default function AdminReports() {
     localStorage.setItem('savedReports', JSON.stringify(updated))
   }
 
+  const metricCount = Object.keys(METRIC_LABELS).length
+
   return (
     <div className="space-y-8">
-      <AdminPageHeader
-        title="Reports"
-        subtitle="Create and manage custom analytics reports"
-      />
+      <AdminPageHeader title="Reports" subtitle="Create and manage custom analytics reports" />
 
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex gap-3">
@@ -230,35 +330,20 @@ export default function AdminReports() {
         </div>
 
         <div className="mb-6">
-          <label className="block text-sm font-semibold mb-3 text-gray-900 dark:text-gray-100">Date Range</label>
-          <div className="flex flex-wrap gap-3">
-            {['7', '30', '90'].map((range) => (
-              <button
-                key={range}
-                onClick={() => setDateRange(range as '7' | '30' | '90')}
-                className={`px-4 py-2 rounded transition ${
-                  dateRange === range
-                    ? 'bg-primary dark:bg-primary-dark text-white dark:text-black'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
-              >
-                Last {range} days
-              </button>
-            ))}
-          </div>
+          <AnalyticsDateRange value={dateRange} onChange={setDateRange} />
         </div>
 
         <div className="mb-6">
           <label className="block text-sm font-semibold mb-3 text-gray-900 dark:text-gray-100">Metrics to Include</label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {Object.entries(selectedMetrics).map(([key, checked]) => (
+            {(Object.keys(METRIC_LABELS) as Array<keyof ReportMetrics>).map((key) => (
               <label
                 key={key}
                 className="flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
               >
                 <input
                   type="checkbox"
-                  checked={checked}
+                  checked={selectedMetrics[key]}
                   onChange={(e) =>
                     setSelectedMetrics({
                       ...selectedMetrics,
@@ -267,14 +352,8 @@ export default function AdminReports() {
                   }
                   className="w-4 h-4 rounded"
                 />
-                <span className="capitalize text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {key === 'summary' && 'Summary Metrics'}
-                  {key === 'revenue' && 'Revenue Timeline'}
-                  {key === 'payments' && 'Payment Stats'}
-                  {key === 'products' && 'Top Products'}
-                  {key === 'events' && 'Top Events'}
-                  {key === 'users' && 'User Stats'}
-                  {key === 'orders' && 'Order Stats'}
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {METRIC_LABELS[key]}
                 </span>
               </label>
             ))}
@@ -326,9 +405,11 @@ export default function AdminReports() {
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
                         {new Date(report.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">Last {report.dateRange} days</td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
-                        {Object.values(report.metrics).filter(Boolean).length}/7
+                        {describeDateRange(report.dateRange)}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                        {Object.values(report.metrics).filter(Boolean).length}/{metricCount}
                       </td>
                       <td className="text-right px-4 py-3">
                         <div className="flex gap-2 justify-end">
@@ -375,10 +456,10 @@ export default function AdminReports() {
               >
                 <p className="font-semibold text-gray-900 dark:text-white">{report.name}</p>
                 <AdminMobileCardRow label="Created" value={new Date(report.createdAt).toLocaleDateString()} />
-                <AdminMobileCardRow label="Date range" value={`Last ${report.dateRange} days`} />
+                <AdminMobileCardRow label="Date range" value={describeDateRange(report.dateRange)} />
                 <AdminMobileCardRow
                   label="Metrics"
-                  value={`${Object.values(report.metrics).filter(Boolean).length}/7`}
+                  value={`${Object.values(report.metrics).filter(Boolean).length}/${metricCount}`}
                 />
               </AdminMobileCard>
             ))}

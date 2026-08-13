@@ -188,6 +188,16 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       CREATE INDEX IF NOT EXISTS idx_medal_purchases_redeemed ON medal_purchases(redeemed_at);
     `,
   },
+  {
+    name: '012_analytics_indexes',
+    sql: `
+      CREATE INDEX IF NOT EXISTS idx_orders_payment_created ON orders(payment_status, created_at);
+      CREATE INDEX IF NOT EXISTS idx_tickets_payment_created ON tickets(payment_status, created_at);
+      CREATE INDEX IF NOT EXISTS idx_equipment_hire_payment_created ON equipment_hire(payment_status, created_at);
+      CREATE INDEX IF NOT EXISTS idx_medal_purchases_payment_created ON medal_purchases(payment_status, created_at);
+      CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
+    `,
+  },
 ]
 
 export async function runMigrations() {

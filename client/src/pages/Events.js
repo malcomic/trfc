@@ -5,16 +5,12 @@ import { getEvents } from '../api/events';
 import { AlertCircle, ChevronRight, Search, X, MapPin } from 'lucide-react';
 import { pageRoot, inputField } from '../utils/themeClasses';
 import { getSafeImageUrl } from '../utils/imageUrl';
+import { eventDateParts } from '../utils/eventDate';
 const EVENT_IMAGE_FALLBACK = 'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=800&q=80';
 const FILTERS = ['All', 'Race', 'Training', 'Social', 'Charity'];
 function formatDate(dateStr) {
-    if (!dateStr)
-        return { day: '—', mon: '———' };
-    const d = new Date(dateStr);
-    return {
-        day: d.getDate().toString().padStart(2, '0'),
-        mon: d.toLocaleString('en-KE', { month: 'short' }).toUpperCase(),
-    };
+    const { day, mon } = eventDateParts(dateStr);
+    return { day: day || '—', mon: mon || '———' };
 }
 export default function Events() {
     const [events, setEvents] = useState([]);

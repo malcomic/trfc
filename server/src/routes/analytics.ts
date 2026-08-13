@@ -31,7 +31,6 @@ router.get('/orders/stats', analyticsController.getOrderStats)
 router.get('/equipment/stats', analyticsController.getEquipmentStats)
 
 // Events endpoints
-router.get('/events/top', analyticsController.getTopEvents)
 router.get('/events/attendance', analyticsController.getEventAttendance)
 
 export default router
