@@ -8,6 +8,7 @@ import { getGrandTotal, getShipping } from '../utils/shipping'
 import PaymentStatusModal from '../components/PaymentStatusModal'
 import { AlertCircle, ShoppingCart, Truck, ArrowLeft } from 'lucide-react'
 import { Button, FormInput, Card } from '../components/ui'
+import { pageRoot } from '../utils/themeClasses'
 
 export default function Checkout() {
   const { register, handleSubmit, formState: { errors } } = useForm()
@@ -25,7 +26,7 @@ export default function Checkout() {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-night text-chalk font-barlow flex items-center justify-center px-[6%] py-12">
+      <div className={`${pageRoot} font-barlow flex items-center justify-center px-[6%] py-12`}>
         <div className="max-w-2xl w-full text-center">
           <div className="w-20 h-20 bg-ash rounded-full flex items-center justify-center mx-auto mb-8 border border-white/10">
             <ShoppingCart size={40} className="text-fog" />
@@ -98,7 +99,7 @@ export default function Checkout() {
   }
 
   return (
-    <div className="min-h-screen bg-night text-chalk font-barlow">
+    <div className={`${pageRoot} font-barlow`}>
       {/* ── Hero ── */}
       <section className="bg-gradient-to-r from-ink via-ash to-ink border-b border-white/5 px-[6%] py-12">
         <div className="max-w-5xl mx-auto relative z-10">
@@ -118,7 +119,7 @@ export default function Checkout() {
       <div className="max-w-5xl mx-auto px-[6%] py-12 pb-20">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Checkout Form */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 order-2 lg:order-1">
             <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-8">
               {/* Error Alert */}
               {error && (
@@ -203,7 +204,7 @@ export default function Checkout() {
           </div>
 
           {/* Order Summary Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 order-1 lg:order-2">
             <Card className="sticky top-4">
               <Card.Body>
                 <h3 className="font-bebas text-2xl text-chalk mb-6 letter-spacing-tighter">

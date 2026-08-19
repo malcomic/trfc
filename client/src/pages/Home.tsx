@@ -132,7 +132,7 @@ export default function Home() {
           </div>
 
           {/* Hero badges */}
-          <div className="hero-badge flex flex-wrap gap-6">
+          <div className="hero-badge flex flex-wrap gap-4 md:gap-6">
             {[
               { val: '20,000+', desc: 'Community Members' },
               { val: '16+', desc: 'Successful Events' },
@@ -223,7 +223,7 @@ export default function Home() {
 
       {/* ── STATS ─────────────────────────────────────────────────── */}
       <section className="py-20 px-[6%] bg-ink light:bg-ink-light border-t border-white/5 light:border-black/5">
-        <div className="max-w-[1200px] mx-auto grid grid-cols-4 gap-px">
+        <div className="max-w-[1200px] mx-auto grid grid-cols-2 md:grid-cols-4 gap-px">
           {[
             { val: '20,000+', label: 'Community Members', sub: 'and growing' },
             { val: '7,000+', label: 'WhatsApp Members', sub: 'staying connected' },
@@ -386,7 +386,7 @@ export default function Home() {
             </div>
 
             {/* Masonry-ish grid */}
-            <div className="grid grid-cols-3 grid-rows-2 gap-1.5">
+            <div className="grid grid-cols-2 md:grid-cols-3 grid-rows-2 gap-1.5">
               {gallery.slice(0, 6).map((item, i) => (
                 <Link
                   to="/gallery"

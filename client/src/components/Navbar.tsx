@@ -100,7 +100,7 @@ export default function Navbar() {
             <Logo size="md" showTagline linkToHome />
 
             {/* Desktop nav links */}
-            <div className="hidden md:flex items-center gap-0.5 flex-1 justify-center">
+            <div className="hidden lg:flex items-center gap-0.5 flex-1 justify-center">
               {navLinks.map((l) => (
                 <Link
                   key={l.to}
@@ -115,7 +115,7 @@ export default function Navbar() {
             </div>
 
             {/* Desktop actions */}
-            <div className="hidden md:flex items-center gap-2">
+            <div className="hidden lg:flex items-center gap-2">
               <ThemeToggle />
               <Link to="/cart" className="relative flex items-center justify-center w-10 h-10 text-white/55 dark:text-white/55 light:text-black/55 no-underline border border-white/7 dark:border-white/7 light:border-black/8 clip-angled-sm transition-all duration-200 hover:text-chalk light:hover:text-chalk-light hover:border-white/15 dark:hover:border-white/15" aria-label={`Cart (${cartCount} items)`}>
                 <ShoppingCart size={18} />
@@ -160,7 +160,7 @@ export default function Navbar() {
             </div>
 
             {/* Mobile: cart + hamburger */}
-            <div className="md:hidden flex items-center gap-2">
+            <div className="lg:hidden flex items-center gap-2">
               <Link to="/cart" className="relative flex items-center justify-center w-10 h-10 text-white/55 dark:text-white/55 light:text-black/55 no-underline border border-white/7 dark:border-white/7 light:border-black/8 clip-angled-sm" aria-label="Cart">
                 <ShoppingCart size={18} />
                 {cartCount > 0 && (

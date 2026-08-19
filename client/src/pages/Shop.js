@@ -162,7 +162,7 @@ export default function Shop() {
                                                             : 'bg-accent/10 light:bg-accent-light/10 border border-accent/20 light:border-accent-light/20 text-accent light:text-accent-light hover:bg-accent/20 light:hover:bg-accent-light/20'}`, "aria-label": `Add ${product.name} to cart`, children: added
                                                             ? _jsx(Check, { size: 15 })
                                                             : _jsx(ShoppingCart, { size: 15 }) })] })] })] }, `product-${product.id}`));
-                        }) }))] }), _jsx("div", { className: "fixed bottom-8 right-8 flex flex-col gap-2.5 z-1000", children: toasts.map((toast) => (_jsxs("div", { className: `${cardSurface} border-l-4 border-l-accent light:border-l-accent-light px-5 py-3.5 flex items-center gap-3 clip-angled-sm animate-toastIn w-64`, children: [_jsx("div", { className: "w-7 h-7 bg-green-600/15 border border-green-600/25 rounded-full flex items-center justify-center text-green-400 flex-shrink-0", children: _jsx(Check, { size: 13 }) }), _jsxs("div", { className: "font-barlow-condensed", children: [_jsx("div", { className: "font-bold text-base text-chalk light:text-chalk-light tracking-tighter", children: "Added to cart" }), _jsx("div", { className: "font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light mt-0.25", children: toast.name })] })] }, toast.id))) }), _jsx("style", { children: `
+                        }) }))] }), _jsx("div", { className: "fixed bottom-4 right-4 sm:bottom-8 sm:right-8 flex flex-col gap-2.5 z-1000", children: toasts.map((toast) => (_jsxs("div", { className: `${cardSurface} border-l-4 border-l-accent light:border-l-accent-light px-5 py-3.5 flex items-center gap-3 clip-angled-sm animate-toastIn w-56 sm:w-64`, children: [_jsx("div", { className: "w-7 h-7 bg-green-600/15 border border-green-600/25 rounded-full flex items-center justify-center text-green-400 flex-shrink-0", children: _jsx(Check, { size: 13 }) }), _jsxs("div", { className: "font-barlow-condensed", children: [_jsx("div", { className: "font-bold text-base text-chalk light:text-chalk-light tracking-tighter", children: "Added to cart" }), _jsx("div", { className: "font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light mt-0.25", children: toast.name })] })] }, toast.id))) }), _jsx("style", { children: `
         @keyframes shopTicker {
           from { transform: translateX(0); }
           to   { transform: translateX(-50%); }
@@ -184,7 +184,7 @@ export default function Shop() {
         }
         .grid-cols-auto-fill {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
         }
       ` })] }));
 }

@@ -75,12 +75,12 @@ export default function Events() {
               </span>
               <span className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light">Events Scheduled</span>
             </div>
-            <div className="w-px h-7 bg-white/10 light:bg-black/10" />
+            <div className="hidden sm:block w-px h-7 bg-white/10 light:bg-black/10" />
             <div className="flex items-baseline gap-1.5">
               <span className="font-bebas text-4xl text-accent light:text-accent-light leading-none">NBI</span>
               <span className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light">Nairobi & Beyond</span>
             </div>
-            <div className="w-px h-7 bg-white/10 light:bg-black/10" />
+            <div className="hidden sm:block w-px h-7 bg-white/10 light:bg-black/10" />
             <div className="flex items-baseline gap-1.5">
               <span className="font-bebas text-4xl text-accent light:text-accent-light leading-none">FREE</span>
               <span className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light">To Register</span>

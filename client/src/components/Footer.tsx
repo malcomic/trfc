@@ -86,7 +86,7 @@ export default function Footer() {
         <div
           className={`grid gap-x-10 pb-14 ${
             isAdmin || isScanner ? 'md:grid-cols-7' : 'md:grid-cols-5'
-          } grid-cols-1 sm:grid-cols-2`}
+          } grid-cols-1 md:grid-cols-2`}
         >
 
           {/* ── Brand ── */}
@@ -157,7 +157,7 @@ export default function Footer() {
                 <input
                   type="email"
                   placeholder="your@email.com"
-                  className="flex-1 bg-black/40 light:bg-smoke-light border border-white/10 light:border-black/10 border-r-0 px-3 py-2 text-chalk light:text-chalk-light text-xs font-barlow outline-none transition-all duration-200 focus:border-accent/35 light:focus:border-accent-light/35 min-w-0"
+                  className="flex-1 min-w-0 bg-black/40 light:bg-smoke-light border border-white/10 light:border-black/10 border-r-0 px-3 py-2 text-chalk light:text-chalk-light text-xs font-barlow outline-none transition-all duration-200 focus:border-accent/35 light:focus:border-accent-light/35"
                 />
                 <button type="button" onClick={showNewsletterToast} className="bg-accent light:bg-accent-light border border-accent light:border-accent-light text-black light:text-white px-3.5 py-2 cursor-pointer font-barlow-condensed font-bold text-xs tracking-widest uppercase transition-all duration-200 hover:bg-accent/90 light:hover:bg-accent-light/90 flex-shrink-0">
                   Join

@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom'
 import { useCart } from '../store/cartStore'
-import { useEffect } from 'react'
 import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, Tag } from 'lucide-react'
 import { getShipping, getGrandTotal } from '../utils/shipping'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
@@ -8,11 +7,6 @@ import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 export default function Cart() {
   const { items, removeItem, updateQuantity, getTotal } = useCart()
   const total = getTotal()
-
-  useEffect(() => {
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = '' }
-  }, [])
 
   const handleQuantityChange = (productId: string, newQuantity: number) => {
     if (newQuantity < 1) return
@@ -78,64 +72,70 @@ export default function Cart() {
 
             <div className="flex flex-col gap-0.5">
               {items.map((item) => (
-                <div key={item.product.id} className={`${cardSurface} grid md:grid-cols-5 grid-cols-3 gap-4.5 items-center p-5 transition-all duration-200 hover:border-white/10 light:hover:border-black/15 relative group before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-accent light:before:bg-accent-light before:scale-y-0 before:origin-bottom before:transition-transform before:duration-250 hover:before:scale-y-100`}>
-                  {/* Image */}
-                  {(item.product as any).image_url ? (
-                    <img
-                      src={(item.product as any).image_url}
-                      alt={item.product.name}
-                      className="w-20 h-20 object-cover brightness-85 clip-angled-sm"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none'
-                      }}
-                    />
-                  ) : (
-                    <div className="w-20 h-20 bg-smoke light:bg-smoke-light flex items-center justify-center text-fog light:text-fog-light clip-angled-sm">
-                      <ShoppingBag size={20} />
+                <div key={item.product.id} className={`${cardSurface} p-4 md:p-5 transition-all duration-200 hover:border-white/10 light:hover:border-black/15 relative group before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-accent light:before:bg-accent-light before:scale-y-0 before:origin-bottom before:transition-transform before:duration-250 hover:before:scale-y-100`}>
+                  {/* Mobile: flex row with image + info + remove; Desktop: 5-col grid */}
+                  <div className="grid md:grid-cols-5 gap-3 md:gap-4.5 items-center">
+                    {/* Image */}
+                    {(item.product as any).image_url ? (
+                      <img
+                        src={(item.product as any).image_url}
+                        alt={item.product.name}
+                        className="w-20 h-20 object-cover brightness-85 clip-angled-sm"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none'
+                        }}
+                      />
+                    ) : (
+                      <div className="w-20 h-20 bg-smoke light:bg-smoke-light flex items-center justify-center text-fog light:text-fog-light clip-angled-sm">
+                        <ShoppingBag size={20} />
+                      </div>
+                    )}
+
+                    {/* Info */}
+                    <div>
+                      <p className="font-barlow-condensed font-bold text-lg tracking-tighter text-chalk light:text-chalk-light leading-tight mb-1">{item.product.name}</p>
+                      <p className="text-xs text-fog light:text-fog-light font-barlow-condensed font-medium tracking-widest">
+                        KES <span className="text-accent light:text-accent-light">{Number(item.product.price).toLocaleString()}</span> each
+                      </p>
                     </div>
-                  )}
 
-                  {/* Info */}
-                  <div className="md:col-span-1 col-span-1">
-                    <p className="font-barlow-condensed font-bold text-lg tracking-tighter text-chalk light:text-chalk-light leading-tight mb-1">{item.product.name}</p>
-                    <p className="text-xs text-fog light:text-fog-light font-barlow-condensed font-medium tracking-widest">
-                      KES <span className="text-accent light:text-accent-light">{Number(item.product.price).toLocaleString()}</span> each
-                    </p>
+                    {/* Qty + total + remove row (mobile: spans all; desktop: individual cols) */}
+                    <div className="flex items-center justify-between gap-3 md:contents">
+                      {/* Qty */}
+                      <div className="flex items-center gap-0 border border-white/10 light:border-black/10 overflow-hidden clip-angled-sm">
+                        <button
+                          className="bg-smoke light:bg-smoke-light text-fog light:text-fog-light hover:bg-accent light:hover:bg-accent-light hover:text-white w-8 h-9 flex items-center justify-center cursor-pointer transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-smoke disabled:hover:text-fog"
+                          onClick={() => handleQuantityChange(item.product.id, item.quantity - 1)}
+                          disabled={item.quantity <= 1}
+                          aria-label="Decrease quantity"
+                        >
+                          <Minus size={12} />
+                        </button>
+                        <div className="w-10 text-center font-bebas text-xl text-chalk light:text-chalk-light leading-none bg-ash light:bg-ash-light border-l border-r border-white/10 light:border-black/10 py-1.75">{item.quantity}</div>
+                        <button
+                          className="bg-smoke light:bg-smoke-light text-fog light:text-fog-light hover:bg-accent light:hover:bg-accent-light hover:text-white w-8 h-9 flex items-center justify-center cursor-pointer transition-all duration-200"
+                          onClick={() => handleQuantityChange(item.product.id, item.quantity + 1)}
+                          aria-label="Increase quantity"
+                        >
+                          <Plus size={12} />
+                        </button>
+                      </div>
+
+                      {/* Line total */}
+                      <p className="font-bebas text-2xl text-chalk light:text-chalk-light tracking-tighter md:text-right whitespace-nowrap flex-1 md:flex-none text-right">
+                        KES {(item.product.price * item.quantity).toLocaleString()}
+                      </p>
+
+                      {/* Remove */}
+                      <button
+                        className="w-8 h-8 flex items-center justify-center text-fog hover:text-red-500 transition-colors duration-200 clip-angled-sm"
+                        onClick={() => removeItem(item.product.id)}
+                        aria-label={`Remove ${item.product.name}`}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </div>
-
-                  {/* Qty */}
-                  <div className="flex items-center gap-0 border border-white/10 light:border-black/10 overflow-hidden clip-angled-sm md:col-span-1">
-                    <button
-                      className="bg-smoke light:bg-smoke-light text-fog light:text-fog-light hover:bg-accent light:hover:bg-accent-light hover:text-white w-8 h-9 flex items-center justify-center cursor-pointer transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-smoke disabled:hover:text-fog"
-                      onClick={() => handleQuantityChange(item.product.id, item.quantity - 1)}
-                      disabled={item.quantity <= 1}
-                      aria-label="Decrease quantity"
-                    >
-                      <Minus size={12} />
-                    </button>
-                    <div className="w-10 text-center font-bebas text-xl text-chalk light:text-chalk-light leading-none bg-ash light:bg-ash-light border-l border-r border-white/10 light:border-black/10 py-1.75">{item.quantity}</div>
-                    <button
-                      className="bg-smoke light:bg-smoke-light text-fog light:text-fog-light hover:bg-accent light:hover:bg-accent-light hover:text-white w-8 h-9 flex items-center justify-center cursor-pointer transition-all duration-200"
-                      onClick={() => handleQuantityChange(item.product.id, item.quantity + 1)}
-                      aria-label="Increase quantity"
-                    >
-                      <Plus size={12} />
-                    </button>
-                  </div>
-
-                  {/* Line total */}
-                  <p className="font-bebas text-2xl text-chalk light:text-chalk-light tracking-tighter text-right whitespace-nowrap">
-                    KES {(item.product.price * item.quantity).toLocaleString()}
-                  </p>
-
-                  {/* Remove */}
-                  <button
-                    className="w-8 h-8 flex items-center justify-center text-fog hover:text-red-500 transition-colors duration-200 clip-angled-sm justify-self-end"
-                    onClick={() => removeItem(item.product.id)}
-                    aria-label={`Remove ${item.product.name}`}
-                  >
-                    <Trash2 size={15} />
-                  </button>
                 </div>
               ))}
             </div>

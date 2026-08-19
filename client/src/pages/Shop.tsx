@@ -426,9 +426,9 @@ export default function Shop() {
       </div>
 
       {/* ── Toast stack ── */}
-      <div className="fixed bottom-8 right-8 flex flex-col gap-2.5 z-1000">
+      <div className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 flex flex-col gap-2.5 z-1000">
         {toasts.map((toast) => (
-          <div key={toast.id} className={`${cardSurface} border-l-4 border-l-accent light:border-l-accent-light px-5 py-3.5 flex items-center gap-3 clip-angled-sm animate-toastIn w-64`}>
+          <div key={toast.id} className={`${cardSurface} border-l-4 border-l-accent light:border-l-accent-light px-5 py-3.5 flex items-center gap-3 clip-angled-sm animate-toastIn w-56 sm:w-64`}>
             <div className="w-7 h-7 bg-green-600/15 border border-green-600/25 rounded-full flex items-center justify-center text-green-400 flex-shrink-0">
               <Check size={13} />
             </div>
@@ -462,7 +462,7 @@ export default function Shop() {
         }
         .grid-cols-auto-fill {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
         }
       `}</style>
     </div>

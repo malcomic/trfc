@@ -128,7 +128,7 @@ export default function EventDetail() {
 
         <div className={`${cardSurface} p-6`}>
           <label className="block font-barlow-condensed font-bold text-sm tracking-widest uppercase text-accent light:text-accent-light mb-4">Number of Tickets</label>
-          <div className="flex items-center gap-4 mb-6">
+          <div className="flex flex-wrap items-center gap-3 mb-6">
             <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className={`w-10 h-10 flex items-center justify-center hover:bg-accent light:hover:bg-accent-light hover:text-white transition ${inputField}`}>
               <Minus size={16} />
             </button>
