@@ -1,5 +1,5 @@
-export function getShipping(subtotal: number): number {
-  return subtotal >= 3000 ? 0 : 250
+export function getShipping(_subtotal: number): number {
+  return 0
 }
 
 export function getGrandTotal(subtotal: number): number {

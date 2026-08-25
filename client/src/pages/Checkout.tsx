@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { createOrder } from '../api/orders'
 import { initiateSTKPush } from '../api/payments'
 import { useCart } from '../store/cartStore'
-import { getGrandTotal, getShipping } from '../utils/shipping'
+import { getGrandTotal } from '../utils/shipping'
 import PaymentStatusModal from '../components/PaymentStatusModal'
 import { AlertCircle, ShoppingCart, Truck, ArrowLeft } from 'lucide-react'
 import { Button, FormInput, Card } from '../components/ui'
@@ -14,9 +14,7 @@ export default function Checkout() {
   const { register, handleSubmit, formState: { errors } } = useForm()
   const navigate = useNavigate()
   const { items, getTotal, clearCart } = useCart()
-  const subtotal = getTotal()
-  const shipping = getShipping(subtotal)
-  const grandTotal = getGrandTotal(subtotal)
+  const grandTotal = getGrandTotal(getTotal())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPaymentModal, setShowPaymentModal] = useState(false)
@@ -178,9 +176,9 @@ export default function Checkout() {
                 <Truck size={20} className="text-info-blue flex-shrink-0 mt-0.5" />
                 <div className="text-sm">
                   <p className="font-barlow-condensed font-bold letter-spacing-widest text-transform-uppercase text-info-blue mb-1">
-                    {shipping === 0 ? 'Free Delivery' : `Delivery — KES ${shipping}`}
+                    Delivery
                   </p>
-                  <p className="text-chalk/70">Orders over KES 3,000 qualify for free delivery. Delivered within 2-3 business days after payment confirmation.</p>
+                  <p className="text-chalk/70">Delivered within 2-3 business days after payment confirmation.</p>
                 </div>
               </div>
 
@@ -230,22 +228,8 @@ export default function Checkout() {
                   ))}
                 </div>
 
-                {/* Pricing */}
-                <div className="space-y-3 mb-6 pb-6 border-b border-white/10 text-sm">
-                  <div className="flex justify-between text-fog">
-                    <span>Subtotal</span>
-                    <span>KES {subtotal.toFixed(0)}</span>
-                  </div>
-                  <div className="flex justify-between text-fog">
-                    <span>Delivery</span>
-                    <span className={shipping === 0 ? 'font-barlow-condensed font-bold text-success-green' : 'text-chalk'}>
-                      {shipping === 0 ? 'FREE' : `KES ${shipping}`}
-                    </span>
-                  </div>
-                </div>
-
                 {/* Total */}
-                <div className="flex justify-between items-baseline mb-6">
+                <div className="flex justify-between items-baseline mb-6 pb-6 border-b border-white/10">
                   <span className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-fog">Total</span>
                   <span className="font-bebas text-4xl text-accent light:text-accent-light letter-spacing-tighter">
                     {grandTotal.toFixed(0)}

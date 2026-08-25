@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useCart } from '../store/cartStore'
 import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, Tag } from 'lucide-react'
-import { getShipping, getGrandTotal } from '../utils/shipping'
+import { getGrandTotal } from '../utils/shipping'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 
 export default function Cart() {
@@ -14,9 +14,7 @@ export default function Cart() {
   }
 
   const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0)
-  const subtotal = total
-  const shipping = getShipping(subtotal)
-  const grandTotal = getGrandTotal(subtotal)
+  const grandTotal = getGrandTotal(total)
 
   return (
     <div className={pageRoot}>
@@ -148,23 +146,11 @@ export default function Cart() {
             </div>
 
             <div className="px-6 py-5">
-              <div className="flex justify-between items-center py-2.5 border-b border-white/5 light:border-black/8 text-sm text-fog light:text-fog-light">
-                <span>Subtotal ({totalQuantity} item{totalQuantity !== 1 ? 's' : ''})</span>
-                <span className="text-chalk light:text-chalk-light font-semibold">KES {subtotal.toLocaleString()}</span>
-              </div>
-              <div className={`flex justify-between items-center py-2.5 border-b border-white/5 light:border-black/8 text-sm ${shipping === 0 ? 'text-green-400' : 'text-fog light:text-fog-light'}`}>
-                <span>Delivery</span>
-                <span className={shipping === 0 ? 'text-green-400 font-semibold' : 'text-chalk light:text-chalk-light font-semibold'}>{shipping === 0 ? 'FREE' : `KES ${shipping.toLocaleString()}`}</span>
-              </div>
-              {shipping > 0 && (
-                <div className="bg-accent/10 light:bg-accent-light/10 border border-accent/15 light:border-accent-light/15 px-3 py-2.5 mt-1 font-barlow-condensed font-medium text-xs tracking-tighter text-fog light:text-fog-light">
-                  Add KES {(3000 - subtotal).toLocaleString()} more for <span className="text-accent light:text-accent-light font-bold">free delivery</span>
-                </div>
-              )}
-
-              <div className="flex justify-between items-baseline pt-4.5 border-t-2 border-accent/30 light:border-accent-light/30 mt-1">
+              <div className="flex justify-between items-baseline pt-1">
                 <div>
-                  <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light">Total</p>
+                  <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light">
+                    Total ({totalQuantity} item{totalQuantity !== 1 ? 's' : ''})
+                  </p>
                   <p className="font-barlow-condensed text-xs tracking-tighter text-fog light:text-fog-light">
                     Taxes included
                   </p>

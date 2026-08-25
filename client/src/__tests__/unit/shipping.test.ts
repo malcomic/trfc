@@ -2,13 +2,15 @@ import { describe, it, expect } from 'vitest'
 import { getShipping, getGrandTotal } from '../../utils/shipping'
 
 describe('shipping', () => {
-  it('charges KES 250 below free-delivery threshold', () => {
-    expect(getShipping(2999)).toBe(250)
-    expect(getGrandTotal(2999)).toBe(3249)
+  it('does not charge a delivery fee', () => {
+    expect(getShipping(500)).toBe(0)
+    expect(getShipping(2999)).toBe(0)
+    expect(getShipping(3000)).toBe(0)
   })
 
-  it('waives delivery at KES 3000 and above', () => {
-    expect(getShipping(3000)).toBe(0)
+  it('grand total equals subtotal', () => {
+    expect(getGrandTotal(500)).toBe(500)
+    expect(getGrandTotal(2999)).toBe(2999)
     expect(getGrandTotal(3000)).toBe(3000)
   })
 })

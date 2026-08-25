@@ -108,7 +108,7 @@ export const createOrder = async (req: Request, res: Response) => {
     const expectedTotal = getGrandTotal(subtotal);
     if (Math.round(Number(total_amount)) !== Math.round(expectedTotal)) {
       res.status(400).json({
-        error: `Order total must be KES ${expectedTotal} (includes delivery)`,
+        error: `Order total must be KES ${expectedTotal}`,
       });
       return;
     }
