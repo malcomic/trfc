@@ -1,6 +1,6 @@
 # TRFC MVP - Deployment Guide
 
-## Table of Contents
+## Table of Content
 1. [Local Development with Docker](#local-development)
 2. [Staging Deployment](#staging-deployment)
 3. [Production Deployment](#production-deployment)
