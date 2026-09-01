@@ -5,7 +5,7 @@ Comprehensive testing strategy for payment flows, user journeys, and admin funct
 
 ---
 
-## Test Structures
+## Test Structure
 
 ```
 server/
