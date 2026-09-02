@@ -22,18 +22,17 @@ export default function EventCard({ event }: { event: Event }) {
   return (
     <div className="bg-ash dark:bg-ash relative overflow-hidden flex flex-col h-full font-barlow">
       {/* Image */}
-      <div className="relative overflow-hidden h-56 bg-smoke dark:bg-smoke flex-shrink-0">
+      <div className="relative overflow-hidden aspect-video bg-smoke dark:bg-smoke flex-shrink-0">
         {imageSrc ? (
           <>
             <img
               src={imageSrc}
               alt={ev.title}
-              className="w-full h-full object-cover brightness-75 saturate-[0.85] transition-all duration-500 ease-out group-hover:scale-[1.06] group-hover:brightness-90 group-hover:saturate-100"
+              className="w-full h-full object-contain"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none'
               }}
             />
-            <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black/75 to-transparent pointer-events-none" />
           </>
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-smoke dark:bg-smoke font-bebas text-5xl text-accent/10 light:text-accent-light/10 tracking-wider select-none">TRFC</div>
@@ -82,7 +81,7 @@ export default function EventCard({ event }: { event: Event }) {
 
         {/* Description */}
         {ev.description && (
-          <p className="text-sm text-chalk/45 leading-relaxed mb-4 line-clamp-2">{ev.description}</p>
+          <p className="text-sm text-chalk/45 leading-relaxed mb-4 line-clamp-2 whitespace-pre-line">{ev.description}</p>
         )}
 
         {/* Slots bar */}

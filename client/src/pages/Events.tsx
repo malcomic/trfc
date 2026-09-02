@@ -190,16 +190,15 @@ export default function Events() {
                   className={`block no-underline bg-ash light:bg-ash-light relative overflow-hidden border border-transparent hover:border-accent/30 light:hover:border-accent-light/30 transition-all duration-250 hover:-translate-y-1 hover:z-10 ${isFeatured ? 'md:col-span-2 lg:col-span-2' : ''}`}
                 >
                   {/* Image */}
-                  <div className="relative overflow-hidden bg-smoke light:bg-smoke-light" style={{ height: isFeatured ? '320px' : '220px' }}>
+                  <div className="relative overflow-hidden bg-smoke light:bg-smoke-light aspect-video">
                     <img
                       src={getSafeImageUrl((event as any).image_url, EVENT_IMAGE_FALLBACK)}
                       alt={event.title}
-                      className="w-full h-full object-cover brightness-75 saturate-80 transition-all duration-500 ease-out group-hover:scale-107 group-hover:brightness-90 group-hover:saturate-100"
+                      className="w-full h-full object-contain"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = EVENT_IMAGE_FALLBACK
                       }}
                     />
-                    <div className="absolute bottom-0 left-0 right-0 h-3/5 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
 
                     {/* Date badge */}
                     <div className="absolute top-3.5 left-3.5 bg-night light:bg-night-light border border-white/10 light:border-black/10 px-3 py-2 text-center min-w-12 clip-angled-sm z-10">
@@ -225,7 +224,7 @@ export default function Events() {
                       </div>
                     )}
                     {event.description && (
-                      <p className="text-sm text-chalk/45 light:text-chalk-light/45 leading-relaxed line-clamp-2">{event.description}</p>
+                      <p className="text-sm text-chalk/45 light:text-chalk-light/45 leading-relaxed line-clamp-2 whitespace-pre-line">{event.description}</p>
                     )}
 
                     <div className="flex items-center justify-between pt-3.5 border-t border-white/5 light:border-black/8 mt-auto">

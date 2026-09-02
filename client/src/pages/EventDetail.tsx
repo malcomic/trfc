@@ -84,13 +84,15 @@ export default function EventDetail() {
       </section>
 
       <div className="max-w-4xl mx-auto px-[6%] py-10 pb-20">
-        <img
-          src={getSafeImageUrl(ev.image_url, EVENT_IMAGE_FALLBACK)}
-          alt={ev.title}
-          className="w-full h-80 object-cover brightness-85 clip-angled mb-8"
-        />
+        <div className="bg-smoke light:bg-smoke-light mb-8">
+          <img
+            src={getSafeImageUrl(ev.image_url, EVENT_IMAGE_FALLBACK)}
+            alt={ev.title}
+            className="w-full max-h-[480px] object-contain mx-auto"
+          />
+        </div>
 
-        <p className="text-fog light:text-fog-light mb-8 leading-relaxed">{ev.description}</p>
+        <p className="text-fog light:text-fog-light mb-8 leading-relaxed whitespace-pre-line">{ev.description}</p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           <div className={`${cardSurface} p-5 flex items-start gap-3`}>

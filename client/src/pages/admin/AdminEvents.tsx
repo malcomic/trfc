@@ -262,7 +262,7 @@ export default function AdminEvents() {
                 <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Description</label>
                 <textarea
                   {...register('description')}
-                  rows={3}
+                  rows={6}
                   className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>

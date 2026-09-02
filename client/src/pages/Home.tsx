@@ -275,12 +275,12 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {events.map((event: any, idx: number) => (
                 <Link to={`/events/${event.id}`} key={event.id} className="bg-ash light:bg-ash-light border border-white/6 light:border-black/6 overflow-hidden relative transition-all duration-300 no-underline hover:-translate-y-1.5 hover:border-accent light:hover:border-accent-light group" style={{ animationDelay: `${idx * 0.1}s` }}>
-                  <div className="overflow-hidden">
+                  <div className="overflow-hidden bg-smoke light:bg-smoke-light aspect-video">
                     <img
                       src={getSafeImageUrl(event.image_url, EVENT_IMAGE_FALLBACK)}
                       alt={event.title}
                       onError={(e) => { (e.target as HTMLImageElement).src = EVENT_IMAGE_FALLBACK }}
-                      className="w-full h-55 object-cover brightness-[0.88] transition-all duration-300 group-hover:brightness-100 group-hover:scale-103"
+                      className="w-full h-full object-contain"
                     />
                   </div>
                   <div className="absolute top-3.5 left-3.5 bg-accent light:bg-accent-light text-black light:text-white font-barlow-condensed font-bold text-xs tracking-wider uppercase px-2.5 py-1">
