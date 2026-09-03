@@ -10,6 +10,7 @@ import TicketCard from '../components/TicketCard'
 import { googleCalendarUrl, downloadIcs } from '../utils/calendar'
 import { formatEventDateTime } from '../utils/eventDate'
 import { pageRoot } from '../utils/themeClasses'
+import { trackCompletePayment } from '../utils/tiktokPixel'
 
 interface NavState {
   eventTitle?: string
@@ -85,6 +86,22 @@ export default function TicketConfirmation() {
     }
     load()
   }, [checkoutRequestId, email, phone, gatePrompt])
+
+  useEffect(() => {
+    if (paymentStatus !== 'paid' || !checkoutRequestId) return
+    const title = details?.event_title || state.eventTitle
+    const qty = details?.quantity ?? state.quantity ?? 1
+    const value = details?.total_price ?? state.totalPrice
+    trackCompletePayment(`ticket_${checkoutRequestId}`, {
+      contents: [{
+        content_id: checkoutRequestId,
+        content_type: 'event',
+        content_name: title,
+        quantity: qty,
+      }],
+      value: value != null ? Number(value) : undefined,
+    })
+  }, [paymentStatus, details, checkoutRequestId, state.eventTitle, state.quantity, state.totalPrice])
 
   const handleGateVerify = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -4,6 +4,7 @@ import { getProductById } from '../api/products'
 import { useCart } from '../store/cartStore'
 import { AlertCircle, Loader, ShoppingCart, ArrowLeft } from 'lucide-react'
 import { Product } from '../types'
+import { trackViewContent } from '../utils/tiktokPixel'
 
 export default function ProductDetail() {
   const { id } = useParams()
@@ -23,6 +24,18 @@ export default function ProductDetail() {
         .finally(() => setLoading(false))
     }
   }, [id])
+
+  useEffect(() => {
+    if (!product) return
+    trackViewContent(
+      {
+        content_id: String(product.id),
+        content_type: 'product',
+        content_name: product.name,
+      },
+      Number(product.price)
+    )
+  }, [product])
 
   const handleAdd = () => {
     if (!product) return

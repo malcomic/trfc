@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate, Link } from 'react-router-dom'
 import { createOrder } from '../api/orders'
@@ -9,6 +9,7 @@ import PaymentStatusModal from '../components/PaymentStatusModal'
 import { AlertCircle, ShoppingCart, Truck, ArrowLeft } from 'lucide-react'
 import { Button, FormInput, Card } from '../components/ui'
 import { pageRoot } from '../utils/themeClasses'
+import { trackInitiateCheckout } from '../utils/tiktokPixel'
 
 export default function Checkout() {
   const { register, handleSubmit, formState: { errors } } = useForm()
@@ -21,6 +22,19 @@ export default function Checkout() {
   const [checkoutRequestId, setCheckoutRequestId] = useState('')
   const [phone, setPhone] = useState('')
   const [orderId, setOrderId] = useState('')
+
+  useEffect(() => {
+    if (items.length === 0) return
+    trackInitiateCheckout('shop', {
+      contents: items.map((item) => ({
+        content_id: String(item.product.id),
+        content_type: 'product' as const,
+        content_name: item.product.name,
+        quantity: item.quantity,
+      })),
+      value: grandTotal,
+    })
+  }, [items, grandTotal])
 
   if (items.length === 0) {
     return (

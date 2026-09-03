@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { CartItem, Product } from '../types'
+import { trackAddToCart } from '../utils/tiktokPixel'
 
 interface CartStore {
   items: CartItem[]
@@ -32,6 +33,15 @@ export const useCart = create<CartStore>((set, get) => ({
       localStorage.setItem('cart', JSON.stringify(newItems))
       return { items: newItems }
     })
+    trackAddToCart(
+      {
+        content_id: String(product.id),
+        content_type: 'product',
+        content_name: product.name,
+        quantity,
+      },
+      Number(product.price) * quantity
+    )
   },
 
   removeItem: (productId) => {

@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
 import PrivateRoute from './components/PrivateRoute'
 import PublicLayout from './components/PublicLayout'
 import AdminLayout from './components/AdminLayout'
@@ -51,6 +52,26 @@ import AdminMedals from './pages/admin/AdminMedals'
 import AdminAppearance from './pages/admin/AdminAppearance'
 import AdminScan from './pages/admin/AdminScan'
 
+function TikTokPixelTracker() {
+  const location = useLocation()
+  const lastPageRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    const page = `${location.pathname}${location.search}${location.hash}`
+    const lastGlobalPage = (window as any).__ttq_last_page as string | undefined
+
+    // Guard against React 18 StrictMode double-invoking effects in development.
+    if (lastGlobalPage === page || lastPageRef.current === page) return
+
+    lastPageRef.current = page
+    ;(window as any).__ttq_last_page = page
+
+    window.ttq?.page?.()
+  }, [location.pathname, location.search, location.hash])
+
+  return null
+}
+
 function App() {
   return (
     <BrowserRouter
@@ -59,6 +80,7 @@ function App() {
         v7_relativeSplatPath: true,
       }}
     >
+      <TikTokPixelTracker />
       <Routes>
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route

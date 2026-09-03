@@ -6,6 +6,7 @@ import { Event } from '../types'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 import { getSafeImageUrl } from '../utils/imageUrl'
 import { formatEventDate, formatEventTime } from '../utils/eventDate'
+import { trackViewContent } from '../utils/tiktokPixel'
 
 const EVENT_IMAGE_FALLBACK =
   'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=800&q=80'
@@ -28,6 +29,14 @@ export default function EventDetail() {
       setError('')
       const data = await getEventById(id!)
       setEvent(data)
+      trackViewContent(
+        {
+          content_id: String(data.id),
+          content_type: 'event',
+          content_name: data.title,
+        },
+        Number(data.price)
+      )
     } catch (err) {
       setError('Failed to load event')
       console.error(err)

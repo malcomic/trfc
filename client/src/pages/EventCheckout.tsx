@@ -7,6 +7,7 @@ import PaymentStatusModal from '../components/PaymentStatusModal'
 import { AlertCircle, Loader, ArrowLeft } from 'lucide-react'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 import { useAuth } from '../context/AuthContext'
+import { trackInitiateCheckout } from '../utils/tiktokPixel'
 
 interface Event {
   id: string
@@ -82,6 +83,20 @@ export default function EventCheckout() {
     }
     fetchEvent()
   }, [eventId])
+
+  useEffect(() => {
+    if (!event) return
+    const qty = Number(initialQty) || 1
+    trackInitiateCheckout(`event_${event.id}`, {
+      contents: [{
+        content_id: String(event.id),
+        content_type: 'event',
+        content_name: event.title,
+        quantity: qty,
+      }],
+      value: Number(event.price) * qty,
+    })
+  }, [event, initialQty])
 
   const onSubmit = async (data: CheckoutForm) => {
     try {
