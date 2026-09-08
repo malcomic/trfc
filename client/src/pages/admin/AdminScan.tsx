@@ -14,11 +14,56 @@ import { formatEventDate, formatEventDateTime } from '../../utils/eventDate'
 
 const EVENT_FILTER_KEY = 'trfc_scan_event_id'
 const SCAN_MODE_KEY = 'trfc_scan_mode'
+const SESSION_CHECKINS_KEY = 'trfc_scan_session_checkins'
 const READER_ID = 'qr-reader'
 const SUCCESS_DISMISS_MS = 1200
 const ERROR_DISMISS_MS = 2000
 
 type ScanMode = 'camera' | 'hardware'
+
+interface SessionCheckIn {
+  id: string
+  kind: 'ticket' | 'medal'
+  name: string
+  detail: string
+  shortCode: string
+  at: string
+}
+
+function loadSessionCheckIns(): SessionCheckIn[] {
+  try {
+    const raw = sessionStorage.getItem(SESSION_CHECKINS_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as unknown
+    return Array.isArray(parsed) ? (parsed as SessionCheckIn[]) : []
+  } catch {
+    return []
+  }
+}
+
+function sessionEntryFromResult(result: ScanLookupResult): SessionCheckIn | null {
+  if (result.kind === 'ticket' && result.ticket) {
+    return {
+      id: result.ticket.id,
+      kind: 'ticket',
+      name: result.ticket.attendeeName || 'Guest',
+      detail: result.ticket.eventTitle || 'Unknown event',
+      shortCode: result.ticket.shortCode,
+      at: result.ticket.checkedInAt || new Date().toISOString(),
+    }
+  }
+  if (result.kind === 'medal' && result.purchase) {
+    return {
+      id: result.purchase.id,
+      kind: 'medal',
+      name: result.purchase.buyerName || 'Guest',
+      detail: `${result.purchase.tierName || 'Medal'} · ${result.purchase.distanceKm} km`,
+      shortCode: result.purchase.shortCode,
+      at: result.purchase.redeemedAt || new Date().toISOString(),
+    }
+  }
+  return null
+}
 
 function formatWhen(value: string | null | undefined) {
   if (!value) return ''
@@ -72,6 +117,7 @@ export default function AdminScan() {
   const [manualCode, setManualCode] = useState('')
   const [cameraError, setCameraError] = useState('')
   const [scannerReady, setScannerReady] = useState(false)
+  const [sessionCheckIns, setSessionCheckIns] = useState<SessionCheckIn[]>(loadSessionCheckIns)
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const busyRef = useRef(false)
   const eventIdRef = useRef(eventId)
@@ -95,10 +141,25 @@ export default function AdminScan() {
       .catch(() => setEvents([]))
   }, [])
 
+  useEffect(() => {
+    sessionStorage.setItem(SESSION_CHECKINS_KEY, JSON.stringify(sessionCheckIns))
+  }, [sessionCheckIns])
+
   const handleLogout = () => {
     logout()
     navigate('/admin/login')
   }
+
+  const pushSessionCheckIn = useCallback((result: ScanLookupResult) => {
+    const entry = sessionEntryFromResult(result)
+    if (!entry) return
+    setSessionCheckIns((prev) => {
+      if (prev.some((item) => item.id === entry.id && item.kind === entry.kind)) {
+        return prev
+      }
+      return [entry, ...prev]
+    })
+  }, [])
 
   const setScanModeAndPersist = (mode: ScanMode) => {
     setScanMode(mode)
@@ -111,6 +172,12 @@ export default function AdminScan() {
       setScannerReady(document.activeElement === hardwareInputRef.current)
     }
   }, [])
+
+  const clearSessionCheckIns = () => {
+    setSessionCheckIns([])
+    sessionStorage.removeItem(SESSION_CHECKINS_KEY)
+    focusHardwareInput()
+  }
 
   const resumeCamera = useCallback(async () => {
     if (scannerRef.current?.isScanning) {
@@ -189,6 +256,7 @@ export default function AdminScan() {
             })
             setResult(updated)
             setFlash(data.kind === 'ticket' ? 'Checked in' : 'Redeemed')
+            pushSessionCheckIn(updated)
             scheduleReset(SUCCESS_DISMISS_MS)
           } catch (err: unknown) {
             const errData =
@@ -216,7 +284,7 @@ export default function AdminScan() {
         setLookingUp(false)
       }
     },
-    [scheduleReset]
+    [scheduleReset, pushSessionCheckIn]
   )
 
   const handleHardwareKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -378,7 +446,7 @@ export default function AdminScan() {
             )}
           </div>
         ) : (
-          <div className="relative rounded-xl overflow-hidden bg-gray-900 border border-gray-700 aspect-square max-h-[55vh] mx-auto w-full max-w-md flex flex-col items-center justify-center px-6 text-center">
+          <div className="relative rounded-xl overflow-hidden bg-gray-900 border border-gray-700 min-h-[180px] mx-auto w-full max-w-md flex flex-col items-center justify-center px-6 py-8 text-center">
             <QrCode size={48} className="text-emerald-400 mb-4" />
             <p className="text-lg font-semibold">Ready to scan</p>
             <p className="text-sm text-gray-400 mt-1">
@@ -404,6 +472,56 @@ export default function AdminScan() {
           <Keyboard size={18} />
           Enter code
         </button>
+
+        <div className="w-full max-w-md mx-auto mt-2">
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+              This session ({sessionCheckIns.length})
+            </p>
+            {sessionCheckIns.length > 0 && (
+              <button
+                type="button"
+                onClick={clearSessionCheckIns}
+                className="text-xs text-gray-400 hover:text-white min-h-[36px] px-2"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          {sessionCheckIns.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-4 border border-dashed border-gray-800 rounded-xl">
+              Successful check-ins and redemptions will appear here
+            </p>
+          ) : (
+            <ul className="space-y-2 max-h-[40vh] overflow-y-auto">
+              {sessionCheckIns.map((item) => (
+                <li
+                  key={`${item.kind}-${item.id}`}
+                  className="rounded-xl border border-gray-800 bg-gray-900 px-4 py-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold truncate">{item.name}</p>
+                      <p className="text-sm text-gray-400 truncate">{item.detail}</p>
+                      <p className="text-xs text-gray-500 font-mono mt-0.5">{item.shortCode}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-emerald-400">
+                        {item.kind === 'ticket' ? 'In' : 'Medal'}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {new Date(item.at).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
 
       {manualOpen && (
