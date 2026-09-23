@@ -99,13 +99,17 @@ describe('E2E: Complete Payment Flow', () => {
         id: 'event-123',
         title: 'Fitness Workshop',
         date: '2026-06-15',
-        price: 500,
         location: 'Nairobi Sports Center',
+      }
+      const ticketType = {
+        id: 'type-1',
+        name: 'General Admission',
+        price: 500,
       }
       expect(event.id).toBeDefined()
 
       const ticketQuantity = 2
-      const totalAmount = event.price * ticketQuantity
+      const totalAmount = ticketType.price * ticketQuantity
       expect(totalAmount).toBe(1000)
 
       const attendeeData = {

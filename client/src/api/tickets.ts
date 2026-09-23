@@ -4,6 +4,9 @@ export interface Ticket {
   id: string
   user_id: string | null
   event_id: string
+  ticket_type_id?: string | null
+  ticket_type_name?: string | null
+  unit_price?: number | null
   phone?: string | null
   email?: string | null
   attendee_name?: string | null
@@ -22,12 +25,17 @@ export interface Ticket {
 /**
  * Buy tickets for an event
  */
-export async function buyTickets(eventId: string, quantity: number, phone: string) {
-  const response = await api.post('/events/tickets', {
-    eventId,
-    quantity,
-    phone,
-  })
+export async function buyTickets(
+  eventId: string,
+  data: {
+    ticketTypeId: string
+    quantity: number
+    phone: string
+    email: string
+    attendeeName: string
+  }
+) {
+  const response = await api.post(`/events/${eventId}/tickets`, data)
   return response.data
 }
 

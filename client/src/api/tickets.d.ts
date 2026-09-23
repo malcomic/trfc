@@ -2,6 +2,9 @@ export interface Ticket {
     id: string;
     user_id: string | null;
     event_id: string;
+    ticket_type_id?: string | null;
+    ticket_type_name?: string | null;
+    unit_price?: number | null;
     phone?: string | null;
     email?: string | null;
     attendee_name?: string | null;
@@ -19,7 +22,13 @@ export interface Ticket {
 /**
  * Buy tickets for an event
  */
-export declare function buyTickets(eventId: string, quantity: number, phone: string): Promise<any>;
+export declare function buyTickets(eventId: string, data: {
+    ticketTypeId: string;
+    quantity: number;
+    phone: string;
+    email: string;
+    attendeeName: string;
+}): Promise<any>;
 /**
  * Get all tickets for the current user
  */

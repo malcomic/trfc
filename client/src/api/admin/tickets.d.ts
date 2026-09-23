@@ -3,6 +3,8 @@ export interface AdminTicket {
     event_id: string;
     event_title?: string;
     event_date?: string;
+    ticket_type_name?: string | null;
+    price?: number | null;
     phone?: string;
     payment_status: string;
     purchase_batch_id?: string;

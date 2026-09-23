@@ -8,9 +8,45 @@ import { admitScan, listScanEvents, lookupScan, } from '../../api/scan';
 import { formatEventDate, formatEventDateTime } from '../../utils/eventDate';
 const EVENT_FILTER_KEY = 'trfc_scan_event_id';
 const SCAN_MODE_KEY = 'trfc_scan_mode';
+const SESSION_CHECKINS_KEY = 'trfc_scan_session_checkins';
 const READER_ID = 'qr-reader';
 const SUCCESS_DISMISS_MS = 1200;
 const ERROR_DISMISS_MS = 2000;
+function loadSessionCheckIns() {
+    try {
+        const raw = sessionStorage.getItem(SESSION_CHECKINS_KEY);
+        if (!raw)
+            return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+    }
+    catch {
+        return [];
+    }
+}
+function sessionEntryFromResult(result) {
+    if (result.kind === 'ticket' && result.ticket) {
+        return {
+            id: result.ticket.id,
+            kind: 'ticket',
+            name: result.ticket.attendeeName || 'Guest',
+            detail: result.ticket.eventTitle || 'Unknown event',
+            shortCode: result.ticket.shortCode,
+            at: result.ticket.checkedInAt || new Date().toISOString(),
+        };
+    }
+    if (result.kind === 'medal' && result.purchase) {
+        return {
+            id: result.purchase.id,
+            kind: 'medal',
+            name: result.purchase.buyerName || 'Guest',
+            detail: `${result.purchase.tierName || 'Medal'} · ${result.purchase.distanceKm} km`,
+            shortCode: result.purchase.shortCode,
+            at: result.purchase.redeemedAt || new Date().toISOString(),
+        };
+    }
+    return null;
+}
 function formatWhen(value) {
     if (!value)
         return '';
@@ -64,6 +100,7 @@ export default function AdminScan() {
     const [manualCode, setManualCode] = useState('');
     const [cameraError, setCameraError] = useState('');
     const [scannerReady, setScannerReady] = useState(false);
+    const [sessionCheckIns, setSessionCheckIns] = useState(loadSessionCheckIns);
     const scannerRef = useRef(null);
     const busyRef = useRef(false);
     const eventIdRef = useRef(eventId);
@@ -85,10 +122,24 @@ export default function AdminScan() {
             .then((data) => setEvents(Array.isArray(data) ? data : []))
             .catch(() => setEvents([]));
     }, []);
+    useEffect(() => {
+        sessionStorage.setItem(SESSION_CHECKINS_KEY, JSON.stringify(sessionCheckIns));
+    }, [sessionCheckIns]);
     const handleLogout = () => {
         logout();
         navigate('/admin/login');
     };
+    const pushSessionCheckIn = useCallback((result) => {
+        const entry = sessionEntryFromResult(result);
+        if (!entry)
+            return;
+        setSessionCheckIns((prev) => {
+            if (prev.some((item) => item.id === entry.id && item.kind === entry.kind)) {
+                return prev;
+            }
+            return [entry, ...prev];
+        });
+    }, []);
     const setScanModeAndPersist = (mode) => {
         setScanMode(mode);
         sessionStorage.setItem(SCAN_MODE_KEY, mode);
@@ -99,6 +150,11 @@ export default function AdminScan() {
             setScannerReady(document.activeElement === hardwareInputRef.current);
         }
     }, []);
+    const clearSessionCheckIns = () => {
+        setSessionCheckIns([]);
+        sessionStorage.removeItem(SESSION_CHECKINS_KEY);
+        focusHardwareInput();
+    };
     const resumeCamera = useCallback(async () => {
         if (scannerRef.current?.isScanning) {
             try {
@@ -170,6 +226,7 @@ export default function AdminScan() {
                     });
                     setResult(updated);
                     setFlash(data.kind === 'ticket' ? 'Checked in' : 'Redeemed');
+                    pushSessionCheckIn(updated);
                     scheduleReset(SUCCESS_DISMISS_MS);
                 }
                 catch (err) {
@@ -199,7 +256,7 @@ export default function AdminScan() {
         finally {
             setLookingUp(false);
         }
-    }, [scheduleReset]);
+    }, [scheduleReset, pushSessionCheckIn]);
     const handleHardwareKeyDown = (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -256,7 +313,10 @@ export default function AdminScan() {
                                             ? 'bg-emerald-600 text-white'
                                             : 'bg-gray-800 text-gray-400 hover:text-white'}`, children: "Gun" })] }), _jsxs("button", { type: "button", onClick: handleLogout, className: "flex items-center gap-1.5 text-sm text-gray-300 hover:text-white min-h-[44px] px-2", children: [_jsx(LogOut, { size: 18 }), "Logout"] })] })] }), _jsxs("div", { className: "px-4 py-3 border-b border-gray-800 bg-gray-900", children: [_jsxs("div", { className: "flex items-center justify-between gap-3 mb-1.5", children: [_jsx("label", { className: "block text-xs font-semibold uppercase tracking-wider text-gray-400", children: "Event filter" }), scannerReady && (_jsxs("span", { className: "flex items-center gap-1.5 text-xs text-emerald-400 shrink-0", children: [_jsx("span", { className: "w-2 h-2 rounded-full bg-emerald-400" }), "Scanner ready"] }))] }), _jsxs("select", { value: eventId, onChange: (e) => setEventId(e.target.value), className: "w-full min-h-[44px] rounded-lg bg-gray-800 border border-gray-700 px-3 text-white", children: [_jsx("option", { value: "", children: "All events" }), events.map((ev) => (_jsxs("option", { value: ev.id, children: [ev.title, ev.event_date
                                         ? ` · ${formatEventDate(ev.event_date, { year: 'numeric', month: 'short', day: 'numeric' })}`
-                                        : ''] }, ev.id)))] })] }), _jsxs("div", { className: "flex-1 flex flex-col px-4 py-4 gap-4", children: [scanMode === 'camera' ? (_jsxs("div", { className: "relative rounded-xl overflow-hidden bg-black aspect-square max-h-[55vh] mx-auto w-full max-w-md", children: [_jsx("div", { id: READER_ID, className: "w-full h-full" }), (lookingUp || admitting) && (_jsx("div", { className: "absolute inset-0 bg-black/50 flex items-center justify-center text-sm font-semibold", children: admitting && !flash ? 'Checking in…' : 'Looking up…' }))] })) : (_jsxs("div", { className: "relative rounded-xl overflow-hidden bg-gray-900 border border-gray-700 aspect-square max-h-[55vh] mx-auto w-full max-w-md flex flex-col items-center justify-center px-6 text-center", children: [_jsx(QrCode, { size: 48, className: "text-emerald-400 mb-4" }), _jsx("p", { className: "text-lg font-semibold", children: "Ready to scan" }), _jsx("p", { className: "text-sm text-gray-400 mt-1", children: "Point the scanner gun at a ticket or medal QR code" }), (lookingUp || admitting) && (_jsx("p", { className: "text-sm font-semibold text-emerald-400 mt-4", children: admitting && !flash ? 'Checking in…' : 'Looking up…' }))] })), cameraError && scanMode === 'camera' && (_jsx("p", { className: "text-amber-400 text-sm text-center", children: cameraError })), _jsxs("button", { type: "button", onClick: () => setManualOpen(true), className: "mx-auto flex items-center gap-2 min-h-[48px] px-5 rounded-lg bg-gray-800 border border-gray-700 font-semibold", children: [_jsx(Keyboard, { size: 18 }), "Enter code"] })] }), manualOpen && (_jsx("div", { className: "fixed inset-0 z-40 bg-black/70 flex items-end sm:items-center justify-center p-4", children: _jsxs("div", { className: "w-full max-w-md bg-gray-900 rounded-2xl p-5 border border-gray-700", children: [_jsxs("div", { className: "flex items-center justify-between mb-4", children: [_jsx("h2", { className: "font-bold text-lg", children: "Enter code" }), _jsx("button", { type: "button", onClick: () => setManualOpen(false), className: "p-2", "aria-label": "Close", children: _jsx(X, { size: 20 }) })] }), _jsx("input", { value: manualCode, onChange: (e) => setManualCode(e.target.value), onKeyDown: (e) => {
+                                        : ''] }, ev.id)))] })] }), _jsxs("div", { className: "flex-1 flex flex-col px-4 py-4 gap-4", children: [scanMode === 'camera' ? (_jsxs("div", { className: "relative rounded-xl overflow-hidden bg-black aspect-square max-h-[55vh] mx-auto w-full max-w-md", children: [_jsx("div", { id: READER_ID, className: "w-full h-full" }), (lookingUp || admitting) && (_jsx("div", { className: "absolute inset-0 bg-black/50 flex items-center justify-center text-sm font-semibold", children: admitting && !flash ? 'Checking in…' : 'Looking up…' }))] })) : (_jsxs("div", { className: "relative rounded-xl overflow-hidden bg-gray-900 border border-gray-700 min-h-[180px] mx-auto w-full max-w-md flex flex-col items-center justify-center px-6 py-8 text-center", children: [_jsx(QrCode, { size: 48, className: "text-emerald-400 mb-4" }), _jsx("p", { className: "text-lg font-semibold", children: "Ready to scan" }), _jsx("p", { className: "text-sm text-gray-400 mt-1", children: "Point the scanner gun at a ticket or medal QR code" }), (lookingUp || admitting) && (_jsx("p", { className: "text-sm font-semibold text-emerald-400 mt-4", children: admitting && !flash ? 'Checking in…' : 'Looking up…' }))] })), cameraError && scanMode === 'camera' && (_jsx("p", { className: "text-amber-400 text-sm text-center", children: cameraError })), _jsxs("button", { type: "button", onClick: () => setManualOpen(true), className: "mx-auto flex items-center gap-2 min-h-[48px] px-5 rounded-lg bg-gray-800 border border-gray-700 font-semibold", children: [_jsx(Keyboard, { size: 18 }), "Enter code"] }), _jsxs("div", { className: "w-full max-w-md mx-auto mt-2", children: [_jsxs("div", { className: "flex items-center justify-between gap-3 mb-2", children: [_jsxs("p", { className: "text-xs font-semibold uppercase tracking-wider text-gray-400", children: ["This session (", sessionCheckIns.length, ")"] }), sessionCheckIns.length > 0 && (_jsx("button", { type: "button", onClick: clearSessionCheckIns, className: "text-xs text-gray-400 hover:text-white min-h-[36px] px-2", children: "Clear" }))] }), sessionCheckIns.length === 0 ? (_jsx("p", { className: "text-sm text-gray-500 text-center py-4 border border-dashed border-gray-800 rounded-xl", children: "Successful check-ins and redemptions will appear here" })) : (_jsx("ul", { className: "space-y-2 max-h-[40vh] overflow-y-auto", children: sessionCheckIns.map((item) => (_jsx("li", { className: "rounded-xl border border-gray-800 bg-gray-900 px-4 py-3", children: _jsxs("div", { className: "flex items-start justify-between gap-3", children: [_jsxs("div", { className: "min-w-0", children: [_jsx("p", { className: "font-semibold truncate", children: item.name }), _jsx("p", { className: "text-sm text-gray-400 truncate", children: item.detail }), _jsx("p", { className: "text-xs text-gray-500 font-mono mt-0.5", children: item.shortCode })] }), _jsxs("div", { className: "text-right shrink-0", children: [_jsx("p", { className: "text-xs font-semibold uppercase tracking-wide text-emerald-400", children: item.kind === 'ticket' ? 'In' : 'Medal' }), _jsx("p", { className: "text-xs text-gray-500 mt-1", children: new Date(item.at).toLocaleTimeString([], {
+                                                            hour: '2-digit',
+                                                            minute: '2-digit',
+                                                        }) })] })] }) }, `${item.kind}-${item.id}`))) }))] })] }), manualOpen && (_jsx("div", { className: "fixed inset-0 z-40 bg-black/70 flex items-end sm:items-center justify-center p-4", children: _jsxs("div", { className: "w-full max-w-md bg-gray-900 rounded-2xl p-5 border border-gray-700", children: [_jsxs("div", { className: "flex items-center justify-between mb-4", children: [_jsx("h2", { className: "font-bold text-lg", children: "Enter code" }), _jsx("button", { type: "button", onClick: () => setManualOpen(false), className: "p-2", "aria-label": "Close", children: _jsx(X, { size: 20 }) })] }), _jsx("input", { value: manualCode, onChange: (e) => setManualCode(e.target.value), onKeyDown: (e) => {
                                 if (e.key === 'Enter' && manualCode.trim() && !lookingUp && !admitting) {
                                     e.preventDefault();
                                     void processScan(manualCode);

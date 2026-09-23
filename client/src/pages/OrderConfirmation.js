@@ -5,6 +5,7 @@ import { getOrderById } from '../api/orders';
 import { pollPaymentStatus } from '../api/payments';
 import { AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses';
+import { trackCompletePayment } from '../utils/tiktokPixel';
 export default function OrderConfirmation() {
     const { orderId } = useParams();
     const navigate = useNavigate();
@@ -55,6 +56,19 @@ export default function OrderConfirmation() {
         };
         load();
     }, [orderId, phone, phonePrompt]);
+    useEffect(() => {
+        if (paymentStatus !== 'paid' || !order)
+            return;
+        trackCompletePayment(`order_${order.id}`, {
+            contents: (order.items ?? []).map((item) => ({
+                content_id: String(item.product_id),
+                content_type: 'product',
+                content_name: item.product_name,
+                quantity: item.quantity,
+            })),
+            value: Number(order.total_amount),
+        });
+    }, [paymentStatus, order]);
     const handlePhoneVerify = async (e) => {
         e.preventDefault();
         if (!/^254\d{9}$/.test(phone.replace(/\s+/g, ''))) {

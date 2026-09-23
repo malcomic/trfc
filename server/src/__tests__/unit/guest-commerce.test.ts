@@ -74,6 +74,20 @@ describe('guest commerce', () => {
           ],
         } as any
       }
+      if (sql.includes('FROM event_ticket_types')) {
+        return {
+          rows: [
+            {
+              id: 'type-1',
+              event_id: 'ev-1',
+              name: 'General Admission',
+              price: 500,
+              capacity: null,
+              is_active: true,
+            },
+          ],
+        } as any
+      }
       if (sql.includes('INSERT INTO tickets')) {
         return { rows: [{ id: 'ticket-1' }] } as any
       }
@@ -84,6 +98,7 @@ describe('guest commerce', () => {
       params: { eventId: 'ev-1' },
       user: undefined,
       body: {
+        ticketTypeId: 'type-1',
         quantity: 1,
         email: 'guest@example.com',
         phone: '254712345678',
@@ -99,6 +114,8 @@ describe('guest commerce', () => {
       [
         null,
         'ev-1',
+        'type-1',
+        500,
         expect.any(String),
         '254712345678',
         'guest@example.com',
@@ -112,6 +129,7 @@ describe('guest commerce', () => {
       expect.objectContaining({
         ticketIds: ['ticket-1'],
         eventTitle: 'Run',
+        ticketTypeName: 'General Admission',
         totalPrice: 500,
         attendeeName: 'Guest Runner',
       })

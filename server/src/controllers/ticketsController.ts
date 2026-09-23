@@ -27,7 +27,7 @@ function resolveAttendeeName(
 export async function buyTicket(req: Request, res: Response) {
   try {
     const eventId = req.params.eventId || req.body.eventId
-    const { quantity, phone, email, attendeeName } = req.body
+    const { quantity, phone, email, attendeeName, ticketTypeId } = req.body
     let userId = req.user?.id ?? null
 
     if (userId) {
@@ -37,9 +37,9 @@ export async function buyTicket(req: Request, res: Response) {
       }
     }
 
-    if (!eventId || !quantity || !email || !phone || !attendeeName) {
+    if (!eventId || !ticketTypeId || !quantity || !email || !phone || !attendeeName) {
       return res.status(400).json({
-        error: 'eventId, quantity, email, phone, and attendeeName are required',
+        error: 'eventId, ticketTypeId, quantity, email, phone, and attendeeName are required',
       })
     }
 
@@ -75,16 +75,32 @@ export async function buyTicket(req: Request, res: Response) {
 
     const event = eventResult.rows[0]
 
-    if (event.capacity != null) {
+    const typeResult = await query(
+      `SELECT * FROM event_ticket_types
+       WHERE id = $1 AND event_id = $2 AND is_active = true`,
+      [ticketTypeId, eventId]
+    )
+    if (typeResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Ticket type not found or inactive' })
+    }
+
+    const ticketType = typeResult.rows[0]
+    const unitPrice = Number(ticketType.price)
+
+    if (ticketType.capacity != null) {
       const countResult = await query(
         `SELECT COUNT(*)::int AS cnt FROM tickets
-         WHERE event_id = $1 AND payment_status IN ('pending', 'paid')`,
-        [eventId]
+         WHERE ticket_type_id = $1 AND payment_status IN ('pending', 'paid')`,
+        [ticketTypeId]
       )
       const existing = countResult.rows[0].cnt
-      if (existing + quantity > event.capacity) {
+      const remaining = Math.max(0, Number(ticketType.capacity) - existing)
+      if (quantity > remaining) {
         return res.status(400).json({
-          error: `Only ${Math.max(0, event.capacity - existing)} ticket(s) available`,
+          error:
+            remaining === 0
+              ? 'This ticket type is sold out'
+              : `Only ${remaining} ticket(s) available for this type`,
         })
       }
     }
@@ -93,11 +109,14 @@ export async function buyTicket(req: Request, res: Response) {
     const ticketIds: string[] = []
     for (let i = 0; i < quantity; i++) {
       const ticketResult = await query(
-        `INSERT INTO tickets (user_id, event_id, purchase_batch_id, phone, email, attendee_name, payment_provider, payment_status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+        `INSERT INTO tickets
+           (user_id, event_id, ticket_type_id, unit_price, purchase_batch_id, phone, email, attendee_name, payment_provider, payment_status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
         [
           userId,
           eventId,
+          ticketTypeId,
+          unitPrice,
           purchaseBatchId,
           phone,
           normalizedEmail,
@@ -115,8 +134,10 @@ export async function buyTicket(req: Request, res: Response) {
       quantity,
       eventTitle: event.title,
       eventDate: event.event_date,
-      pricePerTicket: event.price,
-      totalPrice: parseFloat(event.price) * quantity,
+      ticketTypeId,
+      ticketTypeName: ticketType.name,
+      pricePerTicket: unitPrice,
+      totalPrice: unitPrice * quantity,
       attendeeName: normalizedName,
     })
   } catch (error: unknown) {
@@ -143,9 +164,13 @@ export async function getUserTickets(req: Request, res: Response) {
       `SELECT
         t.id, t.user_id, t.event_id, t.purchase_batch_id, t.payment_status, t.mpesa_receipt,
         t.checkout_request_id, t.attendee_name, t.phone, t.email, t.created_at,
-        e.title as event_title, e.event_date, e.price, e.location
+        t.unit_price, t.ticket_type_id,
+        e.title as event_title, e.event_date, e.location,
+        COALESCE(t.unit_price, ett.price, e.price) as price,
+        ett.name as ticket_type_name
        FROM tickets t
        JOIN events e ON t.event_id = e.id
+       LEFT JOIN event_ticket_types ett ON t.ticket_type_id = ett.id
        WHERE t.user_id = $1
        ORDER BY t.created_at DESC`,
       [userId]
@@ -175,12 +200,15 @@ export async function getTicketsByCheckoutRequestId(req: Request, res: Response)
     const result = await query(
       `SELECT
         t.id, t.user_id, t.event_id, t.phone, t.email, t.attendee_name, t.payment_status,
-        t.checkout_request_id, t.mpesa_receipt,
+        t.checkout_request_id, t.mpesa_receipt, t.unit_price, t.ticket_type_id,
         COALESCE(NULLIF(TRIM(u.name), ''), NULL) as user_name,
-        e.title as event_title, e.event_date, e.price, e.location
+        e.title as event_title, e.event_date, e.location,
+        COALESCE(t.unit_price, ett.price, e.price) as price,
+        ett.name as ticket_type_name
        FROM tickets t
        LEFT JOIN users u ON t.user_id = u.id
        JOIN events e ON t.event_id = e.id
+       LEFT JOIN event_ticket_types ett ON t.ticket_type_id = ett.id
        WHERE t.checkout_request_id = $1
        ORDER BY t.created_at ASC`,
       [checkoutRequestId]
@@ -233,6 +261,7 @@ export async function getTicketsByCheckoutRequestId(req: Request, res: Response)
       event_title: ticket.event_title,
       event_date: ticket.event_date,
       location: ticket.location,
+      ticket_type_name: ticket.ticket_type_name || null,
       unit_price: unitPrice,
       quantity,
       total_price: totalPrice,
@@ -261,9 +290,13 @@ export async function getTicketById(req: Request, res: Response) {
       `SELECT
         t.id, t.user_id, t.event_id, t.purchase_batch_id, t.phone, t.email, t.attendee_name,
         t.payment_status, t.mpesa_receipt, t.checkout_request_id, t.created_at,
-        e.title as event_title, e.event_date, e.price, e.location, e.description
+        t.unit_price, t.ticket_type_id,
+        e.title as event_title, e.event_date, e.location, e.description,
+        COALESCE(t.unit_price, ett.price, e.price) as price,
+        ett.name as ticket_type_name
        FROM tickets t
        JOIN events e ON t.event_id = e.id
+       LEFT JOIN event_ticket_types ett ON t.ticket_type_id = ett.id
        WHERE t.id = $1`,
       [id]
     )
@@ -323,12 +356,15 @@ async function buildTicketPdfBuffer(ticketId: string) {
   const ticketResult = await query(
     `SELECT
       t.id, t.user_id, t.event_id, t.payment_status, t.phone, t.email,
-      t.attendee_name, t.mpesa_receipt,
+      t.attendee_name, t.mpesa_receipt, t.unit_price,
       COALESCE(NULLIF(TRIM(u.name), ''), NULL) as user_name,
-      e.title as event_title, e.event_date, e.location, e.price
+      e.title as event_title, e.event_date, e.location,
+      COALESCE(t.unit_price, ett.price, e.price) as price,
+      ett.name as ticket_type_name
      FROM tickets t
      LEFT JOIN users u ON t.user_id = u.id
      JOIN events e ON t.event_id = e.id
+     LEFT JOIN event_ticket_types ett ON t.ticket_type_id = ett.id
      WHERE t.id = $1`,
     [ticketId]
   )

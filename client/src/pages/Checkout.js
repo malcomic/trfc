@@ -1,5 +1,5 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate, Link } from 'react-router-dom';
 import { createOrder } from '../api/orders';
@@ -10,6 +10,7 @@ import PaymentStatusModal from '../components/PaymentStatusModal';
 import { AlertCircle, ShoppingCart, Truck, ArrowLeft } from 'lucide-react';
 import { Button, FormInput, Card } from '../components/ui';
 import { pageRoot } from '../utils/themeClasses';
+import { trackInitiateCheckout } from '../utils/tiktokPixel';
 export default function Checkout() {
     const { register, handleSubmit, formState: { errors } } = useForm();
     const navigate = useNavigate();
@@ -21,6 +22,19 @@ export default function Checkout() {
     const [checkoutRequestId, setCheckoutRequestId] = useState('');
     const [phone, setPhone] = useState('');
     const [orderId, setOrderId] = useState('');
+    useEffect(() => {
+        if (items.length === 0)
+            return;
+        trackInitiateCheckout('shop', {
+            contents: items.map((item) => ({
+                content_id: String(item.product.id),
+                content_type: 'product',
+                content_name: item.product.name,
+                quantity: item.quantity,
+            })),
+            value: grandTotal,
+        });
+    }, [items, grandTotal]);
     if (items.length === 0) {
         return (_jsx("div", { className: `${pageRoot} font-barlow flex items-center justify-center px-[6%] py-12`, children: _jsxs("div", { className: "max-w-2xl w-full text-center", children: [_jsx("div", { className: "w-20 h-20 bg-ash rounded-full flex items-center justify-center mx-auto mb-8 border border-white/10", children: _jsx(ShoppingCart, { size: 40, className: "text-fog" }) }), _jsx("h1", { className: "font-bebas text-5xl text-chalk mb-3 letter-spacing-tighter", children: "CART EMPTY" }), _jsx("p", { className: "text-lg text-fog mb-8", children: "Your shopping cart is empty. Browse our products and start adding items to your order." }), _jsx(Button, { onClick: () => navigate('/shop'), variant: "primary", size: "lg", children: "Continue Shopping" })] }) }));
     }

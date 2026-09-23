@@ -7,6 +7,19 @@ export interface User {
   created_at: Date;
 }
 
+export interface EventTicketType {
+  id: string;
+  event_id: string;
+  name: string;
+  description?: string | null;
+  price: number;
+  capacity?: number | null;
+  sort_order: number;
+  is_active: boolean;
+  remaining?: number | null;
+  is_sold_out?: boolean;
+}
+
 export interface Event {
   id: string;
   title: string;
@@ -18,12 +31,17 @@ export interface Event {
   image_url?: string;
   is_active: boolean;
   created_at: Date;
+  ticket_types?: EventTicketType[];
+  min_price?: number | null;
+  all_types_sold_out?: boolean;
 }
 
 export interface Ticket {
   id: string;
   user_id: string | null;
   event_id: string | null;
+  ticket_type_id?: string | null;
+  unit_price?: number | null;
   purchase_batch_id?: string | null;
   phone?: string | null;
   email?: string | null;

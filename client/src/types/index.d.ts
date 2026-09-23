@@ -5,16 +5,31 @@ export interface User {
     phone: string;
     role: 'member' | 'admin' | 'scanner';
 }
+export interface EventTicketType {
+    id: string;
+    event_id: string;
+    name: string;
+    description?: string | null;
+    price: number;
+    capacity: number | null;
+    sort_order: number;
+    is_active: boolean;
+    remaining: number | null;
+    is_sold_out: boolean;
+}
 export interface Event {
     id: string;
     title: string;
     description?: string;
     location?: string;
     event_date: string;
-    price: number;
+    price?: number;
     capacity?: number;
     image_url?: string;
     is_active: boolean;
+    ticket_types?: EventTicketType[];
+    min_price?: number | null;
+    all_types_sold_out?: boolean;
 }
 export interface Product {
     id: string;

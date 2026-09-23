@@ -8,6 +8,7 @@ import TicketCard from '../components/TicketCard';
 import { googleCalendarUrl, downloadIcs } from '../utils/calendar';
 import { formatEventDateTime } from '../utils/eventDate';
 import { pageRoot } from '../utils/themeClasses';
+import { trackCompletePayment } from '../utils/tiktokPixel';
 export default function TicketConfirmation() {
     const { checkoutRequestId } = useParams();
     const navigate = useNavigate();
@@ -73,6 +74,22 @@ export default function TicketConfirmation() {
         };
         load();
     }, [checkoutRequestId, email, phone, gatePrompt]);
+    useEffect(() => {
+        if (paymentStatus !== 'paid' || !checkoutRequestId)
+            return;
+        const title = details?.event_title || state.eventTitle;
+        const qty = details?.quantity ?? state.quantity ?? 1;
+        const value = details?.total_price ?? state.totalPrice;
+        trackCompletePayment(`ticket_${checkoutRequestId}`, {
+            contents: [{
+                    content_id: checkoutRequestId,
+                    content_type: 'event',
+                    content_name: title,
+                    quantity: qty,
+                }],
+            value: value != null ? Number(value) : undefined,
+        });
+    }, [paymentStatus, details, checkoutRequestId, state.eventTitle, state.quantity, state.totalPrice]);
     const handleGateVerify = async (e) => {
         e.preventDefault();
         const normalizedEmail = email.trim().toLowerCase();
@@ -143,7 +160,7 @@ export default function TicketConfirmation() {
                             unitPrice: details.unit_price,
                             mpesaReceipt: details.mpesa_receipt,
                             phone: details.phone,
-                        } }, t.id))) })), _jsxs("div", { className: "bg-ash light:bg-ash-light border border-white/5 light:border-black/8 p-6 mb-6 space-y-3 print:hidden", children: [_jsx("h2", { className: "font-barlow-condensed font-bold tracking-widest uppercase text-accent light:text-accent-light mb-2", children: "Purchase summary" }), details?.attendee_name && (_jsxs("p", { children: [_jsx("span", { className: "text-fog light:text-fog-light", children: "Name: " }), details.attendee_name] })), _jsxs("p", { children: [_jsx("span", { className: "text-fog light:text-fog-light", children: "Event: " }), eventTitle] }), details?.event_date && (_jsxs("p", { children: [_jsx("span", { className: "text-fog light:text-fog-light", children: "When: " }), formatEventDateTime(details.event_date)] })), details?.location && (_jsxs("p", { children: [_jsx("span", { className: "text-fog light:text-fog-light", children: "Venue: " }), details.location] })), _jsxs("p", { children: [_jsx("span", { className: "text-fog light:text-fog-light", children: "Tickets: " }), details?.quantity ?? state.quantity ?? '—'] }), (details?.total_price != null || state.totalPrice != null) && (_jsxs("p", { children: [_jsx("span", { className: "text-fog light:text-fog-light", children: "Total: " }), "KES ", (details?.total_price ?? state.totalPrice).toLocaleString()] })), (details?.email || email) && (_jsxs("p", { children: [_jsx("span", { className: "text-fog light:text-fog-light", children: "Email: " }), details?.email || email] })), (details?.phone || phone) && (_jsxs("p", { children: [_jsx("span", { className: "text-fog light:text-fog-light", children: "Phone: " }), details?.phone || phone] })), details?.mpesa_receipt && (_jsxs("p", { children: [_jsx("span", { className: "text-fog light:text-fog-light", children: "M-Pesa: " }), details.mpesa_receipt] })), checkoutRequestId && (_jsxs("p", { className: "text-xs text-fog font-mono break-all", children: ["Ref: ", checkoutRequestId] }))] }), paymentStatus === 'paid' && details?.event_date && (_jsxs("div", { className: "flex flex-wrap gap-3 mb-6 print:hidden", children: [calendarHref && (_jsxs("a", { href: calendarHref, target: "_blank", rel: "noopener noreferrer", className: "inline-flex items-center gap-2 px-4 py-2.5 bg-smoke light:bg-smoke-light border border-white/10 light:border-black/10 font-barlow-condensed font-bold text-xs tracking-widest uppercase hover:border-accent light:hover:border-accent-light", children: [_jsx(CalendarPlus, { size: 14 }), "Add to Google Calendar"] })), _jsxs("button", { type: "button", onClick: () => downloadIcs({
+                        } }, t.id))) })), _jsxs("div", { className: "bg-ash light:bg-ash-light border border-white/5 light:border-black/8 p-6 mb-6 space-y-3 print:hidden", children: [_jsx("h2", { className: "font-barlow-condensed font-bold tracking-widest uppercase text-accent light:text-accent-light mb-2", children: "Purchase summary" }), details?.attendee_name && (_jsxs("p", { children: [_jsx("span", { className: "text-fog light:text-fog-light", children: "Name: " }), details.attendee_name] })), _jsxs("p", { children: [_jsx("span", { className: "text-fog light:text-fog-light", children: "Event: " }), eventTitle] }), details?.event_date && (_jsxs("p", { children: [_jsx("span", { className: "text-fog light:text-fog-light", children: "When: " }), formatEventDateTime(details.event_date)] })), details?.location && (_jsxs("p", { children: [_jsx("span", { className: "text-fog light:text-fog-light", children: "Venue: " }), details.location] })), _jsxs("p", { children: [_jsx("span", { className: "text-fog light:text-fog-light", children: "Tickets: " }), details?.quantity ?? state.quantity ?? '—'] }), (details?.ticket_type_name || state.ticketTypeName) && (_jsxs("p", { children: [_jsx("span", { className: "text-fog light:text-fog-light", children: "Type: " }), details?.ticket_type_name || state.ticketTypeName] })), (details?.total_price != null || state.totalPrice != null) && (_jsxs("p", { children: [_jsx("span", { className: "text-fog light:text-fog-light", children: "Total: " }), "KES ", (details?.total_price ?? state.totalPrice).toLocaleString()] })), (details?.email || email) && (_jsxs("p", { children: [_jsx("span", { className: "text-fog light:text-fog-light", children: "Email: " }), details?.email || email] })), (details?.phone || phone) && (_jsxs("p", { children: [_jsx("span", { className: "text-fog light:text-fog-light", children: "Phone: " }), details?.phone || phone] })), details?.mpesa_receipt && (_jsxs("p", { children: [_jsx("span", { className: "text-fog light:text-fog-light", children: "M-Pesa: " }), details.mpesa_receipt] })), checkoutRequestId && (_jsxs("p", { className: "text-xs text-fog font-mono break-all", children: ["Ref: ", checkoutRequestId] }))] }), paymentStatus === 'paid' && details?.event_date && (_jsxs("div", { className: "flex flex-wrap gap-3 mb-6 print:hidden", children: [calendarHref && (_jsxs("a", { href: calendarHref, target: "_blank", rel: "noopener noreferrer", className: "inline-flex items-center gap-2 px-4 py-2.5 bg-smoke light:bg-smoke-light border border-white/10 light:border-black/10 font-barlow-condensed font-bold text-xs tracking-widest uppercase hover:border-accent light:hover:border-accent-light", children: [_jsx(CalendarPlus, { size: 14 }), "Add to Google Calendar"] })), _jsxs("button", { type: "button", onClick: () => downloadIcs({
                                 title: `TRFC: ${eventTitle}`,
                                 start: details.event_date,
                                 location: details.location,

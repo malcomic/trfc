@@ -27,8 +27,12 @@ export async function validatePaymentReference(
 
   if (ticketBatchId) {
     const result = await query(
-      `SELECT t.*, e.price FROM tickets t
+      `SELECT
+         t.*,
+         COALESCE(t.unit_price, ett.price, e.price) AS price
+       FROM tickets t
        JOIN events e ON t.event_id = e.id
+       LEFT JOIN event_ticket_types ett ON t.ticket_type_id = ett.id
        WHERE t.purchase_batch_id = $1`,
       [ticketBatchId]
     )
@@ -40,7 +44,9 @@ export async function validatePaymentReference(
     if (phone && ticket.phone && !phonesMatch(phone, ticket.phone)) {
       return { ok: false, status: 403, error: 'Phone number does not match ticket batch' }
     }
-    const expectedTotal = Math.round(Number(ticket.price) * batch.length)
+    const expectedTotal = Math.round(
+      batch.reduce((sum: number, row: { price: number | string }) => sum + Number(row.price), 0)
+    )
     if (amount != null && expectedTotal !== Math.round(amount)) {
       return { ok: false, status: 400, error: 'Amount does not match ticket batch total' }
     }
@@ -71,8 +77,12 @@ export async function validatePaymentReference(
 
   if (ticketId) {
     const result = await query(
-      `SELECT t.*, e.price FROM tickets t
+      `SELECT
+         t.*,
+         COALESCE(t.unit_price, ett.price, e.price) AS price
+       FROM tickets t
        JOIN events e ON t.event_id = e.id
+       LEFT JOIN event_ticket_types ett ON t.ticket_type_id = ett.id
        WHERE t.id = $1`,
       [ticketId]
     )

@@ -58,6 +58,9 @@ export default function MyTickets() {
             <div key={t.id} className={`${cardSurface} p-5 flex flex-wrap gap-4 justify-between items-start`}>
               <div>
                 <h3 className="font-barlow-condensed font-bold text-lg">{t.event_title}</h3>
+                {t.ticket_type_name && (
+                  <p className="text-sm text-accent light:text-accent-light">{t.ticket_type_name}</p>
+                )}
                 <p className="text-sm text-fog light:text-fog-light">{t.location}</p>
                 <p className="text-sm text-fog light:text-fog-light mt-1">
                   {t.event_date ? formatEventDate(t.event_date, { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}

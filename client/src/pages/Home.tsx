@@ -293,7 +293,15 @@ export default function Home() {
                       {event.location}
                     </div>
                     <div className="flex justify-between items-center">
-                      <div className="font-bebas text-2xl text-accent light:text-accent-light tracking-wider">KES {event.price?.toLocaleString?.() ?? event.price}</div>
+                      <div className="font-bebas text-2xl text-accent light:text-accent-light tracking-wider">
+                        {event.all_types_sold_out
+                          ? 'Sold out'
+                          : event.min_price == null
+                            ? '—'
+                            : Number(event.min_price) === 0
+                              ? 'FREE'
+                              : `From KES ${Number(event.min_price).toLocaleString()}`}
+                      </div>
                       <span className="font-barlow-condensed text-xs tracking-widest text-accent light:text-accent-light font-bold">
                         Register →
                       </span>

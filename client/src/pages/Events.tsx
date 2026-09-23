@@ -230,9 +230,13 @@ export default function Events() {
                     <div className="flex items-center justify-between pt-3.5 border-t border-white/5 light:border-black/8 mt-auto">
                       <div>
                         <div className="font-bebas text-3xl text-accent light:text-accent-light leading-none">
-                          {(event as any).price === 0 || !(event as any).price
-                            ? 'FREE'
-                            : `KES ${Number((event as any).price).toLocaleString()}`}
+                          {event.all_types_sold_out
+                            ? 'Sold out'
+                            : event.min_price == null
+                              ? '—'
+                              : Number(event.min_price) === 0
+                                ? 'FREE'
+                                : `From KES ${Number(event.min_price).toLocaleString()}`}
                         </div>
                         <div className="font-barlow-condensed text-xs tracking-widest uppercase text-fog light:text-fog-light mt-0.5">Entry Fee</div>
                       </div>

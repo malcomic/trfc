@@ -98,7 +98,12 @@ export const analyticsController = {
         totalUsers,
       ] = await Promise.all([
         queryPaidSum('total_amount', 'orders', 'created_at', range),
-        queryPaidSum('e.price', 'tickets t JOIN events e ON t.event_id = e.id', 't.created_at', range),
+        queryPaidSum(
+          'COALESCE(t.unit_price, ett.price, e.price)',
+          'tickets t JOIN events e ON t.event_id = e.id LEFT JOIN event_ticket_types ett ON t.ticket_type_id = ett.id',
+          't.created_at',
+          range
+        ),
         queryPaidSum('total_cost', 'equipment_hire', 'created_at', range),
         queryPaidSum(
           'o.price',
@@ -107,7 +112,13 @@ export const analyticsController = {
           range
         ),
         queryPaidSum('total_amount', 'orders', 'created_at', range, true),
-        queryPaidSum('e.price', 'tickets t JOIN events e ON t.event_id = e.id', 't.created_at', range, true),
+        queryPaidSum(
+          'COALESCE(t.unit_price, ett.price, e.price)',
+          'tickets t JOIN events e ON t.event_id = e.id LEFT JOIN event_ticket_types ett ON t.ticket_type_id = ett.id',
+          't.created_at',
+          range,
+          true
+        ),
         queryPaidSum('total_cost', 'equipment_hire', 'created_at', range, true),
         queryPaidSum(
           'o.price',
@@ -201,10 +212,11 @@ export const analyticsController = {
           const d = dateRangeSql('t.created_at', range, 2)
           const r = await pool.query(
             `SELECT DATE_TRUNC('day', t.created_at) as date,
-                    COALESCE(SUM(e.price), 0) as revenue,
+                    COALESCE(SUM(COALESCE(t.unit_price, ett.price, e.price)), 0) as revenue,
                     COUNT(*) as txns
              FROM tickets t
              JOIN events e ON t.event_id = e.id
+             LEFT JOIN event_ticket_types ett ON t.ticket_type_id = ett.id
              WHERE t.payment_status = $1${d.clause}
              GROUP BY DATE_TRUNC('day', t.created_at)`,
             ['paid', ...d.params]
@@ -395,11 +407,14 @@ export const analyticsController = {
           e.title,
           e.capacity,
           COUNT(t.id) as tickets_sold,
-          e.price as ticket_price,
-          COALESCE(SUM(e.price), 0) as revenue,
+          COALESCE(MIN(COALESCE(t.unit_price, ett.price, e.price)),
+            (SELECT MIN(price) FROM event_ticket_types WHERE event_id = e.id AND is_active = true),
+            e.price) as ticket_price,
+          COALESCE(SUM(COALESCE(t.unit_price, ett.price, e.price)), 0) as revenue,
           e.event_date
         FROM events e
         LEFT JOIN tickets t ON e.id = t.event_id AND t.payment_status = $1${d.clause}
+        LEFT JOIN event_ticket_types ett ON t.ticket_type_id = ett.id
         GROUP BY e.id, e.title, e.capacity, e.price, e.event_date
         ORDER BY tickets_sold DESC
         LIMIT $${d.nextIndex}`,
@@ -456,7 +471,12 @@ export const analyticsController = {
 
       const [orders, tickets, hires, medals] = await Promise.all([
         fetchStatus('total_amount', 'orders', 'payment_status', 'created_at'),
-        fetchStatus('e.price', 'tickets t JOIN events e ON t.event_id = e.id', 't.payment_status', 't.created_at'),
+        fetchStatus(
+          'COALESCE(t.unit_price, ett.price, e.price)',
+          'tickets t JOIN events e ON t.event_id = e.id LEFT JOIN event_ticket_types ett ON t.ticket_type_id = ett.id',
+          't.payment_status',
+          't.created_at'
+        ),
         fetchStatus('total_cost', 'equipment_hire', 'payment_status', 'created_at'),
         fetchStatus(
           'o.price',

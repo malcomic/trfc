@@ -2,12 +2,8 @@ import api from './index';
 /**
  * Buy tickets for an event
  */
-export async function buyTickets(eventId, quantity, phone) {
-    const response = await api.post('/events/tickets', {
-        eventId,
-        quantity,
-        phone,
-    });
+export async function buyTickets(eventId, data) {
+    const response = await api.post(`/events/${eventId}/tickets`, data);
     return response.data;
 }
 /**

@@ -6,6 +6,11 @@ import {
   getAdminTickets,
 } from '../controllers/adminController.js'
 import {
+  createEventTicketType,
+  updateEventTicketType,
+  deleteEventTicketType,
+} from '../controllers/eventsController.js'
+import {
   getAdminMedals,
   updateMedalTier,
   upsertMedalOption,
@@ -29,6 +34,9 @@ const router = Router()
 router.use(authMiddleware, adminMiddleware)
 
 router.get('/events', getAdminEvents)
+router.post('/events/:eventId/ticket-types', createEventTicketType)
+router.put('/events/:eventId/ticket-types/:typeId', updateEventTicketType)
+router.delete('/events/:eventId/ticket-types/:typeId', deleteEventTicketType)
 router.get('/products', getAdminProducts)
 router.get('/equipment/hire', getAdminEquipmentHire)
 router.get('/tickets', getAdminTickets)

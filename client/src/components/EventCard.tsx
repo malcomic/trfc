@@ -13,7 +13,10 @@ function formatDate(dateStr?: string) {
 export default function EventCard({ event }: { event: Event }) {
   const ev = event as any
   const { day, mon } = formatDate(ev.date || ev.start_date || ev.event_date)
-  const isFree = !ev.price || Number(ev.price) === 0
+  const displayPrice =
+    ev.min_price != null ? Number(ev.min_price) : ev.price != null ? Number(ev.price) : null
+  const isFree = displayPrice === 0
+  const soldOut = Boolean(ev.all_types_sold_out)
   const slots = ev.capacity ? Math.max(0, ev.capacity - (ev.registered_count || 0)) : null
   const slotsPercent = ev.capacity ? Math.min(100, ((ev.registered_count || 0) / ev.capacity) * 100) : 0
   const slotsUrgent = slots !== null && slots <= 10
@@ -47,7 +50,9 @@ export default function EventCard({ event }: { event: Event }) {
         )}
 
         {/* Tag or Free badge */}
-        {isFree ? (
+        {soldOut ? (
+          <span className="absolute top-3 right-3 font-bebas text-sm tracking-wider px-2.5 py-1 bg-red-600 text-white z-10">SOLD OUT</span>
+        ) : isFree ? (
           <span className="absolute top-3 right-3 font-bebas text-sm tracking-wider px-2.5 py-1 bg-success text-white z-10">FREE</span>
         ) : ev.category ? (
           <span className="absolute top-3 right-3 font-barlow-condensed font-black text-xs tracking-wider uppercase px-2 py-1 bg-accent light:bg-accent-light text-black light:text-white z-10">{ev.category}</span>
@@ -100,7 +105,13 @@ export default function EventCard({ event }: { event: Event }) {
         <div className="flex items-center justify-between pt-3.5 border-t border-white/5 mt-auto">
           <div>
             <div className="font-bebas text-2xl text-accent light:text-accent-light tracking-wider leading-none">
-              {isFree ? 'FREE' : `KES ${Number(ev.price).toLocaleString()}`}
+              {soldOut
+                ? 'Sold out'
+                : displayPrice == null
+                  ? '—'
+                  : isFree
+                    ? 'FREE'
+                    : `From KES ${displayPrice.toLocaleString()}`}
             </div>
             <div className="font-barlow-condensed text-xs tracking-wider uppercase text-fog mt-0.5">Entry Fee</div>
           </div>

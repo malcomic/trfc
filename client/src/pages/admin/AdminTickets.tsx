@@ -104,6 +104,7 @@ export default function AdminTickets() {
             <thead className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <tr>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Event</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Type</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Phone</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Status</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Check-in</th>
@@ -122,6 +123,14 @@ export default function AdminTickets() {
                     {t.event_date && (
                       <div className="text-sm text-gray-500 dark:text-gray-400">
                         {formatEventDate(t.event_date, { year: 'numeric', month: 'short', day: 'numeric' })}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div>{t.ticket_type_name || '—'}</div>
+                    {t.price != null && (
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        KES {Number(t.price).toLocaleString()}
                       </div>
                     )}
                   </td>
@@ -151,6 +160,8 @@ export default function AdminTickets() {
           <AdminMobileCard key={t.id}>
             <p className="font-semibold text-gray-900 dark:text-white">{t.event_title || '—'}</p>
             <AdminMobileCardRow label="Event date" value={t.event_date ? formatEventDate(t.event_date, { year: 'numeric', month: 'short', day: 'numeric' }) : '—'} />
+            <AdminMobileCardRow label="Type" value={t.ticket_type_name || '—'} />
+            <AdminMobileCardRow label="Price" value={t.price != null ? `KES ${Number(t.price).toLocaleString()}` : '—'} />
             <AdminMobileCardRow label="Phone" value={t.phone || '—'} />
             <AdminMobileCardRow
               label="Status"

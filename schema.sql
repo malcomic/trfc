@@ -23,11 +23,30 @@ CREATE TABLE IF NOT EXISTS events (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Event ticket types (priced tiers per event)
+CREATE TABLE IF NOT EXISTS event_ticket_types (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  name VARCHAR(100) NOT NULL,
+  description TEXT,
+  price NUMERIC(10,2) NOT NULL,
+  capacity INT,
+  sort_order INT DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE (event_id, name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_event_ticket_types_event ON event_ticket_types(event_id);
+CREATE INDEX IF NOT EXISTS idx_event_ticket_types_active ON event_ticket_types(is_active);
+
 -- Tickets
 CREATE TABLE IF NOT EXISTS tickets (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE SET NULL,
   event_id UUID REFERENCES events(id) ON DELETE SET NULL,
+  ticket_type_id UUID REFERENCES event_ticket_types(id) ON DELETE RESTRICT,
+  unit_price NUMERIC(10,2),
   purchase_batch_id UUID,
   phone VARCHAR(20),
   email VARCHAR(150),
@@ -40,6 +59,8 @@ CREATE TABLE IF NOT EXISTS tickets (
   checked_in_by UUID REFERENCES users(id),
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_tickets_ticket_type ON tickets(ticket_type_id);
 
 -- Products
 CREATE TABLE IF NOT EXISTS products (

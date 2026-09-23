@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { trackAddToCart } from '../utils/tiktokPixel';
 export const useCart = create((set, get) => ({
     items: (() => {
         const saved = localStorage.getItem('cart');
@@ -18,6 +19,12 @@ export const useCart = create((set, get) => ({
             localStorage.setItem('cart', JSON.stringify(newItems));
             return { items: newItems };
         });
+        trackAddToCart({
+            content_id: String(product.id),
+            content_type: 'product',
+            content_name: product.name,
+            quantity,
+        }, Number(product.price) * quantity);
     },
     removeItem: (productId) => {
         set((state) => {

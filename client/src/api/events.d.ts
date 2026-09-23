@@ -5,6 +5,7 @@ export declare const createEvent: (data: Partial<Event>) => Promise<any>;
 export declare const updateEvent: (id: string, data: Partial<Event>) => Promise<any>;
 export declare const deleteEvent: (id: string) => Promise<any>;
 export declare const buyEventTickets: (eventId: string, data: {
+    ticketTypeId: string;
     quantity: number;
     email: string;
     phone: string;
@@ -15,6 +16,8 @@ export declare const buyEventTickets: (eventId: string, data: {
     quantity: number;
     eventTitle: string;
     eventDate: string;
+    ticketTypeId: string;
+    ticketTypeName: string;
     pricePerTicket: number;
     totalPrice: number;
     attendeeName: string;
@@ -30,6 +33,7 @@ export interface TicketConfirmationDetails {
     event_title: string;
     event_date: string;
     location: string | null;
+    ticket_type_name?: string | null;
     unit_price: number;
     quantity: number;
     total_price: number;

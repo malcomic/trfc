@@ -8,16 +8,7 @@ import { AlertCircle, Loader, ArrowLeft } from 'lucide-react'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 import { useAuth } from '../context/AuthContext'
 import { trackInitiateCheckout } from '../utils/tiktokPixel'
-
-interface Event {
-  id: string
-  title: string
-  description: string
-  event_date: string
-  price: number
-  location: string
-  capacity: number
-}
+import type { Event, EventTicketType } from '../types'
 
 type CheckoutForm = {
   quantity: number
@@ -31,7 +22,9 @@ export default function EventCheckout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user } = useAuth()
-  const initialQty = (location.state as { quantity?: number })?.quantity || 1
+  const locationState = location.state as { quantity?: number; ticketTypeId?: string } | null
+  const initialQty = locationState?.quantity || 1
+  const initialTypeId = locationState?.ticketTypeId
 
   const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<CheckoutForm>({
     defaultValues: {
@@ -43,6 +36,7 @@ export default function EventCheckout() {
   })
 
   const [event, setEvent] = useState<Event | null>(null)
+  const [selectedType, setSelectedType] = useState<EventTicketType | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -54,10 +48,16 @@ export default function EventCheckout() {
     eventTitle: string
     quantity: number
     totalPrice: number
+    ticketTypeName?: string
   } | null>(null)
 
   const quantity = watch('quantity')
-  const totalPrice = event ? Number(event.price) * Number(quantity) : 0
+  const unitPrice = selectedType ? Number(selectedType.price) : 0
+  const totalPrice = unitPrice * Number(quantity || 0)
+  const maxQty =
+    selectedType?.remaining != null
+      ? Math.min(10, selectedType.remaining)
+      : 10
 
   useEffect(() => {
     if (user?.name) setValue('attendeeName', user.name)
@@ -75,6 +75,16 @@ export default function EventCheckout() {
         }
         const data = await getEventById(eventId)
         setEvent(data)
+        const types = (data.ticket_types || []).filter((t: EventTicketType) => t.is_active)
+        const fromState = types.find((t: EventTicketType) => t.id === initialTypeId)
+        const firstAvailable =
+          (fromState && !fromState.is_sold_out ? fromState : null) ||
+          types.find((t: EventTicketType) => !t.is_sold_out) ||
+          null
+        setSelectedType(firstAvailable)
+        if (!firstAvailable) {
+          setError('No available ticket types for this event')
+        }
       } catch (err: any) {
         setError(err.response?.data?.error || 'Failed to load event')
       } finally {
@@ -82,23 +92,27 @@ export default function EventCheckout() {
       }
     }
     fetchEvent()
-  }, [eventId])
+  }, [eventId, initialTypeId])
 
   useEffect(() => {
-    if (!event) return
+    if (!event || !selectedType) return
     const qty = Number(initialQty) || 1
     trackInitiateCheckout(`event_${event.id}`, {
       contents: [{
         content_id: String(event.id),
         content_type: 'event',
-        content_name: event.title,
+        content_name: `${event.title} — ${selectedType.name}`,
         quantity: qty,
       }],
-      value: Number(event.price) * qty,
+      value: Number(selectedType.price) * qty,
     })
-  }, [event, initialQty])
+  }, [event, selectedType, initialQty])
 
   const onSubmit = async (data: CheckoutForm) => {
+    if (!selectedType) {
+      setError('Please select a ticket type')
+      return
+    }
     try {
       setSubmitting(true)
       setError('')
@@ -108,6 +122,7 @@ export default function EventCheckout() {
       setEmail(normalizedEmail)
 
       const ticketResult = await buyEventTickets(eventId!, {
+        ticketTypeId: selectedType.id,
         quantity: Number(data.quantity),
         email: normalizedEmail,
         phone: data.phone,
@@ -126,6 +141,7 @@ export default function EventCheckout() {
           eventTitle: ticketResult.eventTitle,
           quantity: ticketResult.quantity,
           totalPrice: ticketResult.totalPrice,
+          ticketTypeName: ticketResult.ticketTypeName,
         })
         setShowPaymentModal(true)
       } else {
@@ -163,13 +179,13 @@ export default function EventCheckout() {
     )
   }
 
-  if (error && !event) {
+  if ((error && !event) || !event) {
     return (
       <div className={`${pageRoot} py-16 px-6`}>
         <div className="max-w-2xl mx-auto bg-red-500/10 border border-red-500/20 p-6 flex gap-4">
           <AlertCircle className="w-6 h-6 text-red-400" />
           <div>
-            <p className="text-red-300 mb-4">{error}</p>
+            <p className="text-red-300 mb-4">{error || 'Event not found'}</p>
             <button onClick={() => navigate('/events')} className="bg-accent light:bg-accent-light text-black light:text-white px-4 py-2 clip-angled-sm">Back to Events</button>
           </div>
         </div>
@@ -177,7 +193,7 @@ export default function EventCheckout() {
     )
   }
 
-  if (!event) return null
+  const qtyOptions = Array.from({ length: Math.max(0, maxQty) }, (_, i) => i + 1)
 
   return (
     <div className={pageRoot}>
@@ -194,12 +210,26 @@ export default function EventCheckout() {
       <div className="max-w-2xl mx-auto px-[6%] py-10 pb-20 grid grid-cols-1 md:grid-cols-3 gap-6">
         <form onSubmit={handleSubmit(onSubmit)} className={`md:col-span-2 ${cardSurface} p-6 space-y-4`}>
           <div>
+            <label className="block text-sm font-semibold mb-2">Ticket type</label>
+            <p className="font-bebas text-2xl text-accent light:text-accent-light">
+              {selectedType?.name || 'Unavailable'}
+            </p>
+            {selectedType && (
+              <p className="text-sm text-fog light:text-fog-light mt-1">
+                {Number(selectedType.price) === 0
+                  ? 'FREE'
+                  : `KES ${Number(selectedType.price).toLocaleString()} each`}
+              </p>
+            )}
+          </div>
+          <div>
             <label className="block text-sm font-semibold mb-2">Number of Tickets</label>
             <select
-              {...register('quantity', { required: true, min: 1, max: 10, valueAsNumber: true })}
+              {...register('quantity', { required: true, min: 1, max: maxQty, valueAsNumber: true })}
               className={`w-full px-4 py-2 ${inputField}`}
+              disabled={qtyOptions.length === 0}
             >
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+              {qtyOptions.map((n) => (
                 <option key={n} value={n}>{n} {n === 1 ? 'Ticket' : 'Tickets'}</option>
               ))}
             </select>
@@ -256,15 +286,22 @@ export default function EventCheckout() {
               <AlertCircle size={16} className="flex-shrink-0" /> {error}
             </div>
           )}
-          <button type="submit" disabled={submitting} className="w-full bg-accent light:bg-accent-light text-black light:text-white py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-accent/90 light:hover:bg-accent-light/90 disabled:opacity-50 flex items-center justify-center gap-2">
+          <button
+            type="submit"
+            disabled={submitting || !selectedType || qtyOptions.length === 0}
+            className="w-full bg-accent light:bg-accent-light text-black light:text-white py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-accent/90 light:hover:bg-accent-light/90 disabled:opacity-50 flex items-center justify-center gap-2"
+          >
             {submitting ? <><Loader className="w-4 h-4 animate-spin" /> Processing…</> : 'Pay with M-Pesa'}
           </button>
         </form>
 
         <div className={`${cardSurface} p-6 sticky top-20 h-fit`}>
           <h3 className="font-barlow-condensed font-bold text-accent light:text-accent-light tracking-widest uppercase mb-4">Summary</h3>
+          <p className="text-sm text-fog light:text-fog-light mb-1">{selectedType?.name}</p>
           <p className="text-sm text-fog light:text-fog-light mb-2">{quantity} ticket(s)</p>
-          <p className="font-bebas text-3xl text-accent light:text-accent-light">KES {totalPrice.toLocaleString()}</p>
+          <p className="font-bebas text-3xl text-accent light:text-accent-light">
+            {totalPrice === 0 ? 'FREE' : `KES ${totalPrice.toLocaleString()}`}
+          </p>
           <p className="text-xs text-fog light:text-fog-light mt-4">An M-Pesa prompt will appear on your phone after checkout. Enter your PIN to complete payment.</p>
         </div>
       </div>
