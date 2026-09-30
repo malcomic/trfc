@@ -11,7 +11,7 @@
 
 ## Local Development with Docker
 
-### Prerequisite
+### Prerequisites
 - Docker & Docker Compose installed
 - Git repository cloned
 - M-Pesa test credentials (optional for local testing)
