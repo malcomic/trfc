@@ -53,6 +53,13 @@ export const config = {
       process.env.VITE_CONTACT_PHONE ||
       '+254 762 550214',
   },
+  whatsapp: {
+    token: process.env.WHATSAPP_TOKEN || '',
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || '',
+    templateName: process.env.WHATSAPP_TEMPLATE_NAME || 'trfc_signup_welcome',
+    templateLang: process.env.WHATSAPP_TEMPLATE_LANG || 'en',
+    apiVersion: process.env.WHATSAPP_API_VERSION || 'v20.0',
+  },
   afrikasTalking: {
     apiKey: process.env.AT_API_KEY || '',
     username: process.env.AT_USERNAME || 'sandbox',

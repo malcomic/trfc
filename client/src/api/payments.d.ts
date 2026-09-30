@@ -6,6 +6,7 @@ export interface PaymentInitiateRequest {
     ticketBatchId?: string;
     equipmentHireId?: string;
     medalBatchId?: string;
+    signupId?: string;
 }
 export interface PaymentInitiateResponse {
     checkoutRequestId: string;
@@ -38,6 +39,11 @@ export declare function initiateMedalPayment(data: {
     phone: string;
     amount: number;
     medalBatchId: string;
+}): Promise<PaymentInitiateResponse>;
+export declare function initiateSignupPayment(data: {
+    phone: string;
+    amount: number;
+    signupId: string;
 }): Promise<PaymentInitiateResponse>;
 export declare function initiateEquipmentPayment(data: {
     phone: string;

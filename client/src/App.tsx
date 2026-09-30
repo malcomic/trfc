@@ -48,6 +48,7 @@ import AdminEquipment from './pages/admin/AdminEquipment'
 import AdminTickets from './pages/admin/AdminTickets'
 import AdminPartnerships from './pages/admin/AdminPartnerships'
 import AdminSponsorshipTiers from './pages/admin/AdminSponsorshipTiers'
+import AdminSignups from './pages/admin/AdminSignups'
 import AdminMedals from './pages/admin/AdminMedals'
 import AdminAppearance from './pages/admin/AdminAppearance'
 import AdminScan from './pages/admin/AdminScan'
@@ -113,6 +114,7 @@ function App() {
           <Route path="medals" element={<AdminMedals />} />
           <Route path="partnerships" element={<AdminPartnerships />} />
           <Route path="sponsorship-tiers" element={<AdminSponsorshipTiers />} />
+          <Route path="signups" element={<AdminSignups />} />
           <Route path="appearance" element={<AdminAppearance />} />
         </Route>
 

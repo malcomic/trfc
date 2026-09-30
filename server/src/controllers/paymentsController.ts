@@ -23,6 +23,7 @@ import {
   isMpesaSuccessCode,
 } from '../utils/paymentValidation.js'
 import { getLocalPaymentStatus, toStatusResponse } from '../utils/paymentStatus.js'
+import { activateSignup, notifyPaidSignupsByCheckoutId } from '../utils/signupActivation.js'
 
 async function decrementOrderStock(orderId: string) {
   const items = await query(
@@ -94,6 +95,10 @@ async function applyPaymentFromAccountRef(
     return result.rowCount || 0
   }
 
+  if (accountRef.startsWith('SIGNUP-')) {
+    return activateSignup(accountRef.replace('SIGNUP-', ''), checkoutRequestId, mpesaReceipt)
+  }
+
   const dashIdx = accountRef.indexOf('-')
   if (dashIdx === -1) return 0
   const type = accountRef.slice(0, dashIdx)
@@ -128,8 +133,16 @@ async function applyPaymentFromAccountRef(
 
 export async function initiateSTKPush(req: Request, res: Response) {
   try {
-    const { phone, amount, orderId, ticketId, ticketBatchId, equipmentHireId, medalBatchId } =
-      req.body
+    const {
+      phone,
+      amount,
+      orderId,
+      ticketId,
+      ticketBatchId,
+      equipmentHireId,
+      medalBatchId,
+      signupId,
+    } = req.body
 
     if (!phone || !amount) {
       logSTKInitiation(phone || 'N/A', amount || 0, orderId, ticketId, equipmentHireId, null, 'Missing required fields')
@@ -154,13 +167,15 @@ export async function initiateSTKPush(req: Request, res: Response) {
       accountReference = `TICKET-${ticketId}`
     } else if (equipmentHireId) {
       accountReference = `HIRE-${equipmentHireId}`
+    } else if (signupId) {
+      accountReference = `SIGNUP-${signupId}`
     } else {
       logSTKInitiation(phone, amount, orderId, ticketId, equipmentHireId, null, 'No reference provided')
       return res
         .status(400)
         .json({
           error:
-            'One of orderId, ticketBatchId, ticketId, equipmentHireId, or medalBatchId is required',
+            'One of orderId, ticketBatchId, ticketId, equipmentHireId, medalBatchId, or signupId is required',
         })
     }
 
@@ -171,7 +186,8 @@ export async function initiateSTKPush(req: Request, res: Response) {
       equipmentHireId,
       phone,
       amount,
-      medalBatchId
+      medalBatchId,
+      signupId
     )
     if (!validation.ok) {
       logSTKInitiation(phone, amount, orderId, ticketId, equipmentHireId, null, validation.error)
@@ -253,6 +269,13 @@ export async function initiateSTKPush(req: Request, res: Response) {
       await query(
         'UPDATE equipment_hire SET checkout_request_id = $1 WHERE id = $2',
         [checkoutRequestId, equipmentHireId]
+      )
+    } else if (signupId) {
+      // A retry after a failed or cancelled prompt resets the signup to pending
+      await query(
+        `UPDATE signups SET checkout_request_id = $1, payment_status = 'pending'
+         WHERE id = $2 AND payment_status <> 'paid'`,
+        [checkoutRequestId, signupId]
       )
     }
 
@@ -358,6 +381,7 @@ export async function handleCallback(req: Request, res: Response) {
     if (updateCount > 0) {
       await maybeSendTicketEmail(checkoutRequestId)
       await maybeSendMedalEmail(checkoutRequestId)
+      await notifyPaidSignupsByCheckoutId(checkoutRequestId)
     }
 
     logCallbackProcessing(
@@ -423,6 +447,7 @@ export async function queryPaymentStatus(req: Request, res: Response) {
         if (updateCount > 0) {
           await maybeSendTicketEmail(checkoutRequestId)
           await maybeSendMedalEmail(checkoutRequestId)
+          await notifyPaidSignupsByCheckoutId(checkoutRequestId)
         }
 
         return res.json({

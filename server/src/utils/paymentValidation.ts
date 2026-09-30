@@ -1,5 +1,6 @@
 import { query } from '../config/db.js'
 import { phonesMatch } from './phone.js'
+import { activateSignupsByCheckoutId } from './signupActivation.js'
 
 export async function validatePaymentReference(
   orderId?: string,
@@ -8,8 +9,36 @@ export async function validatePaymentReference(
   equipmentHireId?: string,
   phone?: string,
   amount?: number,
-  medalBatchId?: string
+  medalBatchId?: string,
+  signupId?: string
 ): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  if (signupId) {
+    const result = await query(
+      `SELECT s.amount, s.tier, s.payment_status, u.phone_normalized
+       FROM signups s
+       LEFT JOIN users u ON s.user_id = u.id
+       WHERE s.id = $1`,
+      [signupId]
+    )
+    if (result.rows.length === 0) {
+      return { ok: false, status: 404, error: 'Signup not found' }
+    }
+    const signup = result.rows[0]
+    if (signup.tier === 'free' || Number(signup.amount) <= 0) {
+      return { ok: false, status: 400, error: 'This signup does not require payment' }
+    }
+    if (signup.payment_status === 'paid') {
+      return { ok: false, status: 409, error: 'This signup has already been paid' }
+    }
+    if (phone && signup.phone_normalized && !phonesMatch(phone, signup.phone_normalized)) {
+      return { ok: false, status: 403, error: 'Phone number does not match signup' }
+    }
+    if (amount != null && Math.round(Number(signup.amount)) !== Math.round(amount)) {
+      return { ok: false, status: 400, error: 'Amount does not match signup price' }
+    }
+    return { ok: true }
+  }
+
   if (orderId) {
     const result = await query('SELECT * FROM orders WHERE id = $1', [orderId])
     if (result.rows.length === 0) {
@@ -117,7 +146,8 @@ export async function validatePaymentReference(
   return {
     ok: false,
     status: 400,
-    error: 'One of orderId, ticketBatchId, ticketId, equipmentHireId, or medalBatchId is required',
+    error:
+      'One of orderId, ticketBatchId, ticketId, equipmentHireId, medalBatchId, or signupId is required',
   }
 }
 
@@ -153,12 +183,14 @@ export async function markEntitiesPaidByCheckoutId(
      WHERE checkout_request_id = $1 AND payment_status = 'pending'`,
     [checkoutRequestId, mpesaReceipt || null]
   )
+  const signupCount = await activateSignupsByCheckoutId(checkoutRequestId, mpesaReceipt || null)
 
   return (
     (orderResult.rowCount || 0) +
     (ticketResult.rowCount || 0) +
     (hireResult.rowCount || 0) +
-    (medalResult.rowCount || 0)
+    (medalResult.rowCount || 0) +
+    signupCount
   )
 }
 
@@ -177,6 +209,10 @@ async function markEntitiesFailedByCheckoutId(checkoutRequestId: string) {
   )
   await query(
     `UPDATE medal_purchases SET payment_status = 'failed' WHERE checkout_request_id = $1 AND payment_status = 'pending'`,
+    [checkoutRequestId]
+  )
+  await query(
+    `UPDATE signups SET payment_status = 'failed' WHERE checkout_request_id = $1 AND payment_status = 'pending'`,
     [checkoutRequestId]
   )
 }

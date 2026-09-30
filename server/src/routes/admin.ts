@@ -27,6 +27,7 @@ import {
   updateTypography,
   resetTypography,
 } from '../controllers/siteSettingsController.js'
+import { getAdminSignups } from '../controllers/signupsController.js'
 import { authMiddleware, adminMiddleware } from '../middleware/auth.js'
 
 const router = Router()
@@ -49,6 +50,7 @@ router.delete('/medals/:tierId/options/:optionId', deleteMedalOption)
 router.get('/partnerships', getAdminPartnerships)
 router.patch('/partnerships/:id', updatePartnershipStatus)
 router.get('/sponsorship-tiers', getAdminSponsorshipTiers)
+router.get('/signups', getAdminSignups)
 router.get('/settings/typography', getTypography)
 router.put('/settings/typography', updateTypography)
 router.post('/settings/typography/reset', resetTypography)

@@ -49,6 +49,9 @@ export async function initiateMedalPayment(data) {
         medalBatchId: data.medalBatchId,
     });
 }
+export async function initiateSignupPayment(data) {
+    return initiateSTKPush(data);
+}
 export async function initiateEquipmentPayment(data) {
     return initiateSTKPush({
         ...data,

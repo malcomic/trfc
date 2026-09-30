@@ -2,10 +2,16 @@
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(100) NOT NULL,
-  email VARCHAR(150) UNIQUE NOT NULL,
+  email VARCHAR(150) UNIQUE,
   phone VARCHAR(20) NOT NULL,
-  password_hash TEXT NOT NULL,
+  password_hash TEXT,
   role VARCHAR(20) DEFAULT 'member',
+  whatsapp VARCHAR(20),
+  source VARCHAR(20) DEFAULT 'website',
+  access_tier VARCHAR(10) DEFAULT 'free',
+  plus_purchased_at TIMESTAMP,
+  elite_expires_at TIMESTAMP,
+  phone_normalized VARCHAR(15),
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -259,3 +265,25 @@ CREATE INDEX IF NOT EXISTS idx_medal_purchases_checkout ON medal_purchases(check
 CREATE INDEX IF NOT EXISTS idx_medal_purchases_email ON medal_purchases(email);
 CREATE INDEX IF NOT EXISTS idx_tickets_checked_in ON tickets(checked_in_at);
 CREATE INDEX IF NOT EXISTS idx_medal_purchases_redeemed ON medal_purchases(redeemed_at);
+
+-- Landing page onboarding signups
+CREATE TABLE IF NOT EXISTS signups (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  program VARCHAR(20) NOT NULL,
+  tier VARCHAR(10) NOT NULL,
+  is_returning BOOLEAN DEFAULT false,
+  amount INT NOT NULL DEFAULT 0,
+  payment_status VARCHAR(20) NOT NULL DEFAULT 'n/a',
+  checkout_request_id VARCHAR(100),
+  mpesa_receipt VARCHAR(100),
+  whatsapp_sent_at TIMESTAMP,
+  quiz_answers JSONB,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_phone_normalized ON users(phone_normalized);
+CREATE INDEX IF NOT EXISTS idx_signups_user ON signups(user_id);
+CREATE INDEX IF NOT EXISTS idx_signups_checkout ON signups(checkout_request_id);
+CREATE INDEX IF NOT EXISTS idx_signups_created ON signups(created_at);
+CREATE INDEX IF NOT EXISTS idx_signups_program_tier ON signups(program, tier);

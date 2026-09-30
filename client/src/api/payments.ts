@@ -8,6 +8,7 @@ export interface PaymentInitiateRequest {
   ticketBatchId?: string
   equipmentHireId?: string
   medalBatchId?: string
+  signupId?: string
 }
 
 export interface PaymentInitiateResponse {
@@ -103,6 +104,14 @@ export async function initiateMedalPayment(data: {
     ...data,
     medalBatchId: data.medalBatchId,
   })
+}
+
+export async function initiateSignupPayment(data: {
+  phone: string
+  amount: number
+  signupId: string
+}) {
+  return initiateSTKPush(data)
 }
 
 export async function initiateEquipmentPayment(data: {

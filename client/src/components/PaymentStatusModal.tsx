@@ -1,6 +1,5 @@
 import { AlertCircle, CheckCircle, Loader } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { checkPaymentStatus } from '../api/payments'
+import { usePaymentPolling } from '../hooks/usePaymentPolling'
 
 interface PaymentStatusModalProps {
   isOpen: boolean
@@ -15,76 +14,7 @@ export default function PaymentStatusModal({
   phone,
   onClose,
 }: PaymentStatusModalProps) {
-  const [status, setStatus] = useState<'pending' | 'success' | 'failed'>('pending')
-  const [error, setError] = useState('')
-  const [attempts, setAttempts] = useState(0)
-
-  const MAX_ATTEMPTS = 100
-  const POLL_INTERVAL_MS = 3000
-
-  const isPaymentSuccess = (result: Record<string, unknown>) => {
-    const resultCode = result.ResultCode ?? result.resultCode
-    const responseCode = result.ResponseCode ?? result.responseCode
-    return (
-      resultCode === '0' ||
-      resultCode === 0 ||
-      responseCode === '0' ||
-      responseCode === 0 ||
-      result.payment_status === 'paid'
-    )
-  }
-
-  const isPaymentFailed = (result: Record<string, unknown>) => {
-    const resultCode = result.ResultCode ?? result.resultCode
-    return (
-      resultCode === '1' ||
-      resultCode === 1 ||
-      result.payment_status === 'failed'
-    )
-  }
-
-  useEffect(() => {
-    if (!isOpen || !checkoutRequestId || status !== 'pending') return
-
-    const timer = setTimeout(() => {
-      void checkStatus()
-    }, attempts === 0 ? 1000 : POLL_INTERVAL_MS)
-
-    return () => clearTimeout(timer)
-  }, [isOpen, checkoutRequestId, attempts, status])
-
-  const checkStatus = async () => {
-    try {
-      const result = await checkPaymentStatus(checkoutRequestId)
-
-      if (isPaymentSuccess(result)) {
-        setStatus('success')
-        return
-      }
-
-      if (isPaymentFailed(result)) {
-        setError('Payment was rejected. Please try again.')
-        setStatus('failed')
-        return
-      }
-
-      if (attempts < MAX_ATTEMPTS) {
-        setAttempts((prev) => prev + 1)
-      } else {
-        setError(
-          'Payment confirmation timeout. If M-Pesa deducted your money, close this and check your ticket confirmation page.'
-        )
-        setStatus('failed')
-      }
-    } catch {
-      if (attempts < MAX_ATTEMPTS) {
-        setAttempts((prev) => prev + 1)
-      } else {
-        setError('Unable to verify payment status. Please check M-Pesa.')
-        setStatus('failed')
-      }
-    }
-  }
+  const { status, error } = usePaymentPolling(checkoutRequestId, isOpen)
 
   if (!isOpen) return null
 

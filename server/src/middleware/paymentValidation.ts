@@ -64,7 +64,8 @@ export function validatePaymentRequest(
   res: Response,
   next: NextFunction
 ) {
-  const { phone, amount, orderId, ticketId, ticketBatchId, equipmentHireId, medalBatchId } = req.body
+  const { phone, amount, orderId, ticketId, ticketBatchId, equipmentHireId, medalBatchId, signupId } =
+    req.body
 
   if (!phone) {
     return res.status(400).json({ error: 'Phone number is required' })
@@ -88,9 +89,10 @@ export function validatePaymentRequest(
     })
   }
 
-  if (!orderId && !ticketId && !ticketBatchId && !equipmentHireId && !medalBatchId) {
+  if (!orderId && !ticketId && !ticketBatchId && !equipmentHireId && !medalBatchId && !signupId) {
     return res.status(400).json({
-      error: 'One of orderId, ticketBatchId, ticketId, equipmentHireId, or medalBatchId is required',
+      error:
+        'One of orderId, ticketBatchId, ticketId, equipmentHireId, medalBatchId, or signupId is required',
     })
   }
 

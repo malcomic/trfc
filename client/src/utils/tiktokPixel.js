@@ -34,4 +34,10 @@ export function trackInitiateCheckout(dedupeKey, payload) {
 export function trackCompletePayment(dedupeKey, payload) {
     trackOnce(`ttq_paid_${dedupeKey}`, 'CompletePayment', payload);
 }
+export function trackClickButton(dedupeKey, payload) {
+    trackOnce(`ttq_click_${dedupeKey}`, 'ClickButton', payload);
+}
+export function trackCompleteRegistration(dedupeKey, payload) {
+    trackOnce(`ttq_reg_${dedupeKey}`, 'CompleteRegistration', payload);
+}
 //# sourceMappingURL=tiktokPixel.js.map

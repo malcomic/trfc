@@ -1,6 +1,6 @@
 export type TikTokContent = {
   content_id: string
-  content_type: 'product' | 'event'
+  content_type: 'product' | 'event' | 'program'
   content_name?: string
   quantity?: number
 }
@@ -50,4 +50,12 @@ export function trackInitiateCheckout(dedupeKey: string, payload: TikTokEventPay
 
 export function trackCompletePayment(dedupeKey: string, payload: TikTokEventPayload) {
   trackOnce(`ttq_paid_${dedupeKey}`, 'CompletePayment', payload)
+}
+
+export function trackClickButton(dedupeKey: string, payload: TikTokEventPayload) {
+  trackOnce(`ttq_click_${dedupeKey}`, 'ClickButton', payload)
+}
+
+export function trackCompleteRegistration(dedupeKey: string, payload: TikTokEventPayload) {
+  trackOnce(`ttq_reg_${dedupeKey}`, 'CompleteRegistration', payload)
 }
