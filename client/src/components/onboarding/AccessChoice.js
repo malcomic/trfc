@@ -1,10 +1,10 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { ACCESS_COPY } from '../../content/onboarding';
-import { StepShell, StepTitle } from './ui';
+import { StepShell, StepTitle, tone } from './ui';
 function TierCard({ name, description, price, button, onClick, highlighted, locked, }) {
-    return (_jsxs("div", { className: `flex flex-col p-5 border ${highlighted ? 'border-accent bg-accent/10' : 'border-white/15 bg-white/5'} ${locked ? 'opacity-90' : ''}`, children: [locked && (_jsx("span", { className: "self-start font-barlow-condensed font-bold text-[11px] tracking-widest uppercase text-white/70 border border-white/25 px-2 py-0.5 mb-3", children: ACCESS_COPY.locked.badge })), _jsx("h3", { className: "font-bebas text-3xl leading-none text-white mb-2", children: name }), _jsx("p", { className: "text-sm text-white/85 mb-2", children: description }), price && _jsx("p", { className: "text-xs text-white/60 leading-relaxed mb-4", children: price }), _jsx("button", { type: "button", onClick: onClick, className: `mt-auto font-barlow-condensed font-black text-sm tracking-wider uppercase px-5 py-3 transition-all duration-200 ${highlighted
-                    ? 'bg-accent text-black hover:bg-accent/90'
-                    : 'border border-white/40 text-white hover:border-accent hover:text-accent'}`, children: button })] }));
+    return (_jsxs("div", { className: `flex flex-col p-5 border ${highlighted ? `${tone.accentBorder} ${tone.accentSoftBg}` : `${tone.border} ${tone.surface}`} ${locked ? 'opacity-90' : ''}`, children: [locked && (_jsx("span", { className: `self-start font-barlow-condensed font-bold text-[11px] tracking-widest uppercase ${tone.textSubtle} border ${tone.border} px-2 py-0.5 mb-3`, children: ACCESS_COPY.locked.badge })), _jsx("h3", { className: `font-bebas text-3xl leading-none ${tone.text} mb-2`, children: name }), _jsx("p", { className: `text-sm ${tone.textStrong} mb-2`, children: description }), price && _jsx("p", { className: `text-xs ${tone.textSubtle} leading-relaxed mb-4`, children: price }), _jsx("button", { type: "button", onClick: onClick, className: `mt-auto font-barlow-condensed font-black text-sm tracking-wider uppercase px-5 py-3 transition-all duration-200 ${highlighted
+                    ? `${tone.accentSolid} hover:opacity-90`
+                    : `border ${tone.borderStrong} ${tone.text} ${tone.hoverAccentBorder} ${tone.hoverAccentText}`}`, children: button })] }));
 }
 export default function AccessChoice({ program, onChoose, onSwitchToFoundations, onBack, }) {
     const { elite } = ACCESS_COPY;

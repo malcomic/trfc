@@ -14,7 +14,7 @@ import ContactForm from './ContactForm';
 import MpesaCheckout from './MpesaCheckout';
 import PaymentWaiting from './PaymentWaiting';
 import Confirmation from './Confirmation';
-import { ErrorNote, PrimaryButton, SecondaryButton, StepShell, StepTitle } from './ui';
+import { ErrorNote, PrimaryButton, SecondaryButton, StepShell, StepTitle, tone } from './ui';
 function apiErrorMessage(error, fallback) {
     const err = error;
     return err.response?.data?.error || fallback;
@@ -163,7 +163,7 @@ export default function OnboardingFlow({ startRequest }) {
                     return null;
                 return (_jsx(PaymentWaiting, { checkoutRequestId: state.checkoutRequestId, onPaid: onPaid, onFailed: (message) => dispatch({ type: 'PAYMENT_FAILED', message }) }));
             case 'failed':
-                return (_jsxs(StepShell, { eyebrow: eyebrow, onBack: back, children: [_jsx(StepTitle, { children: FAILED_COPY.title }), _jsx("p", { className: "text-base leading-relaxed text-white/80 mb-4", children: FAILED_COPY.body }), _jsx(ErrorNote, { message: state.failureMessage ?? '' }), _jsxs("div", { className: "flex flex-wrap gap-3", children: [_jsx(PrimaryButton, { onClick: () => dispatch({ type: 'RETRY_PAYMENT' }), children: FAILED_COPY.retry }), _jsx(SecondaryButton, { onClick: () => dispatch({ type: 'CHANGE_NUMBER' }), children: FAILED_COPY.changeNumber })] })] }));
+                return (_jsxs(StepShell, { eyebrow: eyebrow, onBack: back, children: [_jsx(StepTitle, { children: FAILED_COPY.title }), _jsx("p", { className: `text-base leading-relaxed ${tone.textMuted} mb-4`, children: FAILED_COPY.body }), _jsx(ErrorNote, { message: state.failureMessage ?? '' }), _jsxs("div", { className: "flex flex-wrap gap-3", children: [_jsx(PrimaryButton, { onClick: () => dispatch({ type: 'RETRY_PAYMENT' }), children: FAILED_COPY.retry }), _jsx(SecondaryButton, { onClick: () => dispatch({ type: 'CHANGE_NUMBER' }), children: FAILED_COPY.changeNumber })] })] }));
             case 'done':
                 return (_jsx(Confirmation, { paid: state.paid, programName: program?.name ?? '', tier: state.tier ?? 'free' }));
         }

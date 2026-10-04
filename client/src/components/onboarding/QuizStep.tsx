@@ -1,4 +1,4 @@
-import { StepShell, StepTitle } from './ui'
+import { StepShell, StepTitle, tone } from './ui'
 
 interface QuizStepProps<T extends string> {
   eyebrow: string
@@ -30,12 +30,12 @@ export default function QuizStep<T extends string>({
               onClick={() => onSelect(option.value)}
               className={`text-left px-5 py-4 md:py-5 border transition-all duration-200 font-barlow-condensed font-bold text-lg md:text-xl tracking-tight flex items-center justify-between gap-4 group ${
                 isSelected
-                  ? 'border-accent bg-accent/15 text-white'
-                  : 'border-white/15 bg-white/5 text-white/90 hover:border-accent hover:bg-accent/10'
+                  ? `${tone.accentBorder} bg-accent/15 light:bg-accent-light/10 ${tone.text}`
+                  : `${tone.border} ${tone.surface} ${tone.textStrong} ${tone.hoverAccentBorder} ${tone.hoverAccentSoftBg}`
               }`}
             >
               <span>{option.label}</span>
-              <span className="text-accent opacity-60 group-hover:opacity-100 transition-opacity">→</span>
+              <span className={`${tone.accentText} opacity-60 group-hover:opacity-100 transition-opacity`}>→</span>
             </button>
           )
         })}

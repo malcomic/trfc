@@ -19,7 +19,7 @@ import ContactForm from './ContactForm'
 import MpesaCheckout from './MpesaCheckout'
 import PaymentWaiting from './PaymentWaiting'
 import Confirmation from './Confirmation'
-import { ErrorNote, PrimaryButton, SecondaryButton, StepShell, StepTitle } from './ui'
+import { ErrorNote, PrimaryButton, SecondaryButton, StepShell, StepTitle, tone } from './ui'
 
 export interface StartRequest {
   program?: ProgramId
@@ -244,7 +244,7 @@ export default function OnboardingFlow({ startRequest }: { startRequest?: StartR
         return (
           <StepShell eyebrow={eyebrow} onBack={back}>
             <StepTitle>{FAILED_COPY.title}</StepTitle>
-            <p className="text-base leading-relaxed text-white/80 mb-4">{FAILED_COPY.body}</p>
+            <p className={`text-base leading-relaxed ${tone.textMuted} mb-4`}>{FAILED_COPY.body}</p>
             <ErrorNote message={state.failureMessage ?? ''} />
             <div className="flex flex-wrap gap-3">
               <PrimaryButton onClick={() => dispatch({ type: 'RETRY_PAYMENT' })}>

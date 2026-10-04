@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { CONTACT_COPY, toKenyanMsisdn } from '../../content/onboarding'
-import { ErrorNote, PrimaryButton, StepShell, StepTitle } from './ui'
+import { ErrorNote, PrimaryButton, StepShell, StepTitle, tone } from './ui'
 
 export interface ContactValues {
   name: string
@@ -9,9 +9,8 @@ export interface ContactValues {
 }
 
 const fieldClass =
-  'w-full bg-white/5 border border-white/20 text-white placeholder:text-white/40 px-4 py-3.5 text-base focus:outline-none focus:border-accent transition-colors'
-const labelClass =
-  'block font-barlow-condensed font-bold text-xs tracking-widest uppercase text-white/70 mb-1.5'
+  'w-full bg-white/5 light:bg-white border border-white/20 light:border-black/20 text-white light:text-black placeholder:text-white/40 light:placeholder:text-black/40 px-4 py-3.5 text-base focus:outline-none focus:border-accent light:focus:border-accent-light transition-colors'
+const labelClass = `block font-barlow-condensed font-bold text-xs tracking-widest uppercase ${tone.textMuted} mb-1.5`
 
 export default function ContactForm({
   eyebrow,

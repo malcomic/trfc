@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { Loader } from 'lucide-react';
 import { usePaymentPolling } from '../../hooks/usePaymentPolling';
 import { WAITING_COPY } from '../../content/onboarding';
-import { StepShell, StepTitle } from './ui';
+import { StepShell, StepTitle, tone } from './ui';
 export default function PaymentWaiting({ checkoutRequestId, onPaid, onFailed, }) {
     const { status, error } = usePaymentPolling(checkoutRequestId, true, {
         rejected: 'The payment was cancelled or declined.',
@@ -16,6 +16,6 @@ export default function PaymentWaiting({ checkoutRequestId, onPaid, onFailed, })
         if (status === 'failed')
             onFailed(error);
     }, [status]);
-    return (_jsx(StepShell, { children: _jsxs("div", { className: "text-center py-6", children: [_jsx(Loader, { className: "w-14 h-14 text-accent animate-spin mx-auto mb-6" }), _jsx(StepTitle, { children: WAITING_COPY.title }), _jsx("p", { className: "text-base leading-relaxed text-white/80 max-w-md mx-auto", children: WAITING_COPY.body })] }) }));
+    return (_jsx(StepShell, { children: _jsxs("div", { className: "text-center py-6", children: [_jsx(Loader, { className: `w-14 h-14 ${tone.accentText} animate-spin mx-auto mb-6` }), _jsx(StepTitle, { children: WAITING_COPY.title }), _jsx("p", { className: `text-base leading-relaxed ${tone.textMuted} max-w-md mx-auto`, children: WAITING_COPY.body })] }) }));
 }
 //# sourceMappingURL=PaymentWaiting.js.map

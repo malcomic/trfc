@@ -3,22 +3,24 @@ import { HERO_COPY } from '../../content/onboarding'
 export default function HeroIntro({ onStart }: { onStart: () => void }) {
   return (
     <div>
-      <div className="font-barlow-condensed font-bold text-xs tracking-widest text-accent light:text-accent-light mb-7 flex items-center gap-2.5">
-        <span className="block w-6 h-0.5 bg-accent light:bg-accent-light" />
-        Thika Road Fitness Community
+      <div className="[text-shadow:0_2px_12px_rgba(0,0,0,0.55)] light:[text-shadow:0_1px_10px_rgba(255,255,255,0.8)]">
+        <div className="font-barlow-condensed font-bold text-xs tracking-widest text-accent light:text-accent-light mb-7 flex items-center gap-2.5">
+          <span className="block w-6 h-0.5 bg-accent light:bg-accent-light" />
+          Thika Road Fitness Community
+        </div>
+
+        <h1 className="text-[clamp(44px,7vw,112px)] mb-8" aria-label={HERO_COPY.headline}>
+          <span className="hero-word text-white light:text-black">FIND YOUR PROGRAM.</span>
+          <span className="hero-word text-accent light:text-accent-light">START THIS WEEK.</span>
+        </h1>
+
+        <p className="hero-sub max-w-[560px] text-lg leading-relaxed text-white/90 light:text-black/80 mb-3">
+          {HERO_COPY.subline}
+        </p>
+        <p className="hero-sub max-w-[560px] text-sm leading-relaxed text-white/75 light:text-black/65 mb-10">
+          {HERO_COPY.smallLine}
+        </p>
       </div>
-
-      <h1 className="text-[clamp(44px,7vw,112px)] mb-8" aria-label={HERO_COPY.headline}>
-        <span className="hero-word text-white">FIND YOUR PROGRAM.</span>
-        <span className="hero-word text-transparent [-webkit-text-stroke:2px_#fff]">START THIS WEEK.</span>
-      </h1>
-
-      <p className="hero-sub max-w-[560px] text-lg leading-relaxed text-white/80 mb-3">
-        {HERO_COPY.subline}
-      </p>
-      <p className="hero-sub max-w-[560px] text-sm leading-relaxed text-white/55 mb-10">
-        {HERO_COPY.smallLine}
-      </p>
 
       <div className="hero-ctas">
         <button

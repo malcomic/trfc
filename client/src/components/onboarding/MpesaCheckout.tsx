@@ -1,5 +1,5 @@
 import { CHECKOUT_COPY, formatLocalPhone } from '../../content/onboarding'
-import { ErrorNote, PrimaryButton, StepShell, StepTitle } from './ui'
+import { ErrorNote, PrimaryButton, StepShell, StepTitle, tone } from './ui'
 
 export default function MpesaCheckout({
   eyebrow,
@@ -23,13 +23,13 @@ export default function MpesaCheckout({
   return (
     <StepShell eyebrow={eyebrow} onBack={onBack}>
       <StepTitle>{CHECKOUT_COPY.title}</StepTitle>
-      <p className="text-base leading-relaxed text-white/80 mb-6">
+      <p className={`text-base leading-relaxed ${tone.textMuted} mb-6`}>
         {CHECKOUT_COPY.body(formatLocalPhone(phone))}
       </p>
 
-      <div className="border border-white/15 bg-white/5 px-5 py-4 mb-6">
-        <p className="font-bebas text-4xl text-accent leading-none">{CHECKOUT_COPY.amount(amount)}</p>
-        {isReturning && <p className="text-xs text-white/60 mt-2">{CHECKOUT_COPY.returningNote}</p>}
+      <div className={`border ${tone.border} ${tone.surface} px-5 py-4 mb-6`}>
+        <p className={`font-bebas text-4xl ${tone.accentText} leading-none`}>{CHECKOUT_COPY.amount(amount)}</p>
+        {isReturning && <p className={`text-xs ${tone.textSubtle} mt-2`}>{CHECKOUT_COPY.returningNote}</p>}
       </div>
 
       <ErrorNote message={error} />
