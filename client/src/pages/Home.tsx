@@ -78,14 +78,12 @@ export default function Home() {
       `}</style>
 
       <section ref={heroRef} className="relative min-h-screen w-full flex items-center overflow-hidden scroll-mt-16">
-        <div className="absolute inset-0 w-full h-full bg-ink light:bg-ink-light">
+        <div className="absolute inset-0 w-full h-full bg-ink light:bg-ink-light grayscale">
           {heroSlides.length > 0 && <HeroCarousel slides={heroSlides} />}
         </div>
 
-        <div className="absolute inset-0 bg-black/45 md:bg-black/30 light:bg-white/80 pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent light:hidden pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 light:from-white/60 light:via-transparent light:to-transparent pointer-events-none" />
-        
+        <div className="absolute inset-0 bg-night/80 light:bg-white/85 pointer-events-none" />
+
         <div className="absolute left-[6%] top-[15%] bottom-[15%] w-0.5 bg-gradient-to-b from-transparent via-accent light:via-accent-light to-transparent opacity-60 z-10" />
 
         <div className="max-w-[1200px] mx-auto px-[6%] py-[80px] relative z-10 w-full">
