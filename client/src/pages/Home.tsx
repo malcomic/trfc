@@ -78,7 +78,7 @@ export default function Home() {
       `}</style>
 
       <section ref={heroRef} className="relative min-h-screen w-full flex items-center overflow-hidden scroll-mt-16">
-        <div className="absolute inset-0 w-full h-full bg-ink light:bg-ink-light grayscale">
+      <div className="absolute inset-0 w-full h-full bg-ink light:bg-ink-light">
           {heroSlides.length > 0 && <HeroCarousel slides={heroSlides} />}
         </div>
 
