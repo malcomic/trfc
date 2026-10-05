@@ -55,17 +55,17 @@ const Modal: React.FC<ModalProps> & {
       {/* Modal */}
       <div
         className={`
-          relative bg-ash border border-mist rounded-xl p-8 
+          relative bg-ash light:bg-ash-light border border-mist light:border-mist-light rounded-xl p-8 
           shadow-2xl animate-scaleIn
           ${sizeStyles[size]} w-full mx-4 md:mx-0
         `}
       >
         {title && (
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl md:text-3xl font-barlow-condensed font-700 text-chalk">{title}</h2>
+            <h2 className="text-2xl md:text-3xl font-barlow-condensed font-700 text-chalk light:text-chalk-light">{title}</h2>
             <button
               onClick={onClose}
-              className="p-1 hover:bg-smoke rounded-lg transition-colors duration-300 text-fog hover:text-chalk"
+              className="p-1 hover:bg-smoke light:hover:bg-smoke-light rounded-lg transition-colors duration-300 text-fog light:text-fog-light hover:text-chalk light:hover:text-chalk-light"
               aria-label="Close modal"
             >
               <X size={24} />
@@ -80,11 +80,11 @@ const Modal: React.FC<ModalProps> & {
 
 const ModalHeader: React.FC<ModalHeaderProps> = ({ children, onClose }) => (
   <div className="flex items-center justify-between mb-6">
-    <h2 className="text-2xl md:text-3xl font-barlow-condensed font-700 text-chalk">{children}</h2>
+    <h2 className="text-2xl md:text-3xl font-barlow-condensed font-700 text-chalk light:text-chalk-light">{children}</h2>
     {onClose && (
       <button
         onClick={onClose}
-        className="p-1 hover:bg-smoke rounded-lg transition-colors duration-300 text-fog hover:text-chalk"
+        className="p-1 hover:bg-smoke light:hover:bg-smoke-light rounded-lg transition-colors duration-300 text-fog light:text-fog-light hover:text-chalk light:hover:text-chalk-light"
         aria-label="Close modal"
       >
         <X size={24} />
@@ -93,10 +93,10 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({ children, onClose }) => (
   </div>
 );
 
-const ModalBody: React.FC<ModalBodyProps> = ({ children }) => <div className="mb-6 text-fog">{children}</div>;
+const ModalBody: React.FC<ModalBodyProps> = ({ children }) => <div className="mb-6 text-fog light:text-fog-light">{children}</div>;
 
 const ModalFooter: React.FC<ModalFooterProps> = ({ children }) => (
-  <div className="flex gap-3 justify-end border-t border-mist pt-6">{children}</div>
+  <div className="flex gap-3 justify-end border-t border-mist light:border-mist-light pt-6">{children}</div>
 );
 
 Modal.Header = ModalHeader;

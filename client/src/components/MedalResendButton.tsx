@@ -67,7 +67,7 @@ export default function MedalResendButton({
           ${
             canResend
               ? 'border-white/20 light:border-black/20 text-chalk light:text-chalk-light hover:border-accent/40 light:hover:border-accent-light/40 cursor-pointer'
-              : 'border-white/10 text-fog cursor-not-allowed'
+              : 'border-white/10 light:border-black/10 text-fog light:text-fog-light cursor-not-allowed'
           }
           ${isLoading ? 'opacity-70' : ''}
         `}

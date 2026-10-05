@@ -5,6 +5,7 @@ import { useCart } from '../store/cartStore'
 import { AlertCircle, Loader, ShoppingCart, ArrowLeft } from 'lucide-react'
 import { Product } from '../types'
 import { trackViewContent } from '../utils/tiktokPixel'
+import { pageRoot, inputField } from '../utils/themeClasses'
 
 export default function ProductDetail() {
   const { id } = useParams()
@@ -46,7 +47,7 @@ export default function ProductDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-night flex items-center justify-center">
+      <div className={`${pageRoot} flex items-center justify-center`}>
         <Loader className="animate-spin text-accent light:text-accent-light w-10 h-10" />
       </div>
     )
@@ -54,11 +55,11 @@ export default function ProductDetail() {
 
   if (error || !product) {
     return (
-      <div className="min-h-screen bg-night text-chalk py-16 px-6">
+      <div className={`${pageRoot} py-16 px-6`}>
         <div className="max-w-xl mx-auto bg-red-500/10 border border-red-500/20 p-6 flex gap-3">
           <AlertCircle className="text-red-400" />
           <div>
-            <p className="text-red-300 mb-4">{error || 'Not found'}</p>
+            <p className="text-red-300 light:text-red-700 mb-4">{error || 'Not found'}</p>
             <Link to="/shop" className="text-accent light:text-accent-light">Back to shop</Link>
           </div>
         </div>
@@ -69,7 +70,7 @@ export default function ProductDetail() {
   const p = product as any
 
   return (
-    <div className="min-h-screen bg-night text-chalk font-barlow">
+    <div className={pageRoot}>
       <div className="max-w-4xl mx-auto px-[6%] py-10 pb-20">
         <button onClick={() => navigate('/shop')} className="inline-flex items-center gap-2 text-accent light:text-accent-light text-sm mb-6 bg-transparent border-0 cursor-pointer hover:underline">
           <ArrowLeft size={14} /> Back to Shop
@@ -86,25 +87,25 @@ export default function ProductDetail() {
             )}
             <h1 className="font-bebas text-5xl mb-4">{p.name}</h1>
             <p className="font-bebas text-4xl text-accent light:text-accent-light mb-6">KES {Number(p.price).toLocaleString()}</p>
-            {p.description && <p className="text-fog leading-relaxed mb-8">{p.description}</p>}
+            {p.description && <p className="text-fog light:text-fog-light leading-relaxed mb-8">{p.description}</p>}
             {p.stock === 0 ? (
-              <p className="text-fog font-barlow-condensed font-bold uppercase text-sm">Sold out</p>
+              <p className="text-fog light:text-fog-light font-barlow-condensed font-bold uppercase text-sm">Sold out</p>
             ) : (
               <>
                 <div className="flex items-center gap-4 mb-6">
-                  <label className="text-sm text-fog">Qty</label>
+                  <label className="text-sm text-fog light:text-fog-light">Qty</label>
                   <input
                     type="number"
                     min={1}
                     max={p.stock || 99}
                     value={quantity}
                     onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-20 bg-smoke border border-white/10 px-3 py-2 text-chalk"
+                    className={`w-20 px-3 py-2 ${inputField}`}
                   />
                 </div>
                 <button
                   onClick={handleAdd}
-                  className={`w-full py-4 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase flex items-center justify-center gap-2 ${added ? 'bg-green-600/30 text-green-400' : 'bg-accent light:bg-accent-light text-black light:text-white hover:bg-accent/90 light:hover:bg-accent-light/90'}`}
+                  className={`w-full py-4 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase flex items-center justify-center gap-2 ${added ? 'bg-green-600/30 text-green-400 light:text-green-700' : 'bg-accent light:bg-accent-light text-black light:text-white hover:bg-accent/90 light:hover:bg-accent-light/90'}`}
                 >
                   <ShoppingCart size={18} />
                   {added ? 'Added to Cart!' : 'Add to Cart'}

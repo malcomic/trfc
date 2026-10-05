@@ -26,13 +26,13 @@ export default function MetricCard({
   const getTrendColor = () => {
     if (trend === 'up') return 'text-success-green'
     if (trend === 'down') return 'text-danger-red'
-    return 'text-fog'
+    return 'text-fog light:text-fog-light'
   }
 
   const getTrendBgColor = () => {
     if (trend === 'up') return 'bg-success-green/10'
     if (trend === 'down') return 'bg-danger-red/10'
-    return 'bg-smoke'
+    return 'bg-smoke light:bg-smoke-light'
   }
 
   return (
@@ -60,7 +60,7 @@ export default function MetricCard({
         <div className="mb-4">
           <p className="text-4xl font-bold text-chalk-light dark:text-chalk mb-1">
             {typeof value === 'number' ? value.toLocaleString() : value}
-            {unit && <span className="text-2xl font-normal text-fog ml-1">{unit}</span>}
+            {unit && <span className="text-2xl font-normal text-fog light:text-fog-light ml-1">{unit}</span>}
           </p>
         </div>
       )}

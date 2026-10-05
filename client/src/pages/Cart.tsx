@@ -126,7 +126,7 @@ export default function Cart() {
 
                       {/* Remove */}
                       <button
-                        className="w-8 h-8 flex items-center justify-center text-fog hover:text-red-500 transition-colors duration-200 clip-angled-sm"
+                        className="w-8 h-8 flex items-center justify-center text-fog light:text-fog-light hover:text-red-500 transition-colors duration-200 clip-angled-sm"
                         onClick={() => removeItem(item.product.id)}
                         aria-label={`Remove ${item.product.name}`}
                       >

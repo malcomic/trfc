@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation, useSearchParams } from 'react-rout
 import { getEquipmentHireById } from '../api/equipment'
 import { pollPaymentStatus } from '../api/payments'
 import { AlertCircle, CheckCircle, Clock, Package } from 'lucide-react'
+import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 
 export default function HireConfirmation() {
   const { id } = useParams()
@@ -92,10 +93,10 @@ export default function HireConfirmation() {
 
   if (phonePrompt) {
     return (
-      <div className="min-h-screen bg-night text-chalk font-barlow py-16 px-6">
-        <div className="max-w-md mx-auto bg-ash border border-white/5 p-8">
+      <div className={`${pageRoot} py-16 px-6`}>
+        <div className={`max-w-md mx-auto p-8 ${cardSurface}`}>
           <h1 className="font-bebas text-4xl mb-2">HIRE <span className="text-accent light:text-accent-light">CONFIRMATION</span></h1>
-          <p className="text-fog text-sm mb-6">Enter the phone number used at checkout to view your hire.</p>
+          <p className="text-fog light:text-fog-light text-sm mb-6">Enter the phone number used at checkout to view your hire.</p>
           {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
           <form onSubmit={handlePhoneVerify} className="space-y-4">
             <input
@@ -103,7 +104,7 @@ export default function HireConfirmation() {
               value={phone}
               onChange={(e) => setPhone(e.target.value.replace(/\s+/g, ''))}
               placeholder="254712345678"
-              className="w-full bg-smoke border border-white/10 px-4 py-3 text-chalk focus:outline-none focus:border-accent light:focus:border-accent-light"
+              className={`w-full px-4 py-3 ${inputField}`}
             />
             <button type="submit" className="w-full bg-accent light:bg-accent-light text-black light:text-white py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-accent/90 light:hover:bg-accent-light/90">
               View Hire
@@ -115,10 +116,10 @@ export default function HireConfirmation() {
   }
 
   return (
-    <div className="min-h-screen bg-night text-chalk font-barlow py-12 px-6">
+    <div className={`${pageRoot} py-12 px-6`}>
       <div className="max-w-2xl mx-auto">
         {error && (
-          <div className="flex items-start gap-2.5 bg-red-500/10 border border-red-500/20 border-l-4 border-l-red-500 px-4 py-3.5 mb-6 text-sm text-red-400">
+          <div className="flex items-start gap-2.5 bg-red-500/10 border border-red-500/20 border-l-4 border-l-red-500 px-4 py-3.5 mb-6 text-sm text-red-400 light:text-red-600">
             <AlertCircle size={16} className="flex-shrink-0 mt-0.25" />
             <span>{error}</span>
           </div>
@@ -129,7 +130,7 @@ export default function HireConfirmation() {
             {loading ? (
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent light:border-accent-light" />
             ) : paymentStatus === 'paid' ? (
-              <CheckCircle className="w-6 h-6 text-green-400" />
+              <CheckCircle className="w-6 h-6 text-green-400 light:text-green-600" />
             ) : (
               <Clock className="w-6 h-6 text-accent light:text-accent-light" />
             )}
@@ -137,31 +138,31 @@ export default function HireConfirmation() {
               {loading ? 'Confirming…' : paymentStatus === 'paid' ? 'Hire Confirmed!' : 'Payment Pending'}
             </h1>
           </div>
-          <p className="text-fog text-sm">
+          <p className="text-fog light:text-fog-light text-sm">
             {paymentStatus === 'paid'
               ? 'Your equipment hire is confirmed. Collect at our location on the hire date.'
               : 'Complete M-Pesa payment on your phone to confirm the hire.'}
           </p>
         </div>
 
-        <div className="bg-ash border border-white/5 p-6 mb-6 space-y-3">
+        <div className={`p-6 mb-6 space-y-3 ${cardSurface}`}>
           <div className="flex items-center gap-2 text-accent light:text-accent-light mb-4">
             <Package size={18} />
             <h2 className="font-barlow-condensed font-bold tracking-widest uppercase">Hire Details</h2>
           </div>
           {(display.equipment_name || display.equipmentName) && (
-            <p><span className="text-fog">Equipment: </span>{display.equipment_name || display.equipmentName}</p>
+            <p><span className="text-fog light:text-fog-light">Equipment: </span>{display.equipment_name || display.equipmentName}</p>
           )}
           {(display.hire_date || display.hireDate) && (
-            <p><span className="text-fog">Hire date: </span>{new Date(display.hire_date || display.hireDate).toLocaleDateString()}</p>
+            <p><span className="text-fog light:text-fog-light">Hire date: </span>{new Date(display.hire_date || display.hireDate).toLocaleDateString()}</p>
           )}
           {(display.return_date || display.returnDate) && (
-            <p><span className="text-fog">Return date: </span>{new Date(display.return_date || display.returnDate).toLocaleDateString()}</p>
+            <p><span className="text-fog light:text-fog-light">Return date: </span>{new Date(display.return_date || display.returnDate).toLocaleDateString()}</p>
           )}
           {(display.total_cost != null || display.totalPrice != null) && (
-            <p><span className="text-fog">Total: </span>KES {Number(display.total_cost ?? display.totalPrice).toLocaleString()}</p>
+            <p><span className="text-fog light:text-fog-light">Total: </span>KES {Number(display.total_cost ?? display.totalPrice).toLocaleString()}</p>
           )}
-          {phone && <p><span className="text-fog">Phone: </span>{phone}</p>}
+          {phone && <p><span className="text-fog light:text-fog-light">Phone: </span>{phone}</p>}
         </div>
 
         <div className="flex gap-3">
@@ -169,7 +170,7 @@ export default function HireConfirmation() {
             Back to Equipment
           </button>
           {paymentStatus === 'pending' && !loading && (
-            <button onClick={() => window.location.reload()} className="flex-1 bg-smoke border border-white/10 py-3 font-barlow-condensed font-bold text-sm hover:border-accent light:hover:border-accent-light">
+            <button onClick={() => window.location.reload()} className="flex-1 bg-smoke light:bg-smoke-light border border-white/10 light:border-black/10 py-3 font-barlow-condensed font-bold text-sm hover:border-accent light:hover:border-accent-light">
               Refresh
             </button>
           )}
@@ -178,7 +179,7 @@ export default function HireConfirmation() {
         {paymentStatus === 'pending' && !loading && (
           <div className="mt-6 flex gap-3 bg-red-500/10 border border-red-500/20 p-4 text-sm">
             <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-            <p className="text-red-300">Payment not confirmed yet. Check your phone for the M-Pesa prompt.</p>
+            <p className="text-red-300 light:text-red-700">Payment not confirmed yet. Check your phone for the M-Pesa prompt.</p>
           </div>
         )}
       </div>

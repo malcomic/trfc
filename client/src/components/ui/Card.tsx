@@ -26,7 +26,7 @@ const Card: React.FC<CardProps> & {
   Body: React.FC<CardBodyProps>;
   Footer: React.FC<CardFooterProps>;
 } = ({ variant = 'default', children, className = '' }) => {
-  const baseStyles = 'bg-ash border border-mist rounded-lg transition-all duration-300';
+  const baseStyles = 'bg-ash light:bg-ash-light border border-mist light:border-mist-light rounded-lg transition-all duration-300';
 
   const variantStyles = {
     default: '',
@@ -38,8 +38,8 @@ const Card: React.FC<CardProps> & {
 };
 
 const CardHeader: React.FC<CardHeaderProps> = ({ children, className = '' }) => (
-  <div className={`px-6 py-4 border-b border-mist ${className}`}>
-    <h3 className="text-lg md:text-xl font-barlow-condensed font-700 text-chalk">{children}</h3>
+  <div className={`px-6 py-4 border-b border-mist light:border-mist-light ${className}`}>
+    <h3 className="text-lg md:text-xl font-barlow-condensed font-700 text-chalk light:text-chalk-light">{children}</h3>
   </div>
 );
 
@@ -48,7 +48,7 @@ const CardBody: React.FC<CardBodyProps> = ({ children, className = '' }) => (
 );
 
 const CardFooter: React.FC<CardFooterProps> = ({ children, className = '' }) => (
-  <div className={`px-6 py-4 border-t border-mist flex gap-3 ${className}`}>{children}</div>
+  <div className={`px-6 py-4 border-t border-mist light:border-mist-light flex gap-3 ${className}`}>{children}</div>
 );
 
 Card.Header = CardHeader;

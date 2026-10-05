@@ -317,7 +317,7 @@ export default function TicketConfirmation() {
             </p>
           )}
           {checkoutRequestId && (
-            <p className="text-xs text-fog font-mono break-all">Ref: {checkoutRequestId}</p>
+            <p className="text-xs text-fog light:text-fog-light font-mono break-all">Ref: {checkoutRequestId}</p>
           )}
         </div>
 
@@ -363,7 +363,7 @@ export default function TicketConfirmation() {
           {paymentStatus === 'pending' && !loading && (
             <button
               onClick={() => window.location.reload()}
-              className="flex-1 bg-smoke border border-white/10 py-3 font-barlow-condensed font-bold text-sm hover:border-accent light:hover:border-accent-light"
+              className="flex-1 bg-smoke light:bg-smoke-light border border-white/10 light:border-black/10 py-3 font-barlow-condensed font-bold text-sm hover:border-accent light:hover:border-accent-light"
             >
               Refresh
             </button>

@@ -14,10 +14,10 @@ export default function PrivateRoute({ children, role, roles, loginPath = '/logi
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-night light:bg-night-light text-chalk font-barlow">
+      <div className="flex items-center justify-center h-screen bg-night light:bg-night-light text-chalk light:text-chalk-light font-barlow">
         <div className="text-center">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-accent light:border-accent-light mx-auto mb-3" />
-          <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog">Loading…</p>
+          <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light">Loading…</p>
         </div>
       </div>
     )

@@ -125,7 +125,7 @@ export default function MedalConfirmation() {
   if (!checkoutRequestId) {
     return (
       <div className={`${pageRoot} py-16 px-6`}>
-        <p className="text-center text-fog">Invalid confirmation link.</p>
+        <p className="text-center text-fog light:text-fog-light">Invalid confirmation link.</p>
         <div className="text-center mt-4">
           <button onClick={() => navigate('/shop?category=Medals')} className="text-accent">
             Back to Medals

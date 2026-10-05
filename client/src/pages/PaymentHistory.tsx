@@ -260,7 +260,7 @@ export default function PaymentHistory() {
             <div className={`${cardSurface} border-white/10 light:border-black/10 clip-angled-sm shadow-lg max-w-md w-full`}>
               <div className="bg-accent light:bg-accent-light text-black light:text-white px-6 py-5">
                 <h2 className="font-bebas text-3xl">RECEIPT</h2>
-                <p className="font-barlow-condensed text-xs tracking-widest uppercase text-white/80 mt-1">
+                <p className="font-barlow-condensed text-xs tracking-widest uppercase text-black/70 light:text-white/80 mt-1">
                   {new Date(selectedPayment.created_at).toLocaleDateString()}
                 </p>
               </div>

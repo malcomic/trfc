@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { getAvailableEquipment } from '../api/equipment'
 import { AlertCircle, ArrowRight, Dumbbell, Check } from 'lucide-react'
 import { Button, Card } from '../components/ui'
+import { pageRoot } from '../utils/themeClasses'
 
 interface Equipment {
   packageType: string
@@ -33,27 +34,27 @@ export default function EquipmentHire() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-night text-chalk font-barlow flex items-center justify-center px-[6%] py-12">
+      <div className={`${pageRoot} flex items-center justify-center px-[6%] py-12`}>
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-accent/20 light:border-accent-light/20 border-t-accent light:border-t-accent-light rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-fog">Loading equipment packages...</p>
+          <p className="text-fog light:text-fog-light">Loading equipment packages...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-night text-chalk font-barlow">
+    <div className={pageRoot}>
       {/* ── Hero ── */}
-      <section className="bg-gradient-to-r from-ink via-ash to-ink border-b border-white/5 px-[6%] py-16 md:py-20">
+      <section className="bg-gradient-to-r from-ink via-ash to-ink light:from-ink-light light:via-ash-light light:to-ink-light border-b border-white/5 light:border-black/5 px-[6%] py-16 md:py-20">
         <div className="max-w-5xl mx-auto">
           <div className="inline-flex items-center gap-2 font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-accent light:text-accent-light mb-4 before:block before:w-5 before:h-0.5 before:bg-accent light:before:bg-accent-light">
             Premium Rentals
           </div>
-          <h1 className="font-bebas text-clamp-lg leading-tight text-chalk mb-4 letter-spacing-tighter">
+          <h1 className="font-bebas text-clamp-lg leading-tight text-chalk light:text-chalk-light mb-4 letter-spacing-tighter">
             EQUIPMENT <span className="text-accent light:text-accent-light">HIRE</span>
           </h1>
-          <p className="text-lg text-fog max-w-2xl">
+          <p className="text-lg text-fog light:text-fog-light max-w-2xl">
             Rent professional gym equipment at affordable rates. Choose your rental period and start your fitness journey today.
           </p>
         </div>
@@ -65,7 +66,7 @@ export default function EquipmentHire() {
         {error && (
           <div className="flex items-start gap-3 bg-danger-red/10 border border-danger-red/30 p-5 mb-8 rounded-sm">
             <AlertCircle size={20} className="text-danger-red flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-chalk/70">{error}</p>
+            <p className="text-sm text-chalk/70 light:text-chalk-light/70">{error}</p>
           </div>
         )}
 
@@ -79,7 +80,7 @@ export default function EquipmentHire() {
                     <p className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-accent light:text-accent-light mb-2">
                       Rental Option
                     </p>
-                    <h3 className="font-bebas text-2xl text-chalk letter-spacing-tighter capitalize">
+                    <h3 className="font-bebas text-2xl text-chalk light:text-chalk-light letter-spacing-tighter capitalize">
                       {pkg.packageType}
                     </h3>
                   </div>
@@ -88,15 +89,15 @@ export default function EquipmentHire() {
                   </div>
                 </div>
 
-                <p className="text-sm text-fog mb-6 leading-relaxed">
+                <p className="text-sm text-fog light:text-fog-light mb-6 leading-relaxed">
                   {pkg.description}
                 </p>
 
-                <div className="mb-8 pb-8 border-b border-white/10">
+                <div className="mb-8 pb-8 border-b border-white/10 light:border-black/10">
                   <div className="font-bebas text-4xl text-accent light:text-accent-light letter-spacing-tighter">
                     KES {pkg.price.toLocaleString()}
                   </div>
-                  <p className="text-xs text-fog mt-1">Per day</p>
+                  <p className="text-xs text-fog light:text-fog-light mt-1">Per day</p>
                 </div>
 
                 <Button
@@ -120,7 +121,7 @@ export default function EquipmentHire() {
         {/* How It Works */}
         <Card>
           <Card.Body>
-            <h2 className="font-bebas text-3xl text-chalk mb-8 letter-spacing-tighter">
+            <h2 className="font-bebas text-3xl text-chalk light:text-chalk-light mb-8 letter-spacing-tighter">
               HOW <span className="text-accent light:text-accent-light">IT WORKS</span>
             </h2>
 
@@ -153,13 +154,13 @@ export default function EquipmentHire() {
                 }
               ].map((item) => (
                 <div key={item.step} className="text-center">
-                  <div className="w-12 h-12 bg-accent light:bg-accent-light text-night font-bebas text-lg rounded-full flex items-center justify-center mx-auto mb-3">
+                  <div className="w-12 h-12 bg-accent light:bg-accent-light text-night light:text-night-light font-bebas text-lg rounded-full flex items-center justify-center mx-auto mb-3">
                     {item.step}
                   </div>
-                  <h4 className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-chalk mb-2">
+                  <h4 className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-chalk light:text-chalk-light mb-2">
                     {item.title}
                   </h4>
-                  <p className="text-xs text-fog leading-relaxed">
+                  <p className="text-xs text-fog light:text-fog-light leading-relaxed">
                     {item.desc}
                   </p>
                 </div>
@@ -174,10 +175,10 @@ export default function EquipmentHire() {
             <div className="flex items-start gap-4">
               <Check size={24} className="text-accent light:text-accent-light flex-shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-chalk mb-2">
+                <h3 className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-chalk light:text-chalk-light mb-2">
                   Why Rent From TRFC?
                 </h3>
-                <ul className="space-y-2 text-sm text-fog">
+                <ul className="space-y-2 text-sm text-fog light:text-fog-light">
                   <li>✓ Professional-grade equipment maintained to the highest standards</li>
                   <li>✓ Competitive pricing with flexible rental periods</li>
                   <li>✓ Quick booking process — rent in minutes</li>

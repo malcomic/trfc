@@ -96,7 +96,7 @@ export default function TicketCard({
             <div className="flex gap-2">
               <Calendar size={14} className="mt-0.5 text-accent light:text-accent-light shrink-0" />
               <div>
-                <dt className="text-[10px] font-barlow-condensed tracking-widest uppercase text-fog">Date</dt>
+                <dt className="text-[10px] font-barlow-condensed tracking-widest uppercase text-fog light:text-fog-light">Date</dt>
                 <dd className="text-chalk light:text-chalk-light">
                   {formatDate(ticket.eventDate)}
                   {formatTime(ticket.eventDate) ? ` · ${formatTime(ticket.eventDate)}` : ''}
@@ -106,7 +106,7 @@ export default function TicketCard({
             <div className="flex gap-2">
               <MapPin size={14} className="mt-0.5 text-accent light:text-accent-light shrink-0" />
               <div>
-                <dt className="text-[10px] font-barlow-condensed tracking-widest uppercase text-fog">Venue</dt>
+                <dt className="text-[10px] font-barlow-condensed tracking-widest uppercase text-fog light:text-fog-light">Venue</dt>
                 <dd className="text-chalk light:text-chalk-light">{ticket.location || 'TBA'}</dd>
               </div>
             </div>
@@ -114,7 +114,7 @@ export default function TicketCard({
               <div className="flex gap-2">
                 <Ticket size={14} className="mt-0.5 text-accent light:text-accent-light shrink-0" />
                 <div>
-                  <dt className="text-[10px] font-barlow-condensed tracking-widest uppercase text-fog">Price</dt>
+                  <dt className="text-[10px] font-barlow-condensed tracking-widest uppercase text-fog light:text-fog-light">Price</dt>
                   <dd className="text-chalk light:text-chalk-light">
                     KES {Number(ticket.unitPrice).toLocaleString()}
                   </dd>
@@ -123,7 +123,7 @@ export default function TicketCard({
             )}
             {ticket.mpesaReceipt && (
               <div>
-                <dt className="text-[10px] font-barlow-condensed tracking-widest uppercase text-fog">M-Pesa receipt</dt>
+                <dt className="text-[10px] font-barlow-condensed tracking-widest uppercase text-fog light:text-fog-light">M-Pesa receipt</dt>
                 <dd className="text-chalk light:text-chalk-light font-mono text-xs">{ticket.mpesaReceipt}</dd>
               </div>
             )}
@@ -143,12 +143,12 @@ export default function TicketCard({
               className="w-36 h-36 bg-white p-2"
             />
           ) : (
-            <div className="w-36 h-36 bg-night/40 light:bg-black/5 flex items-center justify-center text-xs text-fog text-center px-2">
+            <div className="w-36 h-36 bg-night/40 light:bg-black/5 flex items-center justify-center text-xs text-fog light:text-fog-light text-center px-2">
               QR available after payment
             </div>
           )}
           <div className="text-center">
-            <p className="text-[10px] font-barlow-condensed tracking-[0.2em] uppercase text-fog">Code</p>
+            <p className="text-[10px] font-barlow-condensed tracking-[0.2em] uppercase text-fog light:text-fog-light">Code</p>
             <p className="font-bebas text-2xl text-accent light:text-accent-light tracking-widest">
               {ticket.shortCode}
             </p>

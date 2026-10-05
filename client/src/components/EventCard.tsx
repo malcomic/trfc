@@ -23,9 +23,9 @@ export default function EventCard({ event }: { event: Event }) {
   const imageSrc = getSafeImageUrl(ev.image_url, EVENT_IMAGE_FALLBACK)
 
   return (
-    <div className="bg-ash dark:bg-ash relative overflow-hidden flex flex-col h-full font-barlow">
+    <div className="bg-ash light:bg-ash-light relative overflow-hidden flex flex-col h-full font-barlow">
       {/* Image */}
-      <div className="relative overflow-hidden aspect-video bg-smoke dark:bg-smoke flex-shrink-0">
+      <div className="relative overflow-hidden aspect-video bg-smoke light:bg-smoke-light flex-shrink-0">
         {imageSrc ? (
           <>
             <img
@@ -38,14 +38,14 @@ export default function EventCard({ event }: { event: Event }) {
             />
           </>
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-smoke dark:bg-smoke font-bebas text-5xl text-accent/10 light:text-accent-light/10 tracking-wider select-none">TRFC</div>
+          <div className="w-full h-full flex items-center justify-center bg-smoke light:bg-smoke-light font-bebas text-5xl text-accent/10 light:text-accent-light/10 tracking-wider select-none">TRFC</div>
         )}
 
         {/* Date badge */}
         {day && (
-          <div className="absolute top-3 left-3 bg-night/85 backdrop-blur-sm border border-white/10 p-2 text-center min-w-12 clip-angled-sm z-10">
+          <div className="absolute top-3 left-3 bg-night/85 light:bg-night-light/85 backdrop-blur-sm border border-white/10 light:border-black/10 p-2 text-center min-w-12 clip-angled-sm z-10">
             <span className="font-bebas text-2xl text-accent light:text-accent-light leading-none block">{day}</span>
-            <span className="font-barlow-condensed font-bold text-xs tracking-wider text-fog leading-none block mt-0.5">{mon}</span>
+            <span className="font-barlow-condensed font-bold text-xs tracking-wider text-fog light:text-fog-light leading-none block mt-0.5">{mon}</span>
           </div>
         )}
 
@@ -60,24 +60,24 @@ export default function EventCard({ event }: { event: Event }) {
       </div>
 
       {/* Body */}
-      <div className="px-4.5 pt-4.5 pb-5 flex flex-col flex-1 gap-0 border-t border-white/5">
-        <h3 className="font-barlow-condensed font-bold text-lg tracking-wide text-chalk leading-tight mb-2.5">{ev.title}</h3>
+      <div className="px-4.5 pt-4.5 pb-5 flex flex-col flex-1 gap-0 border-t border-white/5 light:border-black/5">
+        <h3 className="font-barlow-condensed font-bold text-lg tracking-wide text-chalk light:text-chalk-light leading-tight mb-2.5">{ev.title}</h3>
 
         <div className="flex flex-col gap-1.5 mb-3.5">
           {ev.location && (
-            <div className="flex items-center gap-1.75 text-sm text-fog font-barlow leading-none">
+            <div className="flex items-center gap-1.75 text-sm text-fog light:text-fog-light font-barlow leading-none">
               <MapPin size={11} className="text-accent light:text-accent-light flex-shrink-0" />
               <span>{ev.location}</span>
             </div>
           )}
           {(ev.time || ev.start_time) && (
-            <div className="flex items-center gap-1.75 text-sm text-fog font-barlow leading-none">
+            <div className="flex items-center gap-1.75 text-sm text-fog light:text-fog-light font-barlow leading-none">
               <Clock size={11} className="text-accent light:text-accent-light flex-shrink-0" />
               <span>{ev.time || ev.start_time}</span>
             </div>
           )}
           {ev.capacity && (
-            <div className="flex items-center gap-1.75 text-sm text-fog font-barlow leading-none">
+            <div className="flex items-center gap-1.75 text-sm text-fog light:text-fog-light font-barlow leading-none">
               <Users size={11} className="text-accent light:text-accent-light flex-shrink-0" />
               <span>{ev.registered_count || 0} / {ev.capacity} registered</span>
             </div>
@@ -86,23 +86,23 @@ export default function EventCard({ event }: { event: Event }) {
 
         {/* Description */}
         {ev.description && (
-          <p className="text-sm text-chalk/45 leading-relaxed mb-4 line-clamp-2 whitespace-pre-line">{ev.description}</p>
+          <p className="text-sm text-chalk/45 light:text-chalk-light/60 leading-relaxed mb-4 line-clamp-2 whitespace-pre-line">{ev.description}</p>
         )}
 
         {/* Slots bar */}
         {slots !== null && (
           <div className="flex items-center gap-1.5 font-barlow-condensed font-bold text-xs tracking-wider uppercase mb-3">
-            <div className="flex-1 h-0.75 bg-mist overflow-hidden max-w-20">
+            <div className="flex-1 h-0.75 bg-mist light:bg-mist-light overflow-hidden max-w-20">
               <div className="h-full bg-accent light:bg-accent-light transition-all duration-400 ease" style={{ width: `${slotsPercent}%` }} />
             </div>
-            <span className={`${slotsUrgent ? 'text-accent light:text-accent-light' : 'text-fog'}`}>
+            <span className={`${slotsUrgent ? 'text-accent light:text-accent-light' : 'text-fog light:text-fog-light'}`}>
               {slots === 0 ? 'Full' : `${slots} slot${slots !== 1 ? 's' : ''} left`}
             </span>
           </div>
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-3.5 border-t border-white/5 mt-auto">
+        <div className="flex items-center justify-between pt-3.5 border-t border-white/5 light:border-black/5 mt-auto">
           <div>
             <div className="font-bebas text-2xl text-accent light:text-accent-light tracking-wider leading-none">
               {soldOut
@@ -113,7 +113,7 @@ export default function EventCard({ event }: { event: Event }) {
                     ? 'FREE'
                     : `From KES ${displayPrice.toLocaleString()}`}
             </div>
-            <div className="font-barlow-condensed text-xs tracking-wider uppercase text-fog mt-0.5">Entry Fee</div>
+            <div className="font-barlow-condensed text-xs tracking-wider uppercase text-fog light:text-fog-light mt-0.5">Entry Fee</div>
           </div>
           <div className="flex items-center gap-1.25 font-barlow-condensed font-bold text-xs tracking-wider uppercase text-accent light:text-accent-light border border-accent/25 light:border-accent-light/25 px-3 py-1.75 clip-angled-sm transition-all duration-200 bg-accent/5 light:bg-accent-light/5 hover:bg-accent light:hover:bg-accent-light hover:text-black light:hover:text-white cursor-pointer">
             Register <ChevronRight size={12} />

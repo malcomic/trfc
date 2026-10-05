@@ -94,7 +94,7 @@ export default function Events() {
         <div className="max-w-5xl mx-auto flex items-center gap-3 flex-wrap">
           {/* Search */}
           <div className="relative flex-1 min-w-52 max-w-sm">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-fog pointer-events-none transition-colors duration-200"><Search size={14} /></span>
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-fog light:text-fog-light pointer-events-none transition-colors duration-200"><Search size={14} /></span>
             <input
               className={`w-full ${inputField} font-barlow text-sm px-3.5 py-2.5 pl-10 clip-angled-sm transition-colors duration-200 focus:border-accent/40 light:focus:border-accent-light/40`}
               type="text"

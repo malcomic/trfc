@@ -64,7 +64,7 @@ export default function Login() {
       <div className="flex-1 hidden md:flex flex-col justify-between p-16 relative z-10 border-r border-white/5 light:border-black/8 light:border-black/8">
         <Link to="/" className="no-underline">
           <Logo size="xl" />
-          <p className="font-barlow-condensed font-medium text-sm tracking-widest uppercase text-fog mt-5">Nairobi · Est. July 2025</p>
+          <p className="font-barlow-condensed font-medium text-sm tracking-widest uppercase text-fog light:text-fog-light mt-5">Nairobi · Est. July 2025</p>
         </Link>
 
         <div className="flex gap-10">
@@ -75,7 +75,7 @@ export default function Login() {
           ].map((s) => (
             <div key={s.label}>
               <div className="font-bebas text-5xl text-accent light:text-accent-light leading-none">{s.val}</div>
-              <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog mt-1">{s.label}</div>
+              <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light mt-1">{s.label}</div>
             </div>
           ))}
         </div>
@@ -135,7 +135,7 @@ export default function Login() {
 
           {/* Forgot password */}
           <div className="flex justify-end mb-8">
-            <Link to="/contact" className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog transition-colors duration-200 hover:text-accent light:hover:text-accent-light no-underline">Forgot password?</Link>
+            <Link to="/contact" className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light transition-colors duration-200 hover:text-accent light:hover:text-accent-light no-underline">Forgot password?</Link>
           </div>
 
           {/* Submit */}
@@ -153,12 +153,12 @@ export default function Login() {
         </form>
 
         <div className="flex items-center gap-3.5 my-7">
-          <div className="flex-1 h-px bg-white/10" />
+          <div className="flex-1 h-px bg-white/10 light:bg-black/10" />
           <span className="font-barlow-condensed text-xs tracking-widest uppercase text-fog light:text-fog-light">New to TRFC?</span>
-          <div className="flex-1 h-px bg-white/10" />
+          <div className="flex-1 h-px bg-white/10 light:bg-black/10" />
         </div>
 
-        <p className="text-center text-sm text-fog">
+        <p className="text-center text-sm text-fog light:text-fog-light">
           <Link to="/register" className="font-barlow-condensed font-black text-base tracking-widest uppercase text-accent light:text-accent-light no-underline border-b border-accent/30 light:border-accent-light/30 pb-0.25 transition-all duration-200 hover:text-accent light:hover:text-accent-light hover:border-accent light:hover:border-accent-light">
             Create a free account →
           </Link>

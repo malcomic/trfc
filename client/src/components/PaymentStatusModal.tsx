@@ -31,16 +31,16 @@ export default function PaymentStatusModal({
             <div className="text-center">
               <Loader className="w-14 h-14 text-accent light:text-accent-light animate-spin mx-auto mb-4" />
               <p className="font-barlow-condensed font-bold text-lg tracking-tighter mb-2">Waiting for Confirmation</p>
-              <p className="text-fog text-sm mb-4">
+              <p className="text-fog light:text-fog-light text-sm mb-4">
                 We&apos;re waiting for payment confirmation on
               </p>
-              <div className="bg-smoke border border-white/10 p-3 mb-4 font-mono text-sm font-semibold break-all text-chalk">
+              <div className="bg-smoke light:bg-smoke-light border border-white/10 light:border-black/10 p-3 mb-4 font-mono text-sm font-semibold break-all text-chalk light:text-chalk-light">
                 {phone}
               </div>
-              <p className="text-xs text-fog">
+              <p className="text-xs text-fog light:text-fog-light">
                 Check your phone for the M-Pesa prompt. Enter your PIN to complete the transaction.
               </p>
-              <p className="mt-6 text-sm text-fog">This window will close automatically once payment is confirmed.</p>
+              <p className="mt-6 text-sm text-fog light:text-fog-light">This window will close automatically once payment is confirmed.</p>
             </div>
           )}
 
@@ -48,10 +48,10 @@ export default function PaymentStatusModal({
             <div className="text-center">
               <CheckCircle className="w-14 h-14 text-green-400 mx-auto mb-4" />
               <p className="font-barlow-condensed font-bold text-lg tracking-tighter mb-2">Payment Successful!</p>
-              <p className="text-fog text-sm mb-4">Your order has been confirmed.</p>
-              <div className="bg-green-500/10 border border-green-500/25 p-4 text-sm text-green-300">
+              <p className="text-fog light:text-fog-light text-sm mb-4">Your order has been confirmed.</p>
+              <div className="bg-green-500/10 border border-green-500/25 p-4 text-sm text-green-300 light:text-green-700">
                 <p className="font-semibold">Transaction Confirmed</p>
-                <p className="text-xs mt-1 text-fog">You will receive a confirmation email shortly.</p>
+                <p className="text-xs mt-1 text-fog light:text-fog-light">You will receive a confirmation email shortly.</p>
               </div>
             </div>
           )}
@@ -60,15 +60,15 @@ export default function PaymentStatusModal({
             <div className="text-center">
               <AlertCircle className="w-14 h-14 text-red-400 mx-auto mb-4" />
               <p className="font-barlow-condensed font-bold text-lg tracking-tighter mb-2">Payment Failed</p>
-              <p className="text-fog text-sm mb-4">{error}</p>
-              <div className="bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-300">
+              <p className="text-fog light:text-fog-light text-sm mb-4">{error}</p>
+              <div className="bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-300 light:text-red-700">
                 <p>Please try again or contact support for assistance.</p>
               </div>
             </div>
           )}
         </div>
 
-        <div className="border-t border-white/10 px-6 py-4 bg-night/50">
+        <div className="border-t border-white/10 light:border-black/10 px-6 py-4 bg-night/50 light:bg-night-light/50">
           {status !== 'pending' && (
             <button
               onClick={onClose}

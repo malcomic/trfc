@@ -13,8 +13,8 @@ const FormCheckbox = React.forwardRef<HTMLInputElement, FormCheckboxProps>(
           ref={ref}
           type="checkbox"
           className={`
-            w-5 h-5 mt-1 bg-smoke border border-mist rounded cursor-pointer
-            text-fire focus:outline-none focus:ring-2 focus:ring-fire/30
+            w-5 h-5 mt-1 bg-smoke light:bg-smoke-light border border-mist light:border-mist-light rounded cursor-pointer
+            accent-white light:accent-black focus:outline-none focus:ring-2 focus:ring-accent/30 light:focus:ring-accent-light/30
             transition-all duration-300
             ${error ? 'border-danger-red' : ''}
             ${className}
@@ -22,7 +22,7 @@ const FormCheckbox = React.forwardRef<HTMLInputElement, FormCheckboxProps>(
           {...props}
         />
         {label && (
-          <label className="text-sm md:text-base text-chalk cursor-pointer pt-1">
+          <label className="text-sm md:text-base text-chalk light:text-chalk-light cursor-pointer pt-1">
             {label}
             {props.required && <span className="text-danger-red ml-1">*</span>}
           </label>

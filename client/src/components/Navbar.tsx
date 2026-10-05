@@ -117,7 +117,7 @@ export default function Navbar() {
             {/* Desktop actions */}
             <div className="hidden lg:flex items-center gap-2">
               <ThemeToggle />
-              <Link to="/cart" className="relative flex items-center justify-center w-10 h-10 text-white/55 dark:text-white/55 light:text-black/55 no-underline border border-white/7 dark:border-white/7 light:border-black/8 clip-angled-sm transition-all duration-200 hover:text-chalk light:hover:text-chalk-light hover:border-white/15 dark:hover:border-white/15" aria-label={`Cart (${cartCount} items)`}>
+              <Link to="/cart" className="relative flex items-center justify-center w-10 h-10 text-white/55 dark:text-white/55 light:text-black/55 no-underline border border-white/7 dark:border-white/7 light:border-black/8 clip-angled-sm transition-all duration-200 hover:text-chalk light:hover:text-chalk-light hover:border-white/15 light:hover:border-black/15 dark:hover:border-white/15" aria-label={`Cart (${cartCount} items)`}>
                 <ShoppingCart size={18} />
                 {cartCount > 0 && (
                   <span className="absolute -top-1 -right-1 badge-pop bg-accent light:bg-accent-light text-black light:text-white font-barlow-condensed font-black text-[10px] w-4.5 h-4.5 flex items-center justify-center rounded-full">
@@ -137,17 +137,17 @@ export default function Navbar() {
                       Scanner
                     </Link>
                   )}
-                  <Link to="/account" className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 dark:text-white/55 light:text-black/55 no-underline px-3.5 py-2 border border-white/7 dark:border-white/7 light:border-black/8 transition-all duration-200 flex items-center gap-1.5 bg-transparent hover:text-chalk light:hover:text-chalk-light hover:border-white/20 dark:hover:border-white/20 clip-angled-sm">
+                  <Link to="/account" className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 dark:text-white/55 light:text-black/55 no-underline px-3.5 py-2 border border-white/7 dark:border-white/7 light:border-black/8 transition-all duration-200 flex items-center gap-1.5 bg-transparent hover:text-chalk light:hover:text-chalk-light hover:border-white/20 light:hover:border-black/20 dark:hover:border-white/20 clip-angled-sm">
                     Account
                   </Link>
-                  <button onClick={handleLogout} className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 dark:text-white/55 light:text-black/55 no-underline px-3.5 py-2 border border-white/7 dark:border-white/7 light:border-black/8 transition-all duration-200 flex items-center gap-1.5 bg-transparent cursor-pointer hover:text-chalk light:hover:text-chalk-light hover:border-white/20 dark:hover:border-white/20 clip-angled-sm">
+                  <button onClick={handleLogout} className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 dark:text-white/55 light:text-black/55 no-underline px-3.5 py-2 border border-white/7 dark:border-white/7 light:border-black/8 transition-all duration-200 flex items-center gap-1.5 bg-transparent cursor-pointer hover:text-chalk light:hover:text-chalk-light hover:border-white/20 light:hover:border-black/20 dark:hover:border-white/20 clip-angled-sm">
                     <LogOut size={13} />
                     Logout
                   </button>
                 </>
               ) : (
                 <>
-                  <Link to="/login" className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 dark:text-white/55 light:text-black/55 no-underline px-3.5 py-2 border border-white/7 dark:border-white/7 light:border-black/8 transition-all duration-200 flex items-center gap-1.5 bg-transparent hover:text-chalk light:hover:text-chalk-light hover:border-white/20 dark:hover:border-white/20 clip-angled-sm">
+                  <Link to="/login" className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 dark:text-white/55 light:text-black/55 no-underline px-3.5 py-2 border border-white/7 dark:border-white/7 light:border-black/8 transition-all duration-200 flex items-center gap-1.5 bg-transparent hover:text-chalk light:hover:text-chalk-light hover:border-white/20 light:hover:border-black/20 dark:hover:border-white/20 clip-angled-sm">
                     <LogIn size={13} />
                     Login
                   </Link>
@@ -227,14 +227,14 @@ export default function Navbar() {
                     Open Scanner
                   </Link>
                 )}
-                <Link to="/account" className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 no-underline px-3.5 py-3.5 border border-white/7 flex items-center justify-center bg-transparent hover:text-chalk clip-angled-lg transition-all duration-200" onClick={() => setIsOpen(false)}>
+                <Link to="/account" className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 light:text-black/55 no-underline px-3.5 py-3.5 border border-white/7 light:border-black/8 flex items-center justify-center bg-transparent hover:text-chalk light:hover:text-chalk-light clip-angled-lg transition-all duration-200" onClick={() => setIsOpen(false)}>
                   Account
                 </Link>
                 <button
                   onClick={handleLogout}
                   className={`font-barlow-condensed font-bold text-xs tracking-wider no-underline px-3.5 py-3.5 w-full flex items-center justify-center gap-1.5 cursor-pointer clip-angled-lg transition-all duration-200 ${
                     canScan
-                      ? 'text-white/55 dark:text-white/55 light:text-black/55 border border-white/7 dark:border-white/7 light:border-black/8 hover:text-chalk light:hover:text-chalk-light hover:border-white/20'
+                      ? 'text-white/55 dark:text-white/55 light:text-black/55 border border-white/7 dark:border-white/7 light:border-black/8 hover:text-chalk light:hover:text-chalk-light hover:border-white/20 light:hover:border-black/20'
                       : 'text-black light:text-white bg-accent light:bg-accent-light hover:bg-accent/90 light:hover:bg-accent-light/90'
                   }`}
                 >
@@ -246,7 +246,7 @@ export default function Navbar() {
               <>
                 <Link
                   to="/login"
-                  className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 dark:text-white/55 light:text-black/55 no-underline px-3.5 py-3.5 border border-white/7 dark:border-white/7 light:border-black/8 flex items-center justify-center gap-1.5 bg-transparent hover:text-chalk light:hover:text-chalk-light hover:border-white/20 dark:hover:border-white/20 clip-angled-lg transition-all duration-200"
+                  className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 dark:text-white/55 light:text-black/55 no-underline px-3.5 py-3.5 border border-white/7 dark:border-white/7 light:border-black/8 flex items-center justify-center gap-1.5 bg-transparent hover:text-chalk light:hover:text-chalk-light hover:border-white/20 light:hover:border-black/20 dark:hover:border-white/20 clip-angled-lg transition-all duration-200"
                   onClick={() => setIsOpen(false)}
                 >
                   <LogIn size={15} />

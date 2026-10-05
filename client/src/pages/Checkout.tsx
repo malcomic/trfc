@@ -8,7 +8,7 @@ import { getGrandTotal } from '../utils/shipping'
 import PaymentStatusModal from '../components/PaymentStatusModal'
 import { AlertCircle, ShoppingCart, Truck, ArrowLeft } from 'lucide-react'
 import { Button, FormInput, Card } from '../components/ui'
-import { pageRoot } from '../utils/themeClasses'
+import { pageRoot, inputField } from '../utils/themeClasses'
 import { trackInitiateCheckout } from '../utils/tiktokPixel'
 
 export default function Checkout() {
@@ -40,13 +40,13 @@ export default function Checkout() {
     return (
       <div className={`${pageRoot} font-barlow flex items-center justify-center px-[6%] py-12`}>
         <div className="max-w-2xl w-full text-center">
-          <div className="w-20 h-20 bg-ash rounded-full flex items-center justify-center mx-auto mb-8 border border-white/10">
-            <ShoppingCart size={40} className="text-fog" />
+          <div className="w-20 h-20 bg-ash light:bg-ash-light rounded-full flex items-center justify-center mx-auto mb-8 border border-white/10 light:border-black/10">
+            <ShoppingCart size={40} className="text-fog light:text-fog-light" />
           </div>
-          <h1 className="font-bebas text-5xl text-chalk mb-3 letter-spacing-tighter">
+          <h1 className="font-bebas text-5xl text-chalk light:text-chalk-light mb-3 letter-spacing-tighter">
             CART EMPTY
           </h1>
-          <p className="text-lg text-fog mb-8">
+          <p className="text-lg text-fog light:text-fog-light mb-8">
             Your shopping cart is empty. Browse our products and start adding items to your order.
           </p>
           <Button
@@ -113,7 +113,7 @@ export default function Checkout() {
   return (
     <div className={`${pageRoot} font-barlow`}>
       {/* ── Hero ── */}
-      <section className="bg-gradient-to-r from-ink via-ash to-ink border-b border-white/5 px-[6%] py-12">
+      <section className="bg-gradient-to-r from-ink via-ash to-ink light:from-ink-light light:via-ash-light light:to-ink-light border-b border-white/5 light:border-black/5 px-[6%] py-12">
         <div className="max-w-5xl mx-auto relative z-10">
           <Link to="/cart" className="inline-flex items-center gap-2 text-accent light:text-accent-light text-sm mb-4 no-underline hover:underline font-barlow-condensed font-bold">
             <ArrowLeft size={14} /> Back to Cart
@@ -121,7 +121,7 @@ export default function Checkout() {
           <div className="inline-flex items-center gap-2 font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-accent light:text-accent-light mb-3 before:block before:w-5 before:h-0.5 before:bg-accent light:before:bg-accent-light">
             Complete Your Order
           </div>
-          <h1 className="font-bebas text-4xl text-chalk letter-spacing-tighter">
+          <h1 className="font-bebas text-4xl text-chalk light:text-chalk-light letter-spacing-tighter">
             SECURE <span className="text-accent light:text-accent-light">CHECKOUT</span>
           </h1>
         </div>
@@ -139,7 +139,7 @@ export default function Checkout() {
                   <AlertCircle size={20} className="text-danger-red flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-danger-red">Payment Error</p>
-                    <p className="text-sm text-chalk/70 mt-1">{error}</p>
+                    <p className="text-sm text-chalk/70 light:text-chalk-light/70 mt-1">{error}</p>
                   </div>
                 </div>
               )}
@@ -147,7 +147,7 @@ export default function Checkout() {
               {/* Delivery Section */}
               <Card>
                 <Card.Body>
-                  <h2 className="font-bebas text-2xl text-chalk mb-6 letter-spacing-tighter">
+                  <h2 className="font-bebas text-2xl text-chalk light:text-chalk-light mb-6 letter-spacing-tighter">
                     DELIVERY <span className="text-accent light:text-accent-light">INFO</span>
                   </h2>
                   <div className="space-y-5">
@@ -167,13 +167,13 @@ export default function Checkout() {
                     />
 
                     <div>
-                      <label className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-chalk/40 mb-2.5 block" htmlFor="checkout-address">
+                      <label className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-chalk/60 light:text-chalk-light/60 mb-2.5 block" htmlFor="checkout-address">
                         Delivery Address
                       </label>
                       <textarea
                         id="checkout-address"
                         rows={4}
-                        className="w-full bg-smoke border border-white/10 text-chalk font-barlow text-base px-4 py-3 outline-none transition-all duration-200 focus:border-accent/50 light:focus:border-accent-light/50 resize-none"
+                        className={`w-full font-barlow text-base px-4 py-3 transition-all duration-200 resize-none ${inputField}`}
                         placeholder="E.g., 123 Main Street, Nairobi, Kenya"
                         {...register('address', { required: 'Delivery address is required' })}
                       />
@@ -192,7 +192,7 @@ export default function Checkout() {
                   <p className="font-barlow-condensed font-bold letter-spacing-widest text-transform-uppercase text-info-blue mb-1">
                     Delivery
                   </p>
-                  <p className="text-chalk/70">Delivered within 2-3 business days after payment confirmation.</p>
+                  <p className="text-chalk/70 light:text-chalk-light/70">Delivered within 2-3 business days after payment confirmation.</p>
                 </div>
               </div>
 
@@ -209,7 +209,7 @@ export default function Checkout() {
                 {loading ? 'Processing...' : 'Proceed to Payment'}
               </Button>
 
-              <p className="text-xs text-fog text-center">
+              <p className="text-xs text-fog light:text-fog-light text-center">
                 💡 After clicking proceed, an M-Pesa prompt will appear on your phone. Enter your PIN to complete payment.
               </p>
             </form>
@@ -219,19 +219,19 @@ export default function Checkout() {
           <div className="lg:col-span-1 order-1 lg:order-2">
             <Card className="sticky top-4">
               <Card.Body>
-                <h3 className="font-bebas text-2xl text-chalk mb-6 letter-spacing-tighter">
+                <h3 className="font-bebas text-2xl text-chalk light:text-chalk-light mb-6 letter-spacing-tighter">
                   ORDER <span className="text-accent light:text-accent-light">SUMMARY</span>
                 </h3>
 
                 {/* Items */}
-                <div className="space-y-3 mb-6 pb-6 border-b border-white/10">
+                <div className="space-y-3 mb-6 pb-6 border-b border-white/10 light:border-black/10">
                   {items.map((item) => (
                     <div key={item.product.id} className="flex justify-between items-start gap-3">
                       <div className="flex-1 min-w-0">
-                        <p className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-chalk truncate">
+                        <p className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-chalk light:text-chalk-light truncate">
                           {item.product.name}
                         </p>
-                        <p className="text-xs text-fog mt-1">
+                        <p className="text-xs text-fog light:text-fog-light mt-1">
                           KES {Number(item.product.price).toFixed(0)} × {item.quantity}
                         </p>
                       </div>
@@ -243,22 +243,22 @@ export default function Checkout() {
                 </div>
 
                 {/* Total */}
-                <div className="flex justify-between items-baseline mb-6 pb-6 border-b border-white/10">
-                  <span className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-fog">Total</span>
+                <div className="flex justify-between items-baseline mb-6 pb-6 border-b border-white/10 light:border-black/10">
+                  <span className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-fog light:text-fog-light">Total</span>
                   <span className="font-bebas text-4xl text-accent light:text-accent-light letter-spacing-tighter">
                     {grandTotal.toFixed(0)}
                   </span>
                 </div>
 
                 {/* Info */}
-                <div className="bg-ash p-4 space-y-2 text-xs text-fog">
+                <div className="bg-ash light:bg-smoke-light p-4 space-y-2 text-xs text-fog light:text-fog-light">
                   <div className="flex justify-between">
                     <span>📦 Items</span>
-                    <span className="font-bold text-chalk">{items.length}</span>
+                    <span className="font-bold text-chalk light:text-chalk-light">{items.length}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>⏱️ Delivery</span>
-                    <span className="font-bold text-chalk">2-3 days</span>
+                    <span className="font-bold text-chalk light:text-chalk-light">2-3 days</span>
                   </div>
                   <div className="flex justify-between">
                     <span>🔒 Secure</span>
@@ -280,10 +280,10 @@ export default function Checkout() {
             <Card key={idx}>
               <Card.Body className="text-center">
                 <div className="text-4xl mb-3">{badge.icon}</div>
-                <h4 className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-chalk mb-2">
+                <h4 className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-chalk light:text-chalk-light mb-2">
                   {badge.title}
                 </h4>
-                <p className="text-xs text-fog">{badge.desc}</p>
+                <p className="text-xs text-fog light:text-fog-light">{badge.desc}</p>
               </Card.Body>
             </Card>
           ))}

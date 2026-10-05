@@ -77,7 +77,7 @@ export default function Register() {
         {/* Perks */}
         <div className="flex gap-2.5 flex-wrap mb-8">
           {['Free to Join', 'Nairobi Based', '20,000+ Members', 'Est. July 2025'].map((p) => (
-            <span key={p} className="flex items-center gap-1.5 font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog bg-accent/10 light:bg-accent-light/10 border border-accent/15 light:border-accent-light/15 px-2.5 py-1.25 clip-angled-sm">
+            <span key={p} className="flex items-center gap-1.5 font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light bg-accent/10 light:bg-accent-light/10 border border-accent/15 light:border-accent-light/15 px-2.5 py-1.25 clip-angled-sm">
               <Check size={10} className="text-accent light:text-accent-light flex-shrink-0" /> {p}
             </span>
           ))}
@@ -97,7 +97,7 @@ export default function Register() {
             <div>
               <label className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-chalk/40 light:text-chalk-light/50 mb-2.25 block" htmlFor="reg-name">Full Name</label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-fog pointer-events-none transition-colors duration-200"><User size={14} /></span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-fog light:text-fog-light pointer-events-none transition-colors duration-200"><User size={14} /></span>
                 <input
                   id="reg-name"
                   type="text"
@@ -116,7 +116,7 @@ export default function Register() {
             <div>
               <label className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-chalk/40 light:text-chalk-light/50 mb-2.25 block" htmlFor="reg-phone">Phone</label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-fog pointer-events-none transition-colors duration-200"><Phone size={14} /></span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-fog light:text-fog-light pointer-events-none transition-colors duration-200"><Phone size={14} /></span>
                 <input
                   id="reg-phone"
                   type="tel"
@@ -137,7 +137,7 @@ export default function Register() {
           <div className="mb-4.5">
             <label className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-chalk/40 light:text-chalk-light/50 mb-2.25 block" htmlFor="reg-email">Email Address</label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-fog pointer-events-none transition-colors duration-200"><Mail size={14} /></span>
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-fog light:text-fog-light pointer-events-none transition-colors duration-200"><Mail size={14} /></span>
               <input
                 id="reg-email"
                 type="email"
@@ -160,7 +160,7 @@ export default function Register() {
           <div className="mb-4.5">
             <label className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-chalk/40 light:text-chalk-light/50 mb-2.25 block" htmlFor="reg-password">Password</label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-fog pointer-events-none transition-colors duration-200"><Lock size={14} /></span>
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-fog light:text-fog-light pointer-events-none transition-colors duration-200"><Lock size={14} /></span>
               <input
                 id="reg-password"
                 type="password"
@@ -188,7 +188,7 @@ export default function Register() {
                       className={`flex-1 h-0.75 rounded-full transition-all duration-300 ${
                         strength.score >= i
                           ? strength.cls === 'weak' ? 'bg-red-500' : strength.cls === 'fair' ? 'bg-amber-500' : 'bg-green-500'
-                          : 'bg-mist'
+                          : 'bg-mist light:bg-mist-light'
                       }`}
                     />
                   ))}
@@ -224,9 +224,9 @@ export default function Register() {
         </form>
 
         <div className="flex items-center gap-3.5 my-6">
-          <div className="flex-1 h-px bg-white/10" />
+          <div className="flex-1 h-px bg-white/10 light:bg-black/10" />
           <span className="font-barlow-condensed text-xs tracking-widest uppercase text-fog light:text-fog-light">Have an account?</span>
-          <div className="flex-1 h-px bg-white/10" />
+          <div className="flex-1 h-px bg-white/10 light:bg-black/10" />
         </div>
         <p className="text-center">
           <Link to="/login" className="font-barlow-condensed font-black text-base tracking-widest uppercase text-accent light:text-accent-light no-underline border-b border-accent/30 light:border-accent-light/30 pb-0.25 transition-all duration-200 hover:text-accent light:hover:text-accent-light hover:border-accent light:hover:border-accent-light">Sign in instead →</Link>
@@ -238,28 +238,28 @@ export default function Register() {
         <div>
           <Link to="/" className="no-underline">
             <Logo size="xl" />
-            <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog mt-4">Nairobi · Est. July 2025</p>
+            <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light mt-4">Nairobi · Est. July 2025</p>
             <p className="font-barlow-condensed font-bold text-sm tracking-widest uppercase text-accent light:text-accent-light mt-3">Move Together. Grow Together.</p>
           </Link>
         </div>
 
         <div className="flex flex-col gap-0.5">
           {BENEFITS.map((b) => (
-            <div key={b.title} className="flex items-center gap-3.5 py-4 border-b border-white/5 last:border-b-0">
+            <div key={b.title} className="flex items-center gap-3.5 py-4 border-b border-white/5 light:border-black/5 last:border-b-0">
               <div className="w-9 h-9 bg-accent/10 light:bg-accent-light/10 border border-accent/20 light:border-accent-light/20 flex items-center justify-center text-accent light:text-accent-light flex-shrink-0 clip-angled-sm" role="img" aria-label={b.title}>
                 <span className="text-base">{b.icon}</span>
               </div>
               <div>
-                <strong className="text-chalk block text-base">{b.title}</strong>
+                <strong className="text-chalk light:text-chalk-light block text-base">{b.title}</strong>
                 {b.desc}
               </div>
             </div>
           ))}
         </div>
 
-        <blockquote className="italic text-sm text-chalk/30 leading-loose border-l-2 border-accent light:border-accent-light pl-4">
+        <blockquote className="italic text-sm text-chalk/30 light:text-chalk-light/50 leading-loose border-l-2 border-accent light:border-accent-light pl-4">
           "Joining TRFC changed how I train. The community keeps you accountable and the energy is unmatched."
-          <cite className="not-italic block mt-1.5 font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog">— Amina K., Member since 2021</cite>
+          <cite className="not-italic block mt-1.5 font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light">— Amina K., Member since 2021</cite>
         </blockquote>
       </div>
 

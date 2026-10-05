@@ -11,8 +11,8 @@ const Badge: React.FC<BadgeProps> = ({ variant = 'primary', size = 'md', childre
   const baseStyles = 'inline-flex items-center justify-center font-barlow-condensed font-700 rounded-full transition-all duration-300';
 
   const variantStyles = {
-    primary: 'bg-fire text-chalk',
-    secondary: 'bg-smoke text-chalk border border-mist',
+    primary: 'bg-accent text-night light:bg-accent-light light:text-night-light',
+    secondary: 'bg-smoke light:bg-smoke-light text-chalk light:text-chalk-light border border-mist light:border-mist-light',
     success: 'bg-success-green text-chalk',
     warning: 'bg-warning-amber text-chalk',
     danger: 'bg-danger-red text-chalk',

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { AlertCircle, CheckCircle, Mail, MapPin, Phone, MessageCircle } from 'lucide-react'
 import { Button, FormInput } from '../components/ui'
 import { siteContact, siteSocial } from '../config/site'
+import { pageRoot, inputField } from '../utils/themeClasses'
 
 export default function Contact() {
   const { register, handleSubmit, reset, formState: { errors } } = useForm()
@@ -36,9 +37,9 @@ export default function Contact() {
   ]
 
   return (
-    <div className="min-h-screen bg-night text-chalk font-barlow">
+    <div className={pageRoot}>
       {/* ── Hero ── */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-ink via-ash to-night border-b border-white/5 px-[6%] py-16 md:py-24">
+      <section className="relative overflow-hidden bg-gradient-to-br from-ink via-ash to-night light:from-ink-light light:via-ash-light light:to-night-light border-b border-white/5 light:border-black/5 px-[6%] py-16 md:py-24">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 right-0 w-96 h-96 bg-accent light:bg-accent-light rounded-full blur-3xl" style={{ transform: 'translate(50%, -50%)' }} />
           <div className="absolute bottom-0 left-0 w-72 h-72 bg-accent light:bg-accent-light rounded-full blur-3xl" style={{ transform: 'translate(-30%, 30%)' }} />
@@ -48,10 +49,10 @@ export default function Contact() {
           <div className="inline-flex items-center gap-2 font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-accent light:text-accent-light mb-4 before:block before:w-5 before:h-0.5 before:bg-accent light:before:bg-accent-light">
             Get In Touch
           </div>
-          <h1 className="font-bebas text-clamp-lg leading-tight text-chalk mb-4 letter-spacing-tighter">
+          <h1 className="font-bebas text-clamp-lg leading-tight text-chalk light:text-chalk-light mb-4 letter-spacing-tighter">
             CONNECT<br />WITH US
           </h1>
-          <p className="font-barlow text-lg text-fog max-w-2xl leading-relaxed">
+          <p className="font-barlow text-lg text-fog light:text-fog-light max-w-2xl leading-relaxed">
             Have questions about TRFC events, shop products, or want to collaborate? Our community team is here to help. Reach out anytime — we'd love to hear from you.
           </p>
         </div>
@@ -64,17 +65,17 @@ export default function Contact() {
           {contactCards.map((contact, idx) => {
             const Icon = contact.icon
             return (
-              <div key={idx} className="bg-ash border border-white/10 p-6 hover:border-accent/30 light:hover:border-accent-light/30 transition-all duration-300 group">
+              <div key={idx} className="bg-ash light:bg-ash-light border border-white/10 light:border-black/10 p-6 hover:border-accent/30 light:hover:border-accent-light/30 transition-all duration-300 group">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 bg-accent/10 light:bg-accent-light/10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-accent/20 light:group-hover:bg-accent-light/20 transition-colors duration-300">
                     <Icon size={20} className="text-accent light:text-accent-light" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-chalk mb-2">
+                    <h3 className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-chalk light:text-chalk-light mb-2">
                       {contact.title}
                     </h3>
                     {contact.details.map((detail, i) => (
-                      <p key={i} className="text-sm text-fog mb-1">{detail}</p>
+                      <p key={i} className="text-sm text-fog light:text-fog-light mb-1">{detail}</p>
                     ))}
                   </div>
                 </div>
@@ -86,15 +87,15 @@ export default function Contact() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Contact Form */}
           <div>
-            <h2 className="font-bebas text-4xl text-chalk mb-2 letter-spacing-tighter">Send us a Message</h2>
-            <p className="text-fog mb-8">Fill out the form below and we'll get back to you as soon as possible.</p>
+            <h2 className="font-bebas text-4xl text-chalk light:text-chalk-light mb-2 letter-spacing-tighter">Send us a Message</h2>
+            <p className="text-fog light:text-fog-light mb-8">Fill out the form below and we'll get back to you as soon as possible.</p>
 
             {success && (
               <div className="flex items-start gap-3 bg-success-green/10 border border-success-green/30 p-4 mb-6 rounded-sm">
                 <CheckCircle size={20} className="text-success-green flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-success-green">Message Sent!</p>
-                  <p className="text-sm text-chalk/70 mt-1">Thank you for reaching out. We'll be in touch soon.</p>
+                  <p className="text-sm text-chalk/70 light:text-chalk-light/70 mt-1">Thank you for reaching out. We'll be in touch soon.</p>
                 </div>
               </div>
             )}
@@ -139,12 +140,12 @@ export default function Contact() {
               />
 
               <div>
-                <label className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-chalk/40 mb-2.5 block" htmlFor="contact-subject">
+                <label className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-chalk/60 light:text-chalk-light/60 mb-2.5 block" htmlFor="contact-subject">
                   Subject
                 </label>
                 <select
                   id="contact-subject"
-                  className="w-full bg-ash border border-white/10 text-chalk font-barlow text-base px-4 py-3 outline-none transition-all duration-200 focus:border-accent/50 light:focus:border-accent-light/50 focus:bg-ash/90 appearance-none cursor-pointer"
+                  className={`w-full font-barlow text-base px-4 py-3 transition-all duration-200 appearance-none cursor-pointer ${inputField}`}
                   {...register('subject', { required: 'Please select a subject' })}
                 >
                   <option value="">Choose a topic...</option>
@@ -160,13 +161,13 @@ export default function Contact() {
               </div>
 
               <div>
-                <label className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-chalk/40 mb-2.5 block" htmlFor="contact-message">
+                <label className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-chalk/60 light:text-chalk-light/60 mb-2.5 block" htmlFor="contact-message">
                   Message
                 </label>
                 <textarea
                   id="contact-message"
                   rows={5}
-                  className="w-full bg-ash border border-white/10 text-chalk font-barlow text-base px-4 py-3 outline-none transition-all duration-200 focus:border-accent/50 light:focus:border-accent-light/50 focus:bg-ash/90 resize-none"
+                  className={`w-full font-barlow text-base px-4 py-3 transition-all duration-200 resize-none ${inputField}`}
                   placeholder="Tell us what's on your mind..."
                   {...register('message', { required: 'Message is required', minLength: { value: 10, message: 'Minimum 10 characters' } })}
                 />
@@ -190,12 +191,12 @@ export default function Contact() {
 
           {/* Map or Additional Info */}
           <div className="space-y-8">
-            <div className="bg-ash border border-white/10 p-8 h-full flex flex-col justify-between">
+            <div className="bg-ash light:bg-ash-light border border-white/10 light:border-black/10 p-8 h-full flex flex-col justify-between">
               <div>
                 <h3 className="font-bebas text-3xl text-accent light:text-accent-light mb-4 letter-spacing-tighter">
                   Community First
                 </h3>
-                <p className="text-fog text-sm leading-relaxed mb-6">
+                <p className="text-fog light:text-fog-light text-sm leading-relaxed mb-6">
                   TRFC isn't just a running club — it's a community of passionate athletes, fitness enthusiasts, and friends who share a love for the sport. Whether you're a seasoned runner or just starting your fitness journey, we're here to support you.
                 </p>
               </div>
@@ -203,7 +204,7 @@ export default function Contact() {
               <div className="space-y-4">
                 <div>
                   <p className="font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-accent light:text-accent-light mb-2">Quick Links</p>
-                  <ul className="space-y-2 text-sm text-fog">
+                  <ul className="space-y-2 text-sm text-fog light:text-fog-light">
                     <li><a href="/events" className="hover:text-accent light:hover:text-accent-light transition-colors">Upcoming Events</a></li>
                     <li><a href="/shop" className="hover:text-accent light:hover:text-accent-light transition-colors">TRFC Shop</a></li>
                     <li><a href="/gallery" className="hover:text-accent light:hover:text-accent-light transition-colors">Community Gallery</a></li>
@@ -221,7 +222,7 @@ export default function Contact() {
                           href={s.href}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="w-10 h-10 bg-accent/10 light:bg-accent-light/10 hover:bg-accent light:hover:bg-accent-light hover:text-night transition-all duration-300 flex items-center justify-center text-sm font-bold"
+                          className="w-10 h-10 bg-accent/10 light:bg-accent-light/10 hover:bg-accent light:hover:bg-accent-light hover:text-night light:hover:text-night-light transition-all duration-300 flex items-center justify-center text-sm font-bold"
                         >
                           {s.label.charAt(0)}
                         </a>

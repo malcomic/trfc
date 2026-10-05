@@ -57,7 +57,7 @@ export default function ProductCard({ product, variant = 'full' }: { product: Pr
 
         {prod.category && (
           <span className="absolute top-3 right-3 flex items-center gap-1 bg-black/70 light:bg-black/80 backdrop-blur-sm text-fog light:text-gray-300 font-barlow-condensed font-bold text-[9px] tracking-[2px] uppercase px-2 py-1 border border-white/10 z-10">
-            <Tag size={8} className="text-accent light:text-accent-light" />
+            <Tag size={8} className="text-accent light:text-white" />
             {prod.category}
           </span>
         )}

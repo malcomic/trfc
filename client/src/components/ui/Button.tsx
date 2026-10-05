@@ -23,7 +23,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     // Base styles
     const baseStyles =
-      'font-barlow-condensed font-700 transition-all duration-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-night focus:ring-fire disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2';
+      'font-barlow-condensed font-700 transition-all duration-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-night light:focus:ring-offset-night-light focus:ring-accent light:focus:ring-accent-light disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2';
 
     // Size styles
     const sizeStyles = {
@@ -35,13 +35,13 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     // Variant styles
     const variantStyles = {
       primary:
-        'bg-fire text-chalk hover:bg-ember hover:scale-[1.02] active:scale-[0.98] shadow-lg hover:shadow-lg',
+        'bg-accent text-night light:bg-accent-light light:text-night-light hover:bg-chalk/85 light:hover:bg-chalk-light/85 uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-white/10 light:shadow-black/20',
       secondary:
-        'bg-smoke border border-mist text-chalk hover:bg-mist hover:scale-[1.02] active:scale-[0.98] transition-colors',
+        'bg-smoke light:bg-smoke-light border border-mist light:border-mist-light text-chalk light:text-chalk-light hover:bg-mist light:hover:bg-mist-light hover:scale-[1.02] active:scale-[0.98] transition-colors',
       outline:
-        'border-2 border-fire text-fire hover:bg-fire/10 hover:scale-[1.02] active:scale-[0.98] transition-colors',
+        'border-2 border-accent light:border-accent-light text-accent light:text-accent-light hover:bg-accent/10 light:hover:bg-accent-light/10 hover:scale-[1.02] active:scale-[0.98] transition-colors',
       ghost:
-        'text-chalk hover:text-fire transition-colors hover:scale-[1.02] active:scale-[0.98]',
+        'text-chalk light:text-chalk-light hover:text-fog light:hover:text-fog-light transition-colors hover:scale-[1.02] active:scale-[0.98]',
     };
 
     const widthStyle = fullWidth ? 'w-full' : '';

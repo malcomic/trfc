@@ -172,12 +172,12 @@ export default function Gallery() {
         >
           {Array(4).fill(null).map((_, i) => (
             <span key={i} className="flex items-center">
-              <span className="font-bebas text-xs tracking-widest text-white px-9">TRFC COMMUNITY</span>
-              <span className="font-bebas text-xs tracking-widest text-white/40 px-9">✦</span>
-              <span className="font-bebas text-xs tracking-widest text-white px-9">SWEAT · RACE · CELEBRATE</span>
-              <span className="font-bebas text-xs tracking-widest text-white/40 px-9">✦</span>
-              <span className="font-bebas text-xs tracking-widest text-white px-9">NAIROBI RUNS</span>
-              <span className="font-bebas text-xs tracking-widest text-white/40 px-9">✦</span>
+              <span className="font-bebas text-xs tracking-widest text-night light:text-night-light px-9">TRFC COMMUNITY</span>
+              <span className="font-bebas text-xs tracking-widest text-night/40 light:text-night-light/40 px-9">✦</span>
+              <span className="font-bebas text-xs tracking-widest text-night light:text-night-light px-9">SWEAT · RACE · CELEBRATE</span>
+              <span className="font-bebas text-xs tracking-widest text-night/40 light:text-night-light/40 px-9">✦</span>
+              <span className="font-bebas text-xs tracking-widest text-night light:text-night-light px-9">NAIROBI RUNS</span>
+              <span className="font-bebas text-xs tracking-widest text-night/40 light:text-night-light/40 px-9">✦</span>
             </span>
           ))}
         </div>
