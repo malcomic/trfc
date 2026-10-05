@@ -82,7 +82,8 @@ export default function Home() {
           {heroSlides.length > 0 && <HeroCarousel slides={heroSlides} />}
         </div>
 
-        <div className="absolute inset-0 bg-night/80 light:bg-white/85 pointer-events-none" />
+        <div className="absolute inset-0 hidden md:block bg-gradient-to-r from-night from-0% via-night/80 via-35% to-transparent to-70% light:from-white light:via-white/80 light:to-transparent pointer-events-none" />
+        <div className="absolute inset-0 md:hidden bg-night/70 light:bg-white/80 pointer-events-none" />
 
         <div className="absolute left-[6%] top-[15%] bottom-[15%] w-0.5 bg-gradient-to-b from-transparent via-accent light:via-accent-light to-transparent opacity-60 z-10" />
 
