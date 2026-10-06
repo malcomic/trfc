@@ -16,6 +16,8 @@ import {
 } from '../utils/paymentLogger.js'
 import { sendTicketBatchEmail } from '../utils/ticketEmail.js'
 import { sendMedalBatchEmail } from '../utils/medalEmail.js'
+import { sendOrderConfirmationEmail } from '../utils/orderEmail.js'
+import { decrementOrderStock } from '../utils/orderStock.js'
 import {
   validatePaymentReference,
   markEntitiesFailedByCheckoutId,
@@ -24,19 +26,6 @@ import {
 } from '../utils/paymentValidation.js'
 import { getLocalPaymentStatus, toStatusResponse } from '../utils/paymentStatus.js'
 import { activateSignup, notifyPaidSignupsByCheckoutId } from '../utils/signupActivation.js'
-
-async function decrementOrderStock(orderId: string) {
-  const items = await query(
-    'SELECT product_id, quantity FROM order_items WHERE order_id = $1',
-    [orderId]
-  )
-  for (const item of items.rows) {
-    await query(
-      'UPDATE products SET stock = GREATEST(0, stock - $1) WHERE id = $2',
-      [item.quantity, item.product_id]
-    )
-  }
-}
 
 async function maybeSendTicketEmail(checkoutRequestId: string) {
   const paidTickets = await query(
@@ -66,6 +55,20 @@ async function maybeSendMedalEmail(checkoutRequestId: string) {
       console.error(
         `Error sending medal batch email for ${checkoutRequestId}: ${error.message}`
       )
+    })
+  }
+}
+
+async function maybeSendOrderEmails(checkoutRequestId: string) {
+  const paidOrders = await query(
+    `SELECT id FROM orders
+     WHERE checkout_request_id = $1 AND payment_status = 'paid'
+       AND email IS NOT NULL AND confirmation_email_sent_at IS NULL`,
+    [checkoutRequestId]
+  )
+  for (const order of paidOrders.rows) {
+    sendOrderConfirmationEmail(order.id).catch((error: Error) => {
+      console.error(`Error sending order confirmation email for ${order.id}: ${error.message}`)
     })
   }
 }
@@ -106,7 +109,8 @@ async function applyPaymentFromAccountRef(
 
   if (type === 'ORDER') {
     const result = await query(
-      'UPDATE orders SET payment_status = $1, mpesa_receipt = $2, checkout_request_id = $3 WHERE id = $4',
+      `UPDATE orders SET payment_status = $1, mpesa_receipt = $2, checkout_request_id = $3
+       WHERE id = $4 AND payment_status = 'pending'`,
       ['paid', mpesaReceipt, checkoutRequestId, refId]
     )
     if ((result.rowCount || 0) > 0) {
@@ -381,6 +385,7 @@ export async function handleCallback(req: Request, res: Response) {
     if (updateCount > 0) {
       await maybeSendTicketEmail(checkoutRequestId)
       await maybeSendMedalEmail(checkoutRequestId)
+      await maybeSendOrderEmails(checkoutRequestId)
       await notifyPaidSignupsByCheckoutId(checkoutRequestId)
     }
 
@@ -447,6 +452,7 @@ export async function queryPaymentStatus(req: Request, res: Response) {
         if (updateCount > 0) {
           await maybeSendTicketEmail(checkoutRequestId)
           await maybeSendMedalEmail(checkoutRequestId)
+          await maybeSendOrderEmails(checkoutRequestId)
           await notifyPaidSignupsByCheckoutId(checkoutRequestId)
         }
 

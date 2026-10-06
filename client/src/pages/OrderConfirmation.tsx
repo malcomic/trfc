@@ -14,6 +14,7 @@ interface Order {
   status?: string
   mpesa_receipt: string | null
   phone?: string
+  email?: string | null
   delivery_address?: string
   checkout_request_id?: string
   created_at: string
@@ -23,7 +24,8 @@ export default function OrderConfirmation() {
   const { orderId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const phoneFromState = (location.state as { phone?: string })?.phone
+  const navState = (location.state as { phone?: string; email?: string } | null) ?? {}
+  const phoneFromState = navState.phone
   const [phone, setPhone] = useState(phoneFromState || '')
   const [phonePrompt, setPhonePrompt] = useState(!phoneFromState)
   const [order, setOrder] = useState<Order | null>(null)
@@ -149,6 +151,8 @@ export default function OrderConfirmation() {
     )
   }
 
+  const confirmationEmail = order.email || navState.email
+
   return (
     <div className={`${pageRoot} py-12 px-6`}>
       <div className="max-w-2xl mx-auto">
@@ -159,7 +163,9 @@ export default function OrderConfirmation() {
           </div>
           <p className="text-fog light:text-fog-light text-sm">
             {paymentStatus === 'paid'
-              ? 'Your payment has been received and your order is being processed.'
+              ? confirmationEmail
+                ? `Your payment has been received. A confirmation was sent to ${confirmationEmail}.`
+                : 'Your payment has been received and your order is being processed.'
               : 'Complete the M-Pesa payment on your phone to confirm your order.'}
           </p>
         </div>
@@ -176,6 +182,7 @@ export default function OrderConfirmation() {
           <div className={`${cardSurface} p-6 mb-6 text-sm`}>
             <h2 className="font-barlow-condensed font-bold text-accent light:text-accent-light tracking-widest uppercase mb-4">Delivery</h2>
             {order.phone && <p className="mb-2"><span className="text-fog light:text-fog-light">Phone: </span>{order.phone}</p>}
+            {order.email && <p className="mb-2 break-all"><span className="text-fog light:text-fog-light">Email: </span>{order.email}</p>}
             <p><span className="text-fog light:text-fog-light">Address: </span>{order.delivery_address}</p>
           </div>
         )}

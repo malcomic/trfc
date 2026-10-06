@@ -374,6 +374,16 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       CREATE INDEX IF NOT EXISTS idx_order_items_flash_sale ON order_items(flash_sale_id);
     `,
   },
+  {
+    name: '017_order_email',
+    sql: `
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS email VARCHAR(150);
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS confirmation_email_sent_at TIMESTAMPTZ;
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS stock_decremented_at TIMESTAMPTZ;
+      UPDATE orders SET stock_decremented_at = created_at
+        WHERE payment_status = 'paid' AND stock_decremented_at IS NULL;
+    `,
+  },
 ]
 
 export async function runMigrations() {

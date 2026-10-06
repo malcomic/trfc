@@ -20,6 +20,7 @@ interface Order {
   mpesa_receipt: string | null
   checkout_request_id: string | null
   phone?: string
+  email?: string | null
   delivery_address?: string
   created_at: string
   items?: OrderItem[]
@@ -141,7 +142,7 @@ export default function AdminOrders() {
           </div>
         }
         desktop={
-          <table className="w-full min-w-[720px]">
+          <table className="w-full min-w-[880px]">
             <thead className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <tr>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Order ID</th>
@@ -149,6 +150,7 @@ export default function AdminOrders() {
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Payment Status</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">M-Pesa Receipt</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Phone</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Email</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Date</th>
                 <th className="px-6 py-3 text-center text-sm font-semibold text-gray-900 dark:text-gray-100">Actions</th>
               </tr>
@@ -168,6 +170,7 @@ export default function AdminOrders() {
                   </td>
                   <td className="px-6 py-4 font-mono text-sm">{order.mpesa_receipt || '—'}</td>
                   <td className="px-6 py-4">{order.phone || '—'}</td>
+                  <td className="px-6 py-4 text-sm break-all">{order.email || '—'}</td>
                   <td className="px-6 py-4 text-sm">{new Date(order.created_at).toLocaleDateString()}</td>
                   <td className="px-6 py-4 text-center">
                     <button onClick={() => openModal(order)} className="inline-flex items-center gap-2 px-3 py-2 min-h-[44px] text-primary dark:text-primary-dark hover:bg-primary/10 rounded transition" title="View details">
@@ -199,6 +202,7 @@ export default function AdminOrders() {
               }
             />
             <AdminMobileCardRow label="Phone" value={order.phone || '—'} />
+            <AdminMobileCardRow label="Email" value={order.email || '—'} />
             <AdminMobileCardRow label="Date" value={new Date(order.created_at).toLocaleDateString()} />
           </AdminMobileCard>
         ))}
@@ -246,6 +250,10 @@ export default function AdminOrders() {
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">Phone Number</p>
                     <p className="font-semibold">{selectedOrder.phone || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Email</p>
+                    <p className="font-semibold break-all">{selectedOrder.email || '—'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">Delivery Address</p>

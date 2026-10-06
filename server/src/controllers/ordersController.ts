@@ -3,9 +3,13 @@ import { query, getClient } from '../config/db.js';
 import { phonesMatch } from '../utils/phone.js';
 import { getGrandTotal } from '../utils/shipping.js';
 import { resolveFlashAccess } from '../utils/flashAccess.js';
+import { decrementOrderStock } from '../utils/orderStock.js';
+import { sendOrderConfirmationEmail } from '../utils/orderEmail.js';
 import { FLASH_SOLD_UNITS_SQL } from './flashSalesController.js';
 
 type DbClient = Awaited<ReturnType<typeof getClient>>;
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 class OrderValidationError extends Error {
   constructor(public status: number, message: string) {
@@ -120,10 +124,15 @@ export const createOrder = async (req: Request, res: Response) => {
   const client = await getClient();
   try {
     const { items, total_amount, phone, delivery_address } = req.body;
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
     const userId = req.user?.id ?? null;
 
     if (!phone) {
       res.status(400).json({ error: 'Phone number is required' });
+      return;
+    }
+    if (!EMAIL_PATTERN.test(email)) {
+      res.status(400).json({ error: 'A valid email is required for your order confirmation' });
       return;
     }
     if (!items?.length) {
@@ -182,8 +191,8 @@ export const createOrder = async (req: Request, res: Response) => {
     }
 
     const orderResult = await client.query(
-      'INSERT INTO orders (user_id, total_amount, phone, delivery_address) VALUES ($1, $2, $3, $4) RETURNING *',
-      [userId, expectedTotal, phone, delivery_address]
+      'INSERT INTO orders (user_id, total_amount, phone, delivery_address, email) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [userId, expectedTotal, phone, delivery_address, email]
     );
 
     const orderId = orderResult.rows[0].id;
@@ -220,6 +229,12 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Order not found' });
+    }
+    if (payment_status === 'paid') {
+      await decrementOrderStock(id);
+      sendOrderConfirmationEmail(id).catch((error: Error) => {
+        console.error(`Error sending order confirmation email for ${id}: ${error.message}`);
+      });
     }
     const items = await fetchOrderItems(id);
     res.json({ ...result.rows[0], items });

@@ -388,6 +388,171 @@ This is an automated message — please do not reply.
   `.trim()
 }
 
+export interface OrderEmailItem {
+  name: string
+  quantity: number
+  unitPrice: number
+  isFlash: boolean
+}
+
+export interface OrderEmailData {
+  userEmail: string
+  orderNumber: string
+  orderDate: string
+  items: OrderEmailItem[]
+  totalPaid: number
+  mpesaReceipt?: string | null
+  phone?: string | null
+  deliveryAddress?: string | null
+  confirmationUrl: string
+}
+
+function formatKes(value: number): string {
+  return `KES ${Math.round(value).toLocaleString('en-KE')}`
+}
+
+export function buildOrderConfirmationEmailHTML(data: OrderEmailData): string {
+  const subtotal = data.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
+  const deliveryFee = Math.max(0, data.totalPaid - subtotal)
+  const greetingName = escapeHtml(data.userEmail.split('@')[0] || 'there')
+  const itemRows = data.items
+    .map(
+      (item) => `
+        <tr>
+          <td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;">
+            ${escapeHtml(item.name)}
+            ${item.isFlash ? '<span style="display:inline-block;margin-left:6px;padding:2px 6px;background:#fef3c7;color:#92400e;font-size:11px;font-weight:700;border-radius:3px;">Flash price</span>' : ''}
+            <div style="font-size:12px;color:#6b7280;margin-top:2px;">${item.quantity} × ${formatKes(item.unitPrice)}</div>
+          </td>
+          <td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;text-align:right;white-space:nowrap;">
+            ${formatKes(item.unitPrice * item.quantity)}
+          </td>
+        </tr>`
+    )
+    .join('')
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order confirmation</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#111827;">
+  <div style="max-width:600px;margin:24px auto;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;">
+    <div style="background:#0a0a0a;color:#ffffff;padding:28px 24px;text-align:center;">
+      <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#f59e0b;">TRFC Shop</p>
+      <h1 style="margin:0;font-size:24px;font-weight:700;">Order confirmed</h1>
+      <p style="margin:8px 0 0;font-size:14px;color:#d1d5db;">Order #${escapeHtml(data.orderNumber)} · ${escapeHtml(data.orderDate)}</p>
+    </div>
+
+    <div style="padding:28px 24px;">
+      <p style="margin:0 0 16px;font-size:16px;">Hi <strong>${greetingName}</strong>,</p>
+      <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#374151;">
+        Thanks for your purchase — we've received your payment and your order is being prepared.
+        It will be delivered within 2-3 business days after payment confirmation.
+      </p>
+
+      <h2 style="margin:0 0 8px;font-size:16px;">Your items</h2>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 12px;">
+        ${itemRows}
+        ${
+          deliveryFee > 0
+            ? `<tr>
+          <td style="padding:10px 0;font-size:14px;color:#6b7280;">Delivery</td>
+          <td style="padding:10px 0;font-size:14px;text-align:right;color:#6b7280;">${formatKes(deliveryFee)}</td>
+        </tr>`
+            : ''
+        }
+        <tr>
+          <td style="padding:12px 0 0;font-size:16px;font-weight:700;">Total paid</td>
+          <td style="padding:12px 0 0;font-size:16px;font-weight:700;text-align:right;color:#b45309;">${formatKes(data.totalPaid)}</td>
+        </tr>
+      </table>
+
+      <div style="background:#f9fafb;border-left:4px solid #f59e0b;padding:16px;margin:20px 0;border-radius:4px;">
+        <h2 style="margin:0 0 12px;font-size:16px;">Payment &amp; delivery</h2>
+        ${
+          data.mpesaReceipt
+            ? `<p style="margin:6px 0;font-size:14px;"><span style="color:#6b7280;">M-Pesa receipt:</span> <strong>${escapeHtml(data.mpesaReceipt)}</strong></p>`
+            : ''
+        }
+        ${
+          data.phone
+            ? `<p style="margin:6px 0;font-size:14px;"><span style="color:#6b7280;">Phone:</span> ${escapeHtml(data.phone)}</p>`
+            : ''
+        }
+        ${
+          data.deliveryAddress
+            ? `<p style="margin:6px 0;font-size:14px;"><span style="color:#6b7280;">Deliver to:</span> ${escapeHtml(data.deliveryAddress)}</p>`
+            : ''
+        }
+      </div>
+
+      <p style="text-align:center;margin:0 0 8px;">
+        <a href="${escapeHtml(data.confirmationUrl)}"
+           style="display:inline-block;background:#f59e0b;color:#111827;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:700;font-size:14px;">
+          View your order
+        </a>
+      </p>
+      <p style="text-align:center;font-size:12px;color:#6b7280;margin:0 0 16px;">
+        You'll be asked for the phone number used at checkout.
+      </p>
+    </div>
+
+    <div style="background:#f9fafb;padding:20px 24px;text-align:center;font-size:12px;color:#6b7280;border-top:1px solid #e5e7eb;">
+      <p style="margin:0 0 8px;">
+        Questions? Email <a href="mailto:${escapeHtml(config.contact.email)}" style="color:#b45309;">${escapeHtml(config.contact.email)}</a>
+        or call <a href="tel:${escapeHtml(config.contact.phone.replace(/\s+/g, ''))}" style="color:#b45309;">${escapeHtml(config.contact.phone)}</a>
+      </p>
+      <p style="margin:0 0 8px;">
+        <a href="${escapeHtml(config.frontendUrl)}" style="color:#b45309;">Visit the TRFC website</a>
+      </p>
+      <p style="margin:12px 0 0;color:#9ca3af;">This is an automated message — please do not reply to this email.</p>
+      <p style="margin:8px 0 0;">© ${new Date().getFullYear()} TRFC — Thika Road Fitness Community</p>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim()
+}
+
+export function buildOrderConfirmationEmailText(data: OrderEmailData): string {
+  const subtotal = data.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
+  const deliveryFee = Math.max(0, data.totalPaid - subtotal)
+  const itemLines = data.items
+    .map(
+      (item) =>
+        `  - ${item.name}${item.isFlash ? ' (flash price)' : ''}: ${item.quantity} x ${formatKes(item.unitPrice)} = ${formatKes(item.unitPrice * item.quantity)}`
+    )
+    .join('\n')
+
+  return `
+TRFC Shop — Order confirmed
+Order #${data.orderNumber} · ${data.orderDate}
+
+Hi ${data.userEmail.split('@')[0] || 'there'},
+
+Thanks for your purchase — we've received your payment and your order is being prepared.
+It will be delivered within 2-3 business days after payment confirmation.
+
+YOUR ITEMS
+${itemLines}
+${deliveryFee > 0 ? `Delivery: ${formatKes(deliveryFee)}\n` : ''}Total paid: ${formatKes(data.totalPaid)}
+
+PAYMENT & DELIVERY
+${data.mpesaReceipt ? `M-Pesa receipt: ${data.mpesaReceipt}\n` : ''}${data.phone ? `Phone: ${data.phone}\n` : ''}${data.deliveryAddress ? `Deliver to: ${data.deliveryAddress}\n` : ''}
+View your order: ${data.confirmationUrl}
+
+Support: ${config.contact.email} | ${config.contact.phone}
+Website: ${config.frontendUrl}
+
+This is an automated message — please do not reply.
+© ${new Date().getFullYear()} TRFC — Thika Road Fitness Community
+  `.trim()
+}
+
 export default {
   buildTicketEmailHTML,
   buildTicketEmailText,
@@ -395,4 +560,6 @@ export default {
   buildTicketBatchEmailText,
   buildMedalBatchEmailHTML,
   buildMedalBatchEmailText,
+  buildOrderConfirmationEmailHTML,
+  buildOrderConfirmationEmailText,
 }

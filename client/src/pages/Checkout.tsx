@@ -11,9 +11,17 @@ import { AlertCircle, ShoppingCart, Truck, ArrowLeft } from 'lucide-react'
 import { Button, FormInput, Card } from '../components/ui'
 import { pageRoot, inputField } from '../utils/themeClasses'
 import { trackInitiateCheckout } from '../utils/tiktokPixel'
+import { useAuth } from '../context/AuthContext'
 
 export default function Checkout() {
-  const { register, handleSubmit, formState: { errors } } = useForm()
+  const { user } = useAuth()
+  const { register, handleSubmit, setValue, getValues, formState: { errors } } = useForm({
+    defaultValues: { email: user?.email ?? '', phone: '', address: '' },
+  })
+
+  useEffect(() => {
+    if (user?.email && !getValues('email')) setValue('email', user.email)
+  }, [user?.email, getValues, setValue])
   const navigate = useNavigate()
   const { items, getTotal, clearCart, removeItem } = useCart()
   const grandTotal = getGrandTotal(getTotal())
@@ -30,6 +38,7 @@ export default function Checkout() {
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [checkoutRequestId, setCheckoutRequestId] = useState('')
   const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
   const [orderId, setOrderId] = useState('')
 
   useEffect(() => {
@@ -76,6 +85,8 @@ export default function Checkout() {
       setError('')
       setFlashRejected(false)
       setPhone(data.phone)
+      const normalizedEmail = data.email.trim().toLowerCase()
+      setEmail(normalizedEmail)
 
       const orderItems = items.map((item) => ({
         product_id: item.product.id,
@@ -88,6 +99,7 @@ export default function Checkout() {
         items: orderItems,
         total_amount: grandTotal,
         phone: data.phone,
+        email: normalizedEmail,
         delivery_address: data.address,
         ...(hasFlashItems ? { flash_token: loadFlashAccess()?.token } : {}),
       })
@@ -122,7 +134,7 @@ export default function Checkout() {
   const handlePaymentModalClose = () => {
     setShowPaymentModal(false)
     if (orderId) {
-      navigate(`/order-confirmation/${orderId}`, { state: { phone } })
+      navigate(`/order-confirmation/${orderId}`, { state: { phone, email } })
     }
   }
 
@@ -173,9 +185,26 @@ export default function Checkout() {
               <Card>
                 <Card.Body>
                   <h2 className="font-bebas text-2xl text-chalk light:text-chalk-light mb-6 letter-spacing-tighter">
-                    DELIVERY <span className="text-accent light:text-accent-light">INFO</span>
+                    CONTACT <span className="text-accent light:text-accent-light">AND DELIVERY</span>
                   </h2>
                   <div className="space-y-5">
+                    <FormInput
+                      label="Email Address"
+                      id="checkout-email"
+                      type="email"
+                      autoComplete="email"
+                      placeholder="you@example.com"
+                      helperText="We'll send your order confirmation here"
+                      error={errors.email ? (errors.email.message as string) : undefined}
+                      {...register('email', {
+                        required: 'Email is required for your order confirmation',
+                        pattern: {
+                          value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                          message: 'Enter a valid email address',
+                        },
+                      })}
+                    />
+
                     <FormInput
                       label="Phone Number"
                       id="checkout-phone"

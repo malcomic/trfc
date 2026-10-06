@@ -15,6 +15,7 @@ export const createOrder = async (data: {
   items: any[];
   total_amount: number;
   phone: string;
+  email: string;
   delivery_address: string;
   flash_token?: string;
 }) => {

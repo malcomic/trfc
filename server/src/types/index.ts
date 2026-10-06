@@ -88,6 +88,9 @@ export interface Order {
   mpesa_receipt?: string;
   phone?: string;
   delivery_address?: string;
+  email?: string | null;
+  confirmation_email_sent_at?: Date | null;
+  stock_decremented_at?: Date | null;
   created_at: Date;
 }
 
