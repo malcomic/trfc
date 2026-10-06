@@ -17,6 +17,7 @@ export interface TicketBatchEmailData {
   paymentReference: string
   tickets: TicketEmailItem[]
   confirmationUrl: string
+  flashSalesUrl?: string
 }
 
 function escapeHtml(value: string): string {
@@ -41,6 +42,7 @@ export interface EmailTemplateData {
   eventPrice: number
   qrCodeBase64?: string
   paymentReference?: string
+  flashSalesUrl?: string
 }
 
 export function buildTicketEmailHTML(data: EmailTemplateData): string {
@@ -58,6 +60,7 @@ export function buildTicketEmailHTML(data: EmailTemplateData): string {
     confirmationUrl: `${config.frontendUrl}/ticket-confirmation/${encodeURIComponent(
       data.paymentReference || data.ticketId
     )}?email=${encodeURIComponent(data.userEmail)}`,
+    flashSalesUrl: data.flashSalesUrl,
   })
 }
 
@@ -76,6 +79,7 @@ export function buildTicketEmailText(data: EmailTemplateData): string {
     confirmationUrl: `${config.frontendUrl}/ticket-confirmation/${encodeURIComponent(
       data.paymentReference || data.ticketId
     )}?email=${encodeURIComponent(data.userEmail)}`,
+    flashSalesUrl: data.flashSalesUrl,
   })
 }
 
@@ -163,6 +167,15 @@ export function buildTicketBatchEmailHTML(data: TicketBatchEmailData): string {
       <p style="text-align:center;font-size:12px;color:#6b7280;margin:0 0 16px;">
         Reopen this page anytime with your payment reference and the email used at checkout.
       </p>
+      ${data.flashSalesUrl ? `
+      <div style="background:#0a0a0a;color:#ffffff;border-radius:6px;padding:18px;margin:8px 0 0;text-align:center;">
+        <p style="margin:0 0 4px;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#f59e0b;">Ticket-holder exclusive</p>
+        <p style="margin:0 0 14px;font-size:15px;">Flash deals on official TRFC merch — available for 72 hours.</p>
+        <a href="${escapeHtml(data.flashSalesUrl)}"
+           style="display:inline-block;background:#f59e0b;color:#111827;padding:10px 22px;text-decoration:none;border-radius:6px;font-weight:700;font-size:14px;">
+          See your flash deals
+        </a>
+      </div>` : ''}
     </div>
 
     <div style="background:#f9fafb;padding:20px 24px;text-align:center;font-size:12px;color:#6b7280;border-top:1px solid #e5e7eb;">
@@ -223,7 +236,10 @@ SEE YOU THERE
 ${data.eventTitle} — ${formattedDate} at ${formattedTime}, ${data.eventLocation}
 
 View your tickets: ${data.confirmationUrl}
-
+${data.flashSalesUrl ? `
+TICKET-HOLDER FLASH DEALS (available for 72 hours)
+${data.flashSalesUrl}
+` : ''}
 Support: ${config.contact.email} | ${config.contact.phone}
 Website: ${config.frontendUrl}
 

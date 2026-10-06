@@ -40,6 +40,13 @@ export default function Medals() {
       <section className="relative overflow-hidden bg-ink light:bg-ink-light border-b border-white/5 light:border-black/8 px-[6%] py-16 md:py-20">
         <div className="absolute left-0 top-0 bottom-0 w-0.75 bg-gradient-to-b from-transparent via-accent light:via-accent-light to-transparent opacity-70" />
         <div className="max-w-5xl mx-auto relative z-1">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light mb-4">
+            <Link to="/shop" className="no-underline text-fog light:text-fog-light hover:text-accent light:hover:text-accent-light transition-colors">
+              Shop
+            </Link>
+            <ChevronRight size={12} />
+            <span className="text-accent light:text-accent-light">Medals</span>
+          </nav>
           <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light flex items-center gap-2 mb-3.5 before:w-5 before:h-0.5 before:bg-accent light:before:bg-accent-light">
             Challenge Medals
           </div>

@@ -22,6 +22,8 @@ import {
   updatePartnershipStatus,
 } from '../controllers/partnershipsController.js'
 import { getAdminSponsorshipTiers } from '../controllers/sponsorshipTiersController.js'
+import { getAdminProductCategories } from '../controllers/productCategoriesController.js'
+import { getAdminFlashSales } from '../controllers/flashSalesController.js'
 import {
   getTypography,
   updateTypography,
@@ -39,6 +41,8 @@ router.post('/events/:eventId/ticket-types', createEventTicketType)
 router.put('/events/:eventId/ticket-types/:typeId', updateEventTicketType)
 router.delete('/events/:eventId/ticket-types/:typeId', deleteEventTicketType)
 router.get('/products', getAdminProducts)
+router.get('/product-categories', getAdminProductCategories)
+router.get('/flash-sales', getAdminFlashSales)
 router.get('/equipment/hire', getAdminEquipmentHire)
 router.get('/tickets', getAdminTickets)
 router.get('/medals', getAdminMedals)

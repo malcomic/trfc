@@ -62,9 +62,22 @@ export interface Product {
   price: number;
   stock: number;
   category: string;
+  category_id?: string | null;
   image_url?: string;
   is_active: boolean;
   created_at: Date;
+}
+
+export interface ProductCategory {
+  id: string;
+  slug: string;
+  name: string;
+  description?: string | null;
+  image_url?: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: Date;
+  product_count?: number;
 }
 
 export interface Order {

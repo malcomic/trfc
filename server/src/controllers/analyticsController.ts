@@ -333,14 +333,15 @@ export const analyticsController = {
         `SELECT
           p.id,
           p.name,
-          p.category,
+          COALESCE(pc.name, p.category) as category,
           COALESCE(SUM(oi.unit_price * oi.quantity), 0) as revenue,
           COALESCE(SUM(oi.quantity), 0) as quantity_sold,
           MAX(o.created_at) as last_sold
         FROM products p
+        LEFT JOIN product_categories pc ON pc.id = p.category_id
         LEFT JOIN order_items oi ON p.id = oi.product_id
         LEFT JOIN orders o ON oi.order_id = o.id AND o.payment_status = $1${d.clause}
-        GROUP BY p.id, p.name, p.category
+        GROUP BY p.id, p.name, COALESCE(pc.name, p.category)
         ORDER BY revenue DESC
         LIMIT $${d.nextIndex}`,
         ['paid', ...d.params, limit]
@@ -369,14 +370,15 @@ export const analyticsController = {
 
       const result = await pool.query(
         `SELECT
-          p.category,
+          COALESCE(pc.name, p.category) as category,
           COALESCE(SUM(oi.unit_price * oi.quantity), 0) as revenue,
           COALESCE(SUM(oi.quantity), 0) as items_sold,
           COUNT(DISTINCT o.id) as orders
         FROM products p
+        LEFT JOIN product_categories pc ON pc.id = p.category_id
         LEFT JOIN order_items oi ON p.id = oi.product_id
         LEFT JOIN orders o ON oi.order_id = o.id AND o.payment_status = $1${d.clause}
-        GROUP BY p.category
+        GROUP BY COALESCE(pc.name, p.category)
         ORDER BY revenue DESC`,
         ['paid', ...d.params]
       )

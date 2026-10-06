@@ -1,169 +1,114 @@
-import { useEffect, useState, useRef, useMemo } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import { useCart } from '../store/cartStore'
-import { getProducts } from '../api/products'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { getProductCategories } from '../api/productCategories'
 import { getMedals, type MedalTier } from '../api/medals'
-import ProductCard from '../components/ProductCard'
-import { Product } from '../types'
-import { ShoppingCart, AlertCircle, SlidersHorizontal, Check, ChevronDown, Award } from 'lucide-react'
-import { pageRoot, cardSurface } from '../utils/themeClasses'
+import { ProductCategory } from '../types'
+import { AlertCircle, Award, ChevronRight } from 'lucide-react'
+import { pageRoot } from '../utils/themeClasses'
 import { getSafeImageUrl } from '../utils/imageUrl'
 
-interface Toast { id: number; name: string }
-
-const CATEGORIES = ['All', 'Apparel', 'Accessories', 'Footwear', 'Gear', 'Medals'] as const
-type ShopCategory = (typeof CATEGORIES)[number]
-
-const SORT_OPTIONS = ['Featured', 'Price: Low to High', 'Price: High to Low', 'Newest']
-
-const PRODUCT_FALLBACK =
-  'https://images.unsplash.com/photo-1556906781-9a412961a28d?w=500&q=80'
+const CATEGORY_FALLBACK =
+  'https://images.unsplash.com/photo-1556906781-9a412961a28d?w=800&q=80'
 const MEDAL_FALLBACK =
   'https://images.unsplash.com/photo-1461896836934-ffe607ba6851?w=800&q=80'
 
-type CatalogItem =
-  | { kind: 'product'; product: Product; sortPrice: number; createdAt: number }
-  | { kind: 'medal'; tier: MedalTier; sortPrice: number; createdAt: number }
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
 
-function parseCategory(value: string | null): ShopCategory {
-  if (!value) return 'All'
-  const match = CATEGORIES.find((c) => c.toLowerCase() === value.toLowerCase())
-  return match ?? 'All'
+interface CategoryTileProps {
+  to: string
+  name: string
+  imageUrl: string
+  fallback: string
+  countLabel: string
+  description?: string | null
+  badge?: React.ReactNode
+}
+
+function CategoryTile({ to, name, imageUrl, fallback, countLabel, description, badge }: CategoryTileProps) {
+  return (
+    <Link
+      to={to}
+      className="group relative block no-underline overflow-hidden bg-ash light:bg-ash-light border border-white/8 light:border-black/10 hover:border-accent/40 light:hover:border-accent-light/40 transition-all duration-250 hover:-translate-y-0.75"
+    >
+      <div className="relative aspect-[4/3] overflow-hidden bg-smoke light:bg-smoke-light">
+        <img
+          src={imageUrl}
+          alt={name}
+          className="w-full h-full object-cover brightness-75 saturate-85 transition-all duration-500 ease-out group-hover:scale-105 group-hover:brightness-90 group-hover:saturate-100"
+          onError={(e) => {
+            ;(e.target as HTMLImageElement).src = fallback
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+        {badge && <div className="absolute top-3 left-3 z-1">{badge}</div>}
+        <div className="absolute bottom-0 left-0 right-0 p-5">
+          <h2 className="font-bebas text-4xl text-white tracking-tight leading-none uppercase">{name}</h2>
+          <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-white/70 mt-1.5">
+            {countLabel}
+          </p>
+        </div>
+      </div>
+      <div className="px-5 py-4 flex items-center justify-between gap-3 border-t border-white/5 light:border-black/8">
+        <p className="text-sm text-fog light:text-fog-light line-clamp-1">
+          {description || `Shop ${name.toLowerCase()}`}
+        </p>
+        <ChevronRight className="text-accent light:text-accent-light shrink-0 group-hover:translate-x-1 transition" size={18} />
+      </div>
+    </Link>
+  )
 }
 
 export default function Shop() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [products, setProducts] = useState<Product[]>([])
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const [categories, setCategories] = useState<ProductCategory[]>([])
   const [medals, setMedals] = useState<MedalTier[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [activeCategory, setActiveCategory] = useState<ShopCategory>(() =>
-    parseCategory(searchParams.get('category'))
-  )
-  const [sortBy, setSortBy] = useState('Featured')
-  const [showSort, setShowSort] = useState(false)
-  const [addedIds, setAddedIds] = useState<Set<string | number>>(new Set())
-  const [toasts, setToasts] = useState<Toast[]>([])
-  const { addItem } = useCart()
-  const toastId = useRef(0)
+
+  const legacyCategory = searchParams.get('category')
 
   useEffect(() => {
-    fetchCatalog()
+    if (!legacyCategory) return
+    if (legacyCategory.toLowerCase() === 'medals') {
+      navigate('/medals', { replace: true })
+    } else if (legacyCategory.toLowerCase() !== 'all' && slugify(legacyCategory)) {
+      navigate(`/shop/c/${slugify(legacyCategory)}`, { replace: true })
+    } else {
+      navigate('/shop', { replace: true })
+    }
+  }, [legacyCategory, navigate])
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true)
+        setError('')
+        const [categoryData, medalData] = await Promise.all([
+          getProductCategories(),
+          getMedals().catch(() => [] as MedalTier[]),
+        ])
+        setCategories(Array.isArray(categoryData) ? categoryData : [])
+        setMedals(Array.isArray(medalData) ? medalData : [])
+      } catch (err) {
+        setError('Failed to load the shop. Please try again.')
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
   }, [])
 
-  useEffect(() => {
-    const fromUrl = parseCategory(searchParams.get('category'))
-    setActiveCategory(fromUrl)
-  }, [searchParams])
-
-  const setCategory = (cat: ShopCategory) => {
-    setActiveCategory(cat)
-    if (cat === 'All') {
-      setSearchParams({}, { replace: true })
-    } else {
-      setSearchParams({ category: cat }, { replace: true })
-    }
-  }
-
-  const fetchCatalog = async () => {
-    try {
-      setLoading(true)
-      setError('')
-      const [productsData, medalsData] = await Promise.all([getProducts(), getMedals()])
-      setProducts(Array.isArray(productsData) ? productsData : [])
-      setMedals(Array.isArray(medalsData) ? medalsData : [])
-    } catch (err) {
-      setError('Failed to load shop catalog. Please try again.')
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleAddToCart = (product: Product, e?: React.MouseEvent) => {
-    e?.preventDefault()
-    e?.stopPropagation()
-    addItem(product, 1)
-
-    setAddedIds((prev) => new Set(prev).add(product.id))
-    setTimeout(() => {
-      setAddedIds((prev) => {
-        const next = new Set(prev)
-        next.delete(product.id)
-        return next
-      })
-    }, 1500)
-
-    const id = ++toastId.current
-    setToasts((prev) => [...prev, { id, name: product.name }])
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3000)
-  }
-
-  const catalogItems = useMemo(() => {
-    const showProducts = activeCategory !== 'Medals'
-    const showMedals = activeCategory === 'All' || activeCategory === 'Medals'
-
-    const items: CatalogItem[] = []
-
-    if (showProducts) {
-      const filtered = products.filter((p) => {
-        if (activeCategory === 'All') return true
-        return (p.category || '').toLowerCase() === activeCategory.toLowerCase()
-      })
-      for (const product of filtered) {
-        items.push({
-          kind: 'product',
-          product,
-          sortPrice: product.price ?? 0,
-          createdAt: (product as any).created_at
-            ? new Date((product as any).created_at).getTime()
-            : 0,
-        })
-      }
-    }
-
-    if (showMedals) {
-      for (const tier of medals) {
-        items.push({
-          kind: 'medal',
-          tier,
-          sortPrice: tier.min_price ?? 0,
-          createdAt: 0,
-        })
-      }
-    }
-
-    return items.sort((a, b) => {
-      if (sortBy === 'Price: Low to High') return a.sortPrice - b.sortPrice
-      if (sortBy === 'Price: High to Low') return b.sortPrice - a.sortPrice
-      if (sortBy === 'Newest') return b.createdAt - a.createdAt
-      return 0
-    })
-  }, [products, medals, activeCategory, sortBy])
-
-  const isNew = (product: Product) => {
-    const created = (product as any).created_at
-    if (!created) return false
-    return Date.now() - new Date(created).getTime() < 1000 * 60 * 60 * 24 * 14
-  }
-
-  const totalAvailable =
-    activeCategory === 'Medals'
-      ? medals.length
-      : activeCategory === 'All'
-        ? products.length + medals.length
-        : products.filter(
-            (p) => (p.category || '').toLowerCase() === activeCategory.toLowerCase()
-          ).length
-
-  const availableLabel =
-    activeCategory === 'Medals'
-      ? `${totalAvailable} medal${totalAvailable !== 1 ? 's' : ''}`
-      : activeCategory === 'All'
-        ? `${products.length} product${products.length !== 1 ? 's' : ''}${
-            medals.length ? ` · ${medals.length} medal${medals.length !== 1 ? 's' : ''}` : ''
-          }`
-        : `${totalAvailable} product${totalAvailable !== 1 ? 's' : ''}`
+  const showMedalsCard = medals.length > 0
+  const totalCategories = categories.length + (showMedalsCard ? 1 : 0)
+  const categoryNames = [...categories.map((c) => c.name), ...(showMedalsCard ? ['Medals'] : [])]
 
   return (
     <div className={pageRoot}>
@@ -178,15 +123,17 @@ export default function Shop() {
               TRFC<br /><span className="text-accent light:text-accent-light">SHOP</span>
             </h1>
             <p className="text-fog light:text-fog-light mt-4 max-w-md leading-relaxed">
-              Represent the movement with official TRFC merchandise and challenge medals.
+              Represent the movement with official TRFC merchandise and challenge medals. Pick a category to start shopping.
             </p>
           </div>
           <div className="pb-2">
-            <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light mb-2">
-              Jerseys · Hoodies · Caps · Bucket Hats · Water Bottles · Waist Bags · Phone Holders · Medals
-            </p>
+            {categoryNames.length > 0 && (
+              <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light mb-2">
+                {categoryNames.join(' · ')}
+              </p>
+            )}
             <p className="font-barlow-condensed font-bold text-sm tracking-widest text-fog light:text-fog-light">
-              {loading ? '—' : `${availableLabel} available`}
+              {loading ? '—' : `${totalCategories} categor${totalCategories !== 1 ? 'ies' : 'y'}`}
             </p>
           </div>
         </div>
@@ -209,53 +156,11 @@ export default function Shop() {
         </div>
       </div>
 
-      {/* ── Toolbar ── */}
-      <div className="bg-ash light:bg-ash-light border-b border-white/5 light:border-black/8 px-[6%] py-7">
-        <div className="max-w-5xl mx-auto flex items-center gap-3 flex-wrap">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setCategory(cat)}
-              className={`flex items-center gap-1.75 font-barlow-condensed font-bold text-xs tracking-widest uppercase px-4.5 py-2 transition-all duration-200 clip-angled-sm ${
-                activeCategory === cat
-                  ? 'bg-accent light:bg-accent-light text-black light:text-white border border-accent light:border-accent-light'
-                  : 'bg-ash light:bg-ash-light text-fog light:text-fog-light border border-white/10 light:border-black/10 hover:border-white/20 light:hover:border-black/20 hover:text-chalk light:hover:text-chalk-light'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-
-          <div className="ml-auto relative">
-            <button
-              className="flex items-center gap-1.75 font-barlow-condensed font-bold text-xs tracking-widest uppercase px-4 py-2 bg-ash light:bg-ash-light text-fog light:text-fog-light border border-white/10 light:border-black/10 cursor-pointer clip-angled-sm transition-all duration-200 hover:border-white/20 light:hover:border-black/20"
-              onClick={() => setShowSort((v) => !v)}
-            >
-              <SlidersHorizontal size={13} />
-              {sortBy}
-              <ChevronDown size={13} className="transition-transform duration-200" style={{ transform: showSort ? 'rotate(180deg)' : 'none' }} />
-            </button>
-            {showSort && (
-              <div className={`absolute top-full right-0 mt-2 min-w-52 ${cardSurface} clip-angled-sm z-50`}>
-                {SORT_OPTIONS.map((opt) => (
-                  <button
-                    key={opt}
-                    onClick={() => { setSortBy(opt); setShowSort(false) }}
-                    className="w-full text-left bg-none border-none border-b border-white/5 light:border-black/8 last:border-b-0 px-4 py-3 cursor-pointer font-barlow-condensed font-bold text-xs tracking-widest uppercase transition-all duration-200 flex items-center gap-2 hover:text-accent light:hover:text-accent-light hover:bg-white/5 light:hover:bg-black/5"
-                    style={{ color: opt === sortBy ? '#000000' : 'var(--fog)' }}
-                  >
-                    {opt === sortBy && <Check size={12} />}
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+      {/* ── Categories ── */}
+      <div className="max-w-5xl mx-auto px-[6%] py-12 pb-20">
+        <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light mb-6">
+          Shop by category
         </div>
-      </div>
-
-      {/* ── Main content ── */}
-      <div className="max-w-5xl mx-auto px-[6%] py-9 pb-20">
 
         {error && (
           <div className="flex items-start gap-2.5 bg-red-500/10 border border-red-500/20 border-l-4 border-l-red-500 px-4 py-3.5 mb-8 text-sm text-red-600 dark:text-red-400">
@@ -265,18 +170,18 @@ export default function Shop() {
         )}
 
         {loading && (
-          <div className="grid grid-cols-auto-fill gap-0.5">
-            {Array(8).fill(null).map((_, i) => (
-              <div key={i} className="bg-ash light:bg-ash-light animate-pulse" style={{ aspectRatio: '3/4', animation: 'skelShimmer 1.4s ease infinite' }} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {Array(6).fill(null).map((_, i) => (
+              <div key={i} className="bg-ash light:bg-ash-light animate-pulse" style={{ aspectRatio: '4/3.6' }} />
             ))}
           </div>
         )}
 
-        {!loading && !error && catalogItems.length === 0 && (
+        {!loading && !error && totalCategories === 0 && (
           <div className="text-center py-25">
-            <div className="font-bebas text-clamp-2xl text-accent/10 light:text-accent-light/10 leading-none mb-4 tracking-tighter">SOLD<br />OUT</div>
+            <div className="font-bebas text-clamp-2xl text-accent/10 light:text-accent-light/10 leading-none mb-4 tracking-tighter">COMING<br />SOON</div>
             <p className="font-barlow-condensed font-bold text-xl tracking-widest uppercase text-fog light:text-fog-light mb-2">
-              {activeCategory === 'Medals' ? 'No medals available right now' : 'No products available right now'}
+              No products available right now
             </p>
             <p className="text-sm text-fog light:text-fog-light">
               Check back soon — new drops coming.
@@ -284,183 +189,46 @@ export default function Shop() {
           </div>
         )}
 
-        {!loading && !error && catalogItems.length > 0 && (
-          <div className="grid grid-cols-auto-fill gap-0.5">
-            {catalogItems.map((item) => {
-              if (item.kind === 'medal') {
-                const { tier } = item
-                return (
-                  <div
-                    key={`medal-${tier.id}`}
-                    className="bg-ash light:bg-ash-light border border-transparent hover:border-accent/30 light:hover:border-accent-light/30 transition-all duration-250 hover:-translate-y-0.75 hover:z-10"
-                  >
-                    <Link
-                      to={`/medals/${tier.slug}`}
-                      className="relative overflow-hidden aspect-square bg-smoke light:bg-smoke-light group block no-underline"
-                    >
-                      <img
-                        src={getSafeImageUrl(tier.image_url, MEDAL_FALLBACK)}
-                        alt={tier.name}
-                        className="w-full h-full object-cover brightness-90 saturate-85 transition-all duration-500 ease-out group-hover:scale-107 group-hover:brightness-100 group-hover:saturate-100"
-                        onError={(e) => {
-                          ;(e.target as HTMLImageElement).src = MEDAL_FALLBACK
-                        }}
-                      />
-                      <span className="absolute top-3 left-3 font-barlow-condensed font-black text-xs tracking-widest uppercase px-2.5 py-1 bg-accent light:bg-accent-light text-black light:text-white z-1">
-                        Medal
-                      </span>
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-250 flex items-center justify-center">
-                        <span className="font-barlow-condensed font-black text-xs tracking-widest uppercase px-7 py-3 clip-angled bg-accent light:bg-accent-light text-black light:text-white border border-accent light:border-accent-light flex items-center gap-2">
-                          <Award size={14} /> View medal
-                        </span>
-                      </div>
-                    </Link>
-                    <div className="px-4.5 py-5 flex flex-col gap-1.5 border-t border-white/5 light:border-black/8">
-                      <Link
-                        to={`/medals/${tier.slug}`}
-                        className="no-underline hover:text-accent light:hover:text-accent-light transition-colors duration-200"
-                      >
-                        <h3 className="font-barlow-condensed font-bold text-[17px] tracking-wide text-chalk light:text-chalk-light leading-snug">
-                          {tier.name}
-                        </h3>
-                        {tier.description && (
-                          <p className="text-xs text-fog light:text-fog-light leading-relaxed line-clamp-2">
-                            {tier.description}
-                          </p>
-                        )}
-                      </Link>
-                      <div className="flex items-center justify-between mt-2">
-                        <div className="font-bebas text-2xl text-accent light:text-accent-light tracking-wider">
-                          {tier.min_price != null
-                            ? `From KES ${Number(tier.min_price).toLocaleString()}`
-                            : 'See options'}
-                        </div>
-                        <Link
-                          to={`/medals/${tier.slug}`}
-                          className="w-8.5 h-8.5 flex items-center justify-center transition-all duration-200 clip-angled-sm bg-accent/10 light:bg-accent-light/10 border border-accent/20 light:border-accent-light/20 text-accent light:text-accent-light hover:bg-accent/20 light:hover:bg-accent-light/20 no-underline"
-                          aria-label={`View ${tier.name} medal`}
-                        >
-                          <Award size={15} />
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                )
-              }
-
-              const { product } = item
-              const added = addedIds.has(product.id)
+        {!loading && !error && totalCategories > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {categories.map((category) => {
+              const count = category.product_count ?? 0
               return (
-                <div
-                  key={`product-${product.id}`}
-                  className="bg-ash light:bg-ash-light border border-transparent hover:border-accent/30 light:hover:border-accent-light/30 transition-all duration-250 hover:-translate-y-0.75 hover:z-10"
-                >
-                  <Link
-                    to={`/shop/${product.id}`}
-                    className="relative overflow-hidden aspect-square bg-smoke light:bg-smoke-light group block no-underline"
-                  >
-                    <img
-                      src={product.image_url || PRODUCT_FALLBACK}
-                      alt={product.name}
-                      className="w-full h-full object-cover brightness-90 saturate-85 transition-all duration-500 ease-out group-hover:scale-107 group-hover:brightness-100 group-hover:saturate-100"
-                      onError={(e) => {
-                        ;(e.target as HTMLImageElement).src = PRODUCT_FALLBACK
-                      }}
-                    />
-                    {isNew(product) && (
-                      <span className="absolute top-3 left-3 font-barlow-condensed font-black text-xs tracking-widest uppercase px-2.5 py-1 bg-accent light:bg-accent-light text-black light:text-white z-1">New</span>
-                    )}
-                    {product.stock === 0 && (
-                      <span className="absolute top-3 left-3 font-barlow-condensed font-black text-xs tracking-widest uppercase px-2.5 py-1 bg-smoke light:bg-smoke-light text-fog light:text-fog-light z-1">Sold Out</span>
-                    )}
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-250 flex items-center justify-center">
-                      <button
-                        onClick={(e) => handleAddToCart(product, e)}
-                        disabled={product.stock === 0}
-                        className={`font-barlow-condensed font-black text-xs tracking-widest uppercase px-7 py-3 clip-angled transition-all duration-300 ease-out disabled:opacity-50 flex items-center gap-2 ${
-                          added
-                            ? 'bg-green-900/40 text-green-400 border border-green-600/50'
-                            : 'bg-accent light:bg-accent-light text-black light:text-white border border-accent light:border-accent-light hover:bg-accent/90 light:hover:bg-accent-light/90'
-                        }`}
-                        style={{ transform: added ? 'translateY(0)' : 'translateY(10px)' }}
-                      >
-                        {added
-                          ? <><Check size={14} /> Added!</>
-                          : <><ShoppingCart size={14} /> Quick Add</>
-                        }
-                      </button>
-                    </div>
-                  </Link>
-                  <div className="px-4.5 py-5 flex flex-col gap-1.5 border-t border-white/5 light:border-black/8">
-                    <Link to={`/shop/${product.id}`} className="no-underline hover:text-accent light:hover:text-accent-light transition-colors duration-200">
-                      <ProductCard product={product} variant="compact" />
-                    </Link>
-                    <div className="flex items-center justify-between mt-2">
-                      <div className="font-bebas text-2xl text-accent light:text-accent-light tracking-wider">
-                        KES {product.price?.toLocaleString?.() ?? product.price}
-                      </div>
-                      <button
-                        onClick={() => handleAddToCart(product)}
-                        disabled={product.stock === 0}
-                        className={`w-8.5 h-8.5 flex items-center justify-center transition-all duration-200 clip-angled-sm disabled:opacity-50 ${
-                          added
-                            ? 'bg-green-600/10 border border-green-600/30 text-green-400'
-                            : 'bg-accent/10 light:bg-accent-light/10 border border-accent/20 light:border-accent-light/20 text-accent light:text-accent-light hover:bg-accent/20 light:hover:bg-accent-light/20'
-                        }`}
-                        aria-label={`Add ${product.name} to cart`}
-                      >
-                        {added
-                          ? <Check size={15} />
-                          : <ShoppingCart size={15} />
-                        }
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <CategoryTile
+                  key={category.id}
+                  to={`/shop/c/${category.slug}`}
+                  name={category.name}
+                  imageUrl={getSafeImageUrl(category.image_url, CATEGORY_FALLBACK)}
+                  fallback={CATEGORY_FALLBACK}
+                  countLabel={`${count} product${count !== 1 ? 's' : ''}`}
+                  description={category.description}
+                />
               )
             })}
+
+            {showMedalsCard && (
+              <CategoryTile
+                to="/medals"
+                name="Medals"
+                imageUrl={getSafeImageUrl(medals[0]?.image_url, MEDAL_FALLBACK)}
+                fallback={MEDAL_FALLBACK}
+                countLabel={`${medals.length} tier${medals.length !== 1 ? 's' : ''}`}
+                description="Challenge medals — Bronze, Silver and Gold"
+                badge={
+                  <span className="flex items-center gap-1.5 font-barlow-condensed font-black text-xs tracking-widest uppercase px-2.5 py-1 bg-accent light:bg-accent-light text-black light:text-white">
+                    <Award size={12} /> Challenge
+                  </span>
+                }
+              />
+            )}
           </div>
         )}
-      </div>
-
-      {/* ── Toast stack ── */}
-      <div className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 flex flex-col gap-2.5 z-1000">
-        {toasts.map((toast) => (
-          <div key={toast.id} className={`${cardSurface} border-l-4 border-l-accent light:border-l-accent-light px-5 py-3.5 flex items-center gap-3 clip-angled-sm animate-toastIn w-56 sm:w-64`}>
-            <div className="w-7 h-7 bg-green-600/15 border border-green-600/25 rounded-full flex items-center justify-center text-green-400 flex-shrink-0">
-              <Check size={13} />
-            </div>
-            <div className="font-barlow-condensed">
-              <div className="font-bold text-base text-chalk light:text-chalk-light tracking-tighter">Added to cart</div>
-              <div className="font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light mt-0.25">{toast.name}</div>
-            </div>
-          </div>
-        ))}
       </div>
 
       <style>{`
         @keyframes shopTicker {
           from { transform: translateX(0); }
           to   { transform: translateX(-50%); }
-        }
-        @keyframes skelShimmer {
-          from { transform: translateX(-100%); }
-          to   { transform: translateX(100%); }
-        }
-        @keyframes toastIn {
-          from { opacity: 0; transform: translateX(40px) scale(0.95); }
-          to   { opacity: 1; transform: translateX(0) scale(1); }
-        }
-        @keyframes toastOut {
-          from { opacity: 1; transform: translateX(0); }
-          to   { opacity: 0; transform: translateX(40px); }
-        }
-        .animate-toastIn {
-          animation: toastIn 0.4s cubic-bezier(0.16,1,0.3,1) forwards;
-        }
-        .grid-cols-auto-fill {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
         }
       `}</style>
     </div>

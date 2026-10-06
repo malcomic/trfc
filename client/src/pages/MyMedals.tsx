@@ -57,7 +57,7 @@ export default function MyMedals() {
             <Award className="w-12 h-12 mx-auto mb-4 opacity-30" />
             <p>No medals yet.</p>
             <Link
-              to="/shop?category=Medals"
+              to="/medals"
               className="text-accent light:text-accent-light mt-4 inline-block no-underline hover:underline"
             >
               Browse medals

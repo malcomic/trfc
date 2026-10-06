@@ -289,6 +289,91 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       CREATE INDEX IF NOT EXISTS idx_signups_program_tier ON signups(program, tier);
     `,
   },
+  {
+    name: '015_product_categories',
+    sql: `
+      CREATE TABLE IF NOT EXISTS product_categories (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        slug VARCHAR(80) UNIQUE NOT NULL,
+        name VARCHAR(50) NOT NULL,
+        description TEXT,
+        image_url TEXT,
+        sort_order INT DEFAULT 0,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_product_categories_active
+        ON product_categories(is_active, sort_order);
+
+      ALTER TABLE products
+        ADD COLUMN IF NOT EXISTS category_id UUID REFERENCES product_categories(id) ON DELETE SET NULL;
+      CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
+
+      INSERT INTO product_categories (slug, name)
+      SELECT DISTINCT ON (s.slug) s.slug, s.name
+      FROM (
+        SELECT
+          trim(both '-' from lower(regexp_replace(trim(category), '[^a-zA-Z0-9]+', '-', 'g'))) AS slug,
+          initcap(trim(category)) AS name
+        FROM products
+        WHERE category IS NOT NULL AND trim(category) <> ''
+      ) s
+      WHERE s.slug <> ''
+      ORDER BY s.slug, s.name
+      ON CONFLICT (slug) DO NOTHING;
+
+      UPDATE products p
+      SET category_id = c.id
+      FROM product_categories c
+      WHERE p.category_id IS NULL
+        AND p.category IS NOT NULL
+        AND c.slug = trim(both '-' from lower(regexp_replace(trim(p.category), '[^a-zA-Z0-9]+', '-', 'g')));
+    `,
+  },
+  {
+    name: '016_flash_sales',
+    sql: `
+      ALTER TABLE tickets ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
+      ALTER TABLE tickets ALTER COLUMN paid_at TYPE TIMESTAMPTZ;
+      UPDATE tickets SET paid_at = created_at WHERE payment_status = 'paid' AND paid_at IS NULL;
+
+      CREATE OR REPLACE FUNCTION set_ticket_paid_at() RETURNS trigger AS $fn$
+      BEGIN
+        IF NEW.payment_status = 'paid'
+           AND OLD.payment_status IS DISTINCT FROM 'paid'
+           AND NEW.paid_at IS NULL THEN
+          NEW.paid_at := NOW();
+        END IF;
+        RETURN NEW;
+      END;
+      $fn$ LANGUAGE plpgsql;
+
+      DROP TRIGGER IF EXISTS trg_ticket_paid_at ON tickets;
+      CREATE TRIGGER trg_ticket_paid_at BEFORE UPDATE ON tickets
+        FOR EACH ROW EXECUTE FUNCTION set_ticket_paid_at();
+      CREATE INDEX IF NOT EXISTS idx_tickets_paid_at ON tickets(paid_at);
+
+      CREATE TABLE IF NOT EXISTS flash_sales (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        sale_price NUMERIC(10,2) NOT NULL CHECK (sale_price >= 0),
+        quantity_limit INT CHECK (quantity_limit IS NULL OR quantity_limit > 0),
+        starts_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        ends_at TIMESTAMPTZ,
+        sort_order INT DEFAULT 0,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      ALTER TABLE flash_sales
+        ALTER COLUMN starts_at TYPE TIMESTAMPTZ,
+        ALTER COLUMN ends_at TYPE TIMESTAMPTZ;
+      CREATE INDEX IF NOT EXISTS idx_flash_sales_live ON flash_sales(is_active, starts_at, ends_at);
+
+      ALTER TABLE order_items
+        ADD COLUMN IF NOT EXISTS flash_sale_id UUID REFERENCES flash_sales(id) ON DELETE SET NULL;
+      CREATE INDEX IF NOT EXISTS idx_order_items_flash_sale ON order_items(flash_sale_id);
+    `,
+  },
 ]
 
 export async function runMigrations() {

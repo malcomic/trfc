@@ -13,6 +13,18 @@ import {
   shortTicketCode,
 } from './qrCodeGenerator.js'
 import { generateTicketPDF } from './ticketPDFGenerator.js'
+import { findEligibleTicket, signFlashToken } from './flashAccess.js'
+
+async function buildFlashSalesUrl(ticketId: string): Promise<string | undefined> {
+  try {
+    const access = await findEligibleTicket({ ticketId })
+    if (!access) return undefined
+    return `${config.frontendUrl}/flash-sales?access=${encodeURIComponent(signFlashToken(access))}`
+  } catch (error: any) {
+    console.error(`⚠️  Could not build flash deals link for ticket ${ticketId}: ${error.message}`)
+    return undefined
+  }
+}
 
 function displayName(
   attendeeName: string | null | undefined,
@@ -121,6 +133,7 @@ export async function sendTicketBatchEmail(reference: string): Promise<void> {
       paymentReference: reference,
       tickets: rows.map((t) => ({ ticketId: t.id as string })),
       confirmationUrl,
+      flashSalesUrl: await buildFlashSalesUrl(rows[0].id as string),
     }
 
     const emailResult = await sendEmail({
@@ -223,6 +236,7 @@ export async function sendTicketEmail(ticketId: string): Promise<void> {
       eventPrice: parseFloat(ticket.price),
       qrCodeBase64,
       paymentReference: reference,
+      flashSalesUrl: await buildFlashSalesUrl(ticket.id as string),
     }
 
     const emailResult = await sendEmail({

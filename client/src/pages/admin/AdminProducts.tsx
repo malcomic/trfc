@@ -1,12 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { Trash2, Edit2, Plus } from 'lucide-react'
 import { getProductsForAdmin, createProduct, updateProduct, deleteProduct } from '../../api/admin/products'
+import { getProductCategoriesForAdmin } from '../../api/admin/productCategories'
 import { uploadImage } from '../../api/admin/upload'
+import type { ProductCategory } from '../../types'
 import AdminConfirmDialog from '../../components/AdminConfirmDialog'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/AdminMobileCard'
 import AdminResponsiveData from '../../components/admin/AdminResponsiveData'
+import ProductsSectionTabs from '../../components/admin/ProductsSectionTabs'
 
 interface Product {
   id: string
@@ -15,12 +19,18 @@ interface Product {
   price: number
   stock: number
   category: string
+  category_id?: string | null
+  category_name?: string | null
   image_url?: string
   is_active: boolean
 }
 
+const UNCATEGORISED = '__none__'
+
 export default function AdminProducts() {
   const [products, setProducts] = useState<Product[]>([])
+  const [categories, setCategories] = useState<ProductCategory[]>([])
+  const [categoryFilter, setCategoryFilter] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showModal, setShowModal] = useState(false)
@@ -49,8 +59,12 @@ export default function AdminProducts() {
   const fetchProducts = async () => {
     try {
       setLoading(true)
-      const data = await getProductsForAdmin()
+      const [data, categoryData] = await Promise.all([
+        getProductsForAdmin(),
+        getProductCategoriesForAdmin(),
+      ])
       setProducts(Array.isArray(data) ? data : [])
+      setCategories(Array.isArray(categoryData) ? categoryData : [])
     } catch (err: any) {
       setError('Failed to fetch products')
       console.error(err)
@@ -58,6 +72,15 @@ export default function AdminProducts() {
       setLoading(false)
     }
   }
+
+  const visibleProducts = useMemo(() => {
+    if (!categoryFilter) return products
+    if (categoryFilter === UNCATEGORISED) return products.filter((p) => !p.category_id)
+    return products.filter((p) => p.category_id === categoryFilter)
+  }, [products, categoryFilter])
+
+  const categoryLabel = (product: Product) =>
+    product.category_name || (product.category ? `${product.category} (unassigned)` : 'Unassigned')
 
   const onSubmit = async (data: any) => {
     try {
@@ -75,7 +98,7 @@ export default function AdminProducts() {
 
       const payload = {
         name: data.name,
-        category: data.category,
+        category_id: data.category_id,
         description: data.description,
         price: parseFloat(data.price),
         stock: parseInt(data.stock),
@@ -85,7 +108,7 @@ export default function AdminProducts() {
       if (editingId) {
         await updateProduct(editingId, {
           ...payload,
-          is_active: data.is_active === 'on',
+          is_active: data.is_active === 'on' || data.is_active === true,
         })
       } else {
         await createProduct(payload)
@@ -118,13 +141,15 @@ export default function AdminProducts() {
   const handleEdit = (product: Product) => {
     setEditingId(product.id)
     setFilePreview(null)
-    reset(product)
+    reset({ ...product, category_id: product.category_id ?? '' })
     setShowModal(true)
   }
 
   if (loading) {
     return <div className="text-lg text-gray-600 dark:text-gray-400">Loading products...</div>
   }
+
+  const hasUnassigned = products.some((p) => !p.category_id)
 
   return (
     <div>
@@ -146,17 +171,46 @@ export default function AdminProducts() {
         }
       />
 
+      <ProductsSectionTabs />
+
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-6">
           {error}
         </div>
       )}
 
+      {categories.length === 0 && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 px-4 py-3 rounded-lg mb-6 text-sm">
+          No categories yet. Products must belong to a category before they appear in the shop.{' '}
+          <Link to="/admin/products/categories" className="font-semibold underline">Create a category</Link>
+        </div>
+      )}
+
+      {products.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-4">
+          <label htmlFor="product-category-filter" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            Filter by category
+          </label>
+          <select
+            id="product-category-filter"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white sm:w-64"
+          >
+            <option value="">All categories</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+            {hasUnassigned && <option value={UNCATEGORISED}>Unassigned</option>}
+          </select>
+        </div>
+      )}
+
       <AdminResponsiveData
-        isEmpty={products.length === 0}
+        isEmpty={visibleProducts.length === 0}
         empty={
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center text-gray-600 dark:text-gray-400">
-            No products yet
+            {products.length === 0 ? 'No products yet' : 'No products in this category'}
           </div>
         }
         desktop={
@@ -172,10 +226,10 @@ export default function AdminProducts() {
               </tr>
             </thead>
             <tbody>
-              {products.map((product) => (
+              {visibleProducts.map((product) => (
                 <tr key={product.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-900 dark:text-gray-100">
                   <td className="px-6 py-4">{product.name}</td>
-                  <td className="px-6 py-4">{product.category}</td>
+                  <td className={`px-6 py-4 ${product.category_id ? '' : 'text-amber-600 dark:text-amber-400'}`}>{categoryLabel(product)}</td>
                   <td className="px-6 py-4">KES {(Number(product.price) || 0).toFixed(2)}</td>
                   <td className="px-6 py-4">{product.stock}</td>
                   <td className="px-6 py-4">
@@ -200,7 +254,7 @@ export default function AdminProducts() {
             </tbody>
           </table>
         }
-        mobile={products.map((product) => (
+        mobile={visibleProducts.map((product) => (
           <AdminMobileCard
             key={product.id}
             footer={
@@ -215,7 +269,7 @@ export default function AdminProducts() {
             }
           >
             <p className="font-semibold text-gray-900 dark:text-white">{product.name}</p>
-            <AdminMobileCardRow label="Category" value={product.category} />
+            <AdminMobileCardRow label="Category" value={categoryLabel(product)} />
             <AdminMobileCardRow label="Price" value={`KES ${(Number(product.price) || 0).toFixed(2)}`} />
             <AdminMobileCardRow label="Stock" value={product.stock} />
             <AdminMobileCardRow
@@ -254,12 +308,25 @@ export default function AdminProducts() {
 
               <div>
                 <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Category *</label>
-                <input
-                  type="text"
-                  {...register('category', { required: 'Category is required' })}
+                <select
+                  {...register('category_id', { required: 'Category is required' })}
                   className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-                {errors.category && <span className="text-red-600 dark:text-red-400 text-sm">{errors.category.message as string}</span>}
+                >
+                  <option value="">Select a category</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}{c.is_active ? '' : ' (inactive)'}
+                    </option>
+                  ))}
+                </select>
+                {categories.length === 0 && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    <Link to="/admin/products/categories" className="text-primary dark:text-primary-dark font-semibold hover:underline">
+                      Create a category first
+                    </Link>
+                  </p>
+                )}
+                {errors.category_id && <span className="text-red-600 dark:text-red-400 text-sm">{errors.category_id.message as string}</span>}
               </div>
 
               <div>

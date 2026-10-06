@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
+import { useParams, useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom'
 import { pollPaymentStatus } from '../api/payments'
 import {
   getTicketsByCheckoutRequestId,
   TicketConfirmationDetails,
 } from '../api/events'
-import { AlertCircle, CheckCircle, Clock, CalendarPlus } from 'lucide-react'
+import { requestFlashAccess, getFlashSales } from '../api/flashSales'
+import type { FlashSalesResponse } from '../types'
+import { saveFlashAccess } from '../utils/flashAccess'
+import { AlertCircle, CheckCircle, Clock, CalendarPlus, ArrowRight } from 'lucide-react'
 import TicketCard from '../components/TicketCard'
+import FlashSaleOffers from '../components/FlashSaleOffers'
 import { googleCalendarUrl, downloadIcs } from '../utils/calendar'
 import { formatEventDateTime } from '../utils/eventDate'
 import { pageRoot } from '../utils/themeClasses'
@@ -38,6 +42,7 @@ export default function TicketConfirmation() {
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'paid'>('pending')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [flashDeals, setFlashDeals] = useState<FlashSalesResponse | null>(null)
 
   const verify = {
     ...(email ? { email } : {}),
@@ -103,6 +108,29 @@ export default function TicketConfirmation() {
       value: value != null ? Number(value) : undefined,
     })
   }, [paymentStatus, details, checkoutRequestId, state.eventTitle, state.quantity, state.totalPrice])
+
+  useEffect(() => {
+    if (paymentStatus !== 'paid' || !checkoutRequestId || (!email && !phone)) return
+    let cancelled = false
+    const unlock = async () => {
+      try {
+        const access = await requestFlashAccess({
+          checkoutRequestId,
+          email: email || undefined,
+          phone: phone || undefined,
+        })
+        saveFlashAccess(access)
+        const deals = await getFlashSales(access.token)
+        if (!cancelled) setFlashDeals(deals)
+      } catch {
+        /* flash deals are optional on this page */
+      }
+    }
+    unlock()
+    return () => {
+      cancelled = true
+    }
+  }, [paymentStatus, checkoutRequestId, email, phone])
 
   const handleGateVerify = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -198,40 +226,53 @@ export default function TicketConfirmation() {
           </div>
         )}
 
-        <div
-          className={`p-6 mb-6 border-l-4 print:hidden ${
-            paymentStatus === 'paid'
-              ? 'bg-green-500/10 border-green-500'
-              : 'bg-accent/10 light:bg-accent-light/10 border-accent light:border-accent-light'
-          }`}
-        >
-          <div className="flex items-center gap-3 mb-2">
-            {loading ? (
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent light:border-accent-light" />
-            ) : paymentStatus === 'paid' ? (
-              <CheckCircle className="w-6 h-6 text-green-400" />
-            ) : (
-              <Clock className="w-6 h-6 text-accent light:text-accent-light" />
-            )}
-            <h1 className="font-bebas text-3xl">
-              {loading
-                ? 'Confirming Payment…'
-                : paymentStatus === 'paid'
-                  ? 'Tickets Confirmed!'
-                  : 'Payment Pending'}
+        {paymentStatus === 'paid' && !loading ? (
+          <div className="flex items-center justify-between gap-3 px-4 py-2.5 mb-5 bg-green-500/10 border-l-4 border-green-500 print:hidden">
+            <h1 className="flex items-center gap-2 font-barlow-condensed font-bold text-sm tracking-wide m-0">
+              <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+              Tickets confirmed — PDF copies sent to your email
             </h1>
+            <a
+              href="#your-tickets"
+              className="flex-shrink-0 font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light no-underline hover:underline"
+            >
+              View ticket ↓
+            </a>
           </div>
-          <p className="text-fog light:text-fog-light text-sm">
-            {paymentStatus === 'paid'
-              ? details?.attendee_name
-                ? `${details.attendee_name}, your tickets are ready below. We also emailed PDF copies — check spam if you don’t see them.`
-                : 'Your tickets are ready below. We also emailed PDF copies — check spam if you don’t see them.'
-              : 'Complete the M-Pesa payment on your phone to confirm your tickets.'}
-          </p>
-        </div>
+        ) : (
+          <div className="p-6 mb-6 border-l-4 print:hidden bg-accent/10 light:bg-accent-light/10 border-accent light:border-accent-light">
+            <div className="flex items-center gap-3 mb-2">
+              {loading ? (
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent light:border-accent-light" />
+              ) : (
+                <Clock className="w-6 h-6 text-accent light:text-accent-light" />
+              )}
+              <h1 className="font-bebas text-3xl">{loading ? 'Confirming Payment…' : 'Payment Pending'}</h1>
+            </div>
+            <p className="text-fog light:text-fog-light text-sm">
+              Complete the M-Pesa payment on your phone to confirm your tickets.
+            </p>
+          </div>
+        )}
+
+        {paymentStatus === 'paid' && flashDeals && flashDeals.offers.length > 0 && (
+          <div className="mb-6 print:hidden">
+            <FlashSaleOffers
+              variant="compact"
+              offers={flashDeals.offers}
+              accessExpiresAt={flashDeals.accessExpiresAt}
+            />
+            <Link
+              to="/flash-sales"
+              className="mt-2 inline-flex items-center gap-2 font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light no-underline hover:underline"
+            >
+              See all flash deals <ArrowRight size={14} />
+            </Link>
+          </div>
+        )}
 
         {paymentStatus === 'paid' && details?.tickets && details.tickets.length > 0 && (
-          <div className="space-y-4 mb-8">
+          <div id="your-tickets" className="space-y-4 mb-8 scroll-mt-24">
             {details.tickets.map((t, i) => (
               <TicketCard
                 key={t.id}

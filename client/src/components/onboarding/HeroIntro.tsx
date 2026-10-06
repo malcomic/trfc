@@ -14,10 +14,10 @@ export default function HeroIntro({ onStart }: { onStart: () => void }) {
           <span className="hero-word text-accent light:text-accent-light">START THIS WEEK.</span>
         </h1>
 
-        <p className="hero-sub max-w-[560px] text-lg leading-relaxed text-white/90 light:text-black/80 mb-3">
+        <p className="hero-sub max-w-[560px] text-lg leading-relaxed text-white/90 light:text-black/90 mb-3">
           {HERO_COPY.subline}
         </p>
-        <p className="hero-sub max-w-[560px] text-sm leading-relaxed text-white/75 light:text-black/65 mb-10">
+        <p className="hero-sub max-w-[560px] text-sm leading-relaxed text-white/75 light:text-black/75 mb-10">
           {HERO_COPY.smallLine}
         </p>
       </div>

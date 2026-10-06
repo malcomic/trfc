@@ -68,12 +68,14 @@ export default function ProductDetail() {
   }
 
   const p = product as any
+  const categoryLabel: string | undefined = p.category_name || p.category || undefined
+  const backPath = p.category_slug ? `/shop/c/${p.category_slug}` : '/shop'
 
   return (
     <div className={pageRoot}>
       <div className="max-w-4xl mx-auto px-[6%] py-10 pb-20">
-        <button onClick={() => navigate('/shop')} className="inline-flex items-center gap-2 text-accent light:text-accent-light text-sm mb-6 bg-transparent border-0 cursor-pointer hover:underline">
-          <ArrowLeft size={14} /> Back to Shop
+        <button onClick={() => navigate(backPath)} className="inline-flex items-center gap-2 text-accent light:text-accent-light text-sm mb-6 bg-transparent border-0 cursor-pointer hover:underline">
+          <ArrowLeft size={14} /> {p.category_name ? `Back to ${p.category_name}` : 'Back to Shop'}
         </button>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           <img
@@ -82,8 +84,8 @@ export default function ProductDetail() {
             className="w-full aspect-square object-cover clip-angled brightness-90"
           />
           <div>
-            {p.category && (
-              <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light mb-2">{p.category}</p>
+            {categoryLabel && (
+              <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light mb-2">{categoryLabel}</p>
             )}
             <h1 className="font-bebas text-5xl mb-4">{p.name}</h1>
             <p className="font-bebas text-4xl text-accent light:text-accent-light mb-6">KES {Number(p.price).toLocaleString()}</p>

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { useEffect, useRef } from 'react'
 import PrivateRoute from './components/PrivateRoute'
 import PublicLayout from './components/PublicLayout'
@@ -13,8 +13,11 @@ import MedalDetail from './pages/MedalDetail'
 import MedalCheckout from './pages/MedalCheckout'
 import MedalConfirmation from './pages/MedalConfirmation'
 import MyMedals from './pages/MyMedals'
+import Medals from './pages/Medals'
 import Shop from './pages/Shop'
+import ShopCategory from './pages/ShopCategory'
 import ProductDetail from './pages/ProductDetail'
+import FlashSales from './pages/FlashSales'
 import Cart from './pages/Cart'
 import Checkout from './pages/Checkout'
 import OrderConfirmation from './pages/OrderConfirmation'
@@ -40,6 +43,8 @@ import AdminAnalytics from './pages/AdminAnalytics'
 import AdminReports from './pages/AdminReports'
 import AdminEvents from './pages/admin/AdminEvents'
 import AdminProducts from './pages/admin/AdminProducts'
+import AdminProductCategories from './pages/admin/AdminProductCategories'
+import AdminFlashSales from './pages/admin/AdminFlashSales'
 import AdminGallery from './pages/admin/AdminGallery'
 import AdminOrders from './pages/admin/AdminOrders'
 import AdminUsers from './pages/admin/AdminUsers'
@@ -105,6 +110,8 @@ function App() {
           <Route path="reports" element={<AdminReports />} />
           <Route path="events" element={<AdminEvents />} />
           <Route path="products" element={<AdminProducts />} />
+          <Route path="products/categories" element={<AdminProductCategories />} />
+          <Route path="products/flash-sales" element={<AdminFlashSales />} />
           <Route path="gallery" element={<AdminGallery />} />
           <Route path="orders" element={<AdminOrders />} />
           <Route path="users" element={<AdminUsers />} />
@@ -126,7 +133,7 @@ function App() {
           <Route path="/events/:eventId/checkout" element={<EventCheckout />} />
           <Route path="/events/:id" element={<EventDetail />} />
           <Route path="/ticket-confirmation/:checkoutRequestId" element={<TicketConfirmation />} />
-          <Route path="/medals" element={<Navigate to="/shop?category=Medals" replace />} />
+          <Route path="/medals" element={<Medals />} />
           <Route path="/medals/:slug/checkout" element={<MedalCheckout />} />
           <Route path="/medals/:slug" element={<MedalDetail />} />
           <Route path="/medal-confirmation/:checkoutRequestId" element={<MedalConfirmation />} />
@@ -137,7 +144,9 @@ function App() {
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/shop" element={<Shop />} />
+          <Route path="/shop/c/:slug" element={<ShopCategory />} />
           <Route path="/shop/:id" element={<ProductDetail />} />
+          <Route path="/flash-sales" element={<FlashSales />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />

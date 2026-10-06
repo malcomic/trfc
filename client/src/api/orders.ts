@@ -11,7 +11,13 @@ export const getOrderById = async (id: string, phone?: string) => {
   return response.data;
 };
 
-export const createOrder = async (data: { items: any[]; total_amount: number; phone: string; delivery_address: string }) => {
+export const createOrder = async (data: {
+  items: any[];
+  total_amount: number;
+  phone: string;
+  delivery_address: string;
+  flash_token?: string;
+}) => {
   const response = await api.post('/orders', data);
   return response.data;
 };

@@ -64,6 +64,14 @@ export default function Home() {
 
       {/* ── HERO + ONBOARDING FLOW ─────────────────────────────────── */}
       <style>{`
+        @keyframes slideRight {
+          from { opacity: 0; transform: translateX(-60px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(40px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
         .hero-word {
           display: block;
           font-family: var(--font-display);
@@ -78,7 +86,7 @@ export default function Home() {
       `}</style>
 
       <section ref={heroRef} className="relative min-h-screen w-full flex items-center overflow-hidden scroll-mt-16">
-      <div className="absolute inset-0 w-full h-full bg-ink light:bg-ink-light">
+      <div className="absolute inset-0 z-0 w-full h-full bg-ink light:bg-ink-light">
           {heroSlides.length > 0 && <HeroCarousel slides={heroSlides} />}
         </div>
 

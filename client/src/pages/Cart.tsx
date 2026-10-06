@@ -1,20 +1,34 @@
 import { Link } from 'react-router-dom'
-import { useCart } from '../store/cartStore'
-import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, Tag } from 'lucide-react'
+import { useCart, cartLineKey, cartLinePrice } from '../store/cartStore'
+import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, Tag, Zap, AlertCircle } from 'lucide-react'
 import { getGrandTotal } from '../utils/shipping'
+import { loadFlashAccess, formatTimeLeft } from '../utils/flashAccess'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
+
+const FLASH_WARNING_MS = 2 * 60 * 60 * 1000
 
 export default function Cart() {
   const { items, removeItem, updateQuantity, getTotal } = useCart()
   const total = getTotal()
 
-  const handleQuantityChange = (productId: string, newQuantity: number) => {
+  const handleQuantityChange = (lineKey: string, newQuantity: number) => {
     if (newQuantity < 1) return
-    updateQuantity(productId, newQuantity)
+    updateQuantity(lineKey, newQuantity)
   }
 
   const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0)
   const grandTotal = getGrandTotal(total)
+
+  const hasFlashItems = items.some((item) => item.flashSaleId)
+  const flashAccess = hasFlashItems ? loadFlashAccess() : null
+  const flashMsLeft = flashAccess ? new Date(flashAccess.expiresAt).getTime() - Date.now() : 0
+  const flashWarning = hasFlashItems
+    ? !flashAccess
+      ? 'Your flash deal access has expired on this device. Flash-priced items may be rejected at checkout.'
+      : flashMsLeft < FLASH_WARNING_MS
+        ? `Your flash deal access ends in ${formatTimeLeft(flashAccess.expiresAt)}. Check out soon to keep the flash prices.`
+        : null
+    : null
 
   return (
     <div className={pageRoot}>
@@ -59,6 +73,12 @@ export default function Cart() {
 
           {/* Left — items */}
           <div className="lg:col-span-2">
+            {flashWarning && (
+              <div className="flex items-start gap-2.5 bg-amber-500/10 border border-amber-500/30 border-l-4 border-l-amber-500 px-4 py-3 mb-4 text-sm text-amber-700 dark:text-amber-300">
+                <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+                <span>{flashWarning}</span>
+              </div>
+            )}
             {/* Column headers */}
             <div className="hidden md:grid grid-cols-5 gap-4.5 px-5 pb-3 font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light border-b border-white/5 light:border-black/8 mb-0.5">
               <span>Item</span>
@@ -69,8 +89,12 @@ export default function Cart() {
             </div>
 
             <div className="flex flex-col gap-0.5">
-              {items.map((item) => (
-                <div key={item.product.id} className={`${cardSurface} p-4 md:p-5 transition-all duration-200 hover:border-white/10 light:hover:border-black/15 relative group before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-accent light:before:bg-accent-light before:scale-y-0 before:origin-bottom before:transition-transform before:duration-250 hover:before:scale-y-100`}>
+              {items.map((item) => {
+                const lineKey = cartLineKey(item)
+                const unitPrice = cartLinePrice(item)
+                const isFlash = Boolean(item.flashSaleId)
+                return (
+                <div key={lineKey} className={`${cardSurface} p-4 md:p-5 transition-all duration-200 hover:border-white/10 light:hover:border-black/15 relative group before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-accent light:before:bg-accent-light before:scale-y-0 before:origin-bottom before:transition-transform before:duration-250 hover:before:scale-y-100`}>
                   {/* Mobile: flex row with image + info + remove; Desktop: 5-col grid */}
                   <div className="grid md:grid-cols-5 gap-3 md:gap-4.5 items-center">
                     {/* Image */}
@@ -91,9 +115,17 @@ export default function Cart() {
 
                     {/* Info */}
                     <div>
+                      {isFlash && (
+                        <span className="inline-flex items-center gap-1 font-barlow-condensed font-black text-[10px] tracking-widest uppercase px-2 py-0.5 mb-1 bg-accent light:bg-accent-light text-black light:text-white">
+                          <Zap size={10} /> Flash price
+                        </span>
+                      )}
                       <p className="font-barlow-condensed font-bold text-lg tracking-tighter text-chalk light:text-chalk-light leading-tight mb-1">{item.product.name}</p>
                       <p className="text-xs text-fog light:text-fog-light font-barlow-condensed font-medium tracking-widest">
-                        KES <span className="text-accent light:text-accent-light">{Number(item.product.price).toLocaleString()}</span> each
+                        KES <span className="text-accent light:text-accent-light">{unitPrice.toLocaleString()}</span> each
+                        {isFlash && Number(item.product.price) > unitPrice && (
+                          <span className="ml-2 line-through opacity-60">KES {Number(item.product.price).toLocaleString()}</span>
+                        )}
                       </p>
                     </div>
 
@@ -103,7 +135,7 @@ export default function Cart() {
                       <div className="flex items-center gap-0 border border-white/10 light:border-black/10 overflow-hidden clip-angled-sm">
                         <button
                           className="bg-smoke light:bg-smoke-light text-fog light:text-fog-light hover:bg-accent light:hover:bg-accent-light hover:text-white w-8 h-9 flex items-center justify-center cursor-pointer transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-smoke disabled:hover:text-fog"
-                          onClick={() => handleQuantityChange(item.product.id, item.quantity - 1)}
+                          onClick={() => handleQuantityChange(lineKey, item.quantity - 1)}
                           disabled={item.quantity <= 1}
                           aria-label="Decrease quantity"
                         >
@@ -112,7 +144,7 @@ export default function Cart() {
                         <div className="w-10 text-center font-bebas text-xl text-chalk light:text-chalk-light leading-none bg-ash light:bg-ash-light border-l border-r border-white/10 light:border-black/10 py-1.75">{item.quantity}</div>
                         <button
                           className="bg-smoke light:bg-smoke-light text-fog light:text-fog-light hover:bg-accent light:hover:bg-accent-light hover:text-white w-8 h-9 flex items-center justify-center cursor-pointer transition-all duration-200"
-                          onClick={() => handleQuantityChange(item.product.id, item.quantity + 1)}
+                          onClick={() => handleQuantityChange(lineKey, item.quantity + 1)}
                           aria-label="Increase quantity"
                         >
                           <Plus size={12} />
@@ -121,13 +153,13 @@ export default function Cart() {
 
                       {/* Line total */}
                       <p className="font-bebas text-2xl text-chalk light:text-chalk-light tracking-tighter md:text-right whitespace-nowrap flex-1 md:flex-none text-right">
-                        KES {(item.product.price * item.quantity).toLocaleString()}
+                        KES {(unitPrice * item.quantity).toLocaleString()}
                       </p>
 
                       {/* Remove */}
                       <button
                         className="w-8 h-8 flex items-center justify-center text-fog light:text-fog-light hover:text-red-500 transition-colors duration-200 clip-angled-sm"
-                        onClick={() => removeItem(item.product.id)}
+                        onClick={() => removeItem(lineKey)}
                         aria-label={`Remove ${item.product.name}`}
                       >
                         <Trash2 size={15} />
@@ -135,7 +167,8 @@ export default function Cart() {
                     </div>
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           </div>
 

@@ -15,7 +15,12 @@ export async function getAdminEvents(_req: Request, res: Response) {
 
 export async function getAdminProducts(_req: Request, res: Response) {
   try {
-    const result = await query('SELECT * FROM products ORDER BY created_at DESC')
+    const result = await query(
+      `SELECT p.*, c.name AS category_name, c.slug AS category_slug
+       FROM products p
+       LEFT JOIN product_categories c ON c.id = p.category_id
+       ORDER BY p.created_at DESC`
+    )
     res.json(result.rows)
   } catch (error) {
     console.error(error)

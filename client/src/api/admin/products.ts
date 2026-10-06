@@ -10,7 +10,7 @@ export const createProduct = async (data: {
   description?: string;
   price: number;
   stock: number;
-  category: string;
+  category_id: string;
   image_url?: string;
 }) => {
   const response = await api.post('/products', data);
@@ -24,7 +24,7 @@ export const updateProduct = async (
     description?: string;
     price: number;
     stock: number;
-    category: string;
+    category_id: string;
     image_url?: string;
     is_active: boolean;
   }

@@ -3,8 +3,9 @@ import { useForm } from 'react-hook-form'
 import { useNavigate, Link } from 'react-router-dom'
 import { createOrder } from '../api/orders'
 import { initiateSTKPush } from '../api/payments'
-import { useCart } from '../store/cartStore'
+import { useCart, cartLineKey, cartLinePrice } from '../store/cartStore'
 import { getGrandTotal } from '../utils/shipping'
+import { loadFlashAccess } from '../utils/flashAccess'
 import PaymentStatusModal from '../components/PaymentStatusModal'
 import { AlertCircle, ShoppingCart, Truck, ArrowLeft } from 'lucide-react'
 import { Button, FormInput, Card } from '../components/ui'
@@ -14,10 +15,18 @@ import { trackInitiateCheckout } from '../utils/tiktokPixel'
 export default function Checkout() {
   const { register, handleSubmit, formState: { errors } } = useForm()
   const navigate = useNavigate()
-  const { items, getTotal, clearCart } = useCart()
+  const { items, getTotal, clearCart, removeItem } = useCart()
   const grandTotal = getGrandTotal(getTotal())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [flashRejected, setFlashRejected] = useState(false)
+  const hasFlashItems = items.some((item) => item.flashSaleId)
+
+  const removeFlashItems = () => {
+    items.filter((item) => item.flashSaleId).forEach((item) => removeItem(cartLineKey(item)))
+    setFlashRejected(false)
+    setError('')
+  }
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [checkoutRequestId, setCheckoutRequestId] = useState('')
   const [phone, setPhone] = useState('')
@@ -65,12 +74,14 @@ export default function Checkout() {
     try {
       setLoading(true)
       setError('')
+      setFlashRejected(false)
       setPhone(data.phone)
 
       const orderItems = items.map((item) => ({
         product_id: item.product.id,
         quantity: item.quantity,
-        unit_price: item.product.price,
+        unit_price: cartLinePrice(item),
+        ...(item.flashSaleId ? { flash_sale_id: item.flashSaleId } : {}),
       }))
 
       const createdOrder = await createOrder({
@@ -78,6 +89,7 @@ export default function Checkout() {
         total_amount: grandTotal,
         phone: data.phone,
         delivery_address: data.address,
+        ...(hasFlashItems ? { flash_token: loadFlashAccess()?.token } : {}),
       })
 
       setOrderId(createdOrder.id)
@@ -97,7 +109,11 @@ export default function Checkout() {
       }
     } catch (err: any) {
       console.error('Checkout failed:', err)
-      setError(err.response?.data?.error || err.response?.data?.customerMessage || 'Checkout failed. Please try again.')
+      const status = err.response?.status
+      const message: string =
+        err.response?.data?.error || err.response?.data?.customerMessage || 'Checkout failed. Please try again.'
+      setFlashRejected(hasFlashItems && (status === 403 || (status === 409 && /flash/i.test(message))))
+      setError(message)
     } finally {
       setLoading(false)
     }
@@ -140,6 +156,15 @@ export default function Checkout() {
                   <div>
                     <p className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-danger-red">Payment Error</p>
                     <p className="text-sm text-chalk/70 light:text-chalk-light/70 mt-1">{error}</p>
+                    {flashRejected && (
+                      <button
+                        type="button"
+                        onClick={removeFlashItems}
+                        className="mt-3 font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light underline bg-transparent border-0 cursor-pointer p-0"
+                      >
+                        Remove flash items and continue
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -226,17 +251,18 @@ export default function Checkout() {
                 {/* Items */}
                 <div className="space-y-3 mb-6 pb-6 border-b border-white/10 light:border-black/10">
                   {items.map((item) => (
-                    <div key={item.product.id} className="flex justify-between items-start gap-3">
+                    <div key={cartLineKey(item)} className="flex justify-between items-start gap-3">
                       <div className="flex-1 min-w-0">
                         <p className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-chalk light:text-chalk-light truncate">
                           {item.product.name}
                         </p>
                         <p className="text-xs text-fog light:text-fog-light mt-1">
-                          KES {Number(item.product.price).toFixed(0)} × {item.quantity}
+                          KES {cartLinePrice(item).toFixed(0)} × {item.quantity}
+                          {item.flashSaleId && <span className="ml-2 text-accent light:text-accent-light font-bold">Flash</span>}
                         </p>
                       </div>
                       <p className="font-bebas text-lg text-accent light:text-accent-light flex-shrink-0">
-                        {(Number(item.product.price) * item.quantity).toFixed(0)}
+                        {(cartLinePrice(item) * item.quantity).toFixed(0)}
                       </p>
                     </div>
                   ))}

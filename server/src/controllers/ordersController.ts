@@ -2,6 +2,59 @@ import { Request, Response } from 'express';
 import { query, getClient } from '../config/db.js';
 import { phonesMatch } from '../utils/phone.js';
 import { getGrandTotal } from '../utils/shipping.js';
+import { resolveFlashAccess } from '../utils/flashAccess.js';
+import { FLASH_SOLD_UNITS_SQL } from './flashSalesController.js';
+
+type DbClient = Awaited<ReturnType<typeof getClient>>;
+
+class OrderValidationError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+  }
+}
+
+/** Locks the flash sale row and returns its price after checking it is live and has stock left. */
+async function lockFlashSalePrice(
+  client: DbClient,
+  flashSaleId: string,
+  productId: string,
+  productName: string,
+  quantity: number
+): Promise<number> {
+  const saleResult = await client.query(
+    `SELECT fs.*,
+            (fs.is_active = true AND fs.starts_at <= NOW() AND (fs.ends_at IS NULL OR fs.ends_at > NOW())) AS is_live
+     FROM flash_sales fs
+     WHERE fs.id = $1
+     FOR UPDATE`,
+    [flashSaleId]
+  );
+  const sale = saleResult.rows[0];
+  if (!sale || String(sale.product_id) !== String(productId)) {
+    throw new OrderValidationError(400, `Flash deal not found for ${productName}`);
+  }
+  if (!sale.is_live) {
+    throw new OrderValidationError(409, `The flash deal for ${productName} has ended`);
+  }
+
+  if (sale.quantity_limit != null) {
+    const soldResult = await client.query(
+      `SELECT ${FLASH_SOLD_UNITS_SQL} AS sold_units FROM flash_sales fs WHERE fs.id = $1`,
+      [flashSaleId]
+    );
+    const remaining = Math.max(0, Number(sale.quantity_limit) - Number(soldResult.rows[0]?.sold_units ?? 0));
+    if (remaining < quantity) {
+      throw new OrderValidationError(
+        409,
+        remaining === 0
+          ? `The flash deal for ${productName} is sold out`
+          : `Only ${remaining} left at the flash price for ${productName}`
+      );
+    }
+  }
+
+  return Number(sale.sale_price);
+}
 
 async function fetchOrderItems(orderId: string) {
   const result = await query(
@@ -78,42 +131,55 @@ export const createOrder = async (req: Request, res: Response) => {
       return;
     }
 
+    const hasFlashItems = items.some((item: { flash_sale_id?: unknown }) => Boolean(item.flash_sale_id));
+    if (hasFlashItems) {
+      const access = await resolveFlashAccess(req);
+      if (!access) {
+        res.status(403).json({ error: 'Flash deal access expired or not eligible' });
+        return;
+      }
+    }
+
+    await client.query('BEGIN');
+
     let subtotal = 0;
+    const lines: { product_id: string; quantity: number; unit_price: number; flash_sale_id: string | null }[] = [];
     for (const item of items) {
+      const quantity = Number(item.quantity);
+      if (!Number.isInteger(quantity) || quantity <= 0) {
+        throw new OrderValidationError(400, 'Invalid item quantity');
+      }
       const productResult = await client.query(
         'SELECT id, price, stock, is_active, name FROM products WHERE id = $1',
         [item.product_id]
       );
       if (productResult.rows.length === 0) {
-        res.status(400).json({ error: `Product not found: ${item.product_id}` });
-        return;
+        throw new OrderValidationError(400, `Product not found: ${item.product_id}`);
       }
       const product = productResult.rows[0];
       if (!product.is_active) {
-        res.status(400).json({ error: `Product unavailable: ${product.name}` });
-        return;
+        throw new OrderValidationError(400, `Product unavailable: ${product.name}`);
       }
-      if (product.stock != null && product.stock < item.quantity) {
-        res.status(400).json({ error: `Insufficient stock for ${product.name}` });
-        return;
+      if (product.stock != null && product.stock < quantity) {
+        throw new OrderValidationError(400, `Insufficient stock for ${product.name}`);
       }
-      const unitPrice = Number(product.price);
+
+      const flashSaleId = typeof item.flash_sale_id === 'string' && item.flash_sale_id ? item.flash_sale_id : null;
+      const unitPrice = flashSaleId
+        ? await lockFlashSalePrice(client, flashSaleId, product.id, product.name, quantity)
+        : Number(product.price);
+
       if (Math.round(unitPrice) !== Math.round(Number(item.unit_price))) {
-        res.status(400).json({ error: `Price mismatch for ${product.name}` });
-        return;
+        throw new OrderValidationError(400, `Price mismatch for ${product.name}`);
       }
-      subtotal += unitPrice * item.quantity;
+      subtotal += unitPrice * quantity;
+      lines.push({ product_id: product.id, quantity, unit_price: unitPrice, flash_sale_id: flashSaleId });
     }
 
     const expectedTotal = getGrandTotal(subtotal);
     if (Math.round(Number(total_amount)) !== Math.round(expectedTotal)) {
-      res.status(400).json({
-        error: `Order total must be KES ${expectedTotal}`,
-      });
-      return;
+      throw new OrderValidationError(400, `Order total must be KES ${expectedTotal}`);
     }
-
-    await client.query('BEGIN');
 
     const orderResult = await client.query(
       'INSERT INTO orders (user_id, total_amount, phone, delivery_address) VALUES ($1, $2, $3, $4) RETURNING *',
@@ -122,10 +188,10 @@ export const createOrder = async (req: Request, res: Response) => {
 
     const orderId = orderResult.rows[0].id;
 
-    for (const item of items) {
+    for (const line of lines) {
       await client.query(
-        'INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES ($1, $2, $3, $4)',
-        [orderId, item.product_id, item.quantity, item.unit_price]
+        'INSERT INTO order_items (order_id, product_id, quantity, unit_price, flash_sale_id) VALUES ($1, $2, $3, $4, $5)',
+        [orderId, line.product_id, line.quantity, line.unit_price, line.flash_sale_id]
       );
     }
 
@@ -133,6 +199,10 @@ export const createOrder = async (req: Request, res: Response) => {
     res.status(201).json(orderResult.rows[0]);
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
+    if (error instanceof OrderValidationError) {
+      res.status(error.status).json({ error: error.message });
+      return;
+    }
     console.error(error);
     res.status(500).json({ error: 'Failed to create order' });
   } finally {
