@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import { query } from '../config/db.js'
-import { findEligibleTicket, resolveFlashAccess, signFlashToken } from '../utils/flashAccess.js'
+import { FLASH_ACCESS_HOURS, findEligibleTicket, resolveFlashAccess, signFlashToken } from '../utils/flashAccess.js'
+import { variantsJsonSql } from '../utils/productVariants.js'
 
 /** Units reserved by a flash sale: paid orders plus pending orders from the last 15 minutes. */
 export const FLASH_SOLD_UNITS_SQL = `
@@ -48,7 +49,7 @@ export async function requestFlashAccess(req: Request, res: Response) {
     }
 
     if (!access) {
-      return res.status(403).json({ error: 'No eligible ticket purchased in the last 72 hours' })
+      return res.status(403).json({ error: `No eligible ticket purchased in the last ${FLASH_ACCESS_HOURS} hours` })
     }
 
     res.json({ token: signFlashToken(access), expiresAt: access.expiresAt.toISOString() })
@@ -84,6 +85,7 @@ export async function getLiveFlashSales(req: Request, res: Response) {
          ${FLASH_SOLD_UNITS_SQL} AS sold_units,
          p.name AS product_name, p.description AS product_description, p.image_url AS product_image_url,
          p.price AS regular_price, p.stock AS product_stock, p.category AS product_category,
+         p.distance_options, ${variantsJsonSql()} AS product_variants,
          c.name AS category_name, c.slug AS category_slug
        FROM flash_sales fs
        JOIN products p ON p.id = fs.product_id
@@ -101,6 +103,29 @@ export async function getLiveFlashSales(req: Request, res: Response) {
     console.error(error)
     res.status(500).json({ error: 'Failed to fetch flash deals' })
   }
+}
+
+export interface LiveOfferPrice {
+  salePrice: number
+  regularPrice: number
+}
+
+/** Cheapest live flash offer that still has units and stock left, or null when nothing can be bought. */
+export async function getCheapestLiveOffer(): Promise<LiveOfferPrice | null> {
+  const result = await query(
+    `SELECT fs.sale_price, p.price AS regular_price
+     FROM flash_sales fs
+     JOIN products p ON p.id = fs.product_id
+     WHERE ${LIVE_CONDITION}
+       AND p.is_active = true
+       AND p.stock > 0
+       AND (fs.quantity_limit IS NULL OR fs.quantity_limit > ${FLASH_SOLD_UNITS_SQL})
+     ORDER BY fs.sale_price ASC
+     LIMIT 1`
+  )
+  const row = result.rows[0]
+  if (!row) return null
+  return { salePrice: Number(row.sale_price), regularPrice: Number(row.regular_price) }
 }
 
 export async function getAdminFlashSales(_req: Request, res: Response) {

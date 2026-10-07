@@ -170,7 +170,7 @@ export function buildTicketBatchEmailHTML(data: TicketBatchEmailData): string {
       ${data.flashSalesUrl ? `
       <div style="background:#0a0a0a;color:#ffffff;border-radius:6px;padding:18px;margin:8px 0 0;text-align:center;">
         <p style="margin:0 0 4px;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#f59e0b;">Ticket-holder exclusive</p>
-        <p style="margin:0 0 14px;font-size:15px;">Flash deals on official TRFC merch — available for 72 hours.</p>
+        <p style="margin:0 0 14px;font-size:15px;">Flash deals on official TRFC merch — available for 24 hours.</p>
         <a href="${escapeHtml(data.flashSalesUrl)}"
            style="display:inline-block;background:#f59e0b;color:#111827;padding:10px 22px;text-decoration:none;border-radius:6px;font-weight:700;font-size:14px;">
           See your flash deals
@@ -237,7 +237,7 @@ ${data.eventTitle} — ${formattedDate} at ${formattedTime}, ${data.eventLocatio
 
 View your tickets: ${data.confirmationUrl}
 ${data.flashSalesUrl ? `
-TICKET-HOLDER FLASH DEALS (available for 72 hours)
+TICKET-HOLDER FLASH DEALS (available for 24 hours)
 ${data.flashSalesUrl}
 ` : ''}
 Support: ${config.contact.email} | ${config.contact.phone}
@@ -393,6 +393,14 @@ export interface OrderEmailItem {
   quantity: number
   unitPrice: number
   isFlash: boolean
+  size?: string | null
+  distance?: string | null
+}
+
+function formatItemOptions(item: OrderEmailItem): string {
+  return [item.size ? `Size: ${item.size}` : '', item.distance ? `Distance: ${item.distance}` : '']
+    .filter(Boolean)
+    .join(' · ')
 }
 
 export interface OrderEmailData {
@@ -422,6 +430,7 @@ export function buildOrderConfirmationEmailHTML(data: OrderEmailData): string {
           <td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;">
             ${escapeHtml(item.name)}
             ${item.isFlash ? '<span style="display:inline-block;margin-left:6px;padding:2px 6px;background:#fef3c7;color:#92400e;font-size:11px;font-weight:700;border-radius:3px;">Flash price</span>' : ''}
+            ${formatItemOptions(item) ? `<div style="font-size:12px;color:#374151;margin-top:2px;">${escapeHtml(formatItemOptions(item))}</div>` : ''}
             <div style="font-size:12px;color:#6b7280;margin-top:2px;">${item.quantity} × ${formatKes(item.unitPrice)}</div>
           </td>
           <td style="padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px;text-align:right;white-space:nowrap;">
@@ -524,7 +533,7 @@ export function buildOrderConfirmationEmailText(data: OrderEmailData): string {
   const itemLines = data.items
     .map(
       (item) =>
-        `  - ${item.name}${item.isFlash ? ' (flash price)' : ''}: ${item.quantity} x ${formatKes(item.unitPrice)} = ${formatKes(item.unitPrice * item.quantity)}`
+        `  - ${item.name}${formatItemOptions(item) ? ` [${formatItemOptions(item)}]` : ''}${item.isFlash ? ' (flash price)' : ''}: ${item.quantity} x ${formatKes(item.unitPrice)} = ${formatKes(item.unitPrice * item.quantity)}`
     )
     .join('\n')
 
@@ -553,6 +562,206 @@ This is an automated message — please do not reply.
   `.trim()
 }
 
+export type FlashReminderStage = 1 | 2 | 3
+
+export interface FlashReminderEmailData {
+  salePrice: number
+  regularPrice: number
+  flashUrl: string
+}
+
+export const FLASH_REMINDER_SUBJECTS: Record<FlashReminderStage, string> = {
+  1: '2nd Edition Jersey Flash Sale Goes Away After 24hrs',
+  2: '12 HOURS LEFT - TRFC 2nd Edition Jersey Flash Sale',
+  3: 'FEW HRS LEFT — Ends in 1 Hour',
+}
+
+const FLASH_REMINDER_BANNERS: Record<FlashReminderStage, string> = {
+  1: '24-hour flash sale',
+  2: '12 hours left',
+  3: '1 hour left',
+}
+
+type FlashBlock =
+  | { kind: 'p'; text: string; strong?: boolean }
+  | { kind: 'heading'; text: string }
+  | { kind: 'divider'; text: string }
+  | { kind: 'price'; style: 'list' | 'instead' }
+  | { kind: 'extras' }
+  | { kind: 'cta' }
+
+function formatKsh(value: number): string {
+  return `Ksh ${Math.round(value).toLocaleString('en-KE')}`
+}
+
+function flashSaleStory(hoursLeft: number, data: FlashReminderEmailData): FlashBlock[] {
+  return [
+    { kind: 'p', text: "Heads up — in case you didn't notice, we've opened a 24-hour flash sale for the TRFC 2nd Edition Jersey." },
+    { kind: 'p', text: "Because you're registered for our upcoming Community Run, you get first access before we open the jerseys to everyone else." },
+    { kind: 'price', style: 'list' },
+    { kind: 'p', text: "We've spent the last 4 months working on these designs, because we wanted to come back with something much better than the 1st Edition. And honestly, we think we nailed it." },
+    { kind: 'p', text: 'Bad news: we only made 30 pieces of each colour.' },
+    { kind: 'p', text: 'Your jersey also comes with:' },
+    { kind: 'extras' },
+    { kind: 'p', text: `Once the ${hoursLeft} hours are up, your ${formatKsh(data.salePrice)} price is gone.`, strong: true },
+    { kind: 'cta' },
+  ]
+}
+
+function flashReminderContent(
+  stage: FlashReminderStage,
+  data: FlashReminderEmailData
+): { blocks: FlashBlock[]; ps: string } {
+  const pickUpPs = 'Once you get your jersey you can pick it up on the community run day.'
+  if (stage === 1) return { blocks: flashSaleStory(24, data), ps: pickUpPs }
+  if (stage === 2) {
+    return {
+      blocks: [
+        { kind: 'p', text: `12 hours left before the 2nd Edition Jersey price goes back to ${formatKsh(data.regularPrice)}.`, strong: true },
+        { kind: 'cta' },
+        { kind: 'divider', text: "Here's the email from our flash sale in case you missed it:" },
+        { kind: 'heading', text: '12 HOURS LEFT' },
+        ...flashSaleStory(12, data),
+      ],
+      ps: pickUpPs,
+    }
+  }
+  return {
+    blocks: [
+      { kind: 'p', text: "There's only 1 hour left.", strong: true },
+      { kind: 'p', text: 'In 1 hour, the TRFC 2nd Edition Jersey flash sale disappears for good.' },
+      { kind: 'p', text: 'Right now, you can get the jersey for:' },
+      { kind: 'price', style: 'instead' },
+      { kind: 'p', text: 'And you also get:' },
+      { kind: 'extras' },
+      { kind: 'p', text: "You'll also be among the first people to wear the 2nd Edition before the official launch." },
+      { kind: 'p', text: 'This is your last chance.', strong: true },
+      { kind: 'cta' },
+    ],
+    ps: 'This is the last email, message, anything from us about the 2nd Edition Jersey sequence.',
+  }
+}
+
+function flashBlockHtml(block: FlashBlock, data: FlashReminderEmailData): string {
+  const url = escapeHtml(data.flashUrl)
+  const sale = escapeHtml(formatKsh(data.salePrice))
+  const regular = escapeHtml(formatKsh(data.regularPrice))
+  switch (block.kind) {
+    case 'p':
+      return `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${block.strong ? '#111827' : '#374151'};${block.strong ? 'font-weight:700;' : ''}">${escapeHtml(block.text)}</p>`
+    case 'heading':
+      return `<p style="margin:0 0 16px;font-size:20px;font-weight:800;letter-spacing:0.04em;color:#dc2626;">${escapeHtml(block.text)}</p>`
+    case 'divider':
+      return `<div style="border-top:1px dashed #d1d5db;margin:28px 0 20px;padding-top:16px;font-size:13px;font-style:italic;color:#6b7280;">${escapeHtml(block.text)}</div>`
+    case 'price':
+      return block.style === 'list'
+        ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;">
+          <tr><td style="padding:16px 20px;">
+            <p style="margin:0;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:#92400e;">Your price</p>
+            <p style="margin:2px 0 10px;font-size:30px;font-weight:800;color:#b45309;">${sale}</p>
+            <p style="margin:0;font-size:14px;color:#6b7280;">Regular price: <span style="text-decoration:line-through;">${regular}</span></p>
+          </td></tr>
+        </table>`
+        : `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;">
+          <tr><td style="padding:16px 20px;text-align:center;">
+            <span style="font-size:30px;font-weight:800;color:#b45309;">${sale}</span>
+            <span style="font-size:15px;color:#6b7280;"> instead of <span style="text-decoration:line-through;">${regular}</span></span>
+          </td></tr>
+        </table>`
+    case 'extras':
+      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
+          <tr>
+            <td width="50%" style="padding:0 6px 0 0;"><div style="background:#0a0a0a;color:#ffffff;border-radius:6px;padding:12px;text-align:center;font-size:14px;font-weight:700;">FREE Medal</div></td>
+            <td width="50%" style="padding:0 0 0 6px;"><div style="background:#0a0a0a;color:#ffffff;border-radius:6px;padding:12px;text-align:center;font-size:14px;font-weight:700;">FREE TRFC Gift Bag</div></td>
+          </tr>
+        </table>`
+    case 'cta':
+      return `<table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:8px auto 24px;">
+          <tr><td style="background:#f59e0b;border-radius:6px;">
+            <a href="${url}" style="display:inline-block;padding:16px 36px;font-size:16px;font-weight:800;letter-spacing:0.08em;color:#111827;text-decoration:none;">GET MY JERSEY</a>
+          </td></tr>
+        </table>`
+  }
+}
+
+function flashBlockText(block: FlashBlock, data: FlashReminderEmailData): string {
+  switch (block.kind) {
+    case 'p':
+      return block.text
+    case 'heading':
+      return `**${block.text}**`
+    case 'divider':
+      return `---\n${block.text}`
+    case 'price':
+      return block.style === 'list'
+        ? `Your price: ${formatKsh(data.salePrice)}\nRegular price: ${formatKsh(data.regularPrice)}`
+        : `${formatKsh(data.salePrice)} instead of ${formatKsh(data.regularPrice)}`
+    case 'extras':
+      return 'FREE Medal + FREE TRFC Gift Bag'
+    case 'cta':
+      return `GET MY JERSEY: ${data.flashUrl}`
+  }
+}
+
+export function buildFlashReminderEmailHTML(stage: FlashReminderStage, data: FlashReminderEmailData): string {
+  const { blocks, ps } = flashReminderContent(stage, data)
+  const body = blocks.map((block) => flashBlockHtml(block, data)).join('\n')
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(FLASH_REMINDER_SUBJECTS[stage])}</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#111827;">
+  <div style="max-width:600px;margin:24px auto;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;">
+    <div style="background:#0a0a0a;color:#ffffff;padding:28px 24px;text-align:center;">
+      <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#f59e0b;">TRFC 2nd Edition Drop</p>
+      <h1 style="margin:0;font-size:24px;font-weight:800;">2nd Edition Jersey</h1>
+    </div>
+    <div style="background:#dc2626;color:#ffffff;padding:10px 24px;text-align:center;font-size:13px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;">
+      ${escapeHtml(FLASH_REMINDER_BANNERS[stage])}
+    </div>
+
+    <div style="padding:28px 24px;">
+      ${body}
+      <p style="text-align:center;font-size:12px;color:#6b7280;margin:-12px 0 24px;word-break:break-all;">
+        Button not working? <a href="${escapeHtml(data.flashUrl)}" style="color:#b45309;">${escapeHtml(data.flashUrl)}</a>
+      </p>
+
+      <p style="margin:0 0 4px;font-size:15px;color:#374151;">See you at the run,</p>
+      <p style="margin:0;font-size:15px;font-weight:700;">Coach Maurice</p>
+      <p style="margin:0 0 20px;font-size:14px;color:#6b7280;">TRFC</p>
+      <p style="margin:0;font-size:13px;line-height:1.5;color:#6b7280;"><strong>P.S.</strong> ${escapeHtml(ps)}</p>
+    </div>
+
+    <div style="background:#f9fafb;padding:20px 24px;text-align:center;font-size:12px;color:#6b7280;border-top:1px solid #e5e7eb;">
+      <p style="margin:0 0 8px;">
+        You're receiving this because you registered for a TRFC Community Run.
+      </p>
+      <p style="margin:0 0 8px;">
+        Questions? Email <a href="mailto:${escapeHtml(config.contact.email)}" style="color:#b45309;">${escapeHtml(config.contact.email)}</a>
+      </p>
+      <p style="margin:8px 0 0;">© ${new Date().getFullYear()} TRFC — Thika Road Fitness Community</p>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim()
+}
+
+export function buildFlashReminderEmailText(stage: FlashReminderStage, data: FlashReminderEmailData): string {
+  const { blocks, ps } = flashReminderContent(stage, data)
+  return [
+    ...blocks.map((block) => flashBlockText(block, data)),
+    'See you at the run,\nCoach Maurice\nTRFC',
+    `P.S. ${ps}`,
+    `You're receiving this because you registered for a TRFC Community Run.\n© ${new Date().getFullYear()} TRFC — Thika Road Fitness Community`,
+  ].join('\n\n')
+}
+
 export default {
   buildTicketEmailHTML,
   buildTicketEmailText,
@@ -562,4 +771,6 @@ export default {
   buildMedalBatchEmailText,
   buildOrderConfirmationEmailHTML,
   buildOrderConfirmationEmailText,
+  buildFlashReminderEmailHTML,
+  buildFlashReminderEmailText,
 }

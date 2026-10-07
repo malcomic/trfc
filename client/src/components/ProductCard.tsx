@@ -1,5 +1,6 @@
 import { Product } from '../types'
 import { Tag, Package } from 'lucide-react'
+import { LOW_STOCK_THRESHOLD, optionsFromProduct, requiresSize } from '../utils/productOptions'
 
 export default function ProductCard({ product, variant = 'full' }: { product: Product; variant?: 'full' | 'compact' }) {
   const prod = product as any
@@ -7,6 +8,12 @@ export default function ProductCard({ product, variant = 'full' }: { product: Pr
     ? Date.now() - new Date(prod.created_at).getTime() < 1000 * 60 * 60 * 24 * 14
     : false
   const isSoldOut = prod.stock === 0
+  const options = optionsFromProduct(product)
+  const sized = requiresSize(options)
+  const sizeHint = sized
+    ? `Sizes: ${options.variants.filter((v) => Number(v.stock) > 0).map((v) => v.size).join(', ') || 'sold out'}`
+    : null
+  const showLowStock = !sized && typeof prod.stock === 'number' && prod.stock > 0 && prod.stock <= LOW_STOCK_THRESHOLD
 
   if (variant === 'compact') {
     return (
@@ -15,8 +22,11 @@ export default function ProductCard({ product, variant = 'full' }: { product: Pr
         {prod.description && (
           <p className="text-xs text-fog light:text-fog-light leading-relaxed line-clamp-2">{prod.description}</p>
         )}
-        {typeof prod.stock === 'number' && prod.stock > 0 && prod.stock <= 5 && (
+        {showLowStock && (
           <p className="font-barlow-condensed font-bold text-[10px] tracking-wider uppercase text-accent light:text-accent-light">Only {prod.stock} left</p>
+        )}
+        {sizeHint && (
+          <p className="font-barlow-condensed font-bold text-[10px] tracking-wider uppercase text-fog light:text-fog-light">{sizeHint}</p>
         )}
       </>
     )
@@ -75,9 +85,14 @@ export default function ProductCard({ product, variant = 'full' }: { product: Pr
           </p>
         )}
 
-        {typeof prod.stock === 'number' && prod.stock > 0 && prod.stock <= 5 && (
+        {showLowStock && (
           <p className="font-barlow-condensed font-bold text-[10px] tracking-[2px] uppercase text-accent light:text-accent-light mt-1">
             Only {prod.stock} left
+          </p>
+        )}
+        {sizeHint && (
+          <p className="font-barlow-condensed font-bold text-[10px] tracking-[2px] uppercase text-fog light:text-fog-light mt-1">
+            {sizeHint}
           </p>
         )}
 

@@ -268,6 +268,9 @@ export default function TicketConfirmation() {
             >
               See all flash deals <ArrowRight size={14} />
             </Link>
+            <p className="mt-1 text-xs text-fog light:text-fog-light">
+              Exclusive for registered community run participants ONLY and offer goes away after 24 hours.
+            </p>
           </div>
         )}
 

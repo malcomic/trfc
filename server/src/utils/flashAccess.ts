@@ -1,9 +1,10 @@
 import type { Request } from 'express'
 import jwt from 'jsonwebtoken'
 import { query } from '../config/db.js'
+import { config } from '../config/env.js'
 import { phonesMatch } from './phone.js'
 
-export const FLASH_ACCESS_HOURS = 72
+export const FLASH_ACCESS_HOURS = 24
 
 export interface FlashAccess {
   ticketId: string
@@ -71,6 +72,18 @@ export function signFlashToken(access: FlashAccess): string {
   const secondsLeft = Math.max(1, Math.floor((access.expiresAt.getTime() - Date.now()) / 1000))
   const payload: FlashTokenPayload = { scope: 'flash', ticket_id: access.ticketId }
   return jwt.sign(payload, flashSecret(), { expiresIn: secondsLeft })
+}
+
+/** One-click link that unlocks /flash-sales for a ticket, or undefined once its access window has closed. */
+export async function buildFlashSalesUrl(ticketId: string): Promise<string | undefined> {
+  try {
+    const access = await findEligibleTicket({ ticketId })
+    if (!access) return undefined
+    return `${config.frontendUrl}/flash-sales?access=${encodeURIComponent(signFlashToken(access))}`
+  } catch (error: any) {
+    console.error(`⚠️  Could not build flash deals link for ticket ${ticketId}: ${error.message}`)
+    return undefined
+  }
 }
 
 function verifyFlashToken(token: string): string | null {

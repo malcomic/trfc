@@ -13,18 +13,7 @@ import {
   shortTicketCode,
 } from './qrCodeGenerator.js'
 import { generateTicketPDF } from './ticketPDFGenerator.js'
-import { findEligibleTicket, signFlashToken } from './flashAccess.js'
-
-async function buildFlashSalesUrl(ticketId: string): Promise<string | undefined> {
-  try {
-    const access = await findEligibleTicket({ ticketId })
-    if (!access) return undefined
-    return `${config.frontendUrl}/flash-sales?access=${encodeURIComponent(signFlashToken(access))}`
-  } catch (error: any) {
-    console.error(`⚠️  Could not build flash deals link for ticket ${ticketId}: ${error.message}`)
-    return undefined
-  }
-}
+import { buildFlashSalesUrl } from './flashAccess.js'
 
 function displayName(
   attendeeName: string | null | undefined,

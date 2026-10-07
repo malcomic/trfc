@@ -5,6 +5,7 @@ import multer from 'multer';
 import pool from './config/db.js';
 import { runMigrations } from './utils/runMigrations.js';
 import { verifyEmailTransporter } from './utils/emailService.js';
+import { startFlashReminderScheduler } from './jobs/flashReminders.js';
 
 export { pool };
 
@@ -83,6 +84,7 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`✓ Server running on http://localhost:${PORT}`);
       console.log(`✓ API base: http://localhost:${PORT}/api`);
+      startFlashReminderScheduler();
     });
   } catch (error) {
     console.error('✗ Failed to connect to database:', error);

@@ -1,34 +1,32 @@
 import api from '../index';
 
-export const getProductsForAdmin = async () => {
-  const response = await api.get('/admin/products');
-  return response.data;
-};
+export interface ProductVariantInput {
+  size: string;
+  stock: number;
+}
 
-export const createProduct = async (data: {
+export interface ProductPayload {
   name: string;
   description?: string;
   price: number;
   stock: number;
   category_id: string;
   image_url?: string;
-}) => {
+  variants?: ProductVariantInput[];
+  distance_options?: string[];
+}
+
+export const getProductsForAdmin = async () => {
+  const response = await api.get('/admin/products');
+  return response.data;
+};
+
+export const createProduct = async (data: ProductPayload) => {
   const response = await api.post('/products', data);
   return response.data;
 };
 
-export const updateProduct = async (
-  id: string,
-  data: {
-    name: string;
-    description?: string;
-    price: number;
-    stock: number;
-    category_id: string;
-    image_url?: string;
-    is_active: boolean;
-  }
-) => {
+export const updateProduct = async (id: string, data: ProductPayload & { is_active: boolean }) => {
   const response = await api.put(`/products/${id}`, data);
   return response.data;
 };

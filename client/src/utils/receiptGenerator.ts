@@ -1,4 +1,5 @@
 import { PaymentHistoryItem } from '../api/payments'
+import { formatSelectedOptions } from './productOptions'
 
 interface ReceiptData {
   id: string
@@ -12,6 +13,8 @@ interface ReceiptData {
     name: string
     quantity: number
     price: number
+    size?: string | null
+    distance?: string | null
   }>
 }
 
@@ -43,7 +46,7 @@ Transaction ID:    ${data.id}
 
 ${'items' in data && data.items ? `ITEMS PURCHASED
 
-${data.items.map((item) => `${item.name} x${item.quantity} - KES ${(item.price * item.quantity).toFixed(2)}`).join('\n')}
+${data.items.map((item) => `${item.name}${formatSelectedOptions(item) ? ` (${formatSelectedOptions(item)})` : ''} x${item.quantity} - KES ${(item.price * item.quantity).toFixed(2)}`).join('\n')}
 
 ────────────────────────────────────────
 ` : ''}

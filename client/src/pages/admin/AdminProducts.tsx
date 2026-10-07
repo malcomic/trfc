@@ -5,12 +5,19 @@ import { Trash2, Edit2, Plus } from 'lucide-react'
 import { getProductsForAdmin, createProduct, updateProduct, deleteProduct } from '../../api/admin/products'
 import { getProductCategoriesForAdmin } from '../../api/admin/productCategories'
 import { uploadImage } from '../../api/admin/upload'
-import type { ProductCategory } from '../../types'
+import type { ProductCategory, ProductVariant } from '../../types'
 import AdminConfirmDialog from '../../components/AdminConfirmDialog'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/AdminMobileCard'
 import AdminResponsiveData from '../../components/admin/AdminResponsiveData'
 import ProductsSectionTabs from '../../components/admin/ProductsSectionTabs'
+import ProductOptionsEditor, {
+  EMPTY_OPTIONS_FORM,
+  ProductOptionsFormValue,
+  optionsFormFromProduct,
+  optionsPayload,
+  validateOptionsForm,
+} from '../../components/admin/ProductOptionsEditor'
 
 interface Product {
   id: string
@@ -23,6 +30,27 @@ interface Product {
   category_name?: string | null
   image_url?: string
   is_active: boolean
+  variants?: ProductVariant[]
+  distance_options?: string[]
+}
+
+function sizeStockHint(product: Product): string | null {
+  const active = (product.variants ?? []).filter((v) => v.is_active)
+  if (active.length === 0) return null
+  return active.map((v) => `${v.size}:${v.stock}`).join(' ')
+}
+
+function StockCell({ product }: { product: Product }) {
+  const hint = sizeStockHint(product)
+  return (
+    <span>
+      {product.stock}
+      {hint && <span className="block text-xs text-gray-500 dark:text-gray-400">{hint}</span>}
+      {(product.distance_options?.length ?? 0) > 0 && (
+        <span className="block text-xs text-gray-500 dark:text-gray-400">Distances: {product.distance_options!.join(', ')}</span>
+      )}
+    </span>
+  )
 }
 
 const UNCATEGORISED = '__none__'
@@ -38,6 +66,7 @@ export default function AdminProducts() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [filePreview, setFilePreview] = useState<string | null>(null)
+  const [optionsForm, setOptionsForm] = useState<ProductOptionsFormValue>(EMPTY_OPTIONS_FORM)
   const { register, handleSubmit, reset, watch, formState: { errors } } = useForm()
   const fileInput = watch('file')
 
@@ -83,6 +112,11 @@ export default function AdminProducts() {
     product.category_name || (product.category ? `${product.category} (unassigned)` : 'Unassigned')
 
   const onSubmit = async (data: any) => {
+    const optionsError = validateOptionsForm(optionsForm)
+    if (optionsError) {
+      setError(optionsError)
+      return
+    }
     try {
       setUploading(true)
       setError('')
@@ -96,13 +130,16 @@ export default function AdminProducts() {
         imageUrl = result.url
       }
 
+      const { variants, distance_options, totalSizeStock } = optionsPayload(optionsForm)
       const payload = {
         name: data.name,
         category_id: data.category_id,
         description: data.description,
         price: parseFloat(data.price),
-        stock: parseInt(data.stock),
+        stock: optionsForm.sizesEnabled ? totalSizeStock : parseInt(data.stock),
         image_url: imageUrl,
+        variants,
+        distance_options,
       }
 
       if (editingId) {
@@ -116,6 +153,7 @@ export default function AdminProducts() {
       setShowModal(false)
       setEditingId(null)
       setFilePreview(null)
+      setOptionsForm(EMPTY_OPTIONS_FORM)
       reset()
       fetchProducts()
     } catch (err: any) {
@@ -142,6 +180,7 @@ export default function AdminProducts() {
     setEditingId(product.id)
     setFilePreview(null)
     reset({ ...product, category_id: product.category_id ?? '' })
+    setOptionsForm(optionsFormFromProduct(product))
     setShowModal(true)
   }
 
@@ -160,6 +199,7 @@ export default function AdminProducts() {
             onClick={() => {
               setEditingId(null)
               setFilePreview(null)
+              setOptionsForm(EMPTY_OPTIONS_FORM)
               reset()
               setShowModal(true)
             }}
@@ -231,7 +271,7 @@ export default function AdminProducts() {
                   <td className="px-6 py-4">{product.name}</td>
                   <td className={`px-6 py-4 ${product.category_id ? '' : 'text-amber-600 dark:text-amber-400'}`}>{categoryLabel(product)}</td>
                   <td className="px-6 py-4">KES {(Number(product.price) || 0).toFixed(2)}</td>
-                  <td className="px-6 py-4">{product.stock}</td>
+                  <td className="px-6 py-4"><StockCell product={product} /></td>
                   <td className="px-6 py-4">
                     <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
                       product.is_active
@@ -271,7 +311,7 @@ export default function AdminProducts() {
             <p className="font-semibold text-gray-900 dark:text-white">{product.name}</p>
             <AdminMobileCardRow label="Category" value={categoryLabel(product)} />
             <AdminMobileCardRow label="Price" value={`KES ${(Number(product.price) || 0).toFixed(2)}`} />
-            <AdminMobileCardRow label="Stock" value={product.stock} />
+            <AdminMobileCardRow label="Stock" value={<StockCell product={product} />} />
             <AdminMobileCardRow
               label="Status"
               value={
@@ -340,15 +380,21 @@ export default function AdminProducts() {
                 {errors.price && <span className="text-red-600 dark:text-red-400 text-sm">{errors.price.message as string}</span>}
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Stock *</label>
-                <input
-                  type="number"
-                  {...register('stock', { required: 'Stock is required' })}
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-                {errors.stock && <span className="text-red-600 dark:text-red-400 text-sm">{errors.stock.message as string}</span>}
-              </div>
+              {!optionsForm.sizesEnabled && (
+                <div>
+                  <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Stock *</label>
+                  <input
+                    type="number"
+                    {...register('stock', {
+                      validate: (v) => optionsForm.sizesEnabled || (v !== '' && v != null) || 'Stock is required',
+                    })}
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                  {errors.stock && <span className="text-red-600 dark:text-red-400 text-sm">{errors.stock.message as string}</span>}
+                </div>
+              )}
+
+              <ProductOptionsEditor value={optionsForm} onChange={setOptionsForm} />
 
               <div>
                 <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Description</label>
@@ -413,6 +459,7 @@ export default function AdminProducts() {
                   onClick={() => {
                     setShowModal(false)
                     setFilePreview(null)
+                    setOptionsForm(EMPTY_OPTIONS_FORM)
                     reset()
                   }}
                   className="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"

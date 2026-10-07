@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
-import { useCart, cartLineKey, cartLinePrice } from '../store/cartStore'
+import { useCart, cartLineKey, cartLinePrice, cartLineMaxQuantity } from '../store/cartStore'
+import { cartItemNeedsOptions, formatSelectedOptions } from '../utils/productOptions'
 import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, Tag, Zap, AlertCircle } from 'lucide-react'
 import { getGrandTotal } from '../utils/shipping'
 import { loadFlashAccess, formatTimeLeft } from '../utils/flashAccess'
@@ -93,6 +94,9 @@ export default function Cart() {
                 const lineKey = cartLineKey(item)
                 const unitPrice = cartLinePrice(item)
                 const isFlash = Boolean(item.flashSaleId)
+                const optionsLabel = formatSelectedOptions(item)
+                const needsOptions = cartItemNeedsOptions(item)
+                const maxQuantity = item.variantId ? cartLineMaxQuantity(item) : null
                 return (
                 <div key={lineKey} className={`${cardSurface} p-4 md:p-5 transition-all duration-200 hover:border-white/10 light:hover:border-black/15 relative group before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-accent light:before:bg-accent-light before:scale-y-0 before:origin-bottom before:transition-transform before:duration-250 hover:before:scale-y-100`}>
                   {/* Mobile: flex row with image + info + remove; Desktop: 5-col grid */}
@@ -121,6 +125,14 @@ export default function Cart() {
                         </span>
                       )}
                       <p className="font-barlow-condensed font-bold text-lg tracking-tighter text-chalk light:text-chalk-light leading-tight mb-1">{item.product.name}</p>
+                      {optionsLabel && (
+                        <p className="text-xs text-chalk/80 light:text-chalk-light/80 font-barlow-condensed font-bold tracking-widest uppercase mb-1">{optionsLabel}</p>
+                      )}
+                      {needsOptions && (
+                        <p className="text-xs text-amber-500 light:text-amber-700 font-barlow-condensed font-bold tracking-widest uppercase mb-1">
+                          <Link to={`/shop/${item.product.id}`} className="text-inherit underline">Choose a size or distance</Link> — remove this line and add it again
+                        </p>
+                      )}
                       <p className="text-xs text-fog light:text-fog-light font-barlow-condensed font-medium tracking-widest">
                         KES <span className="text-accent light:text-accent-light">{unitPrice.toLocaleString()}</span> each
                         {isFlash && Number(item.product.price) > unitPrice && (
@@ -143,8 +155,9 @@ export default function Cart() {
                         </button>
                         <div className="w-10 text-center font-bebas text-xl text-chalk light:text-chalk-light leading-none bg-ash light:bg-ash-light border-l border-r border-white/10 light:border-black/10 py-1.75">{item.quantity}</div>
                         <button
-                          className="bg-smoke light:bg-smoke-light text-fog light:text-fog-light hover:bg-accent light:hover:bg-accent-light hover:text-white w-8 h-9 flex items-center justify-center cursor-pointer transition-all duration-200"
+                          className="bg-smoke light:bg-smoke-light text-fog light:text-fog-light hover:bg-accent light:hover:bg-accent-light hover:text-white w-8 h-9 flex items-center justify-center cursor-pointer transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-smoke disabled:hover:text-fog"
                           onClick={() => handleQuantityChange(lineKey, item.quantity + 1)}
+                          disabled={maxQuantity != null && item.quantity >= maxQuantity}
                           aria-label="Increase quantity"
                         >
                           <Plus size={12} />

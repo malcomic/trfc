@@ -1,9 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { getProductById } from '../api/products'
 import { useCart } from '../store/cartStore'
 import { AlertCircle, Loader, ShoppingCart, ArrowLeft } from 'lucide-react'
-import { Product } from '../types'
+import { Product, ProductSelection } from '../types'
+import ProductOptionsPicker from '../components/ProductOptionsPicker'
+import {
+  EMPTY_SELECTION,
+  allSizesSoldOut,
+  availableStock,
+  isSelectionComplete,
+  optionsFromProduct,
+  productHasOptions,
+} from '../utils/productOptions'
 import { trackViewContent } from '../utils/tiktokPixel'
 import { pageRoot, inputField } from '../utils/themeClasses'
 
@@ -16,6 +25,7 @@ export default function ProductDetail() {
   const [error, setError] = useState('')
   const [quantity, setQuantity] = useState(1)
   const [added, setAdded] = useState(false)
+  const [selection, setSelection] = useState<ProductSelection>(EMPTY_SELECTION)
 
   useEffect(() => {
     if (id) {
@@ -38,9 +48,18 @@ export default function ProductDetail() {
     )
   }, [product])
 
+  const options = useMemo(() => (product ? optionsFromProduct(product) : null), [product])
+  const hasOptions = options ? productHasOptions(options) : false
+  const stockForSelection = options && product ? availableStock(options, selection, product.stock) : 0
+  const selectionComplete = options ? isSelectionComplete(options, selection) : true
+
+  useEffect(() => {
+    if (stockForSelection > 0 && quantity > stockForSelection) setQuantity(stockForSelection)
+  }, [stockForSelection, quantity])
+
   const handleAdd = () => {
-    if (!product) return
-    addItem(product, quantity)
+    if (!product || !selectionComplete) return
+    addItem(product, quantity, hasOptions ? selection : undefined)
     setAdded(true)
     setTimeout(() => setAdded(false), 2000)
   }
@@ -90,27 +109,36 @@ export default function ProductDetail() {
             <h1 className="font-bebas text-5xl mb-4">{p.name}</h1>
             <p className="font-bebas text-4xl text-accent light:text-accent-light mb-6">KES {Number(p.price).toLocaleString()}</p>
             {p.description && <p className="text-fog light:text-fog-light leading-relaxed mb-8">{p.description}</p>}
-            {p.stock === 0 ? (
+            {p.stock === 0 || (options && allSizesSoldOut(options)) ? (
               <p className="text-fog light:text-fog-light font-barlow-condensed font-bold uppercase text-sm">Sold out</p>
             ) : (
               <>
+                {hasOptions && options && (
+                  <div className="mb-6">
+                    <ProductOptionsPicker source={options} selection={selection} onChange={setSelection} />
+                  </div>
+                )}
                 <div className="flex items-center gap-4 mb-6">
                   <label className="text-sm text-fog light:text-fog-light">Qty</label>
                   <input
                     type="number"
                     min={1}
-                    max={p.stock || 99}
+                    max={stockForSelection || 99}
                     value={quantity}
-                    onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                    onChange={(e) => {
+                      const next = Math.max(1, parseInt(e.target.value) || 1)
+                      setQuantity(stockForSelection > 0 ? Math.min(next, stockForSelection) : next)
+                    }}
                     className={`w-20 px-3 py-2 ${inputField}`}
                   />
                 </div>
                 <button
                   onClick={handleAdd}
-                  className={`w-full py-4 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase flex items-center justify-center gap-2 ${added ? 'bg-green-600/30 text-green-400 light:text-green-700' : 'bg-accent light:bg-accent-light text-black light:text-white hover:bg-accent/90 light:hover:bg-accent-light/90'}`}
+                  disabled={!selectionComplete}
+                  className={`w-full py-4 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${added ? 'bg-green-600/30 text-green-400 light:text-green-700' : 'bg-accent light:bg-accent-light text-black light:text-white hover:bg-accent/90 light:hover:bg-accent-light/90'}`}
                 >
                   <ShoppingCart size={18} />
-                  {added ? 'Added to Cart!' : 'Add to Cart'}
+                  {added ? 'Added to Cart!' : selectionComplete ? 'Add to Cart' : 'Choose your options'}
                 </button>
               </>
             )}

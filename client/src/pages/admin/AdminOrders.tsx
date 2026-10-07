@@ -4,12 +4,15 @@ import { getOrdersForAdmin, updateOrderStatus } from '../../api/admin/orders'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/AdminMobileCard'
 import AdminResponsiveData from '../../components/admin/AdminResponsiveData'
+import { formatSelectedOptions } from '../../utils/productOptions'
 
 interface OrderItem {
   product_id: string
   product_name?: string
   quantity: number
   unit_price: number
+  size?: string | null
+  distance?: string | null
 }
 
 interface Order {
@@ -304,6 +307,9 @@ export default function AdminOrders() {
                       <div key={idx} className="flex justify-between">
                         <span>
                           {item.product_name || 'Unknown product'} x {item.quantity}
+                          {formatSelectedOptions(item) && (
+                            <span className="block text-sm text-gray-500 dark:text-gray-400">{formatSelectedOptions(item)}</span>
+                          )}
                         </span>
                         <span className="font-semibold">
                           KES {(Number(item.unit_price) * item.quantity).toFixed(2)}

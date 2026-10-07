@@ -47,6 +47,22 @@ export interface Product {
   image_url?: string;
   is_active?: boolean;
   created_at?: string;
+  variants?: ProductVariant[];
+  distance_options?: string[];
+}
+
+export interface ProductVariant {
+  id: string;
+  size: string;
+  stock: number;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface ProductSelection {
+  variantId: string | null;
+  size: string | null;
+  distance: string | null;
 }
 
 export interface ProductCategory {
@@ -70,6 +86,9 @@ export interface CartItem {
   quantity: number;
   unitPrice?: number;
   flashSaleId?: string | null;
+  variantId?: string | null;
+  size?: string | null;
+  distance?: string | null;
 }
 
 export interface FlashSale {
@@ -108,6 +127,8 @@ export interface FlashSaleOffer {
   product_category?: string | null;
   category_name?: string | null;
   category_slug?: string | null;
+  product_variants?: ProductVariant[];
+  distance_options?: string[];
 }
 
 export interface FlashSalesResponse {

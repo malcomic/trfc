@@ -65,7 +65,18 @@ export interface Product {
   category_id?: string | null;
   image_url?: string;
   is_active: boolean;
+  distance_options: string[];
+  variants?: ProductVariant[];
   created_at: Date;
+}
+
+export interface ProductVariant {
+  id: string;
+  product_id?: string;
+  size: string;
+  stock: number;
+  sort_order: number;
+  is_active: boolean;
 }
 
 export interface ProductCategory {

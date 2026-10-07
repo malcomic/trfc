@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import { query } from '../config/db.js'
 import { attachTicketTypesToEvents } from '../utils/eventTicketTypes.js'
+import { getAdminProductList } from './productsController.js'
 
 export async function getAdminEvents(_req: Request, res: Response) {
   try {
@@ -15,13 +16,7 @@ export async function getAdminEvents(_req: Request, res: Response) {
 
 export async function getAdminProducts(_req: Request, res: Response) {
   try {
-    const result = await query(
-      `SELECT p.*, c.name AS category_name, c.slug AS category_slug
-       FROM products p
-       LEFT JOIN product_categories c ON c.id = p.category_id
-       ORDER BY p.created_at DESC`
-    )
-    res.json(result.rows)
+    res.json(await getAdminProductList())
   } catch (error) {
     console.error(error)
     res.status(500).json({ error: 'Failed to fetch products' })

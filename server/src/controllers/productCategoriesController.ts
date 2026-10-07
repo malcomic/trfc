@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import { query } from '../config/db.js'
 import { slugify } from '../utils/slugify.js'
+import { variantsJsonSql } from '../utils/productVariants.js'
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const MAX_NAME_LENGTH = 50
@@ -44,7 +45,8 @@ export async function getProductCategoryBySlug(req: Request, res: Response) {
     }
     const category = categoryResult.rows[0]
     const productsResult = await query(
-      `SELECT p.*, $2::text AS category_name, $3::text AS category_slug
+      `SELECT p.*, $2::text AS category_name, $3::text AS category_slug,
+              ${variantsJsonSql()} AS variants
        FROM products p
        WHERE p.category_id = $1 AND p.is_active = true
        ORDER BY p.created_at DESC`,

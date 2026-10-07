@@ -384,6 +384,47 @@ const MIGRATIONS: { name: string; sql: string }[] = [
         WHERE payment_status = 'paid' AND stock_decremented_at IS NULL;
     `,
   },
+  {
+    name: '018_product_variants',
+    sql: `
+      CREATE TABLE IF NOT EXISTS product_variants (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        size VARCHAR(20) NOT NULL,
+        stock INT NOT NULL DEFAULT 0 CHECK (stock >= 0),
+        sort_order INT NOT NULL DEFAULT 0,
+        is_active BOOLEAN NOT NULL DEFAULT true,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE (product_id, size)
+      );
+      CREATE INDEX IF NOT EXISTS idx_product_variants_product ON product_variants(product_id, is_active);
+
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS distance_options JSONB NOT NULL DEFAULT '[]';
+
+      ALTER TABLE order_items
+        ADD COLUMN IF NOT EXISTS variant_id UUID REFERENCES product_variants(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS size VARCHAR(20),
+        ADD COLUMN IF NOT EXISTS distance VARCHAR(20);
+      CREATE INDEX IF NOT EXISTS idx_order_items_variant ON order_items(variant_id);
+    `,
+  },
+  {
+    name: '019_flash_reminder_emails',
+    sql: `
+      CREATE TABLE IF NOT EXISTS flash_reminder_emails (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        email VARCHAR(150) NOT NULL,
+        ticket_id UUID REFERENCES tickets(id) ON DELETE SET NULL,
+        stage SMALLINT NOT NULL CHECK (stage BETWEEN 1 AND 3),
+        status VARCHAR(20) NOT NULL DEFAULT 'sending',
+        error TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        sent_at TIMESTAMPTZ
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_flash_reminder_email_stage
+        ON flash_reminder_emails (LOWER(email), stage);
+    `,
+  },
 ]
 
 export async function runMigrations() {

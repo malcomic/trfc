@@ -139,7 +139,7 @@ export default function FlashSales() {
               UNLOCK <span className="text-accent light:text-accent-light">FLASH DEALS</span>
             </h1>
             <p className="text-fog light:text-fog-light text-sm mb-6">
-              Flash deals are available for 72 hours after you buy an event ticket. Enter the payment reference from your
+              Flash deals are available for 24 hours after you buy an event ticket. Enter the payment reference from your
               ticket confirmation and the email or M-Pesa phone used at checkout.
             </p>
             {error && (
@@ -160,7 +160,7 @@ export default function FlashSales() {
               </button>
             </form>
             <p className="text-sm text-fog light:text-fog-light mt-6">
-              {user ? 'No ticket in the last 72 hours?' : (
+              {user ? 'No ticket in the last 24 hours?' : (
                 <>
                   Bought a ticket while logged in?{' '}
                   <Link to="/login" className="text-accent light:text-accent-light">

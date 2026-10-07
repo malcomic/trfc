@@ -56,7 +56,10 @@ export default function MyTickets() {
                 <p className="font-barlow-condensed font-bold text-base tracking-wide text-chalk light:text-chalk-light">
                   Ticket-holder flash deals unlocked
                 </p>
-                <p className="text-xs text-fog light:text-fog-light">Ends in {formatTimeLeft(flashExpiresAt)}</p>
+                <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-red-500 light:text-red-600">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse flex-shrink-0" aria-hidden="true" />
+                  LIVE Goes away after {formatTimeLeft(flashExpiresAt)}
+                </p>
               </div>
             </div>
             <ArrowRight size={18} className="text-accent light:text-accent-light flex-shrink-0" />

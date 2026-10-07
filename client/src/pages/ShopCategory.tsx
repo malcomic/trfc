@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useCart } from '../store/cartStore'
+import { optionsFromProduct, productHasOptions } from '../utils/productOptions'
 import { getProductCategory } from '../api/productCategories'
 import ProductCard from '../components/ProductCard'
 import { Product, ProductCategory } from '../types'
@@ -29,6 +30,7 @@ export default function ShopCategory() {
   const [addedIds, setAddedIds] = useState<Set<string | number>>(new Set())
   const [toasts, setToasts] = useState<Toast[]>([])
   const { addItem } = useCart()
+  const navigate = useNavigate()
   const toastId = useRef(0)
 
   useEffect(() => {
@@ -64,6 +66,10 @@ export default function ShopCategory() {
   const handleAddToCart = (product: Product, e?: React.MouseEvent) => {
     e?.preventDefault()
     e?.stopPropagation()
+    if (productHasOptions(optionsFromProduct(product))) {
+      navigate(`/shop/${product.id}`)
+      return
+    }
     addItem(product, 1)
 
     setAddedIds((prev) => new Set(prev).add(product.id))
@@ -219,6 +225,7 @@ export default function ShopCategory() {
           <div className="grid grid-cols-auto-fill gap-0.5">
             {sortedProducts.map((product) => {
               const added = addedIds.has(product.id)
+              const needsOptions = productHasOptions(optionsFromProduct(product))
               return (
                 <div
                   key={product.id}
@@ -255,7 +262,9 @@ export default function ShopCategory() {
                       >
                         {added
                           ? <><Check size={14} /> Added!</>
-                          : <><ShoppingCart size={14} /> Quick Add</>
+                          : needsOptions
+                            ? <>Choose options</>
+                            : <><ShoppingCart size={14} /> Quick Add</>
                         }
                       </button>
                     </div>
@@ -276,7 +285,8 @@ export default function ShopCategory() {
                             ? 'bg-green-600/10 border border-green-600/30 text-green-400'
                             : 'bg-accent/10 light:bg-accent-light/10 border border-accent/20 light:border-accent-light/20 text-accent light:text-accent-light hover:bg-accent/20 light:hover:bg-accent-light/20'
                         }`}
-                        aria-label={`Add ${product.name} to cart`}
+                        aria-label={needsOptions ? `Choose options for ${product.name}` : `Add ${product.name} to cart`}
+                        title={needsOptions ? 'Choose options' : undefined}
                       >
                         {added
                           ? <Check size={15} />
@@ -293,7 +303,7 @@ export default function ShopCategory() {
       </div>
 
       {/* ── Toast stack ── */}
-      <div className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 flex flex-col gap-2.5 z-1000">
+      <div className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 flex flex-col gap-2.5 z-[1000]">
         {toasts.map((toast) => (
           <div key={toast.id} className={`${cardSurface} border-l-4 border-l-accent light:border-l-accent-light px-5 py-3.5 flex items-center gap-3 clip-angled-sm animate-toastIn w-56 sm:w-64`}>
             <div className="w-7 h-7 bg-green-600/15 border border-green-600/25 rounded-full flex items-center justify-center text-green-400 flex-shrink-0">

@@ -229,7 +229,7 @@ export default function AdminFlashSales() {
       <ProductsSectionTabs />
 
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-        Flash deals are only shown to customers for 72 hours after they buy an event ticket.
+        Flash deals are only shown to customers for 24 hours after they buy an event ticket.
       </p>
 
       {error && (

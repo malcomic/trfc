@@ -31,7 +31,8 @@ export async function sendOrderConfirmationEmail(orderId: string): Promise<void>
 
     const order = claim.rows[0]
     const itemsResult = await query(
-      `SELECT COALESCE(p.name, 'Product') AS name, oi.quantity, oi.unit_price, oi.flash_sale_id
+      `SELECT COALESCE(p.name, 'Product') AS name, oi.quantity, oi.unit_price, oi.flash_sale_id,
+              oi.size, oi.distance
        FROM order_items oi
        LEFT JOIN products p ON oi.product_id = p.id
        WHERE oi.order_id = $1`,
@@ -54,6 +55,8 @@ export async function sendOrderConfirmationEmail(orderId: string): Promise<void>
         quantity: Number(row.quantity),
         unitPrice: Number(row.unit_price),
         isFlash: Boolean(row.flash_sale_id),
+        size: (row.size as string | null) ?? null,
+        distance: (row.distance as string | null) ?? null,
       })),
       totalPaid: Number(order.total_amount),
       mpesaReceipt: order.mpesa_receipt as string | null,

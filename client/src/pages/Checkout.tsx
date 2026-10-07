@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { createOrder } from '../api/orders'
 import { initiateSTKPush } from '../api/payments'
 import { useCart, cartLineKey, cartLinePrice } from '../store/cartStore'
+import type { CartItem } from '../types'
 import { getGrandTotal } from '../utils/shipping'
 import { loadFlashAccess } from '../utils/flashAccess'
+import { formatSelectedOptions } from '../utils/productOptions'
 import PaymentStatusModal from '../components/PaymentStatusModal'
 import { AlertCircle, ShoppingCart, Truck, ArrowLeft } from 'lucide-react'
 import { Button, FormInput, Card } from '../components/ui'
@@ -23,14 +25,28 @@ export default function Checkout() {
     if (user?.email && !getValues('email')) setValue('email', user.email)
   }, [user?.email, getValues, setValue])
   const navigate = useNavigate()
-  const { items, getTotal, clearCart, removeItem } = useCart()
-  const grandTotal = getGrandTotal(getTotal())
+  const [searchParams] = useSearchParams()
+  const isBuyNow = searchParams.get('mode') === 'buy-now'
+  const { items: cartItems, buyNowItem, clearBuyNow, clearCart, removeItem } = useCart()
+  // Snapshot of what was submitted, so the page and payment modal stay up after the items are cleared.
+  const [submittedItems, setSubmittedItems] = useState<CartItem[] | null>(null)
+  const liveItems = useMemo(
+    () => (isBuyNow ? (buyNowItem ? [buyNowItem] : []) : cartItems),
+    [isBuyNow, buyNowItem, cartItems]
+  )
+  const items = submittedItems ?? liveItems
+  const grandTotal = getGrandTotal(items.reduce((sum, item) => sum + cartLinePrice(item) * item.quantity, 0))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [flashRejected, setFlashRejected] = useState(false)
   const hasFlashItems = items.some((item) => item.flashSaleId)
 
   const removeFlashItems = () => {
+    if (isBuyNow) {
+      clearBuyNow()
+      navigate('/flash-sales')
+      return
+    }
     items.filter((item) => item.flashSaleId).forEach((item) => removeItem(cartLineKey(item)))
     setFlashRejected(false)
     setError('')
@@ -62,17 +78,19 @@ export default function Checkout() {
             <ShoppingCart size={40} className="text-fog light:text-fog-light" />
           </div>
           <h1 className="font-bebas text-5xl text-chalk light:text-chalk-light mb-3 letter-spacing-tighter">
-            CART EMPTY
+            {isBuyNow ? 'NO DEAL SELECTED' : 'CART EMPTY'}
           </h1>
           <p className="text-lg text-fog light:text-fog-light mb-8">
-            Your shopping cart is empty. Browse our products and start adding items to your order.
+            {isBuyNow
+              ? 'This flash deal is no longer selected. Head back to the flash deals to pick your jersey.'
+              : 'Your shopping cart is empty. Browse our products and start adding items to your order.'}
           </p>
           <Button
-            onClick={() => navigate('/shop')}
+            onClick={() => navigate(isBuyNow ? '/flash-sales' : '/shop')}
             variant="primary"
             size="lg"
           >
-            Continue Shopping
+            {isBuyNow ? 'Back to Flash Deals' : 'Continue Shopping'}
           </Button>
         </div>
       </div>
@@ -93,6 +111,8 @@ export default function Checkout() {
         quantity: item.quantity,
         unit_price: cartLinePrice(item),
         ...(item.flashSaleId ? { flash_sale_id: item.flashSaleId } : {}),
+        ...(item.variantId ? { variant_id: item.variantId } : {}),
+        ...(item.distance ? { distance: item.distance } : {}),
       }))
 
       const createdOrder = await createOrder({
@@ -114,8 +134,10 @@ export default function Checkout() {
 
       if (paymentResponse.checkoutRequestId) {
         setCheckoutRequestId(paymentResponse.checkoutRequestId)
+        setSubmittedItems(items)
         setShowPaymentModal(true)
-        clearCart()
+        if (isBuyNow) clearBuyNow()
+        else clearCart()
       } else {
         setError('Failed to initiate payment. Please try again.')
       }
@@ -143,8 +165,8 @@ export default function Checkout() {
       {/* ── Hero ── */}
       <section className="bg-gradient-to-r from-ink via-ash to-ink light:from-ink-light light:via-ash-light light:to-ink-light border-b border-white/5 light:border-black/5 px-[6%] py-12">
         <div className="max-w-5xl mx-auto relative z-10">
-          <Link to="/cart" className="inline-flex items-center gap-2 text-accent light:text-accent-light text-sm mb-4 no-underline hover:underline font-barlow-condensed font-bold">
-            <ArrowLeft size={14} /> Back to Cart
+          <Link to={isBuyNow ? '/flash-sales' : '/cart'} className="inline-flex items-center gap-2 text-accent light:text-accent-light text-sm mb-4 no-underline hover:underline font-barlow-condensed font-bold">
+            <ArrowLeft size={14} /> {isBuyNow ? 'Back to flash deals' : 'Back to Cart'}
           </Link>
           <div className="inline-flex items-center gap-2 font-barlow-condensed font-bold text-xs letter-spacing-widest text-transform-uppercase text-accent light:text-accent-light mb-3 before:block before:w-5 before:h-0.5 before:bg-accent light:before:bg-accent-light">
             Complete Your Order
@@ -285,6 +307,9 @@ export default function Checkout() {
                         <p className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-chalk light:text-chalk-light truncate">
                           {item.product.name}
                         </p>
+                        {formatSelectedOptions(item) && (
+                          <p className="text-xs text-chalk/80 light:text-chalk-light/80 mt-0.5">{formatSelectedOptions(item)}</p>
+                        )}
                         <p className="text-xs text-fog light:text-fog-light mt-1">
                           KES {cartLinePrice(item).toFixed(0)} × {item.quantity}
                           {item.flashSaleId && <span className="ml-2 text-accent light:text-accent-light font-bold">Flash</span>}

@@ -5,10 +5,18 @@ import { pollPaymentStatus } from '../api/payments'
 import { AlertCircle, CheckCircle, Clock } from 'lucide-react'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 import { trackCompletePayment } from '../utils/tiktokPixel'
+import { formatSelectedOptions } from '../utils/productOptions'
 
 interface Order {
   id: string
-  items?: { product_id: string; product_name?: string; quantity: number; unit_price: number }[]
+  items?: {
+    product_id: string
+    product_name?: string
+    quantity: number
+    unit_price: number
+    size?: string | null
+    distance?: string | null
+  }[]
   total_amount: number
   payment_status: string
   status?: string
@@ -192,7 +200,12 @@ export default function OrderConfirmation() {
             <h2 className="font-barlow-condensed font-bold text-accent light:text-accent-light tracking-widest uppercase mb-4">Items</h2>
             {order.items.map((item, i) => (
               <div key={i} className="flex justify-between py-2 border-b border-white/5 light:border-black/8 last:border-0">
-                <span>{item.product_name || 'Product'} × {item.quantity}</span>
+                <span>
+                  {item.product_name || 'Product'} × {item.quantity}
+                  {formatSelectedOptions(item) && (
+                    <span className="block text-xs text-fog light:text-fog-light mt-0.5">{formatSelectedOptions(item)}</span>
+                  )}
+                </span>
                 <span>KES {(item.unit_price * item.quantity).toLocaleString()}</span>
               </div>
             ))}

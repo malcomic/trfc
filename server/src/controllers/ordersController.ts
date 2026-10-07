@@ -6,6 +6,7 @@ import { resolveFlashAccess } from '../utils/flashAccess.js';
 import { decrementOrderStock } from '../utils/orderStock.js';
 import { sendOrderConfirmationEmail } from '../utils/orderEmail.js';
 import { FLASH_SOLD_UNITS_SQL } from './flashSalesController.js';
+import { ProductOptionsError, resolveSelectedOptions } from '../utils/productVariants.js';
 
 type DbClient = Awaited<ReturnType<typeof getClient>>;
 
@@ -62,7 +63,8 @@ async function lockFlashSalePrice(
 
 async function fetchOrderItems(orderId: string) {
   const result = await query(
-    `SELECT oi.product_id, p.name AS product_name, oi.quantity, oi.unit_price
+    `SELECT oi.product_id, p.name AS product_name, oi.quantity, oi.unit_price,
+            oi.variant_id, oi.size, oi.distance
      FROM order_items oi
      LEFT JOIN products p ON oi.product_id = p.id
      WHERE oi.order_id = $1`,
@@ -152,14 +154,25 @@ export const createOrder = async (req: Request, res: Response) => {
     await client.query('BEGIN');
 
     let subtotal = 0;
-    const lines: { product_id: string; quantity: number; unit_price: number; flash_sale_id: string | null }[] = [];
+    const lines: {
+      product_id: string;
+      quantity: number;
+      unit_price: number;
+      flash_sale_id: string | null;
+      variant_id: string | null;
+      size: string | null;
+      distance: string | null;
+    }[] = [];
+    const requestedByProduct = new Map<string, number>();
+    const requestedByVariant = new Map<string, number>();
+    const requestedByFlashSale = new Map<string, number>();
     for (const item of items) {
       const quantity = Number(item.quantity);
       if (!Number.isInteger(quantity) || quantity <= 0) {
         throw new OrderValidationError(400, 'Invalid item quantity');
       }
       const productResult = await client.query(
-        'SELECT id, price, stock, is_active, name FROM products WHERE id = $1',
+        'SELECT id, price, stock, is_active, name, distance_options FROM products WHERE id = $1',
         [item.product_id]
       );
       if (productResult.rows.length === 0) {
@@ -169,20 +182,62 @@ export const createOrder = async (req: Request, res: Response) => {
       if (!product.is_active) {
         throw new OrderValidationError(400, `Product unavailable: ${product.name}`);
       }
-      if (product.stock != null && product.stock < quantity) {
-        throw new OrderValidationError(400, `Insufficient stock for ${product.name}`);
+
+      const variantsResult = await client.query(
+        'SELECT id, size, stock FROM product_variants WHERE product_id = $1 AND is_active = true',
+        [product.id]
+      );
+      const distanceOptions: string[] = Array.isArray(product.distance_options) ? product.distance_options : [];
+      let selected;
+      try {
+        selected = resolveSelectedOptions(product.name, variantsResult.rows, distanceOptions, item);
+      } catch (error) {
+        if (error instanceof ProductOptionsError) throw new OrderValidationError(400, error.message);
+        throw error;
+      }
+
+      if (selected.variant) {
+        const variantTotal = (requestedByVariant.get(selected.variant.id) ?? 0) + quantity;
+        requestedByVariant.set(selected.variant.id, variantTotal);
+        if (Number(selected.variant.stock) < variantTotal) {
+          throw new OrderValidationError(
+            400,
+            Number(selected.variant.stock) === 0
+              ? `Size ${selected.variant.size} of ${product.name} is sold out`
+              : `Only ${selected.variant.stock} left in size ${selected.variant.size} for ${product.name}`
+          );
+        }
+      } else {
+        const productTotal = (requestedByProduct.get(product.id) ?? 0) + quantity;
+        requestedByProduct.set(product.id, productTotal);
+        if (product.stock != null && product.stock < productTotal) {
+          throw new OrderValidationError(400, `Insufficient stock for ${product.name}`);
+        }
       }
 
       const flashSaleId = typeof item.flash_sale_id === 'string' && item.flash_sale_id ? item.flash_sale_id : null;
+      let flashTotal = quantity;
+      if (flashSaleId) {
+        flashTotal = (requestedByFlashSale.get(flashSaleId) ?? 0) + quantity;
+        requestedByFlashSale.set(flashSaleId, flashTotal);
+      }
       const unitPrice = flashSaleId
-        ? await lockFlashSalePrice(client, flashSaleId, product.id, product.name, quantity)
+        ? await lockFlashSalePrice(client, flashSaleId, product.id, product.name, flashTotal)
         : Number(product.price);
 
       if (Math.round(unitPrice) !== Math.round(Number(item.unit_price))) {
         throw new OrderValidationError(400, `Price mismatch for ${product.name}`);
       }
       subtotal += unitPrice * quantity;
-      lines.push({ product_id: product.id, quantity, unit_price: unitPrice, flash_sale_id: flashSaleId });
+      lines.push({
+        product_id: product.id,
+        quantity,
+        unit_price: unitPrice,
+        flash_sale_id: flashSaleId,
+        variant_id: selected.variant?.id ?? null,
+        size: selected.variant?.size ?? null,
+        distance: selected.distance,
+      });
     }
 
     const expectedTotal = getGrandTotal(subtotal);
@@ -199,8 +254,18 @@ export const createOrder = async (req: Request, res: Response) => {
 
     for (const line of lines) {
       await client.query(
-        'INSERT INTO order_items (order_id, product_id, quantity, unit_price, flash_sale_id) VALUES ($1, $2, $3, $4, $5)',
-        [orderId, line.product_id, line.quantity, line.unit_price, line.flash_sale_id]
+        `INSERT INTO order_items (order_id, product_id, quantity, unit_price, flash_sale_id, variant_id, size, distance)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          orderId,
+          line.product_id,
+          line.quantity,
+          line.unit_price,
+          line.flash_sale_id,
+          line.variant_id,
+          line.size,
+          line.distance,
+        ]
       );
     }
 
