@@ -72,7 +72,8 @@ export default function FlashSaleOffers({
             <Zap size={14} /> {title}
           </div>
           <h2 className={`font-bebas ${compact ? 'text-2xl' : 'text-4xl'} text-chalk light:text-chalk-light tracking-tight leading-none`}>
-            SECOND EDITION <span className="text-accent light:text-accent-light">DROP</span>{' '}
+            2<sup className="text-[0.5em] align-super">ND</sup> EDITION{' '}
+            <span className="text-accent light:text-accent-light">DROP</span>{' '}
             <span className={compact ? 'text-lg' : 'text-2xl'}>(Flash Sales)</span>
           </h2>
           <p className={`italic text-fog light:text-fog-light ${compact ? 'text-xs mt-1' : 'text-sm mt-2'}`}>

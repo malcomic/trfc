@@ -158,7 +158,7 @@ export default function TicketConfirmation() {
       const params: Record<string, string> = {}
       if (normalizedEmail) params.email = normalizedEmail
       if (normalizedPhone) params.phone = normalizedPhone
-      setSearchParams(params)
+      setSearchParams(params, { preventScrollReset: true })
       await loadDetails(normalizedEmail || undefined, normalizedPhone || undefined)
       setGatePrompt(false)
     } catch (err: any) {

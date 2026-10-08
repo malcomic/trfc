@@ -1,6 +1,8 @@
 import { Request, Response } from 'express'
 import { query } from '../config/db.js'
 import {
+  clearMPesaTokenCache,
+  describeMpesaError,
   getMPesaToken,
   initiateStkPush as mpesaInitiateStkPush,
   queryPaymentStatus as mpesaQueryPaymentStatus,
@@ -26,6 +28,44 @@ import {
 } from '../utils/paymentValidation.js'
 import { getLocalPaymentStatus, toStatusResponse } from '../utils/paymentStatus.js'
 import { activateSignup, notifyPaidSignupsByCheckoutId } from '../utils/signupActivation.js'
+
+const MPESA_QUERY_GRACE_MS = 10_000
+const MPESA_QUERY_INTERVAL_MS = 12_000
+const MPESA_QUERY_TRACK_MS = 10 * 60_000
+const mpesaQueryTimes = new Map<string, { firstSeen: number; lastQueried: number }>()
+
+/**
+ * Whether this status poll may ask Safaricom directly. The page polls every few seconds;
+ * Safaricom is only asked after a short grace period and then at most once per interval.
+ */
+export function shouldQueryMpesa(checkoutRequestId: string, now = Date.now()): boolean {
+  for (const [id, times] of mpesaQueryTimes) {
+    if (now - times.firstSeen > MPESA_QUERY_TRACK_MS) mpesaQueryTimes.delete(id)
+  }
+
+  const times = mpesaQueryTimes.get(checkoutRequestId)
+  if (!times) {
+    mpesaQueryTimes.set(checkoutRequestId, { firstSeen: now, lastQueried: 0 })
+    return false
+  }
+  if (now - times.firstSeen < MPESA_QUERY_GRACE_MS) return false
+  if (now - times.lastQueried < MPESA_QUERY_INTERVAL_MS) return false
+  times.lastQueried = now
+  return true
+}
+
+export function resetMpesaQueryThrottle(): void {
+  mpesaQueryTimes.clear()
+}
+
+function pendingResponse(checkoutRequestId: string) {
+  return {
+    ResultCode: '1032',
+    ResultDesc: 'Payment still pending. Complete the M-Pesa prompt on your phone.',
+    payment_status: 'pending',
+    CheckoutRequestID: checkoutRequestId,
+  }
+}
 
 async function maybeSendTicketEmail(checkoutRequestId: string) {
   const paidTickets = await query(
@@ -290,8 +330,9 @@ export async function initiateSTKPush(req: Request, res: Response) {
       customerMessage: stkResponse!.CustomerMessage,
     })
   } catch (error: any) {
-    console.error('Error initiating STK push:', error)
-    logError('STK_PUSH_EXCEPTION', String(error), { phone: req.body.phone })
+    console.error('Error initiating STK push:', describeMpesaError(error))
+    if (error?.response?.status === 401) clearMPesaTokenCache()
+    logError('STK_PUSH_EXCEPTION', describeMpesaError(error), { phone: req.body.phone })
 
     let errorMessage = 'Failed to initiate payment'
     if (error.message === 'STK Push request timeout') {
@@ -428,6 +469,10 @@ export async function queryPaymentStatus(req: Request, res: Response) {
       return res.json(response)
     }
 
+    if (!shouldQueryMpesa(checkoutRequestId)) {
+      return res.json(pendingResponse(checkoutRequestId))
+    }
+
     try {
       const token = await getMPesaToken()
       const statusResponse = await mpesaQueryPaymentStatus(checkoutRequestId, token)
@@ -467,36 +512,33 @@ export async function queryPaymentStatus(req: Request, res: Response) {
 
       return res.json(statusResponse)
     } catch (mpesaError: unknown) {
-      const err = mpesaError as { response?: { data?: Record<string, unknown> }; message?: string }
+      const err = mpesaError as { response?: { status?: number; data?: unknown }; message?: string }
+      if (err.response?.status === 401) clearMPesaTokenCache()
       const mpesaData = err.response?.data
-      if (mpesaData && ('ResultCode' in mpesaData || 'resultCode' in mpesaData)) {
+      if (
+        mpesaData &&
+        typeof mpesaData === 'object' &&
+        ('ResultCode' in mpesaData || 'resultCode' in mpesaData)
+      ) {
+        const body = mpesaData as Record<string, unknown>
         logPaymentStatusQuery(
           checkoutRequestId,
-          String(mpesaData.ResultCode ?? mpesaData.resultCode ?? ''),
+          String(body.ResultCode ?? body.resultCode ?? ''),
           'mpesa_error_body'
         )
-        return res.json(mpesaData)
+        return res.json(body)
       }
 
-      console.error('M-Pesa status query failed, returning pending:', err.message ?? mpesaError)
-      logError('STATUS_QUERY_MPESA_FALLBACK', String(err.message ?? mpesaError), { checkoutRequestId })
+      const description = describeMpesaError(mpesaError)
+      console.error('M-Pesa status query failed, returning pending:', description)
+      logError('STATUS_QUERY_MPESA_FALLBACK', description, { checkoutRequestId })
 
-      return res.json({
-        ResultCode: '1032',
-        ResultDesc: 'Payment still pending. Complete the M-Pesa prompt on your phone.',
-        payment_status: 'pending',
-        CheckoutRequestID: checkoutRequestId,
-      })
+      return res.json(pendingResponse(checkoutRequestId))
     }
   } catch (error) {
-    console.error('Error querying payment status:', error)
-    logError('STATUS_QUERY_EXCEPTION', String(error), { checkoutRequestId: req.params.checkoutRequestId })
-    return res.json({
-      ResultCode: '1032',
-      ResultDesc: 'Payment still pending. Complete the M-Pesa prompt on your phone.',
-      payment_status: 'pending',
-      CheckoutRequestID: req.params.checkoutRequestId,
-    })
+    console.error('Error querying payment status:', describeMpesaError(error))
+    logError('STATUS_QUERY_EXCEPTION', describeMpesaError(error), { checkoutRequestId: req.params.checkoutRequestId })
+    return res.json(pendingResponse(req.params.checkoutRequestId))
   }
 }
 

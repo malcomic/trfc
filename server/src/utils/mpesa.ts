@@ -9,27 +9,64 @@ const PROD_AUTH_URL = 'https://api.safaricom.co.ke/oauth/v1/generate'
 const PROD_STK_URL = 'https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest'
 const PROD_QUERY_URL = 'https://api.safaricom.co.ke/mpesa/stkpushquery/v1/query'
 
-export async function getMPesaToken(): Promise<string> {
-  try {
-    const auth = Buffer.from(
-      `${config.mpesa.consumerKey}:${config.mpesa.consumerSecret}`
-    ).toString('base64')
+const USER_AGENT = 'TRFC-Server/1.0'
 
-    const { auth: authUrl } = getUrls()
-    const response = await axios.get(authUrl, {
-      headers: {
-        Authorization: `Basic ${auth}`,
-      },
-      params: {
-        grant_type: 'client_credentials',
-      },
-    })
+let cachedToken: { value: string; expiresAt: number } | null = null
+let pendingToken: Promise<string> | null = null
 
-    return response.data.access_token
-  } catch (error) {
-    console.error('Error getting MPesa token:', error)
-    throw error
+export function clearMPesaTokenCache(): void {
+  cachedToken = null
+}
+
+/** Short, credential-free description of an M-Pesa/axios error for logs. */
+export function describeMpesaError(error: unknown): string {
+  const e = error as { message?: string; response?: { status?: number; data?: unknown } }
+  const data = e?.response?.data
+  let detail = ''
+  if (typeof data === 'string') {
+    detail = data.includes('Incapsula') ? 'blocked by Safaricom firewall (Incapsula)' : data.slice(0, 300)
+  } else if (data && typeof data === 'object') {
+    detail = JSON.stringify(data).slice(0, 300)
   }
+  return [e?.response?.status, e?.message, detail].filter(Boolean).join(' | ') || String(error)
+}
+
+// Safaricom's firewall blocks clients that request a new token on every call, so one token is reused until shortly before it expires.
+export async function getMPesaToken(): Promise<string> {
+  if (cachedToken && Date.now() < cachedToken.expiresAt) return cachedToken.value
+  if (pendingToken) return pendingToken
+
+  pendingToken = (async () => {
+    try {
+      const auth = Buffer.from(
+        `${config.mpesa.consumerKey}:${config.mpesa.consumerSecret}`
+      ).toString('base64')
+
+      const { auth: authUrl } = getUrls()
+      const response = await axios.get(authUrl, {
+        headers: {
+          Authorization: `Basic ${auth}`,
+          'User-Agent': USER_AGENT,
+        },
+        params: {
+          grant_type: 'client_credentials',
+        },
+        timeout: 15_000,
+      })
+
+      const { access_token, expires_in } = response.data
+      const lifetimeSeconds = Math.max(60, (Number(expires_in) || 3599) - 60)
+      cachedToken = { value: access_token, expiresAt: Date.now() + lifetimeSeconds * 1000 }
+      return access_token as string
+    } catch (error) {
+      console.error('Error getting MPesa token:', describeMpesaError(error))
+      throw error
+    } finally {
+      pendingToken = null
+    }
+  })()
+
+  return pendingToken
 }
 
 export function generatePassword(timestamp: string): string {
@@ -128,7 +165,7 @@ export async function initiateStkPush(
 
     return response.data
   } catch (error) {
-    console.error('Error initiating STK push:', error)
+    console.error('Error initiating STK push:', describeMpesaError(error))
     throw error
   }
 }
@@ -159,12 +196,7 @@ export async function queryPaymentStatus(
 
     return response.data
   } catch (error: unknown) {
-    const axiosError = error as { response?: { data?: unknown }; message?: string }
-    if (axiosError.response?.data) {
-      console.error('M-Pesa status query error response:', axiosError.response.data)
-    } else {
-      console.error('Error querying payment status:', axiosError.message ?? error)
-    }
+    console.error('M-Pesa status query failed:', describeMpesaError(error))
     throw error
   }
 }

@@ -1,4 +1,12 @@
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import {
+  createBrowserRouter,
+  createRoutesFromElements,
+  Outlet,
+  Route,
+  RouterProvider,
+  ScrollRestoration,
+  useLocation,
+} from 'react-router-dom'
 import { useEffect, useRef } from 'react'
 import PrivateRoute from './components/PrivateRoute'
 import PublicLayout from './components/PublicLayout'
@@ -78,16 +86,19 @@ function TikTokPixelTracker() {
   return null
 }
 
-function App() {
+function RootLayout() {
   return (
-    <BrowserRouter
-      future={{
-        v7_startTransition: true,
-        v7_relativeSplatPath: true,
-      }}
-    >
+    <>
+      <ScrollRestoration />
       <TikTokPixelTracker />
-      <Routes>
+      <Outlet />
+    </>
+  )
+}
+
+const router = createBrowserRouter(
+  createRoutesFromElements(
+    <Route element={<RootLayout />}>
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route
           path="/admin/scan"
@@ -162,9 +173,17 @@ function App() {
         </Route>
 
         <Route path="*" element={<NotFound />} />
-      </Routes>
-    </BrowserRouter>
-  )
+    </Route>
+  ),
+  {
+    future: {
+      v7_relativeSplatPath: true,
+    },
+  },
+)
+
+function App() {
+  return <RouterProvider router={router} future={{ v7_startTransition: true }} />
 }
 
 export default App

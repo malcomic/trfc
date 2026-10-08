@@ -50,7 +50,7 @@ export default function FlashSales() {
         if (expiresAt) saveFlashAccess({ token: urlToken, expiresAt })
         const next = new URLSearchParams(searchParams)
         next.delete('access')
-        setSearchParams(next, { replace: true })
+        setSearchParams(next, { replace: true, preventScrollReset: true })
       }
 
       const stored = loadFlashAccess()

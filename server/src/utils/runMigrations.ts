@@ -421,8 +421,14 @@ const MIGRATIONS: { name: string; sql: string }[] = [
         created_at TIMESTAMPTZ DEFAULT NOW(),
         sent_at TIMESTAMPTZ
       );
-      CREATE UNIQUE INDEX IF NOT EXISTS uq_flash_reminder_email_stage
-        ON flash_reminder_emails (LOWER(email), stage);
+    `,
+  },
+  {
+    name: '020_flash_reminder_per_ticket',
+    sql: `
+      DROP INDEX IF EXISTS uq_flash_reminder_email_stage;
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_flash_reminder_ticket_stage
+        ON flash_reminder_emails (ticket_id, stage);
     `,
   },
 ]

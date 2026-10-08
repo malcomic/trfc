@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { Link, Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import {
   LayoutDashboard,
   Calendar,
@@ -120,11 +120,17 @@ export default function AdminLayout() {
   const location = useLocation()
   const navigate = useNavigate()
   const { logout } = useAuth()
+  const navigationType = useNavigationType()
   const [navOpen, setNavOpen] = useState(false)
+  const mainRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     setNavOpen(false)
   }, [location.pathname])
+
+  useEffect(() => {
+    if (navigationType !== 'POP') mainRef.current?.scrollTo({ top: 0 })
+  }, [location.pathname, navigationType])
 
   useEffect(() => {
     document.body.style.overflow = navOpen ? 'hidden' : ''
@@ -207,7 +213,7 @@ export default function AdminLayout() {
           <h1 className="text-lg font-bold text-primary dark:text-primary-dark truncate">TRFC Admin</h1>
         </header>
 
-        <main className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-950">
+        <main ref={mainRef} className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-950">
           <div className="p-4 sm:p-6 lg:p-8">
             <Outlet />
           </div>

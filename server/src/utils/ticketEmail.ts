@@ -35,7 +35,7 @@ export async function sendTicketBatchEmail(reference: string): Promise<void> {
       `SELECT
         t.id, t.user_id, t.event_id, t.phone, t.email as ticket_email,
         t.attendee_name, t.mpesa_receipt, t.checkout_request_id, t.unit_price,
-        COALESCE(u.email, t.email) as email,
+        COALESCE(NULLIF(TRIM(t.email), ''), u.email) as email,
         COALESCE(NULLIF(TRIM(u.name), ''), NULL) as user_name,
         e.title as event_title, e.event_date, e.location,
         COALESCE(t.unit_price, ett.price, e.price) as price,
@@ -161,7 +161,7 @@ export async function sendTicketEmail(ticketId: string): Promise<void> {
       `SELECT
         t.id, t.user_id, t.event_id, t.phone, t.email as ticket_email,
         t.attendee_name, t.mpesa_receipt, t.checkout_request_id, t.unit_price,
-        COALESCE(u.email, t.email) as email,
+        COALESCE(NULLIF(TRIM(t.email), ''), u.email) as email,
         COALESCE(NULLIF(TRIM(u.name), ''), NULL) as user_name,
         e.title as event_title, e.event_date, e.location,
         COALESCE(t.unit_price, ett.price, e.price) as price,

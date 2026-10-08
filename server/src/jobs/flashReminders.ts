@@ -39,16 +39,16 @@ export function dueFlashReminderStage(paidAt: Date, now: Date): FlashReminderSta
 // skipping anyone who already has a paid order containing a flash item.
 const CANDIDATES_SQL = `
   SELECT DISTINCT ON (c.email) c.ticket_id, c.email, c.paid_at,
-    COALESCE((SELECT MAX(r.stage) FROM flash_reminder_emails r WHERE LOWER(r.email) = c.email), 0)::int AS last_stage
+    COALESCE((SELECT MAX(r.stage) FROM flash_reminder_emails r WHERE r.ticket_id = c.ticket_id), 0)::int AS last_stage
   FROM (
-    SELECT t.id AS ticket_id, LOWER(TRIM(COALESCE(u.email, t.email))) AS email, t.paid_at, t.user_id, t.phone
+    SELECT t.id AS ticket_id, LOWER(TRIM(COALESCE(NULLIF(TRIM(t.email), ''), u.email))) AS email, t.paid_at, t.user_id, t.phone
     FROM tickets t
     LEFT JOIN users u ON u.id = t.user_id
     WHERE t.payment_status = 'paid'
       AND t.paid_at IS NOT NULL
       AND t.paid_at + INTERVAL '${FLASH_ACCESS_HOURS} hours' > $1
       AND t.paid_at + INTERVAL '${FLASH_REMINDER_STAGES[0].afterMinutes} minutes' <= $1
-      AND NULLIF(TRIM(COALESCE(u.email, t.email)), '') IS NOT NULL
+      AND NULLIF(TRIM(COALESCE(NULLIF(TRIM(t.email), ''), u.email)), '') IS NOT NULL
   ) c
   WHERE NOT EXISTS (
     SELECT 1
@@ -103,7 +103,10 @@ export async function runFlashReminderTick(now = new Date()): Promise<FlashRemin
     if (!stage || lastStage >= stage) continue
 
     const claimId = await claimStage(email, ticketId, stage)
-    if (!claimId) continue
+    if (!claimId) {
+      console.warn(`⚠️  Flash reminder stage ${stage} already claimed for ticket ${ticketId}`)
+      continue
+    }
 
     for (let skipped = lastStage + 1; skipped < stage; skipped++) {
       await claimStage(email, ticketId, skipped as FlashReminderStage, 'skipped')

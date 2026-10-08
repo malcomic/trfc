@@ -79,7 +79,7 @@ export default function HireConfirmation() {
       setLoading(true)
       setError('')
       setPhone(normalized)
-      setSearchParams({ phone: normalized })
+      setSearchParams({ phone: normalized }, { preventScrollReset: true })
       await fetchHire(normalized)
       setPhonePrompt(false)
     } catch (err: any) {

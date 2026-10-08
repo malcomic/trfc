@@ -90,6 +90,24 @@ describe('runFlashReminderTick', () => {
     expect(updates(calls)).toEqual([['claim-1', 'sent', null, expect.any(Date)]])
   })
 
+  it('tracks reminder progress per ticket, not per email', async () => {
+    const calls = setupDb([])
+    await runFlashReminderTick(NOW)
+
+    const candidateSql = calls.find((c) => c.sql.includes('FROM tickets t'))?.sql ?? ''
+    expect(candidateSql).toContain('r.ticket_id = c.ticket_id')
+    expect(candidateSql).not.toContain('LOWER(r.email) = c.email')
+  })
+
+  it('prefers the email entered at checkout over the linked account email', async () => {
+    const calls = setupDb([])
+    await runFlashReminderTick(NOW)
+
+    const candidateSql = calls.find((c) => c.sql.includes('FROM tickets t'))?.sql ?? ''
+    expect(candidateSql).toContain("COALESCE(NULLIF(TRIM(t.email), ''), u.email)")
+    expect(candidateSql).not.toContain('COALESCE(u.email, t.email)')
+  })
+
   it('does not resend a stage that was already sent', async () => {
     const calls = setupDb([{ ticket_id: 't1', email: 'a@x.com', paid_at: minutesAgo(60), last_stage: 1 }])
 

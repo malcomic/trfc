@@ -31,7 +31,7 @@ export async function sendMedalBatchEmail(reference: string): Promise<void> {
       `SELECT
         p.id, p.user_id, p.phone, p.email as purchase_email,
         p.buyer_name, p.mpesa_receipt, p.checkout_request_id,
-        COALESCE(u.email, p.email) as email,
+        COALESCE(NULLIF(TRIM(p.email), ''), u.email) as email,
         COALESCE(NULLIF(TRIM(u.name), ''), NULL) as user_name,
         o.distance_km, o.price,
         t.name as tier_name, t.slug as tier_slug
