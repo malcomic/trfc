@@ -183,6 +183,31 @@ export const getRevenueByCategory = async (
   return response.data
 }
 
+export interface CaptainRegionStat {
+  region: string
+  code: string
+  captains: number
+  referredSales: number
+  commission: number
+  purchases: number
+}
+
+export interface TopCaptainStat {
+  name: string
+  referralCode: string
+  region: string
+  referredSales: number
+  commission: number
+  purchases: number
+}
+
+export const getCaptainsByRegion = async (
+  params?: AnalyticsDateParams
+): Promise<{ regions: CaptainRegionStat[]; topCaptains: TopCaptainStat[] }> => {
+  const response = await api.get('/analytics/captains/by-region', { params: withDateParams(params) })
+  return response.data
+}
+
 export const getPaymentTimeline = async (
   params?: AnalyticsDateParams
 ): Promise<PaymentTimelinePoint[]> => {

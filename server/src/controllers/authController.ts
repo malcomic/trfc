@@ -4,10 +4,12 @@ import jwt from 'jsonwebtoken';
 import { query } from '../config/db.js';
 import { User } from '../types/index.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/tokenUtils.js';
+import { toKenyanMsisdn } from '../utils/phone.js';
+import { applyReferral } from '../utils/referrals.js';
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const { name, email, phone, password } = req.body;
+    const { name, email, phone, password, referralCode } = req.body;
 
     const existingUser = await query('SELECT id FROM users WHERE email = $1', [email]);
     if (existingUser.rows.length > 0) {
@@ -16,11 +18,16 @@ export const register = async (req: Request, res: Response) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const result = await query(
-      'INSERT INTO users (name, email, phone, password_hash, role) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, phone, role',
-      [name, email, phone, passwordHash, 'member']
+      `INSERT INTO users (name, email, phone, phone_normalized, password_hash, role)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, name, email, phone, role`,
+      [name, email, phone, toKenyanMsisdn(phone), passwordHash, 'member']
     );
 
     const user = result.rows[0];
+    if (referralCode) {
+      await applyReferral(user.id, referralCode);
+    }
     const token = generateAccessToken({ id: user.id, email: user.email, role: user.role });
     const refreshToken = generateRefreshToken({ id: user.id, email: user.email, role: user.role });
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
-import { Trash2, Edit2, Plus, KeyRound, Search } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Trash2, Edit2, Plus, KeyRound, Search, Flag } from 'lucide-react'
 import {
   getAllUsers,
   createUser,
@@ -9,6 +10,7 @@ import {
   resetUserPassword,
   deleteUser,
   type AdminUser,
+  type StaffRole,
 } from '../../api/users'
 import { useAuth } from '../../context/AuthContext'
 import AdminConfirmDialog from '../../components/AdminConfirmDialog'
@@ -16,7 +18,7 @@ import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/AdminMobileCard'
 import AdminResponsiveData from '../../components/admin/AdminResponsiveData'
 
-type RoleFilter = '' | 'member' | 'admin' | 'scanner'
+type RoleFilter = '' | 'member' | 'admin' | 'scanner' | 'captain'
 type ModalMode = 'create' | 'edit' | null
 
 interface UserFormData {
@@ -55,7 +57,7 @@ export default function AdminUsers() {
     try {
       setLoading(true)
       setError('')
-      const params: { search?: string; role?: 'member' | 'admin' | 'scanner' } = {}
+      const params: { search?: string; role?: RoleFilter } = {}
       if (searchQuery.trim()) params.search = searchQuery.trim()
       if (roleFilter) params.role = roleFilter
       const data = await getAllUsers(params)
@@ -89,7 +91,7 @@ export default function AdminUsers() {
   const openEditModal = (user: AdminUser) => {
     setEditingUser(user)
     setModalMode('edit')
-    reset({ name: user.name, email: user.email, phone: user.phone, role: user.role })
+    reset({ name: user.name, email: user.email, phone: user.phone, role: user.role === 'captain' ? 'member' : user.role })
   }
 
   const closeModal = () => {
@@ -157,11 +159,11 @@ export default function AdminUsers() {
       setUpdating(userId)
       setError('')
       setSuccess('')
-      await updateUserRole(userId, newRole as AdminUser['role'])
-      setUsers(users.map((u) => (u.id === userId ? { ...u, role: newRole as AdminUser['role'] } : u)))
+      await updateUserRole(userId, newRole as StaffRole)
+      setUsers(users.map((u) => (u.id === userId ? { ...u, role: newRole as StaffRole } : u)))
       showSuccess(`User role updated to ${newRole}`)
-    } catch (err) {
-      setError('Failed to update user role')
+    } catch (err: any) {
+      setError(err?.response?.data?.error || 'Failed to update user role')
       console.error(err)
     } finally {
       setUpdating(null)
@@ -235,26 +237,59 @@ export default function AdminUsers() {
           ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300'
           : role === 'scanner'
             ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300'
-            : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
+            : role === 'captain'
+              ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300'
+              : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
       }`}
     >
       {role}
     </span>
   )
 
+  const referredBy = (user: AdminUser) =>
+    user.referred_by_captain_name ? (
+      <span className="text-sm">
+        {user.referred_by_captain_name}
+        {user.referred_by_region && (
+          <span className="block text-xs text-gray-500 dark:text-gray-400">{user.referred_by_region}</span>
+        )}
+      </span>
+    ) : (
+      <span className="text-gray-400">—</span>
+    )
+
   const userActions = (user: AdminUser) => (
     <div className="flex flex-wrap items-center gap-2">
-      <select
-        value={user.role}
-        onChange={(e) => requestRoleChange(user.id, e.target.value, user.role)}
-        disabled={updating === user.id}
-        className="px-3 py-2 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-semibold disabled:opacity-50 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-        aria-label={`Change role for ${user.name}`}
-      >
-        <option value="member">Member</option>
-        <option value="scanner">Scanner</option>
-        <option value="admin">Admin</option>
-      </select>
+      {user.role === 'captain' ? (
+        <Link
+          to="/admin/captains"
+          className="flex items-center gap-1 px-3 py-2 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-semibold text-emerald-700 dark:text-emerald-300"
+        >
+          <Flag size={14} /> Manage captain
+        </Link>
+      ) : (
+        <select
+          value={user.role}
+          onChange={(e) => requestRoleChange(user.id, e.target.value, user.role)}
+          disabled={updating === user.id}
+          className="px-3 py-2 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-semibold disabled:opacity-50 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          aria-label={`Change role for ${user.name}`}
+        >
+          <option value="member">Member</option>
+          <option value="scanner">Scanner</option>
+          <option value="admin">Admin</option>
+        </select>
+      )}
+      {user.role === 'member' && (
+        <Link
+          to={`/admin/captains?add=${user.id}&name=${encodeURIComponent(user.name)}`}
+          className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 min-h-[44px] px-2"
+          title="Make captain"
+          aria-label={`Make ${user.name} a captain`}
+        >
+          <Flag size={18} />
+        </Link>
+      )}
       <button
         onClick={() => openEditModal(user)}
         className="flex items-center gap-1 text-blue-600 dark:text-blue-400 min-h-[44px] px-2"
@@ -327,6 +362,7 @@ export default function AdminUsers() {
           <option value="member">Members</option>
           <option value="scanner">Scanners</option>
           <option value="admin">Admins</option>
+          <option value="captain">Captains</option>
         </select>
       </div>
 
@@ -350,13 +386,14 @@ export default function AdminUsers() {
           </div>
         }
         desktop={
-          <table className="w-full min-w-[900px]">
+          <table className="w-full min-w-[1000px]">
             <thead className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <tr>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Name</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Email</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Phone</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Role</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Referred by</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Joined</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Actions</th>
               </tr>
@@ -371,6 +408,7 @@ export default function AdminUsers() {
                   <td className="px-6 py-4">{user.email}</td>
                   <td className="px-6 py-4">{user.phone}</td>
                   <td className="px-6 py-4">{roleBadge(user.role)}</td>
+                  <td className="px-6 py-4">{referredBy(user)}</td>
                   <td className="px-6 py-4">{new Date(user.created_at).toLocaleDateString()}</td>
                   <td className="px-6 py-4">{userActions(user)}</td>
                 </tr>
@@ -384,6 +422,7 @@ export default function AdminUsers() {
             <AdminMobileCardRow label="Email" value={user.email} />
             <AdminMobileCardRow label="Phone" value={user.phone || '—'} />
             <AdminMobileCardRow label="Role" value={roleBadge(user.role)} />
+            <AdminMobileCardRow label="Referred by" value={referredBy(user)} />
             <AdminMobileCardRow label="Joined" value={new Date(user.created_at).toLocaleDateString()} />
           </AdminMobileCard>
         ))}

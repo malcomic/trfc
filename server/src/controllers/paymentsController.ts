@@ -28,6 +28,7 @@ import {
 } from '../utils/paymentValidation.js'
 import { getLocalPaymentStatus, toStatusResponse } from '../utils/paymentStatus.js'
 import { activateSignup, notifyPaidSignupsByCheckoutId } from '../utils/signupActivation.js'
+import { recordCaptainCommissionsForCheckout } from '../utils/captainCommissions.js'
 
 const MPESA_QUERY_GRACE_MS = 10_000
 const MPESA_QUERY_INTERVAL_MS = 12_000
@@ -428,6 +429,7 @@ export async function handleCallback(req: Request, res: Response) {
       await maybeSendMedalEmail(checkoutRequestId)
       await maybeSendOrderEmails(checkoutRequestId)
       await notifyPaidSignupsByCheckoutId(checkoutRequestId)
+      await recordCaptainCommissionsForCheckout(checkoutRequestId)
     }
 
     logCallbackProcessing(

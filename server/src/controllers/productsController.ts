@@ -8,6 +8,7 @@ import {
   syncProductStock,
   variantsJsonSql,
 } from '../utils/productVariants.js';
+import { parseZoneIds, setProductZones, zonesJsonSql } from '../utils/zones.js';
 
 const PRODUCT_WITH_CATEGORY_SQL = `
   SELECT p.*, c.name AS category_name, c.slug AS category_slug,
@@ -18,7 +19,8 @@ const PRODUCT_WITH_CATEGORY_SQL = `
 
 const ADMIN_PRODUCT_SQL = `
   SELECT p.*, c.name AS category_name, c.slug AS category_slug,
-         ${variantsJsonSql(true)} AS variants
+         ${variantsJsonSql(true)} AS variants,
+         ${zonesJsonSql('p')} AS zones
   FROM products p
   LEFT JOIN product_categories c ON c.id = p.category_id
 `;
@@ -85,6 +87,7 @@ export const createProduct = async (req: Request, res: Response) => {
     }
     const variants = parseVariantsInput(req.body.variants);
     const distanceOptions = parseDistanceOptions(req.body.distance_options);
+    const zoneIds = await parseZoneIds(req.body.zone_ids);
 
     await client.query('BEGIN');
     const result = await client.query(
@@ -96,6 +99,9 @@ export const createProduct = async (req: Request, res: Response) => {
     if (variants) {
       await saveProductVariants(client, productId, variants);
       await syncProductStock(client, productId);
+    }
+    if (zoneIds) {
+      await setProductZones(client, productId, zoneIds);
     }
     await client.query('COMMIT');
 
@@ -124,6 +130,7 @@ export const updateProduct = async (req: Request, res: Response) => {
     const variants = parseVariantsInput(req.body.variants);
     const distanceOptions =
       req.body.distance_options === undefined ? null : parseDistanceOptions(req.body.distance_options);
+    const zoneIds = await parseZoneIds(req.body.zone_ids);
 
     await client.query('BEGIN');
     const result = await client.query(
@@ -151,6 +158,9 @@ export const updateProduct = async (req: Request, res: Response) => {
     }
     if (variants) {
       await saveProductVariants(client, id, variants);
+    }
+    if (zoneIds) {
+      await setProductZones(client, id, zoneIds);
     }
     await syncProductStock(client, id);
     await client.query('COMMIT');

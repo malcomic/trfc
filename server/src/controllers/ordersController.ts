@@ -5,7 +5,9 @@ import { getGrandTotal } from '../utils/shipping.js';
 import { resolveFlashAccess } from '../utils/flashAccess.js';
 import { decrementOrderStock } from '../utils/orderStock.js';
 import { sendOrderConfirmationEmail } from '../utils/orderEmail.js';
+import { recordCaptainCommission, reverseCaptainCommission } from '../utils/captainCommissions.js';
 import { FLASH_SOLD_UNITS_SQL } from './flashSalesController.js';
+import { productInZoneSql } from '../utils/zones.js';
 import { ProductOptionsError, resolveSelectedOptions } from '../utils/productVariants.js';
 
 type DbClient = Awaited<ReturnType<typeof getClient>>;
@@ -24,19 +26,25 @@ async function lockFlashSalePrice(
   flashSaleId: string,
   productId: string,
   productName: string,
-  quantity: number
+  quantity: number,
+  zoneId: string | null
 ): Promise<number> {
   const saleResult = await client.query(
     `SELECT fs.*,
-            (fs.is_active = true AND fs.starts_at <= NOW() AND (fs.ends_at IS NULL OR fs.ends_at > NOW())) AS is_live
+            (fs.is_active = true AND fs.starts_at <= NOW() AND (fs.ends_at IS NULL OR fs.ends_at > NOW())) AS is_live,
+            ${productInZoneSql('p', '$2')} AS in_zone
      FROM flash_sales fs
+     JOIN products p ON p.id = fs.product_id
      WHERE fs.id = $1
-     FOR UPDATE`,
-    [flashSaleId]
+     FOR UPDATE OF fs`,
+    [flashSaleId, zoneId]
   );
   const sale = saleResult.rows[0];
   if (!sale || String(sale.product_id) !== String(productId)) {
     throw new OrderValidationError(400, `Flash deal not found for ${productName}`);
+  }
+  if (!sale.in_zone) {
+    throw new OrderValidationError(403, `The flash deal for ${productName} is not available in your zone`);
   }
   if (!sale.is_live) {
     throw new OrderValidationError(409, `The flash deal for ${productName} has ended`);
@@ -143,12 +151,14 @@ export const createOrder = async (req: Request, res: Response) => {
     }
 
     const hasFlashItems = items.some((item: { flash_sale_id?: unknown }) => Boolean(item.flash_sale_id));
+    let flashZoneId: string | null = null;
     if (hasFlashItems) {
       const access = await resolveFlashAccess(req);
       if (!access) {
         res.status(403).json({ error: 'Flash deal access expired or not eligible' });
         return;
       }
+      flashZoneId = access.zoneId;
     }
 
     await client.query('BEGIN');
@@ -222,7 +232,7 @@ export const createOrder = async (req: Request, res: Response) => {
         requestedByFlashSale.set(flashSaleId, flashTotal);
       }
       const unitPrice = flashSaleId
-        ? await lockFlashSalePrice(client, flashSaleId, product.id, product.name, flashTotal)
+        ? await lockFlashSalePrice(client, flashSaleId, product.id, product.name, flashTotal, flashZoneId)
         : Number(product.price);
 
       if (Math.round(unitPrice) !== Math.round(Number(item.unit_price))) {
@@ -297,9 +307,12 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     }
     if (payment_status === 'paid') {
       await decrementOrderStock(id);
+      await recordCaptainCommission('order', id, { reinstate: true });
       sendOrderConfirmationEmail(id).catch((error: Error) => {
         console.error(`Error sending order confirmation email for ${id}: ${error.message}`);
       });
+    } else {
+      await reverseCaptainCommission('order', id);
     }
     const items = await fetchOrderItems(id);
     res.json({ ...result.rows[0], items });

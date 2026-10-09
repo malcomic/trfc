@@ -37,9 +37,24 @@ export function dueFlashReminderStage(paidAt: Date, now: Date): FlashReminderSta
 
 // For each address, the earliest paid ticket whose flash window is still open,
 // skipping anyone who already has a paid order containing a flash item.
+// zone_id comes from the address's most recent open ticket, matching what the flash page shows.
 const CANDIDATES_SQL = `
   SELECT DISTINCT ON (c.email) c.ticket_id, c.email, c.paid_at,
-    COALESCE((SELECT MAX(r.stage) FROM flash_reminder_emails r WHERE r.ticket_id = c.ticket_id), 0)::int AS last_stage
+    COALESCE((SELECT MAX(r.stage) FROM flash_reminder_emails r WHERE r.ticket_id = c.ticket_id), 0)::int AS last_stage,
+    (
+      SELECT t2.zone_id
+      FROM tickets t2
+      WHERE t2.payment_status = 'paid'
+        AND t2.paid_at IS NOT NULL
+        AND t2.paid_at + INTERVAL '${FLASH_ACCESS_HOURS} hours' > $1
+        AND (
+          t2.id = c.ticket_id
+          OR (c.user_id IS NOT NULL AND t2.user_id = c.user_id)
+          OR LOWER(t2.email) = c.email
+        )
+      ORDER BY t2.paid_at DESC
+      LIMIT 1
+    ) AS zone_id
   FROM (
     SELECT t.id AS ticket_id, LOWER(TRIM(COALESCE(NULLIF(TRIM(t.email), ''), u.email))) AS email, t.paid_at, t.user_id, t.phone
     FROM tickets t
@@ -88,10 +103,8 @@ async function finishStage(id: string, status: 'sent' | 'failed', error?: string
 export async function runFlashReminderTick(now = new Date()): Promise<FlashReminderTickResult> {
   const summary: FlashReminderTickResult = { sent: 0, failed: 0 }
 
-  const offer = await getCheapestLiveOffer()
-  if (!offer) return summary
-
   const candidates = await query(CANDIDATES_SQL, [now])
+  const offersByZone = new Map<string, Awaited<ReturnType<typeof getCheapestLiveOffer>>>()
 
   for (const row of candidates.rows) {
     if (summary.sent + summary.failed >= MAX_SENDS_PER_TICK) break
@@ -101,6 +114,14 @@ export async function runFlashReminderTick(now = new Date()): Promise<FlashRemin
     const lastStage = Number(row.last_stage) || 0
     const stage = dueFlashReminderStage(new Date(row.paid_at), now)
     if (!stage || lastStage >= stage) continue
+
+    const zoneId: string | null = row.zone_id ?? null
+    const zoneKey = zoneId ?? ''
+    if (!offersByZone.has(zoneKey)) {
+      offersByZone.set(zoneKey, await getCheapestLiveOffer(zoneId))
+    }
+    const offer = offersByZone.get(zoneKey)
+    if (!offer) continue
 
     const claimId = await claimStage(email, ticketId, stage)
     if (!claimId) {

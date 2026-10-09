@@ -9,6 +9,8 @@ export const FLASH_ACCESS_HOURS = 24
 export interface FlashAccess {
   ticketId: string
   expiresAt: Date
+  zoneId: string | null
+  zoneName: string | null
 }
 
 type EligibilityFilter =
@@ -34,8 +36,35 @@ const ELIGIBLE_SELECT = `
     AND paid_at + INTERVAL '${FLASH_ACCESS_HOURS} hours' > NOW()
 `
 
-function toAccess(row: { id: string; expires_at: Date | string }): FlashAccess {
-  return { ticketId: row.id, expiresAt: new Date(row.expires_at) }
+/**
+ * Zone of the buyer's most recent ticket that still has flash access. The buyer is matched
+ * by account or email, so an older ticket's link still shows deals for their latest zone.
+ */
+export async function resolveBuyerZone(ticketId: string): Promise<{ zoneId: string | null; zoneName: string | null }> {
+  const result = await query(
+    `SELECT t2.zone_id, r.name AS zone_name
+     FROM tickets t1
+     JOIN tickets t2 ON t2.payment_status = 'paid'
+       AND t2.paid_at IS NOT NULL
+       AND t2.paid_at + INTERVAL '${FLASH_ACCESS_HOURS} hours' > NOW()
+       AND (
+         t2.id = t1.id
+         OR (t1.user_id IS NOT NULL AND t2.user_id = t1.user_id)
+         OR (NULLIF(TRIM(t1.email), '') IS NOT NULL AND LOWER(t2.email) = LOWER(t1.email))
+       )
+     LEFT JOIN regions r ON r.id = t2.zone_id
+     WHERE t1.id = $1
+     ORDER BY t2.paid_at DESC
+     LIMIT 1`,
+    [ticketId]
+  )
+  const row = result.rows[0]
+  return { zoneId: row?.zone_id ?? null, zoneName: row?.zone_name ?? null }
+}
+
+async function toAccess(row: { id: string; expires_at: Date | string }): Promise<FlashAccess> {
+  const zone = await resolveBuyerZone(row.id)
+  return { ticketId: row.id, expiresAt: new Date(row.expires_at), ...zone }
 }
 
 export async function findEligibleTicket(filter: EligibilityFilter): Promise<FlashAccess | null> {

@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import { query } from '../config/db.js'
 import { FLASH_ACCESS_HOURS, findEligibleTicket, resolveFlashAccess, signFlashToken } from '../utils/flashAccess.js'
 import { variantsJsonSql } from '../utils/productVariants.js'
+import { productInZoneSql, zonesJsonSql } from '../utils/zones.js'
 
 /** Units reserved by a flash sale: paid orders plus pending orders from the last 15 minutes. */
 export const FLASH_SOLD_UNITS_SQL = `
@@ -65,6 +66,7 @@ export async function getFlashStatus(req: Request, res: Response) {
     res.json({
       eligible: Boolean(access),
       expiresAt: access ? access.expiresAt.toISOString() : null,
+      zoneName: access?.zoneName ?? null,
     })
   } catch (error) {
     console.error(error)
@@ -92,11 +94,14 @@ export async function getLiveFlashSales(req: Request, res: Response) {
        LEFT JOIN product_categories c ON c.id = p.category_id
        WHERE ${LIVE_CONDITION}
          AND p.is_active = true
-       ORDER BY fs.sort_order ASC, fs.created_at ASC`
+         AND ${productInZoneSql('p', '$1')}
+       ORDER BY fs.sort_order ASC, fs.created_at ASC`,
+      [access.zoneId]
     )
 
     res.json({
       accessExpiresAt: access.expiresAt.toISOString(),
+      zone: access.zoneId ? { id: access.zoneId, name: access.zoneName } : null,
       offers: result.rows.map(withRemaining),
     })
   } catch (error) {
@@ -110,8 +115,8 @@ export interface LiveOfferPrice {
   regularPrice: number
 }
 
-/** Cheapest live flash offer that still has units and stock left, or null when nothing can be bought. */
-export async function getCheapestLiveOffer(): Promise<LiveOfferPrice | null> {
+/** Cheapest live flash offer visible in `zoneId` that still has units and stock left, or null. */
+export async function getCheapestLiveOffer(zoneId: string | null = null): Promise<LiveOfferPrice | null> {
   const result = await query(
     `SELECT fs.sale_price, p.price AS regular_price
      FROM flash_sales fs
@@ -120,8 +125,10 @@ export async function getCheapestLiveOffer(): Promise<LiveOfferPrice | null> {
        AND p.is_active = true
        AND p.stock > 0
        AND (fs.quantity_limit IS NULL OR fs.quantity_limit > ${FLASH_SOLD_UNITS_SQL})
+       AND ${productInZoneSql('p', '$1')}
      ORDER BY fs.sale_price ASC
-     LIMIT 1`
+     LIMIT 1`,
+    [zoneId]
   )
   const row = result.rows[0]
   if (!row) return null
@@ -134,7 +141,8 @@ export async function getAdminFlashSales(_req: Request, res: Response) {
       `SELECT
          fs.*,
          ${FLASH_SOLD_UNITS_SQL} AS sold_units,
-         p.name AS product_name, p.price AS regular_price, p.is_active AS product_active
+         p.name AS product_name, p.price AS regular_price, p.is_active AS product_active,
+         ${zonesJsonSql('p')} AS product_zones
        FROM flash_sales fs
        JOIN products p ON p.id = fs.product_id
        ORDER BY fs.sort_order ASC, fs.created_at DESC`

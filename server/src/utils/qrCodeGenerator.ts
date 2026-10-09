@@ -99,6 +99,10 @@ export async function generateMedalQRCodeBuffer(data: MedalQRCodeData): Promise<
   }
 }
 
+export async function generateTextQRCodeDataUrl(text: string): Promise<string> {
+  return QRCode.toDataURL(text, { width: 400, margin: 2 })
+}
+
 export function verifyQRCodeData(data: QRCodeData): boolean {
   return !!(data.ticketId && data.eventId)
 }

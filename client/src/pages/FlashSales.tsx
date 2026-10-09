@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { AlertCircle, ShoppingCart, Zap } from 'lucide-react'
+import { AlertCircle, MapPin, ShoppingCart, Zap } from 'lucide-react'
 import { getFlashSales, requestFlashAccess } from '../api/flashSales'
 import FlashSaleOffers from '../components/FlashSaleOffers'
 import { useAuth } from '../context/AuthContext'
@@ -115,6 +115,13 @@ export default function FlashSales() {
 
   const flashInCart = items.filter((item) => item.flashSaleId).length
 
+  const zoneBadge = deals && (
+    <div className="mb-6 inline-flex items-center gap-2 border border-accent/30 light:border-accent-light/30 bg-accent/10 light:bg-accent-light/10 px-3 py-1.5 font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light">
+      <MapPin size={13} />
+      {deals.zone ? `Deals for ${deals.zone.name} zone` : 'Deals open to everyone'}
+    </div>
+  )
+
   return (
     <div className={`${pageRoot} py-12 px-6`}>
       <div className="max-w-6xl mx-auto">
@@ -176,6 +183,7 @@ export default function FlashSales() {
           </div>
         ) : deals && deals.offers.length > 0 ? (
           <>
+            {zoneBadge}
             <FlashSaleOffers offers={deals.offers} accessExpiresAt={deals.accessExpiresAt} />
             {flashInCart > 0 && (
               <div className="mt-8 flex justify-end">
@@ -190,9 +198,14 @@ export default function FlashSales() {
           </>
         ) : (
           <div className="text-center py-24">
+            {zoneBadge}
             <Zap size={32} className="mx-auto text-fog light:text-fog-light mb-4" />
             <h1 className="font-bebas text-4xl mb-2">NO FLASH DEALS RIGHT NOW</h1>
-            <p className="text-fog light:text-fog-light text-sm mb-6">Check back soon — new deals drop for ticket holders.</p>
+            <p className="text-fog light:text-fog-light text-sm mb-6">
+              {deals?.zone
+                ? `No flash deals for the ${deals.zone.name} zone right now. Check back soon.`
+                : 'Check back soon — new deals drop for ticket holders.'}
+            </p>
             <Link to="/shop" className="text-accent light:text-accent-light font-barlow-condensed font-bold text-sm tracking-widest uppercase">
               Browse the shop
             </Link>

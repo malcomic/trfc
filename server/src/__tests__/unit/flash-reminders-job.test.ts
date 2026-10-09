@@ -70,13 +70,42 @@ describe('runFlashReminderTick', () => {
     vi.mocked(sendEmail).mockResolvedValue({ success: true, messageId: 'm1' })
   })
 
-  it('sends nothing when no flash deal is live', async () => {
+  it('sends nothing and claims nothing when no flash deal is live in the buyer zone', async () => {
     vi.mocked(getCheapestLiveOffer).mockResolvedValue(null)
-    const calls = setupDb([{ ticket_id: 't1', email: 'a@x.com', paid_at: minutesAgo(10), last_stage: 0 }])
+    const calls = setupDb([{ ticket_id: 't1', email: 'a@x.com', paid_at: minutesAgo(10), last_stage: 0, zone_id: 'z1' }])
 
     expect(await runFlashReminderTick(NOW)).toEqual({ sent: 0, failed: 0 })
-    expect(calls).toHaveLength(0)
+    expect(getCheapestLiveOffer).toHaveBeenCalledWith('z1')
+    expect(inserts(calls)).toHaveLength(0)
     expect(sendEmail).not.toHaveBeenCalled()
+  })
+
+  it('looks up the cheapest offer once per zone and quotes each buyer their zone price', async () => {
+    vi.mocked(getCheapestLiveOffer).mockImplementation(async (zoneId) =>
+      zoneId === 'z1' ? { salePrice: 1000, regularPrice: 2000 } : zoneId === 'z2' ? null : { salePrice: 1497, regularPrice: 2497 }
+    )
+    setupDb([
+      { ticket_id: 't1', email: 'a@x.com', paid_at: minutesAgo(6), last_stage: 0, zone_id: 'z1' },
+      { ticket_id: 't2', email: 'b@x.com', paid_at: minutesAgo(6), last_stage: 0, zone_id: 'z1' },
+      { ticket_id: 't3', email: 'c@x.com', paid_at: minutesAgo(6), last_stage: 0, zone_id: 'z2' },
+      { ticket_id: 't4', email: 'd@x.com', paid_at: minutesAgo(6), last_stage: 0, zone_id: null },
+    ])
+
+    expect(await runFlashReminderTick(NOW)).toEqual({ sent: 3, failed: 0 })
+    expect(vi.mocked(getCheapestLiveOffer).mock.calls).toEqual([['z1'], ['z2'], [null]])
+    const recipients = vi.mocked(sendEmail).mock.calls.map(([arg]) => arg.to)
+    expect(recipients).toEqual(['a@x.com', 'b@x.com', 'd@x.com'])
+    expect(vi.mocked(sendEmail).mock.calls[0][0].text).toMatch(/1,?000/)
+    expect(vi.mocked(sendEmail).mock.calls[0][0].text).not.toMatch(/1,?497/)
+  })
+
+  it('takes the zone from the buyer latest open ticket', async () => {
+    const calls = setupDb([])
+    await runFlashReminderTick(NOW)
+
+    const candidateSql = calls.find((c) => c.sql.includes('FROM tickets t'))?.sql ?? ''
+    expect(candidateSql).toContain('AS zone_id')
+    expect(candidateSql).toContain('ORDER BY t2.paid_at DESC')
   })
 
   it('sends the first email 5 minutes after payment and marks it sent', async () => {

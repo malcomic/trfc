@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import { query } from '../config/db.js'
 import { attachTicketTypesToEvents } from '../utils/eventTicketTypes.js'
 import { getAdminProductList } from './productsController.js'
+import { isUuid } from '../utils/zones.js'
 
 export async function getAdminEvents(_req: Request, res: Response) {
   try {
@@ -41,8 +42,9 @@ export async function getAdminEquipmentHire(req: Request, res: Response) {
   }
 }
 
-export async function getAdminTickets(_req: Request, res: Response) {
+export async function getAdminTickets(req: Request, res: Response) {
   try {
+    const zoneId = typeof req.query.zoneId === 'string' && isUuid(req.query.zoneId) ? req.query.zoneId : null
     const result = await query(
       `SELECT
          t.*,
@@ -50,11 +52,15 @@ export async function getAdminTickets(_req: Request, res: Response) {
          e.event_date,
          COALESCE(t.unit_price, ett.price, e.price) AS price,
          ett.name AS ticket_type_name,
-         ett.id AS ticket_type_id
+         ett.id AS ticket_type_id,
+         z.name AS zone_name
        FROM tickets t
        LEFT JOIN events e ON t.event_id = e.id
        LEFT JOIN event_ticket_types ett ON t.ticket_type_id = ett.id
-       ORDER BY t.created_at DESC`
+       LEFT JOIN regions z ON z.id = t.zone_id
+       WHERE ($1::uuid IS NULL OR t.zone_id = $1::uuid)
+       ORDER BY t.created_at DESC`,
+      [zoneId]
     )
     res.json(result.rows)
   } catch (error) {

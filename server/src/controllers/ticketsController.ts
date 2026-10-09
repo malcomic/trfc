@@ -8,6 +8,7 @@ import {
 } from '../utils/qrCodeGenerator.js'
 import { generateTicketPDF } from '../utils/ticketPDFGenerator.js'
 import { phonesMatch } from '../utils/phone.js'
+import { findActiveZone } from '../utils/zones.js'
 import { randomUUID } from 'crypto'
 
 function resolveAttendeeName(
@@ -27,7 +28,7 @@ function resolveAttendeeName(
 export async function buyTicket(req: Request, res: Response) {
   try {
     const eventId = req.params.eventId || req.body.eventId
-    const { quantity, phone, email, attendeeName, ticketTypeId } = req.body
+    const { quantity, phone, email, attendeeName, ticketTypeId, zoneId } = req.body
     let userId = req.user?.id ?? null
 
     if (userId) {
@@ -65,6 +66,11 @@ export async function buyTicket(req: Request, res: Response) {
       return res
         .status(400)
         .json({ error: 'Quantity must be between 1 and 100' })
+    }
+
+    const zone = await findActiveZone(zoneId)
+    if (!zone) {
+      return res.status(400).json({ error: 'Please choose your zone' })
     }
 
     const eventResult = await query('SELECT * FROM events WHERE id = $1', [eventId])
@@ -110,8 +116,8 @@ export async function buyTicket(req: Request, res: Response) {
     for (let i = 0; i < quantity; i++) {
       const ticketResult = await query(
         `INSERT INTO tickets
-           (user_id, event_id, ticket_type_id, unit_price, purchase_batch_id, phone, email, attendee_name, payment_provider, payment_status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+           (user_id, event_id, ticket_type_id, unit_price, purchase_batch_id, phone, email, attendee_name, payment_provider, payment_status, zone_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
         [
           userId,
           eventId,
@@ -123,6 +129,7 @@ export async function buyTicket(req: Request, res: Response) {
           normalizedName,
           'mpesa',
           'pending',
+          zone.id,
         ]
       )
       ticketIds.push(ticketResult.rows[0].id)
@@ -139,6 +146,8 @@ export async function buyTicket(req: Request, res: Response) {
       pricePerTicket: unitPrice,
       totalPrice: unitPrice * quantity,
       attendeeName: normalizedName,
+      zoneId: zone.id,
+      zoneName: zone.name,
     })
   } catch (error: unknown) {
     const pgError = error as { code?: string; message?: string }
@@ -167,10 +176,12 @@ export async function getUserTickets(req: Request, res: Response) {
         t.unit_price, t.ticket_type_id,
         e.title as event_title, e.event_date, e.location,
         COALESCE(t.unit_price, ett.price, e.price) as price,
-        ett.name as ticket_type_name
+        ett.name as ticket_type_name,
+        t.zone_id, z.name as zone_name
        FROM tickets t
        JOIN events e ON t.event_id = e.id
        LEFT JOIN event_ticket_types ett ON t.ticket_type_id = ett.id
+       LEFT JOIN regions z ON z.id = t.zone_id
        WHERE t.user_id = $1
        ORDER BY t.created_at DESC`,
       [userId]
@@ -204,11 +215,13 @@ export async function getTicketsByCheckoutRequestId(req: Request, res: Response)
         COALESCE(NULLIF(TRIM(u.name), ''), NULL) as user_name,
         e.title as event_title, e.event_date, e.location,
         COALESCE(t.unit_price, ett.price, e.price) as price,
-        ett.name as ticket_type_name
+        ett.name as ticket_type_name,
+        z.name as zone_name
        FROM tickets t
        LEFT JOIN users u ON t.user_id = u.id
        JOIN events e ON t.event_id = e.id
        LEFT JOIN event_ticket_types ett ON t.ticket_type_id = ett.id
+       LEFT JOIN regions z ON z.id = t.zone_id
        WHERE t.checkout_request_id = $1
        ORDER BY t.created_at ASC`,
       [checkoutRequestId]
@@ -262,6 +275,7 @@ export async function getTicketsByCheckoutRequestId(req: Request, res: Response)
       event_date: ticket.event_date,
       location: ticket.location,
       ticket_type_name: ticket.ticket_type_name || null,
+      zone_name: ticket.zone_name || null,
       unit_price: unitPrice,
       quantity,
       total_price: totalPrice,
@@ -293,10 +307,12 @@ export async function getTicketById(req: Request, res: Response) {
         t.unit_price, t.ticket_type_id,
         e.title as event_title, e.event_date, e.location, e.description,
         COALESCE(t.unit_price, ett.price, e.price) as price,
-        ett.name as ticket_type_name
+        ett.name as ticket_type_name,
+        t.zone_id, z.name as zone_name
        FROM tickets t
        JOIN events e ON t.event_id = e.id
        LEFT JOIN event_ticket_types ett ON t.ticket_type_id = ett.id
+       LEFT JOIN regions z ON z.id = t.zone_id
        WHERE t.id = $1`,
       [id]
     )

@@ -30,6 +30,8 @@ import uploadRoutes from './routes/upload.js';
 import medalsRoutes from './routes/medals.js';
 import scanRoutes from './routes/scan.js';
 import signupsRoutes from './routes/signups.js';
+import captainsRoutes from './routes/captains.js';
+import zonesRoutes from './routes/zones.js';
 
 dotenv.config();
 
@@ -67,6 +69,8 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/signups', signupsRoutes);
+app.use('/api/captains', captainsRoutes);
+app.use('/api/zones', zonesRoutes);
 
 // Start server
 const startServer = async () => {

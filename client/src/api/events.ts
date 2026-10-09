@@ -34,6 +34,7 @@ export const buyEventTickets = async (
     email: string
     phone: string
     attendeeName: string
+    zoneId: string
   }
 ) => {
   const response = await api.post(`/events/${eventId}/tickets`, data);
@@ -48,6 +49,8 @@ export const buyEventTickets = async (
     pricePerTicket: number;
     totalPrice: number;
     attendeeName: string;
+    zoneId: string;
+    zoneName: string;
   };
 };
 
@@ -64,6 +67,7 @@ export interface TicketConfirmationDetails {
   event_date: string;
   location: string | null;
   ticket_type_name?: string | null;
+  zone_name?: string | null;
   unit_price: number;
   quantity: number;
   total_price: number;

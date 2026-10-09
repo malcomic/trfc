@@ -18,6 +18,8 @@ import ProductOptionsEditor, {
   optionsPayload,
   validateOptionsForm,
 } from '../../components/admin/ProductOptionsEditor'
+import ZoneChips from '../../components/admin/ZoneChips'
+import { getZones, type Zone } from '../../api/zones'
 
 interface Product {
   id: string
@@ -32,6 +34,7 @@ interface Product {
   is_active: boolean
   variants?: ProductVariant[]
   distance_options?: string[]
+  zones?: Zone[]
 }
 
 function sizeStockHint(product: Product): string | null {
@@ -67,6 +70,8 @@ export default function AdminProducts() {
   const [uploading, setUploading] = useState(false)
   const [filePreview, setFilePreview] = useState<string | null>(null)
   const [optionsForm, setOptionsForm] = useState<ProductOptionsFormValue>(EMPTY_OPTIONS_FORM)
+  const [zones, setZones] = useState<Zone[]>([])
+  const [selectedZoneIds, setSelectedZoneIds] = useState<string[]>([])
   const { register, handleSubmit, reset, watch, formState: { errors } } = useForm()
   const fileInput = watch('file')
 
@@ -88,12 +93,14 @@ export default function AdminProducts() {
   const fetchProducts = async () => {
     try {
       setLoading(true)
-      const [data, categoryData] = await Promise.all([
+      const [data, categoryData, zoneData] = await Promise.all([
         getProductsForAdmin(),
         getProductCategoriesForAdmin(),
+        getZones().catch(() => [] as Zone[]),
       ])
       setProducts(Array.isArray(data) ? data : [])
       setCategories(Array.isArray(categoryData) ? categoryData : [])
+      setZones(zoneData)
     } catch (err: any) {
       setError('Failed to fetch products')
       console.error(err)
@@ -140,6 +147,7 @@ export default function AdminProducts() {
         image_url: imageUrl,
         variants,
         distance_options,
+        zone_ids: selectedZoneIds,
       }
 
       if (editingId) {
@@ -181,6 +189,8 @@ export default function AdminProducts() {
     setFilePreview(null)
     reset({ ...product, category_id: product.category_id ?? '' })
     setOptionsForm(optionsFormFromProduct(product))
+    const activeIds = new Set(zones.map((z) => z.id))
+    setSelectedZoneIds((product.zones ?? []).map((z) => z.id).filter((id) => activeIds.has(id)))
     setShowModal(true)
   }
 
@@ -200,6 +210,7 @@ export default function AdminProducts() {
               setEditingId(null)
               setFilePreview(null)
               setOptionsForm(EMPTY_OPTIONS_FORM)
+              setSelectedZoneIds([])
               reset()
               setShowModal(true)
             }}
@@ -261,6 +272,7 @@ export default function AdminProducts() {
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Category</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Price</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Stock</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Zones</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Status</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Actions</th>
               </tr>
@@ -272,6 +284,7 @@ export default function AdminProducts() {
                   <td className={`px-6 py-4 ${product.category_id ? '' : 'text-amber-600 dark:text-amber-400'}`}>{categoryLabel(product)}</td>
                   <td className="px-6 py-4">KES {(Number(product.price) || 0).toFixed(2)}</td>
                   <td className="px-6 py-4"><StockCell product={product} /></td>
+                  <td className="px-6 py-4"><ZoneChips zones={product.zones} /></td>
                   <td className="px-6 py-4">
                     <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
                       product.is_active
@@ -312,6 +325,7 @@ export default function AdminProducts() {
             <AdminMobileCardRow label="Category" value={categoryLabel(product)} />
             <AdminMobileCardRow label="Price" value={`KES ${(Number(product.price) || 0).toFixed(2)}`} />
             <AdminMobileCardRow label="Stock" value={<StockCell product={product} />} />
+            <AdminMobileCardRow label="Zones" value={<ZoneChips zones={product.zones} />} />
             <AdminMobileCardRow
               label="Status"
               value={
@@ -395,6 +409,35 @@ export default function AdminProducts() {
               )}
 
               <ProductOptionsEditor value={optionsForm} onChange={setOptionsForm} />
+
+              <div>
+                <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Zones (optional)</label>
+                <div className="flex flex-wrap gap-2">
+                  {zones.map((z) => {
+                    const selected = selectedZoneIds.includes(z.id)
+                    return (
+                      <button
+                        key={z.id}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() =>
+                          setSelectedZoneIds((ids) => (selected ? ids.filter((id) => id !== z.id) : [...ids, z.id]))
+                        }
+                        className={`px-3 py-1 rounded-full text-sm border transition ${
+                          selected
+                            ? 'bg-emerald-600 border-emerald-600 text-white'
+                            : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                        }`}
+                      >
+                        {z.name}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Limits flash deals on this product to ticket holders from these zones. Leave empty to show in all zones.
+                </p>
+              </div>
 
               <div>
                 <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Description</label>

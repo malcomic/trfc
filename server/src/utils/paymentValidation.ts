@@ -1,6 +1,7 @@
 import { query } from '../config/db.js'
 import { phonesMatch } from './phone.js'
 import { activateSignupsByCheckoutId } from './signupActivation.js'
+import { recordCaptainCommissionsForCheckout } from './captainCommissions.js'
 
 export async function validatePaymentReference(
   orderId?: string,
@@ -184,6 +185,10 @@ export async function markEntitiesPaidByCheckoutId(
     [checkoutRequestId, mpesaReceipt || null]
   )
   const signupCount = await activateSignupsByCheckoutId(checkoutRequestId, mpesaReceipt || null)
+
+  if ((orderResult.rowCount || 0) + (hireResult.rowCount || 0) + (medalResult.rowCount || 0) > 0) {
+    await recordCaptainCommissionsForCheckout(checkoutRequestId)
+  }
 
   return (
     (orderResult.rowCount || 0) +

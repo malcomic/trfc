@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import { query } from '../config/db.js'
 import { phonesMatch } from '../utils/phone.js'
+import { recordCaptainCommission } from '../utils/captainCommissions.js'
 
 const EQUIPMENT_PACKAGES = {
   daily: { price: 500, description: 'Daily rate' },
@@ -191,6 +192,8 @@ export async function confirmPaymentAndHire(req: Request, res: Response) {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Hire request not found' })
     }
+
+    await recordCaptainCommission('equipment_hire', id)
 
     res.json({
       message: 'Equipment hire confirmed',

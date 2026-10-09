@@ -9,6 +9,7 @@ export interface CreateSignupRequest {
   program: ProgramId
   tier: Tier
   quizAnswers?: Record<string, string>
+  referralCode?: string
 }
 
 export interface CreateSignupResponse {

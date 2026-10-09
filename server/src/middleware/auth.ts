@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { JWTPayload } from '../types/index.js';
+import { query } from '../config/db.js';
 
 export const optionalAuthMiddleware = (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -39,6 +40,27 @@ export const adminMiddleware = (req: Request, res: Response, next: NextFunction)
     return res.status(403).json({ error: 'Admin access required' });
   }
   next();
+};
+
+export const captainMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+  if (!req.user) {
+    return res.status(403).json({ error: 'Captain access required' });
+  }
+  try {
+    // Checked against the database rather than the JWT so promotions/suspensions apply immediately.
+    const result = await query(
+      `SELECT c.status FROM captains c JOIN users u ON u.id = c.user_id
+       WHERE c.user_id = $1 AND u.role = 'captain'`,
+      [req.user.id]
+    );
+    if (result.rows[0]?.status !== 'active') {
+      return res.status(403).json({ error: 'Captain access required' });
+    }
+    next();
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Failed to verify captain access' });
+  }
 };
 
 export const staffMiddleware = (req: Request, res: Response, next: NextFunction) => {

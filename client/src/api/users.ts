@@ -1,19 +1,24 @@
 import api from './index';
 
 export type StaffRole = 'member' | 'admin' | 'scanner';
+export type UserRole = StaffRole | 'captain';
 
 export interface AdminUser {
   id: string;
   name: string;
   email: string;
   phone: string;
-  role: StaffRole;
+  role: UserRole;
   created_at: string;
+  referred_by_captain_id?: string | null;
+  referred_by_captain_name?: string | null;
+  referred_by_region?: string | null;
+  referred_at?: string | null;
 }
 
 export interface UserListParams {
   search?: string;
-  role?: StaffRole | '';
+  role?: UserRole | '';
 }
 
 export const getAllUsers = async (params?: UserListParams) => {

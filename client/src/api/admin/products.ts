@@ -14,6 +14,7 @@ export interface ProductPayload {
   image_url?: string;
   variants?: ProductVariantInput[];
   distance_options?: string[];
+  zone_ids?: string[];
 }
 
 export const getProductsForAdmin = async () => {

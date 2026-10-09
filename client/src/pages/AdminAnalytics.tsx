@@ -7,6 +7,7 @@ import PaymentDistribution from '../components/charts/PaymentDistribution'
 import TopProducts from '../components/charts/TopProducts'
 import TopEvents from '../components/charts/TopEvents'
 import CategoryRevenueChart from '../components/charts/CategoryRevenueChart'
+import RegionReferralChart from '../components/charts/RegionReferralChart'
 import UserGrowthChart from '../components/charts/UserGrowthChart'
 import PaymentTimelineChart from '../components/charts/PaymentTimelineChart'
 import AnalyticsDateRange, {
@@ -27,6 +28,9 @@ import {
   getUserGrowth,
   getPaymentTimeline,
   getEventAttendance,
+  getCaptainsByRegion,
+  type CaptainRegionStat,
+  type TopCaptainStat,
   type AnalyticsSummary,
   type RevenueTimelinePoint,
   type TopProduct,
@@ -137,6 +141,9 @@ export default function AdminAnalytics() {
     loading: true,
     error: '',
   })
+  const [captainStats, setCaptainStats] = useState<
+    SectionState<{ regions: CaptainRegionStat[]; topCaptains: TopCaptainStat[] }>
+  >({ data: { regions: [], topCaptains: [] }, loading: true, error: '' })
 
   const anyLoading =
     summary.loading ||
@@ -163,6 +170,7 @@ export default function AdminAnalytics() {
     setUserGrowth((s) => ({ ...s, loading: true, error: '' }))
     setPaymentTimeline((s) => ({ ...s, loading: true, error: '' }))
     setAttendance((s) => ({ ...s, loading: true, error: '' }))
+    setCaptainStats((s) => ({ ...s, loading: true, error: '' }))
 
     const load = async <T,>(
       fn: () => Promise<T>,
@@ -241,6 +249,11 @@ export default function AdminAnalytics() {
         () => getEventAttendance(params),
         (data) => setAttendance({ data, loading: false, error: '' }),
         (error) => setAttendance((prev) => ({ ...prev, loading: false, error }))
+      ),
+      load(
+        () => getCaptainsByRegion(params),
+        (data) => setCaptainStats({ data, loading: false, error: '' }),
+        (error) => setCaptainStats((prev) => ({ ...prev, loading: false, error }))
       ),
     ])
   }
@@ -540,6 +553,49 @@ export default function AdminAnalytics() {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ChartPanel
+          title="Referral Revenue by Region"
+          loading={captainStats.loading}
+          error={captainStats.error}
+          empty={!captainStats.data.regions.some((r) => r.referredSales > 0)}
+        >
+          <RegionReferralChart data={captainStats.data.regions} />
+        </ChartPanel>
+
+        <ChartPanel
+          title="Top Captains"
+          loading={captainStats.loading}
+          error={captainStats.error}
+          empty={captainStats.data.topCaptains.length === 0}
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b dark:border-gray-600">
+                <tr>
+                  <th className="text-left py-2 text-gray-900 dark:text-gray-100">Captain</th>
+                  <th className="text-left py-2 text-gray-900 dark:text-gray-100">Region</th>
+                  <th className="text-right py-2 text-gray-900 dark:text-gray-100">Purchases</th>
+                  <th className="text-right py-2 text-gray-900 dark:text-gray-100">Sales</th>
+                  <th className="text-right py-2 text-gray-900 dark:text-gray-100">Commission</th>
+                </tr>
+              </thead>
+              <tbody>
+                {captainStats.data.topCaptains.map((c) => (
+                  <tr key={c.referralCode} className="border-b dark:border-gray-700">
+                    <td className="py-2 text-gray-900 dark:text-gray-100">{c.name}</td>
+                    <td className="py-2 text-gray-600 dark:text-gray-300">{c.region}</td>
+                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">{c.purchases}</td>
+                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">KES {c.referredSales.toLocaleString()}</td>
+                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">KES {c.commission.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </ChartPanel>
       </div>
     </div>
   )

@@ -21,6 +21,7 @@ interface NavState {
   quantity?: number
   totalPrice?: number
   ticketTypeName?: string
+  zoneName?: string
   phone?: string
   email?: string
 }
@@ -334,6 +335,12 @@ export default function TicketConfirmation() {
             <p>
               <span className="text-fog light:text-fog-light">Type: </span>
               {details?.ticket_type_name || state.ticketTypeName}
+            </p>
+          )}
+          {(details?.zone_name || state.zoneName) && (
+            <p>
+              <span className="text-fog light:text-fog-light">Zone: </span>
+              {details?.zone_name || state.zoneName}
             </p>
           )}
           {(details?.total_price != null || state.totalPrice != null) && (

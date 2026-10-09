@@ -65,6 +65,10 @@ import AdminSignups from './pages/admin/AdminSignups'
 import AdminMedals from './pages/admin/AdminMedals'
 import AdminAppearance from './pages/admin/AdminAppearance'
 import AdminScan from './pages/admin/AdminScan'
+import AdminCaptains from './pages/admin/AdminCaptains'
+import AdminRegions from './pages/admin/AdminRegions'
+import CaptainDashboard from './pages/CaptainDashboard'
+import { captureReferralFromUrl } from './utils/referral'
 
 function TikTokPixelTracker() {
   const location = useLocation()
@@ -86,11 +90,20 @@ function TikTokPixelTracker() {
   return null
 }
 
+function ReferralCapture() {
+  const { search } = useLocation()
+  useEffect(() => {
+    captureReferralFromUrl(search)
+  }, [search])
+  return null
+}
+
 function RootLayout() {
   return (
     <>
       <ScrollRestoration />
       <TikTokPixelTracker />
+      <ReferralCapture />
       <Outlet />
     </>
   )
@@ -134,6 +147,9 @@ const router = createBrowserRouter(
           <Route path="sponsorship-tiers" element={<AdminSponsorshipTiers />} />
           <Route path="signups" element={<AdminSignups />} />
           <Route path="appearance" element={<AdminAppearance />} />
+          <Route path="captains" element={<AdminCaptains />} />
+          <Route path="captains/regions" element={<AdminRegions />} />
+          <Route path="zones" element={<AdminRegions standalone />} />
         </Route>
 
         <Route element={<PublicLayout />}>
@@ -170,6 +186,7 @@ const router = createBrowserRouter(
           <Route path="/account/payments" element={<PrivateRoute><PaymentHistory /></PrivateRoute>} />
           <Route path="/account/tickets" element={<PrivateRoute><MyTickets /></PrivateRoute>} />
           <Route path="/account/medals" element={<PrivateRoute><MyMedals /></PrivateRoute>} />
+          <Route path="/captain" element={<PrivateRoute role="captain"><CaptainDashboard /></PrivateRoute>} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

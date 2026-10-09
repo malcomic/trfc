@@ -22,7 +22,7 @@ export const getFlashSales = async (token?: string): Promise<FlashSalesResponse>
   return response.data
 }
 
-export const getFlashStatus = async (token?: string): Promise<{ eligible: boolean; expiresAt: string | null }> => {
+export const getFlashStatus = async (token?: string): Promise<{ eligible: boolean; expiresAt: string | null; zoneName: string | null }> => {
   const response = await api.get('/flash-sales/status', {
     headers: token ? { 'X-Flash-Access': token } : undefined,
   })

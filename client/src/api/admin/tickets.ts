@@ -12,6 +12,10 @@ export interface AdminTicket {
   purchase_batch_id?: string
   checked_in_at?: string | null
   checked_in_by?: string | null
+  email?: string | null
+  attendee_name?: string | null
+  zone_id?: string | null
+  zone_name?: string | null
   created_at: string
 }
 

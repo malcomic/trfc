@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react'
-import { Loader, AlertCircle, Ticket } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Loader, AlertCircle, Ticket, Download } from 'lucide-react'
 import { getTicketsForAdmin, AdminTicket } from '../../api/admin/tickets'
+import { getZones, type Zone } from '../../api/zones'
+import { downloadCsv } from '../../utils/csv'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/AdminMobileCard'
 import AdminResponsiveData from '../../components/admin/AdminResponsiveData'
@@ -11,9 +13,12 @@ export default function AdminTickets() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
+  const [filterZone, setFilterZone] = useState('all')
+  const [zones, setZones] = useState<Zone[]>([])
 
   useEffect(() => {
     fetchTickets()
+    getZones().then(setZones).catch(() => setZones([]))
   }, [])
 
   const fetchTickets = async () => {
@@ -41,10 +46,35 @@ export default function AdminTickets() {
     }
   }
 
-  const filteredTickets =
-    filterStatus === 'all'
-      ? tickets
-      : tickets.filter((t) => t.payment_status === filterStatus)
+  const filteredTickets = useMemo(
+    () =>
+      tickets.filter(
+        (t) =>
+          (filterStatus === 'all' || t.payment_status === filterStatus) &&
+          (filterZone === 'all' || (filterZone === 'none' ? !t.zone_id : t.zone_id === filterZone))
+      ),
+    [tickets, filterStatus, filterZone]
+  )
+
+  const exportCsv = () => {
+    downloadCsv(
+      'tickets',
+      filteredTickets.map((t) => ({
+        Event: t.event_title ?? '',
+        'Event date': t.event_date ?? '',
+        Type: t.ticket_type_name ?? '',
+        Price: t.price ?? '',
+        Attendee: t.attendee_name ?? '',
+        Email: t.email ?? '',
+        Phone: t.phone ?? '',
+        Zone: t.zone_name ?? '',
+        Status: t.payment_status,
+        'Checked in': t.checked_in_at ?? '',
+        Batch: t.purchase_batch_id ?? '',
+        Purchased: t.created_at,
+      }))
+    )
+  }
 
   if (loading) {
     return (
@@ -90,6 +120,25 @@ export default function AdminTickets() {
           <option value="pending">Pending</option>
           <option value="failed">Failed</option>
         </select>
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300 sm:ml-4">Zone</label>
+        <select
+          value={filterZone}
+          onChange={(e) => setFilterZone(e.target.value)}
+          className="w-full sm:w-auto px-4 py-2 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+        >
+          <option value="all">All zones</option>
+          {zones.map((z) => (
+            <option key={z.id} value={z.id}>{z.name}</option>
+          ))}
+          <option value="none">No zone</option>
+        </select>
+        <button
+          onClick={exportCsv}
+          disabled={filteredTickets.length === 0}
+          className="sm:ml-auto flex items-center justify-center gap-2 px-4 py-2 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+        >
+          <Download size={16} /> Export CSV
+        </button>
       </div>
 
       <AdminResponsiveData
@@ -106,6 +155,7 @@ export default function AdminTickets() {
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Event</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Type</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Phone</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Zone</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Status</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Check-in</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Batch</th>
@@ -135,6 +185,7 @@ export default function AdminTickets() {
                     )}
                   </td>
                   <td className="px-6 py-4">{t.phone || '—'}</td>
+                  <td className="px-6 py-4">{t.zone_name || '—'}</td>
                   <td className={`px-6 py-4 capitalize font-medium ${statusColor(t.payment_status)}`}>
                     {t.payment_status}
                   </td>
@@ -163,6 +214,7 @@ export default function AdminTickets() {
             <AdminMobileCardRow label="Type" value={t.ticket_type_name || '—'} />
             <AdminMobileCardRow label="Price" value={t.price != null ? `KES ${Number(t.price).toLocaleString()}` : '—'} />
             <AdminMobileCardRow label="Phone" value={t.phone || '—'} />
+            <AdminMobileCardRow label="Zone" value={t.zone_name || '—'} />
             <AdminMobileCardRow
               label="Status"
               value={<span className={`capitalize font-medium ${statusColor(t.payment_status)}`}>{t.payment_status}</span>}

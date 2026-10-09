@@ -794,4 +794,69 @@ export const analyticsController = {
       return res.status(500).json({ error: 'Failed to fetch event attendance' })
     }
   },
+
+  getCaptainsByRegion: async (req: Request, res: Response) => {
+    try {
+      const range = parseAnalyticsDateRange(req.query)
+      const d = dateRangeSql('cc.created_at', range, 1)
+
+      const regions = await pool.query(
+        `SELECT
+          r.name AS region,
+          r.code,
+          (SELECT COUNT(*) FROM captains c2 WHERE c2.region_id = r.id AND c2.status = 'active') AS captains,
+          COALESCE(SUM(cc.base_amount), 0) AS referred_sales,
+          COALESCE(SUM(cc.amount), 0) AS commission,
+          COUNT(cc.id) AS purchases
+        FROM regions r
+        LEFT JOIN captains c ON c.region_id = r.id
+        LEFT JOIN captain_commissions cc ON cc.captain_id = c.user_id AND cc.status <> 'reversed'${d.clause}
+        GROUP BY r.id, r.name, r.code, r.is_active
+        HAVING r.is_active OR COUNT(cc.id) > 0
+        ORDER BY referred_sales DESC, r.name ASC`,
+        d.params
+      )
+
+      const topCaptains = await pool.query(
+        `SELECT
+          u.name,
+          c.referral_code,
+          r.name AS region,
+          COALESCE(SUM(cc.base_amount), 0) AS referred_sales,
+          COALESCE(SUM(cc.amount), 0) AS commission,
+          COUNT(cc.id) AS purchases
+        FROM captain_commissions cc
+        JOIN captains c ON c.user_id = cc.captain_id
+        JOIN users u ON u.id = c.user_id
+        JOIN regions r ON r.id = c.region_id
+        WHERE cc.status <> 'reversed'${d.clause}
+        GROUP BY c.user_id, u.name, c.referral_code, r.name
+        ORDER BY referred_sales DESC
+        LIMIT 10`,
+        d.params
+      )
+
+      return res.json({
+        regions: regions.rows.map((row: any) => ({
+          region: row.region,
+          code: row.code,
+          captains: parseInt(row.captains),
+          referredSales: parseFloat(row.referred_sales),
+          commission: parseFloat(row.commission),
+          purchases: parseInt(row.purchases),
+        })),
+        topCaptains: topCaptains.rows.map((row: any) => ({
+          name: row.name,
+          referralCode: row.referral_code,
+          region: row.region,
+          referredSales: parseFloat(row.referred_sales),
+          commission: parseFloat(row.commission),
+          purchases: parseInt(row.purchases),
+        })),
+      })
+    } catch (error: any) {
+      console.error('Error in getCaptainsByRegion:', error)
+      return res.status(500).json({ error: 'Failed to fetch captain analytics' })
+    }
+  },
 }

@@ -3,7 +3,7 @@ export interface User {
   name: string;
   email: string;
   phone: string;
-  role: 'member' | 'admin' | 'scanner';
+  role: 'member' | 'admin' | 'scanner' | 'captain';
 }
 
 export interface EventTicketType {
@@ -107,6 +107,13 @@ export interface FlashSale {
   product_name?: string;
   regular_price?: number | string;
   product_active?: boolean;
+  product_zones?: ZoneRef[];
+}
+
+export interface ZoneRef {
+  id: string;
+  name: string;
+  code?: string;
 }
 
 export interface FlashSaleOffer {
@@ -133,6 +140,7 @@ export interface FlashSaleOffer {
 
 export interface FlashSalesResponse {
   accessExpiresAt: string;
+  zone: ZoneRef | null;
   offers: FlashSaleOffer[];
 }
 

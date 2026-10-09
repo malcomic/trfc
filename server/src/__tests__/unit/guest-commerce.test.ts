@@ -8,6 +8,8 @@ vi.mock('../../config/db.js', () => ({
   getClient: vi.fn(),
 }))
 
+const ZONE_ID = '66666666-6666-4666-8666-666666666666'
+
 vi.mock('../../utils/mpesa.js', () => ({
   getMPesaToken: vi.fn().mockResolvedValue('token'),
   initiateStkPush: vi.fn().mockResolvedValue({
@@ -91,6 +93,9 @@ describe('guest commerce', () => {
       if (sql.includes('INSERT INTO tickets')) {
         return { rows: [{ id: 'ticket-1' }] } as any
       }
+      if (sql.includes('FROM regions')) {
+        return { rows: [{ id: ZONE_ID, name: 'Nairobi', code: 'NRB' }] } as any
+      }
       return { rows: [] } as any
     })
 
@@ -103,6 +108,7 @@ describe('guest commerce', () => {
         email: 'guest@example.com',
         phone: '254712345678',
         attendeeName: 'Guest Runner',
+        zoneId: ZONE_ID,
       },
     } as any
     const res = { json: vi.fn(), status: vi.fn().mockReturnThis() } as any
@@ -122,6 +128,7 @@ describe('guest commerce', () => {
         'Guest Runner',
         'mpesa',
         'pending',
+        ZONE_ID,
       ]
     )
     expect(res.status).toHaveBeenCalledWith(201)

@@ -1,10 +1,12 @@
 import { useForm } from 'react-hook-form'
 import { useNavigate, Link } from 'react-router-dom'
 import { registerUser } from '../api/auth'
-import { useState } from 'react'
+import { getReferrer, type Referrer } from '../api/captains'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { User, Mail, Phone, Lock, ArrowRight, AlertCircle, Check } from 'lucide-react'
+import { User, Mail, Phone, Lock, ArrowRight, AlertCircle, Check, MapPin } from 'lucide-react'
 import { Logo } from '../components/Logo'
+import { clearReferral, getStoredReferral } from '../utils/referral'
 
 function getPasswordStrength(pw: string): { score: number; label: string; cls: string } {
   if (!pw) return { score: 0, label: '', cls: '' }
@@ -32,6 +34,23 @@ export default function Register() {
   const [agreed, setAgreed] = useState(false)
   const navigate = useNavigate()
   const { login } = useAuth()
+  const [referrer, setReferrer] = useState<Referrer | null>(null)
+
+  useEffect(() => {
+    const code = getStoredReferral()
+    if (!code) return
+    let cancelled = false
+    getReferrer(code)
+      .then((result) => {
+        if (!cancelled) setReferrer(result)
+      })
+      .catch((error) => {
+        if (error?.response?.status === 404) clearReferral()
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const passwordValue = watch('password', '')
   const strength = getPasswordStrength(passwordValue)
@@ -40,7 +59,8 @@ export default function Register() {
     try {
       setLoading(true)
       setErrorMessage('')
-      const response = await registerUser(data)
+      const response = await registerUser({ ...data, referralCode: referrer?.code ?? getStoredReferral() ?? undefined })
+      clearReferral()
       login(response.token, response.user, response.refreshToken)
       navigate('/')
     } catch (error: any) {
@@ -82,6 +102,16 @@ export default function Register() {
             </span>
           ))}
         </div>
+
+        {referrer && (
+          <div className="flex items-center gap-2.5 bg-accent/10 light:bg-accent-light/10 border border-accent/25 light:border-accent-light/25 border-l-4 border-l-accent light:border-l-accent-light px-4 py-3 mb-7 text-sm text-chalk light:text-chalk-light">
+            <MapPin size={15} className="flex-shrink-0 text-accent light:text-accent-light" />
+            <span>
+              Referred by <strong>{referrer.name}</strong>
+              <span className="text-fog light:text-fog-light"> · Captain, {referrer.region}</span>
+            </span>
+          </div>
+        )}
 
         {/* Error */}
         {errorMessage && (

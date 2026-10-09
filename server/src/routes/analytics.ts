@@ -33,4 +33,7 @@ router.get('/equipment/stats', analyticsController.getEquipmentStats)
 // Events endpoints
 router.get('/events/attendance', analyticsController.getEventAttendance)
 
+// Captain referral endpoints
+router.get('/captains/by-region', analyticsController.getCaptainsByRegion)
+
 export default router

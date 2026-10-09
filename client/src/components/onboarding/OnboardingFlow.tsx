@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import { createSignup } from '../../api/signups'
+import { getStoredReferral } from '../../utils/referral'
 import { initiateSignupPayment } from '../../api/payments'
 import { PROGRAMS, type ProgramId } from '../../content/programs'
 import { FAILED_COPY, QUESTION_1, QUESTION_2, TIER_LABELS } from '../../content/onboarding'
@@ -96,6 +97,7 @@ export default function OnboardingFlow({ startRequest }: { startRequest?: StartR
           ...(state.q2 ? { q2: state.q2 } : {}),
           ...(state.fromCard ? { source: 'program_card' } : {}),
         },
+        referralCode: getStoredReferral() ?? undefined,
       })
       dispatch({
         type: 'SIGNUP_CREATED',

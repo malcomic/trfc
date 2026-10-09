@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { getEventById, buyEventTickets } from '../api/events'
 import { initiateTicketPayment } from '../api/payments'
+import { getZones, type Zone } from '../api/zones'
 import PaymentStatusModal from '../components/PaymentStatusModal'
 import { AlertCircle, Loader, ArrowLeft } from 'lucide-react'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
@@ -15,6 +16,25 @@ type CheckoutForm = {
   attendeeName: string
   email: string
   phone: string
+  zoneId: string
+}
+
+const ZONE_STORAGE_KEY = 'trfc_zone'
+
+function readStoredZone(): string {
+  try {
+    return localStorage.getItem(ZONE_STORAGE_KEY) || ''
+  } catch {
+    return ''
+  }
+}
+
+function storeZone(zoneId: string) {
+  try {
+    localStorage.setItem(ZONE_STORAGE_KEY, zoneId)
+  } catch {
+    /* storage unavailable */
+  }
 }
 
 export default function EventCheckout() {
@@ -32,8 +52,10 @@ export default function EventCheckout() {
       attendeeName: '',
       email: '',
       phone: '',
+      zoneId: '',
     },
   })
+  const [zones, setZones] = useState<Zone[]>([])
 
   const [event, setEvent] = useState<Event | null>(null)
   const [selectedType, setSelectedType] = useState<EventTicketType | null>(null)
@@ -49,6 +71,7 @@ export default function EventCheckout() {
     quantity: number
     totalPrice: number
     ticketTypeName?: string
+    zoneName?: string
   } | null>(null)
 
   const quantity = watch('quantity')
@@ -64,6 +87,16 @@ export default function EventCheckout() {
     if (user?.email) setValue('email', user.email)
     if (user?.phone && /^254\d{9}$/.test(user.phone)) setValue('phone', user.phone)
   }, [user, setValue])
+
+  useEffect(() => {
+    getZones()
+      .then((list) => {
+        setZones(list)
+        const stored = readStoredZone()
+        if (stored && list.some((z) => z.id === stored)) setValue('zoneId', stored)
+      })
+      .catch(() => setZones([]))
+  }, [setValue])
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -127,7 +160,9 @@ export default function EventCheckout() {
         email: normalizedEmail,
         phone: data.phone,
         attendeeName: normalizedName,
+        zoneId: data.zoneId,
       })
+      storeZone(data.zoneId)
 
       const paymentResponse = await initiateTicketPayment({
         phone: data.phone,
@@ -142,6 +177,7 @@ export default function EventCheckout() {
           quantity: ticketResult.quantity,
           totalPrice: ticketResult.totalPrice,
           ticketTypeName: ticketResult.ticketTypeName,
+          zoneName: ticketResult.zoneName,
         })
         setShowPaymentModal(true)
       } else {
@@ -280,6 +316,20 @@ export default function EventCheckout() {
               className={`w-full px-4 py-2 ${inputField}`}
             />
             {errors.phone && <p className="text-red-400 text-sm mt-1">{errors.phone.message}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-semibold mb-2">Your zone</label>
+            <select
+              {...register('zoneId', { required: 'Please choose your zone' })}
+              className={`w-full px-4 py-2 ${inputField}`}
+            >
+              <option value="">Select your zone</option>
+              {zones.map((z) => (
+                <option key={z.id} value={z.id}>{z.name}</option>
+              ))}
+            </select>
+            {errors.zoneId && <p className="text-red-400 text-sm mt-1">{errors.zoneId.message}</p>}
+            <p className="text-xs text-fog light:text-fog-light mt-1">We use this to show flash deals available in your area.</p>
           </div>
           {error && (
             <div className="bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-300 flex gap-2">

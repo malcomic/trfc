@@ -23,17 +23,26 @@ export const getAllUsers = async (req: Request, res: Response) => {
 
     if (typeof search === 'string' && search.trim()) {
       params.push(`%${search.trim()}%`);
-      conditions.push(`(name ILIKE $${params.length} OR email ILIKE $${params.length} OR phone ILIKE $${params.length})`);
+      conditions.push(`(u.name ILIKE $${params.length} OR u.email ILIKE $${params.length} OR u.phone ILIKE $${params.length})`);
     }
 
-    if (role === 'member' || role === 'admin' || role === 'scanner') {
+    if (role === 'member' || role === 'admin' || role === 'scanner' || role === 'captain') {
       params.push(role);
-      conditions.push(`role = $${params.length}`);
+      conditions.push(`u.role = $${params.length}`);
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const result = await query(
-      `SELECT ${USER_FIELDS} FROM users ${where} ORDER BY created_at DESC`,
+      `SELECT u.id, u.name, u.email, u.phone, u.role, u.created_at,
+              u.referred_by_captain_id, u.referred_at,
+              cu.name AS referred_by_captain_name,
+              r.name AS referred_by_region
+       FROM users u
+       LEFT JOIN captains c ON c.user_id = u.referred_by_captain_id
+       LEFT JOIN users cu ON cu.id = c.user_id
+       LEFT JOIN regions r ON r.id = c.region_id
+       ${where}
+       ORDER BY u.created_at DESC`,
       params
     );
     res.json(result.rows);
@@ -118,7 +127,12 @@ export const updateUserRole = async (req: Request, res: Response) => {
     const { role } = req.body;
 
     if (!['member', 'admin', 'scanner'].includes(role)) {
-      return res.status(400).json({ error: 'Invalid role' });
+      return res.status(400).json({ error: 'Invalid role. Captains are managed from the Captains page.' });
+    }
+
+    const current = await query('SELECT role FROM users WHERE id = $1', [id]);
+    if (current.rows[0]?.role === 'captain') {
+      return res.status(400).json({ error: 'This user is a captain. Change their status from the Captains page.' });
     }
 
     if (role !== 'admin' && !(await ensureNotLastAdmin(id))) {
@@ -184,7 +198,16 @@ export const deleteUser = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    const captainHistory = await query(
+      'SELECT 1 FROM captain_commissions WHERE captain_id = $1 UNION ALL SELECT 1 FROM captain_payouts WHERE captain_id = $1 LIMIT 1',
+      [id]
+    );
+    if (captainHistory.rows.length > 0) {
+      return res.status(400).json({ error: 'This captain has commission history. Suspend them from the Captains page instead.' });
+    }
+
     await query('UPDATE orders SET user_id = NULL WHERE user_id = $1', [id]);
+    await query('UPDATE captain_payouts SET paid_by = NULL WHERE paid_by = $1', [id]);
     await query('UPDATE site_typography SET updated_by = NULL WHERE updated_by = $1', [id]);
     await query('DELETE FROM users WHERE id = $1', [id]);
 

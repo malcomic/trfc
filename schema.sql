@@ -317,3 +317,80 @@ CREATE INDEX IF NOT EXISTS idx_signups_user ON signups(user_id);
 CREATE INDEX IF NOT EXISTS idx_signups_checkout ON signups(checkout_request_id);
 CREATE INDEX IF NOT EXISTS idx_signups_created ON signups(created_at);
 CREATE INDEX IF NOT EXISTS idx_signups_program_tier ON signups(program, tier);
+
+-- Captain referral program
+CREATE TABLE IF NOT EXISTS regions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(100) UNIQUE NOT NULL,
+  slug VARCHAR(100) UNIQUE NOT NULL,
+  code VARCHAR(5) UNIQUE NOT NULL,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS captains (
+  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  region_id UUID NOT NULL REFERENCES regions(id),
+  referral_code VARCHAR(20) UNIQUE NOT NULL,
+  commission_rate NUMERIC(5,4) NOT NULL DEFAULT 0.10
+    CHECK (commission_rate >= 0 AND commission_rate <= 1),
+  payout_phone VARCHAR(15),
+  status VARCHAR(20) NOT NULL DEFAULT 'active',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS referred_by_captain_id UUID REFERENCES captains(user_id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS referred_at TIMESTAMPTZ;
+
+CREATE TABLE IF NOT EXISTS captain_payouts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  captain_id UUID NOT NULL REFERENCES captains(user_id),
+  amount NUMERIC(10,2) NOT NULL,
+  mpesa_receipt VARCHAR(100),
+  note TEXT,
+  paid_by UUID REFERENCES users(id),
+  paid_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS captain_commissions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  captain_id UUID NOT NULL REFERENCES captains(user_id),
+  referred_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  source_type VARCHAR(20) NOT NULL,
+  source_id UUID NOT NULL,
+  match_method VARCHAR(10) NOT NULL,
+  base_amount NUMERIC(10,2) NOT NULL,
+  rate NUMERIC(5,4) NOT NULL,
+  amount NUMERIC(10,2) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  payout_id UUID REFERENCES captain_payouts(id),
+  approved_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (source_type, source_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_captains_region ON captains(region_id);
+CREATE INDEX IF NOT EXISTS idx_users_referred_by ON users(referred_by_captain_id);
+CREATE INDEX IF NOT EXISTS idx_captain_payouts_captain ON captain_payouts(captain_id);
+CREATE INDEX IF NOT EXISTS idx_captain_commissions_captain_status ON captain_commissions(captain_id, status);
+CREATE INDEX IF NOT EXISTS idx_captain_commissions_created ON captain_commissions(created_at);
+
+INSERT INTO regions (name, slug, code) VALUES
+  ('Nairobi', 'nairobi', 'NRB'),
+  ('Mombasa', 'mombasa', 'MSA'),
+  ('Kisumu', 'kisumu', 'KSM'),
+  ('Nakuru', 'nakuru', 'NKR'),
+  ('Eldoret', 'eldoret', 'ELD')
+ON CONFLICT DO NOTHING;
+
+-- Ticket zones (shared with captain regions) for flash deals
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS zone_id UUID REFERENCES regions(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_tickets_zone ON tickets(zone_id);
+
+CREATE TABLE IF NOT EXISTS product_zones (
+  product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  zone_id UUID NOT NULL REFERENCES regions(id) ON DELETE CASCADE,
+  PRIMARY KEY (product_id, zone_id)
+);
+CREATE INDEX IF NOT EXISTS idx_product_zones_zone ON product_zones(zone_id);

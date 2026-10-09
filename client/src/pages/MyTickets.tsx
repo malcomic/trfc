@@ -90,6 +90,9 @@ export default function MyTickets() {
                 {t.ticket_type_name && (
                   <p className="text-sm text-accent light:text-accent-light">{t.ticket_type_name}</p>
                 )}
+                {t.zone_name && (
+                  <p className="text-sm text-fog light:text-fog-light">Zone: {t.zone_name}</p>
+                )}
                 <p className="text-sm text-fog light:text-fog-light">{t.location}</p>
                 <p className="text-sm text-fog light:text-fog-light mt-1">
                   {t.event_date ? formatEventDate(t.event_date, { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}

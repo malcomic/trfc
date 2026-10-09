@@ -14,6 +14,7 @@ import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/AdminMobileCard'
 import AdminResponsiveData from '../../components/admin/AdminResponsiveData'
 import ProductsSectionTabs from '../../components/admin/ProductsSectionTabs'
+import ZoneChips from '../../components/admin/ZoneChips'
 
 interface AdminProductOption {
   id: string
@@ -229,7 +230,8 @@ export default function AdminFlashSales() {
       <ProductsSectionTabs />
 
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-        Flash deals are only shown to customers for 24 hours after they buy an event ticket.
+        Flash deals are only shown to customers for 24 hours after they buy an event ticket. A deal is shown to ticket
+        holders from the product's zones, or to everyone if the product has no zones (set zones on the product).
       </p>
 
       {error && (
@@ -253,6 +255,7 @@ export default function AdminFlashSales() {
               <thead className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                 <tr>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Product</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Zones</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Normal</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Flash</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Sold / Limit</th>
@@ -266,6 +269,7 @@ export default function AdminFlashSales() {
                 {sales.map((sale) => (
                   <tr key={sale.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-900 dark:text-gray-100">
                     <td className="px-6 py-4 font-medium">{sale.product_name}</td>
+                    <td className="px-6 py-4"><ZoneChips zones={sale.product_zones} /></td>
                     <td className="px-6 py-4 text-gray-500 dark:text-gray-400">KES {Number(sale.regular_price ?? 0).toLocaleString()}</td>
                     <td className="px-6 py-4">{priceCell(sale)}</td>
                     <td className="px-6 py-4">{stockLabel(sale)}</td>
@@ -302,6 +306,7 @@ export default function AdminFlashSales() {
               }
             >
               <p className="font-semibold text-gray-900 dark:text-white">{sale.product_name}</p>
+              <AdminMobileCardRow label="Zones" value={<ZoneChips zones={sale.product_zones} />} />
               <AdminMobileCardRow label="Normal" value={`KES ${Number(sale.regular_price ?? 0).toLocaleString()}`} />
               <AdminMobileCardRow label="Flash" value={priceCell(sale)} />
               <AdminMobileCardRow label="Sold / Limit" value={stockLabel(sale)} />

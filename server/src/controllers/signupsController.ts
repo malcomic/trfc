@@ -8,6 +8,7 @@ import {
   resolveProgram,
 } from '../config/onboarding.js'
 import { notifySignupWelcome } from '../utils/signupActivation.js'
+import { applyReferral } from '../utils/referrals.js'
 
 async function findOrCreateUser(name: string, phone: string, whatsapp: string) {
   const existing = await query(
@@ -33,7 +34,7 @@ async function findOrCreateUser(name: string, phone: string, whatsapp: string) {
 
 export async function createSignup(req: Request, res: Response) {
   try {
-    const { name, phone, whatsapp, program, tier, quizAnswers } = req.body ?? {}
+    const { name, phone, whatsapp, program, tier, quizAnswers, referralCode } = req.body ?? {}
 
     const trimmedName = typeof name === 'string' ? name.trim() : ''
     if (!trimmedName || trimmedName.length > 100) {
@@ -55,6 +56,9 @@ export async function createSignup(req: Request, res: Response) {
 
     const finalProgram = resolveProgram(program, tier)
     const { userId, isReturning } = await findOrCreateUser(trimmedName, msisdn, whatsappMsisdn)
+    if (referralCode) {
+      await applyReferral(userId, referralCode)
+    }
     const amount = priceFor(tier, isReturning)
     const paymentStatus = tier === 'free' ? 'n/a' : 'pending'
 
