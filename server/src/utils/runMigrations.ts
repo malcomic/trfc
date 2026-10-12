@@ -514,6 +514,24 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       CREATE INDEX IF NOT EXISTS idx_product_zones_zone ON product_zones(zone_id);
     `,
   },
+  {
+    name: '023_ticket_recovery',
+    sql: `
+      CREATE INDEX IF NOT EXISTS idx_tickets_mpesa_receipt_upper ON tickets (UPPER(mpesa_receipt));
+      CREATE INDEX IF NOT EXISTS idx_tickets_phone ON tickets (phone);
+
+      CREATE TABLE IF NOT EXISTS ticket_email_changes (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        checkout_request_id VARCHAR(100) NOT NULL,
+        old_email VARCHAR(150),
+        new_email VARCHAR(150) NOT NULL,
+        changed_by_type VARCHAR(10) NOT NULL CHECK (changed_by_type IN ('guest', 'admin')),
+        changed_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_ticket_email_changes_ref ON ticket_email_changes(checkout_request_id);
+    `,
+  },
 ]
 
 export async function runMigrations() {

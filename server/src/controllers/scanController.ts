@@ -6,6 +6,7 @@ import {
   shortMedalCode,
   shortTicketCode,
 } from '../utils/qrCodeGenerator.js'
+import { searchTicketsForGate } from '../utils/ticketLookup.js'
 
 type TicketStatus =
   | 'valid'
@@ -128,12 +129,28 @@ export async function listScanEvents(_req: Request, res: Response) {
 
 export async function lookupScan(req: Request, res: Response) {
   try {
-    const { payload, shortCode, eventId } = req.body as {
+    const { payload, shortCode, eventId, search } = req.body as {
       payload?: string
       shortCode?: string
       eventId?: string
+      search?: string
     }
     const eventFilter = typeof eventId === 'string' && eventId.trim() ? eventId.trim() : undefined
+
+    if (typeof search === 'string' && search.trim()) {
+      const rows = await searchTicketsForGate(search, eventFilter)
+      if (rows.length === 0) {
+        return res.json({ kind: null, status: 'not_found' })
+      }
+      return res.json({
+        kind: 'ticket',
+        status: 'matches',
+        tickets: rows.map((row) => {
+          const { ticket, status } = ticketResponse(row, deriveTicketStatus(row, eventFilter))
+          return { ...ticket, status }
+        }),
+      })
+    }
 
     let kind: 'ticket' | 'medal' | null = null
     let entityId: string | null = null

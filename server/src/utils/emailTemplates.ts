@@ -762,6 +762,55 @@ export function buildFlashReminderEmailText(stage: FlashReminderStage, data: Fla
   ].join('\n\n')
 }
 
+export interface TicketEmailChangedData {
+  eventTitle: string
+  maskedNewEmail: string
+}
+
+export function buildTicketEmailChangedHTML(data: TicketEmailChangedData): string {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your ticket email was changed</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#111827;">
+  <div style="max-width:600px;margin:24px auto;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;">
+    <div style="background:#0a0a0a;color:#ffffff;padding:28px 24px;text-align:center;">
+      <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#f59e0b;">TRFC</p>
+      <h1 style="margin:0;font-size:24px;font-weight:700;">Ticket email changed</h1>
+    </div>
+    <div style="padding:28px 24px;">
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.5;color:#374151;">
+        The email address for your <strong>${escapeHtml(data.eventTitle)}</strong> tickets was changed to
+        <strong>${escapeHtml(data.maskedNewEmail)}</strong>, and the tickets were sent there.
+      </p>
+      <p style="margin:0;font-size:15px;line-height:1.5;color:#374151;">
+        If you didn't make this change, contact us right away at
+        <a href="mailto:${escapeHtml(config.contact.email)}" style="color:#b45309;">${escapeHtml(config.contact.email)}</a>
+        or ${escapeHtml(config.contact.phone)}.
+      </p>
+    </div>
+    <div style="background:#f9fafb;padding:20px 24px;text-align:center;font-size:12px;color:#6b7280;border-top:1px solid #e5e7eb;">
+      <p style="margin:0;">© ${new Date().getFullYear()} TRFC — Thika Road Fitness Community</p>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim()
+}
+
+export function buildTicketEmailChangedText(data: TicketEmailChangedData): string {
+  return [
+    'Ticket email changed',
+    `The email address for your ${data.eventTitle} tickets was changed to ${data.maskedNewEmail}, and the tickets were sent there.`,
+    `If you didn't make this change, contact us right away at ${config.contact.email} or ${config.contact.phone}.`,
+    `© ${new Date().getFullYear()} TRFC — Thika Road Fitness Community`,
+  ].join('\n\n')
+}
+
 export default {
   buildTicketEmailHTML,
   buildTicketEmailText,

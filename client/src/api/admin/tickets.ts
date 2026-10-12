@@ -10,6 +10,8 @@ export interface AdminTicket {
   phone?: string
   payment_status: string
   purchase_batch_id?: string
+  checkout_request_id?: string | null
+  mpesa_receipt?: string | null
   checked_in_at?: string | null
   checked_in_by?: string | null
   email?: string | null
@@ -21,5 +23,13 @@ export interface AdminTicket {
 
 export const getTicketsForAdmin = async (): Promise<AdminTicket[]> => {
   const response = await api.get('/admin/tickets')
+  return response.data
+}
+
+export const resendAdminTicket = async (
+  id: string,
+  email?: string
+): Promise<{ success: boolean; email: string }> => {
+  const response = await api.post(`/admin/tickets/${id}/resend`, email ? { email } : {})
   return response.data
 }

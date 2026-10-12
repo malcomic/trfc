@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Html5Qrcode } from 'html5-qrcode'
-import { LogOut, QrCode, Keyboard, X } from 'lucide-react'
+import { LogOut, QrCode, Keyboard, Search, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import {
   admitScan,
   listScanEvents,
   lookupScan,
+  searchScanTickets,
   type ScanEvent,
   type ScanLookupResult,
+  type TicketSearchMatch,
+  type TicketScanStatus,
 } from '../../api/scan'
 import { formatEventDate, formatEventDateTime } from '../../utils/eventDate'
 
@@ -80,6 +83,15 @@ function statusTone(status: string) {
   return 'bg-red-600'
 }
 
+const SEARCH_STATUS_LABELS: Record<TicketScanStatus, string> = {
+  valid: 'Valid',
+  already_checked_in: 'Checked in',
+  unpaid: 'Unpaid',
+  wrong_event: 'Wrong event',
+  not_found: 'Not found',
+  ambiguous: 'Ambiguous',
+}
+
 function statusLabel(result: ScanLookupResult) {
   switch (result.status) {
     case 'valid':
@@ -118,16 +130,22 @@ export default function AdminScan() {
   const [cameraError, setCameraError] = useState('')
   const [scannerReady, setScannerReady] = useState(false)
   const [sessionCheckIns, setSessionCheckIns] = useState<SessionCheckIn[]>(loadSessionCheckIns)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [searchResults, setSearchResults] = useState<TicketSearchMatch[] | null>(null)
+  const [searching, setSearching] = useState(false)
+  const [searchError, setSearchError] = useState('')
+  const [admittingId, setAdmittingId] = useState<string | null>(null)
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const busyRef = useRef(false)
   const eventIdRef = useRef(eventId)
   const hardwareInputRef = useRef<HTMLInputElement | null>(null)
   const resetTimeoutRef = useRef<number | undefined>(undefined)
-  const manualOpenRef = useRef(manualOpen)
+  const manualOpenRef = useRef(manualOpen || searchOpen)
 
   useEffect(() => {
-    manualOpenRef.current = manualOpen
-  }, [manualOpen])
+    manualOpenRef.current = manualOpen || searchOpen
+  }, [manualOpen, searchOpen])
 
   useEffect(() => {
     eventIdRef.current = eventId
@@ -287,6 +305,66 @@ export default function AdminScan() {
     [scheduleReset, pushSessionCheckIn]
   )
 
+  const closeSearch = () => {
+    setSearchOpen(false)
+    setSearchResults(null)
+    setSearchError('')
+  }
+
+  const runSearch = async () => {
+    const term = searchTerm.trim()
+    if (!term || searching) return
+    try {
+      setSearching(true)
+      setSearchError('')
+      const data = await searchScanTickets({ search: term, eventId: eventIdRef.current || undefined })
+      setSearchResults(data.status === 'matches' ? data.tickets : [])
+    } catch (err) {
+      console.error(err)
+      setSearchError('Search failed. Try again.')
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  const admitFromSearch = async (match: TicketSearchMatch) => {
+    if (admittingId) return
+    try {
+      setAdmittingId(match.id)
+      setSearchError('')
+      busyRef.current = true
+      clearTimeout(resetTimeoutRef.current)
+      const updated = await admitScan({
+        kind: 'ticket',
+        id: match.id,
+        eventId: eventIdRef.current || undefined,
+      })
+      closeSearch()
+      setSearchTerm('')
+      setResult(updated)
+      setFlash('Checked in')
+      pushSessionCheckIn(updated)
+      scheduleReset(SUCCESS_DISMISS_MS)
+    } catch (err: unknown) {
+      busyRef.current = false
+      const errData =
+        err && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { data?: ScanLookupResult } }).response?.data
+          : undefined
+      if (errData && errData.kind === 'ticket' && errData.ticket) {
+        const ticket = errData.ticket
+        setSearchResults((prev) =>
+          prev ? prev.map((m) => (m.id === ticket.id ? { ...ticket, status: errData.status } : m)) : prev
+        )
+        setSearchError(statusLabel(errData))
+      } else {
+        setSearchError('Admit failed')
+      }
+    } finally {
+      setAdmittingId(null)
+    }
+  }
+
   const handleHardwareKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault()
@@ -302,10 +380,10 @@ export default function AdminScan() {
   }, [focusHardwareInput])
 
   useEffect(() => {
-    if (!manualOpen) {
+    if (!manualOpen && !searchOpen) {
       focusHardwareInput()
     }
-  }, [manualOpen, focusHardwareInput])
+  }, [manualOpen, searchOpen, focusHardwareInput])
 
   useEffect(() => {
     if (scanMode !== 'camera') {
@@ -464,14 +542,24 @@ export default function AdminScan() {
           <p className="text-amber-400 text-sm text-center">{cameraError}</p>
         )}
 
-        <button
-          type="button"
-          onClick={() => setManualOpen(true)}
-          className="mx-auto flex items-center gap-2 min-h-[48px] px-5 rounded-lg bg-gray-800 border border-gray-700 font-semibold"
-        >
-          <Keyboard size={18} />
-          Enter code
-        </button>
+        <div className="mx-auto flex flex-wrap justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => setManualOpen(true)}
+            className="flex items-center gap-2 min-h-[48px] px-5 rounded-lg bg-gray-800 border border-gray-700 font-semibold"
+          >
+            <Keyboard size={18} />
+            Enter code
+          </button>
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            className="flex items-center gap-2 min-h-[48px] px-5 rounded-lg bg-gray-800 border border-gray-700 font-semibold"
+          >
+            <Search size={18} />
+            Search
+          </button>
+        </div>
 
         <div className="w-full max-w-md mx-auto mt-2">
           <div className="flex items-center justify-between gap-3 mb-2">
@@ -559,6 +647,82 @@ export default function AdminScan() {
             >
               Look up
             </button>
+          </div>
+        </div>
+      )}
+
+      {searchOpen && (
+        <div className="fixed inset-0 z-40 bg-black/70 flex items-end sm:items-center justify-center p-4">
+          <div className="w-full max-w-md bg-gray-900 rounded-2xl p-5 border border-gray-700 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-lg">Search tickets</h2>
+              <button type="button" onClick={closeSearch} className="p-2" aria-label="Close">
+                <X size={20} />
+              </button>
+            </div>
+            <input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  void runSearch()
+                }
+              }}
+              placeholder="Phone, M-Pesa code or name"
+              className="w-full min-h-[48px] rounded-lg bg-gray-800 border border-gray-700 px-3 mb-3"
+              autoFocus
+            />
+            <button
+              type="button"
+              disabled={!searchTerm.trim() || searching}
+              onClick={() => void runSearch()}
+              className="w-full min-h-[48px] rounded-lg bg-emerald-600 font-bold disabled:opacity-50 mb-3"
+            >
+              {searching ? 'Searching…' : 'Search'}
+            </button>
+            <p className="text-xs text-gray-500 mb-3">
+              {eventId ? 'Searching the selected event only.' : 'Searching all events.'} Check the name against the
+              person's ID before admitting.
+            </p>
+            {searchError && <p className="text-sm text-red-400 mb-3">{searchError}</p>}
+            {searchResults && (
+              <div className="overflow-y-auto space-y-2">
+                {searchResults.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-4">No matching tickets found.</p>
+                ) : (
+                  searchResults.map((match) => (
+                    <div key={match.id} className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-semibold truncate">{match.attendeeName || 'Guest'}</p>
+                          <p className="text-sm text-gray-400 truncate">{match.eventTitle || 'Unknown event'}</p>
+                          <p className="text-xs text-gray-500 font-mono mt-0.5">
+                            {match.shortCode}
+                            {match.phone ? ` · ${match.phone}` : ''}
+                          </p>
+                        </div>
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${statusTone(match.status)}`}
+                        >
+                          {SEARCH_STATUS_LABELS[match.status] || match.status}
+                        </span>
+                      </div>
+                      {match.status === 'valid' && (
+                        <button
+                          type="button"
+                          disabled={admittingId !== null}
+                          onClick={() => void admitFromSearch(match)}
+                          className="mt-3 w-full min-h-[44px] rounded-lg bg-emerald-600 font-bold disabled:opacity-50"
+                        >
+                          {admittingId === match.id ? 'Checking in…' : 'Admit'}
+                        </button>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -97,3 +97,22 @@ export const getTicketsByCheckoutRequestId = async (
   });
   return response.data as TicketConfirmationDetails;
 };
+
+export interface FoundTickets {
+  checkoutRequestId: string;
+  eventTitle: string;
+  eventDate: string;
+  quantity: number;
+  maskedEmail: string | null;
+  token: string;
+}
+
+export const findTickets = async (data: { phone: string; mpesaReceipt: string }) => {
+  const response = await api.post('/events/tickets/find', data);
+  return response.data as FoundTickets;
+};
+
+export const updateTicketEmail = async (data: { token: string; email: string }) => {
+  const response = await api.post('/events/tickets/update-email', data);
+  return response.data as { success: boolean; maskedEmail: string | null };
+};

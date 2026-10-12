@@ -17,6 +17,7 @@ import Events from './pages/Events'
 import EventDetail from './pages/EventDetail'
 import EventCheckout from './pages/EventCheckout'
 import TicketConfirmation from './pages/TicketConfirmation'
+import FindTickets from './pages/FindTickets'
 import MedalDetail from './pages/MedalDetail'
 import MedalCheckout from './pages/MedalCheckout'
 import MedalConfirmation from './pages/MedalConfirmation'
@@ -160,6 +161,7 @@ const router = createBrowserRouter(
           <Route path="/events/:eventId/checkout" element={<EventCheckout />} />
           <Route path="/events/:id" element={<EventDetail />} />
           <Route path="/ticket-confirmation/:checkoutRequestId" element={<TicketConfirmation />} />
+          <Route path="/find-tickets" element={<FindTickets />} />
           <Route path="/medals" element={<Medals />} />
           <Route path="/medals/:slug/checkout" element={<MedalCheckout />} />
           <Route path="/medals/:slug" element={<MedalDetail />} />

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { getEventById, buyEventTickets } from '../api/events'
 import { initiateTicketPayment } from '../api/payments'
@@ -303,7 +303,11 @@ export default function EventCheckout() {
               className={`w-full px-4 py-2 ${inputField}`}
             />
             {errors.email && <p className="text-red-400 text-sm mt-1">{errors.email.message}</p>}
-            <p className="text-xs text-fog light:text-fog-light mt-1">Ticket PDF(s) will be sent to this email.</p>
+            <p className="text-xs text-fog light:text-fog-light mt-1">
+              Ticket PDF(s) will be sent to this email. Typed it wrong? You can still get your tickets later at{' '}
+              <Link to="/find-tickets" className="text-accent light:text-accent-light">Find My Tickets</Link> with your
+              M-Pesa code.
+            </p>
           </div>
           <div>
             <label className="block text-sm font-semibold mb-2">M-Pesa Phone (254XXXXXXXXX)</label>

@@ -4,6 +4,7 @@ import {
   getAdminProducts,
   getAdminEquipmentHire,
   getAdminTickets,
+  resendAdminTicket,
 } from '../controllers/adminController.js'
 import {
   createEventTicketType,
@@ -61,6 +62,7 @@ router.get('/product-categories', getAdminProductCategories)
 router.get('/flash-sales', getAdminFlashSales)
 router.get('/equipment/hire', getAdminEquipmentHire)
 router.get('/tickets', getAdminTickets)
+router.post('/tickets/:id/resend', resendAdminTicket)
 router.get('/medals', getAdminMedals)
 router.get('/medals/purchases', getAdminMedalPurchases)
 router.put('/medals/:id', updateMedalTier)

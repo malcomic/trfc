@@ -202,6 +202,12 @@ export default function TicketConfirmation() {
               View Tickets
             </button>
           </form>
+          <p className="text-xs text-fog light:text-fog-light mt-4 mb-0">
+            Entered the wrong email?{' '}
+            <Link to="/find-tickets" className="text-accent light:text-accent-light">
+              Find your tickets with your M-Pesa code
+            </Link>
+          </p>
         </div>
       </div>
     )

@@ -77,6 +77,22 @@ export const lookupScan = async (body: {
   return response.data
 }
 
+export type TicketSearchMatch = TicketScanResult['ticket'] & { status: TicketScanStatus }
+
+export interface TicketSearchResult {
+  kind: 'ticket'
+  status: 'matches'
+  tickets: TicketSearchMatch[]
+}
+
+export const searchScanTickets = async (body: {
+  search: string
+  eventId?: string
+}): Promise<TicketSearchResult | EmptyScanResult> => {
+  const response = await api.post('/scan/lookup', body)
+  return response.data
+}
+
 export const admitScan = async (body: {
   kind: 'ticket' | 'medal'
   id: string

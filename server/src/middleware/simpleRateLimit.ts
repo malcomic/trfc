@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from 'express'
 
-const requestLog: Record<string, number[]> = {}
 const WINDOW_MS = 15 * 60 * 1000
 const MAX_REQUESTS = 5
 
 export function simpleRateLimit(maxRequests = MAX_REQUESTS, windowMs = WINDOW_MS) {
+  const requestLog: Record<string, number[]> = {}
   return (req: Request, res: Response, next: NextFunction) => {
     const clientIp = req.ip || 'unknown'
     const now = Date.now()

@@ -1,12 +1,20 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Loader, AlertCircle, Ticket, Download } from 'lucide-react'
-import { getTicketsForAdmin, AdminTicket } from '../../api/admin/tickets'
+import { Loader, AlertCircle, Ticket, Download, Mail, Link2, Search, X } from 'lucide-react'
+import { getTicketsForAdmin, resendAdminTicket, AdminTicket } from '../../api/admin/tickets'
 import { getZones, type Zone } from '../../api/zones'
 import { downloadCsv } from '../../utils/csv'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/AdminMobileCard'
 import AdminResponsiveData from '../../components/admin/AdminResponsiveData'
 import { formatEventDate } from '../../utils/eventDate'
+
+const shortTicketCode = (id: string) => id.replace(/-/g, '').slice(0, 8).toUpperCase()
+
+function confirmationLink(t: AdminTicket): string | null {
+  if (!t.checkout_request_id) return null
+  const params = t.phone ? `?${new URLSearchParams({ phone: t.phone }).toString()}` : ''
+  return `${window.location.origin}/ticket-confirmation/${encodeURIComponent(t.checkout_request_id)}${params}`
+}
 
 export default function AdminTickets() {
   const [tickets, setTickets] = useState<AdminTicket[]>([])
@@ -15,6 +23,13 @@ export default function AdminTickets() {
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterZone, setFilterZone] = useState('all')
   const [zones, setZones] = useState<Zone[]>([])
+  const [search, setSearch] = useState('')
+  const [resendTarget, setResendTarget] = useState<AdminTicket | null>(null)
+  const [resendEmail, setResendEmail] = useState('')
+  const [resending, setResending] = useState(false)
+  const [resendError, setResendError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchTickets()
@@ -46,15 +61,101 @@ export default function AdminTickets() {
     }
   }
 
-  const filteredTickets = useMemo(
-    () =>
-      tickets.filter(
-        (t) =>
-          (filterStatus === 'all' || t.payment_status === filterStatus) &&
-          (filterZone === 'all' || (filterZone === 'none' ? !t.zone_id : t.zone_id === filterZone))
-      ),
-    [tickets, filterStatus, filterZone]
-  )
+  const filteredTickets = useMemo(() => {
+    const term = search.trim().toLowerCase()
+    const digits = term.replace(/\D/g, '')
+    const matchesSearch = (t: AdminTicket) => {
+      if (!term) return true
+      const phoneDigits = (t.phone || '').replace(/\D/g, '')
+      return (
+        (digits.length >= 4 && phoneDigits.includes(digits.replace(/^0/, ''))) ||
+        (t.email || '').toLowerCase().includes(term) ||
+        (t.mpesa_receipt || '').toLowerCase().includes(term) ||
+        (t.attendee_name || '').toLowerCase().includes(term) ||
+        shortTicketCode(t.id).toLowerCase().includes(term)
+      )
+    }
+    return tickets.filter(
+      (t) =>
+        (filterStatus === 'all' || t.payment_status === filterStatus) &&
+        (filterZone === 'all' || (filterZone === 'none' ? !t.zone_id : t.zone_id === filterZone)) &&
+        matchesSearch(t)
+    )
+  }, [tickets, filterStatus, filterZone, search])
+
+  const openResend = (t: AdminTicket) => {
+    setResendTarget(t)
+    setResendEmail(t.email || '')
+    setResendError('')
+  }
+
+  const closeResend = () => {
+    if (resending) return
+    setResendTarget(null)
+  }
+
+  const submitResend = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!resendTarget) return
+    const email = resendEmail.trim().toLowerCase()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setResendError('Enter a valid email address')
+      return
+    }
+    try {
+      setResending(true)
+      setResendError('')
+      const result = await resendAdminTicket(resendTarget.id, email)
+      const ref = resendTarget.checkout_request_id
+      setTickets((prev) =>
+        prev.map((t) =>
+          t.id === resendTarget.id || (ref && t.checkout_request_id === ref) ? { ...t, email: result.email } : t
+        )
+      )
+      setNotice(`Tickets sent to ${result.email}`)
+      setResendTarget(null)
+    } catch (err: any) {
+      setResendError(err.response?.data?.error || 'Failed to resend tickets')
+    } finally {
+      setResending(false)
+    }
+  }
+
+  const copyLink = async (t: AdminTicket) => {
+    const link = confirmationLink(t)
+    if (!link) return
+    try {
+      await navigator.clipboard.writeText(link)
+      setCopiedId(t.id)
+      setTimeout(() => setCopiedId((current) => (current === t.id ? null : current)), 2000)
+    } catch {
+      window.prompt('Copy this link', link)
+    }
+  }
+
+  const ticketActions = (t: AdminTicket) =>
+    t.payment_status === 'paid' ? (
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => openResend(t)}
+          className="inline-flex items-center gap-1 px-3 py-1.5 min-h-[36px] text-xs font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+        >
+          <Mail size={14} /> Resend / Edit email
+        </button>
+        {t.checkout_request_id && (
+          <button
+            type="button"
+            onClick={() => copyLink(t)}
+            className="inline-flex items-center gap-1 px-3 py-1.5 min-h-[36px] text-xs font-medium border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
+            <Link2 size={14} /> {copiedId === t.id ? 'Copied' : 'Copy link'}
+          </button>
+        )}
+      </div>
+    ) : (
+      <span className="text-gray-400 text-sm">—</span>
+    )
 
   const exportCsv = () => {
     downloadCsv(
@@ -67,6 +168,7 @@ export default function AdminTickets() {
         Attendee: t.attendee_name ?? '',
         Email: t.email ?? '',
         Phone: t.phone ?? '',
+        'M-Pesa receipt': t.mpesa_receipt ?? '',
         Zone: t.zone_name ?? '',
         Status: t.payment_status,
         'Checked in': t.checked_in_at ?? '',
@@ -108,6 +210,26 @@ export default function AdminTickets() {
         </div>
       )}
 
+      {notice && (
+        <div className="mb-4 flex items-center justify-between gap-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-4 py-3 text-sm text-green-800 dark:text-green-300">
+          <span>{notice}</span>
+          <button type="button" onClick={() => setNotice('')} aria-label="Dismiss">
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      <div className="mb-4 relative">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search phone, email, M-Pesa code, name, or ticket code"
+          className="w-full pl-9 pr-4 py-2 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+        />
+      </div>
+
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-2">
         <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter by status</label>
         <select
@@ -145,7 +267,9 @@ export default function AdminTickets() {
         isEmpty={filteredTickets.length === 0}
         empty={
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center">
-            <p className="text-gray-600 dark:text-gray-400 text-lg">No tickets yet</p>
+            <p className="text-gray-600 dark:text-gray-400 text-lg">
+              {tickets.length === 0 ? 'No tickets yet' : 'No tickets match your filters'}
+            </p>
           </div>
         }
         desktop={
@@ -154,12 +278,13 @@ export default function AdminTickets() {
               <tr>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Event</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Type</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Phone</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Buyer</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Zone</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Status</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Check-in</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Batch</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Date</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -184,7 +309,14 @@ export default function AdminTickets() {
                       </div>
                     )}
                   </td>
-                  <td className="px-6 py-4">{t.phone || '—'}</td>
+                  <td className="px-6 py-4">
+                    <div>{t.attendee_name || '—'}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">{t.phone || '—'}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400 break-all">{t.email || '—'}</div>
+                    {t.mpesa_receipt && (
+                      <div className="text-xs font-mono text-gray-500 dark:text-gray-400">{t.mpesa_receipt}</div>
+                    )}
+                  </td>
                   <td className="px-6 py-4">{t.zone_name || '—'}</td>
                   <td className={`px-6 py-4 capitalize font-medium ${statusColor(t.payment_status)}`}>
                     {t.payment_status}
@@ -202,6 +334,7 @@ export default function AdminTickets() {
                     {t.purchase_batch_id ? t.purchase_batch_id.slice(0, 8) + '…' : '—'}
                   </td>
                   <td className="px-6 py-4 text-sm">{new Date(t.created_at).toLocaleString()}</td>
+                  <td className="px-6 py-4">{ticketActions(t)}</td>
                 </tr>
               ))}
             </tbody>
@@ -213,7 +346,10 @@ export default function AdminTickets() {
             <AdminMobileCardRow label="Event date" value={t.event_date ? formatEventDate(t.event_date, { year: 'numeric', month: 'short', day: 'numeric' }) : '—'} />
             <AdminMobileCardRow label="Type" value={t.ticket_type_name || '—'} />
             <AdminMobileCardRow label="Price" value={t.price != null ? `KES ${Number(t.price).toLocaleString()}` : '—'} />
+            <AdminMobileCardRow label="Attendee" value={t.attendee_name || '—'} />
             <AdminMobileCardRow label="Phone" value={t.phone || '—'} />
+            <AdminMobileCardRow label="Email" value={t.email || '—'} />
+            <AdminMobileCardRow label="M-Pesa" value={t.mpesa_receipt || '—'} />
             <AdminMobileCardRow label="Zone" value={t.zone_name || '—'} />
             <AdminMobileCardRow
               label="Status"
@@ -236,9 +372,68 @@ export default function AdminTickets() {
               value={t.purchase_batch_id ? t.purchase_batch_id.slice(0, 8) + '…' : '—'}
             />
             <AdminMobileCardRow label="Purchased" value={new Date(t.created_at).toLocaleString()} />
+            <div className="pt-2">{ticketActions(t)}</div>
           </AdminMobileCard>
         ))}
       />
+
+      {resendTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={closeResend}
+        >
+          <div
+            className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Resend tickets</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {resendTarget.event_title || 'Event'} · {resendTarget.attendee_name || 'Guest'} ·{' '}
+                  {resendTarget.phone || 'no phone'}
+                </p>
+              </div>
+              <button type="button" onClick={closeResend} aria-label="Close" className="text-gray-400 hover:text-gray-600">
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={submitResend} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={resendEmail}
+                  onChange={(e) => setResendEmail(e.target.value)}
+                  className="w-full px-4 py-2 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Changing the email updates every ticket in this purchase. The previous address gets a notice.
+                </p>
+              </div>
+              {resendError && <p className="text-sm text-red-600 dark:text-red-400">{resendError}</p>}
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={closeResend}
+                  disabled={resending}
+                  className="px-4 py-2 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={resending}
+                  className="inline-flex items-center gap-2 px-4 py-2 min-h-[44px] rounded-lg bg-primary dark:bg-primary-dark text-white hover:opacity-90 disabled:opacity-60"
+                >
+                  {resending && <Loader size={16} className="animate-spin" />}
+                  Save & resend
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

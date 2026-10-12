@@ -9,7 +9,21 @@ import {
 import { generateTicketPDF } from '../utils/ticketPDFGenerator.js'
 import { phonesMatch } from '../utils/phone.js'
 import { findActiveZone } from '../utils/zones.js'
+import {
+  findPaidTicketsByReceipt,
+  maskEmail,
+  signTicketAccessToken,
+  verifyTicketAccessToken,
+} from '../utils/ticketLookup.js'
+import {
+  countGuestEmailChanges,
+  MAX_GUEST_EMAIL_CHANGES,
+  resendTicketBatch,
+} from '../utils/ticketEmail.js'
 import { randomUUID } from 'crypto'
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const FIND_TICKETS_NOT_FOUND = 'No paid tickets match that phone number and M-Pesa code'
 
 function resolveAttendeeName(
   attendeeName: string | null | undefined,
@@ -470,5 +484,71 @@ export async function downloadTicketPDF(req: Request, res: Response) {
   } catch (error) {
     console.error('Error downloading ticket PDF:', error)
     res.status(500).json({ error: 'Failed to generate ticket PDF' })
+  }
+}
+
+export async function findTickets(req: Request, res: Response) {
+  try {
+    const { phone, mpesaReceipt } = (req.body || {}) as { phone?: unknown; mpesaReceipt?: unknown }
+    const phoneValue = typeof phone === 'string' ? phone.replace(/\s+/g, '') : ''
+    const receiptValue = typeof mpesaReceipt === 'string' ? mpesaReceipt.trim() : ''
+
+    if (!/^254\d{9}$/.test(phoneValue)) {
+      return res.status(400).json({ error: 'Enter a valid phone number (254XXXXXXXXX)' })
+    }
+    if (!receiptValue) {
+      return res.status(400).json({ error: 'Enter the M-Pesa code from your payment SMS' })
+    }
+
+    const rows = await findPaidTicketsByReceipt(receiptValue, phoneValue)
+    const ref = rows[0]?.checkout_request_id as string | undefined
+    if (!ref) {
+      return res.status(404).json({ error: FIND_TICKETS_NOT_FOUND })
+    }
+
+    const purchase = rows.filter((row) => row.checkout_request_id === ref)
+    res.json({
+      checkoutRequestId: ref,
+      eventTitle: purchase[0].event_title,
+      eventDate: purchase[0].event_date,
+      quantity: purchase.length,
+      maskedEmail: maskEmail(purchase[0].email),
+      token: signTicketAccessToken(ref),
+    })
+  } catch (error) {
+    console.error('Error finding tickets:', error)
+    res.status(500).json({ error: 'Failed to look up tickets' })
+  }
+}
+
+export async function updateTicketEmail(req: Request, res: Response) {
+  try {
+    const { token, email } = (req.body || {}) as { token?: unknown; email?: unknown }
+    const ref = typeof token === 'string' ? verifyTicketAccessToken(token) : null
+    if (!ref) {
+      return res.status(401).json({ error: 'Your verification has expired. Look up your tickets again.' })
+    }
+
+    const newEmail = typeof email === 'string' ? email.trim().toLowerCase() : ''
+    if (!EMAIL_PATTERN.test(newEmail)) {
+      return res.status(400).json({ error: 'Enter a valid email address' })
+    }
+
+    if ((await countGuestEmailChanges(ref)) >= MAX_GUEST_EMAIL_CHANGES) {
+      return res.status(429).json({
+        error: 'This purchase has reached the limit for email changes. Please contact support.',
+      })
+    }
+
+    const result = await resendTicketBatch({ ref, newEmail, changedByType: 'guest' })
+    if (!result.ok) {
+      const status = result.reason === 'not_found' ? 404 : result.reason === 'cooldown' ? 429 : 502
+      return res.status(status).json({ error: result.error })
+    }
+
+    res.json({ success: true, maskedEmail: maskEmail(result.email) })
+  } catch (error) {
+    console.error('Error updating ticket email:', error)
+    res.status(500).json({ error: 'Failed to update ticket email' })
   }
 }
