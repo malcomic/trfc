@@ -138,6 +138,30 @@ export interface FlashSaleOffer {
   distance_options?: string[];
 }
 
+export interface FlashShareRedemption {
+  id: string;
+  phone: string;
+  email: string;
+  created_at: string;
+  has_paid_order: boolean;
+}
+
+export interface FlashShareLink {
+  id: string;
+  code: string;
+  url: string;
+  max_uses: number;
+  use_count: number;
+  sent_to: string | null;
+  expires_at: string;
+  revoked_at: string | null;
+  created_at: string;
+  zone_id: string | null;
+  zone_name: string | null;
+  created_by_name: string | null;
+  redemptions: FlashShareRedemption[];
+}
+
 export interface FlashSalesResponse {
   accessExpiresAt: string;
   zone: ZoneRef | null;

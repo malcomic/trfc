@@ -15,6 +15,7 @@ import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/Admi
 import AdminResponsiveData from '../../components/admin/AdminResponsiveData'
 import ProductsSectionTabs from '../../components/admin/ProductsSectionTabs'
 import ZoneChips from '../../components/admin/ZoneChips'
+import FlashShareLinksPanel from '../../components/admin/FlashShareLinksPanel'
 
 interface AdminProductOption {
   id: string
@@ -231,7 +232,8 @@ export default function AdminFlashSales() {
 
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
         Flash deals are only shown to customers for 24 hours after they buy an event ticket. A deal is shown to ticket
-        holders from the product's zones, or to everyone if the product has no zones (set zones on the product).
+        holders from the product's zones, or to everyone if the product has no zones (set zones on the product). To let
+        someone without a ticket in, create a share link below.
       </p>
 
       {error && (
@@ -317,6 +319,8 @@ export default function AdminFlashSales() {
           ))}
         />
       )}
+
+      <FlashShareLinksPanel />
 
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">

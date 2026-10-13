@@ -152,6 +152,7 @@ export const createOrder = async (req: Request, res: Response) => {
 
     const hasFlashItems = items.some((item: { flash_sale_id?: unknown }) => Boolean(item.flash_sale_id));
     let flashZoneId: string | null = null;
+    let flashRedemptionId: string | null = null;
     if (hasFlashItems) {
       const access = await resolveFlashAccess(req);
       if (!access) {
@@ -159,9 +160,33 @@ export const createOrder = async (req: Request, res: Response) => {
         return;
       }
       flashZoneId = access.zoneId;
+      if (access.guest) {
+        if (!phonesMatch(String(phone), access.guest.phone) || email !== access.guest.email) {
+          res.status(403).json({ error: 'Use the phone and email you entered when unlocking this deal' });
+          return;
+        }
+        flashRedemptionId = access.guest.redemptionId;
+      }
     }
 
     await client.query('BEGIN');
+
+    if (flashRedemptionId) {
+      await client.query('SELECT id FROM flash_share_redemptions WHERE id = $1 FOR UPDATE', [flashRedemptionId]);
+      const used = await client.query(
+        `SELECT 1 FROM orders
+         WHERE flash_share_redemption_id = $1
+           AND (
+             payment_status = 'paid'
+             OR (payment_status = 'pending' AND created_at > NOW() - INTERVAL '15 minutes')
+           )
+         LIMIT 1`,
+        [flashRedemptionId]
+      );
+      if (used.rows.length > 0) {
+        throw new OrderValidationError(409, 'This flash deal link has already been used for an order');
+      }
+    }
 
     let subtotal = 0;
     const lines: {
@@ -256,8 +281,9 @@ export const createOrder = async (req: Request, res: Response) => {
     }
 
     const orderResult = await client.query(
-      'INSERT INTO orders (user_id, total_amount, phone, delivery_address, email) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [userId, expectedTotal, phone, delivery_address, email]
+      `INSERT INTO orders (user_id, total_amount, phone, delivery_address, email, flash_share_redemption_id)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [userId, expectedTotal, phone, delivery_address, email, flashRedemptionId]
     );
 
     const orderId = orderResult.rows[0].id;

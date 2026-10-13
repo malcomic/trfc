@@ -6,11 +6,20 @@ import { phonesMatch } from './phone.js'
 
 export const FLASH_ACCESS_HOURS = 24
 
+export interface GuestFlashAccess {
+  linkId: string
+  redemptionId: string
+  phone: string
+  email: string
+}
+
 export interface FlashAccess {
-  ticketId: string
+  /** Null when access comes from an admin share link rather than a ticket. */
+  ticketId: string | null
   expiresAt: Date
   zoneId: string | null
   zoneName: string | null
+  guest?: GuestFlashAccess
 }
 
 type EligibilityFilter =
@@ -20,7 +29,11 @@ type EligibilityFilter =
 
 interface FlashTokenPayload {
   scope: 'flash'
-  ticket_id: string
+  ticket_id?: string
+  kind?: 'guest'
+  link_id?: string
+  redemption_id?: string
+  exp?: number
 }
 
 // A separate secret keeps flash tokens from being accepted as login tokens by authMiddleware.
@@ -97,10 +110,25 @@ export async function findEligibleTicket(filter: EligibilityFilter): Promise<Fla
   return match ? toAccess(match) : null
 }
 
+function secondsUntil(date: Date): number {
+  return Math.max(1, Math.floor((date.getTime() - Date.now()) / 1000))
+}
+
 export function signFlashToken(access: FlashAccess): string {
-  const secondsLeft = Math.max(1, Math.floor((access.expiresAt.getTime() - Date.now()) / 1000))
+  if (!access.ticketId) throw new Error('Guest flash access cannot be signed as a ticket token')
   const payload: FlashTokenPayload = { scope: 'flash', ticket_id: access.ticketId }
-  return jwt.sign(payload, flashSecret(), { expiresIn: secondsLeft })
+  return jwt.sign(payload, flashSecret(), { expiresIn: secondsUntil(access.expiresAt) })
+}
+
+/** Token for one person who redeemed an admin share link; it lapses when the link does. */
+export function signGuestFlashToken(redemption: { linkId: string; redemptionId: string; expiresAt: Date }): string {
+  const payload: FlashTokenPayload = {
+    scope: 'flash',
+    kind: 'guest',
+    link_id: redemption.linkId,
+    redemption_id: redemption.redemptionId,
+  }
+  return jwt.sign(payload, flashSecret(), { expiresIn: secondsUntil(redemption.expiresAt) })
 }
 
 /** One-click link that unlocks /flash-sales for a ticket, or undefined once its access window has closed. */
@@ -115,13 +143,45 @@ export async function buildFlashSalesUrl(ticketId: string): Promise<string | und
   }
 }
 
-function verifyFlashToken(token: string): string | null {
+type VerifiedFlashToken =
+  | { kind: 'ticket'; ticketId: string }
+  | { kind: 'guest'; linkId: string; redemptionId: string }
+
+export function verifyFlashToken(token: string): VerifiedFlashToken | null {
   try {
     const decoded = jwt.verify(token, flashSecret()) as Partial<FlashTokenPayload>
-    if (decoded?.scope !== 'flash' || typeof decoded.ticket_id !== 'string') return null
-    return decoded.ticket_id
+    if (decoded?.scope !== 'flash') return null
+    if (decoded.kind === 'guest') {
+      if (typeof decoded.link_id !== 'string' || typeof decoded.redemption_id !== 'string') return null
+      return { kind: 'guest', linkId: decoded.link_id, redemptionId: decoded.redemption_id }
+    }
+    if (typeof decoded.ticket_id !== 'string') return null
+    return { kind: 'ticket', ticketId: decoded.ticket_id }
   } catch {
     return null
+  }
+}
+
+/** Guest access for a share link redemption, or null once the link is revoked or expired. */
+export async function findGuestAccess(linkId: string, redemptionId: string): Promise<FlashAccess | null> {
+  const result = await query(
+    `SELECT fr.phone, fr.email, l.expires_at, l.zone_id, r.name AS zone_name
+     FROM flash_share_redemptions fr
+     JOIN flash_share_links l ON l.id = fr.link_id
+     LEFT JOIN regions r ON r.id = l.zone_id
+     WHERE fr.id = $1 AND fr.link_id = $2
+       AND l.revoked_at IS NULL
+       AND l.expires_at > NOW()`,
+    [redemptionId, linkId]
+  )
+  const row = result.rows[0]
+  if (!row) return null
+  return {
+    ticketId: null,
+    expiresAt: new Date(row.expires_at),
+    zoneId: row.zone_id ?? null,
+    zoneName: row.zone_name ?? null,
+    guest: { linkId, redemptionId, phone: row.phone, email: row.email },
   }
 }
 
@@ -137,9 +197,13 @@ function readFlashToken(req: Request): string | null {
 export async function resolveFlashAccess(req: Request): Promise<FlashAccess | null> {
   const token = readFlashToken(req)
   if (token) {
-    const ticketId = verifyFlashToken(token)
-    if (ticketId) {
-      const access = await findEligibleTicket({ ticketId })
+    const verified = verifyFlashToken(token)
+    if (verified?.kind === 'guest') {
+      const access = await findGuestAccess(verified.linkId, verified.redemptionId)
+      if (access) return access
+    }
+    if (verified?.kind === 'ticket') {
+      const access = await findEligibleTicket({ ticketId: verified.ticketId })
       if (access) return access
     }
   }

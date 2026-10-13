@@ -811,6 +811,75 @@ export function buildTicketEmailChangedText(data: TicketEmailChangedData): strin
   ].join('\n\n')
 }
 
+export interface FlashShareLinkEmailData {
+  url: string
+  hours: number
+  maxUses: number
+}
+
+function peopleLabel(count: number): string {
+  return count === 1 ? '1 person' : `${count} people`
+}
+
+export function buildFlashShareLinkEmailHTML(data: FlashShareLinkEmailData): string {
+  const url = escapeHtml(data.url)
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your TRFC flash deal invite</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#111827;">
+  <div style="max-width:600px;margin:24px auto;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;">
+    <div style="background:#0a0a0a;color:#ffffff;padding:28px 24px;text-align:center;">
+      <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#f59e0b;">TRFC Flash Deals</p>
+      <h1 style="margin:0;font-size:24px;font-weight:800;">You're invited</h1>
+    </div>
+    <div style="padding:28px 24px;">
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.5;color:#374151;">
+        You've been given access to TRFC flash deals. Open the link below and enter your M-Pesa phone number and email to unlock them.
+      </p>
+      <p style="margin:0 0 24px;font-size:15px;line-height:1.5;color:#374151;">
+        The link works for <strong>${data.hours} hours</strong> and can be used by up to <strong>${peopleLabel(data.maxUses)}</strong>.
+        Each person can place one flash deal order, paid with the phone number they entered.
+      </p>
+      <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto 24px;">
+        <tr><td style="background:#f59e0b;border-radius:6px;">
+          <a href="${url}" style="display:inline-block;padding:16px 36px;font-size:16px;font-weight:800;letter-spacing:0.08em;color:#111827;text-decoration:none;">UNLOCK FLASH DEALS</a>
+        </td></tr>
+      </table>
+      <p style="text-align:center;font-size:12px;color:#6b7280;margin:0 0 24px;word-break:break-all;">
+        Button not working? <a href="${url}" style="color:#b45309;">${url}</a>
+      </p>
+      <p style="margin:0 0 4px;font-size:15px;color:#374151;">See you at the run,</p>
+      <p style="margin:0;font-size:15px;font-weight:700;">Coach Maurice</p>
+      <p style="margin:0;font-size:14px;color:#6b7280;">TRFC</p>
+    </div>
+    <div style="background:#f9fafb;padding:20px 24px;text-align:center;font-size:12px;color:#6b7280;border-top:1px solid #e5e7eb;">
+      <p style="margin:0 0 8px;">
+        Questions? Email <a href="mailto:${escapeHtml(config.contact.email)}" style="color:#b45309;">${escapeHtml(config.contact.email)}</a>
+      </p>
+      <p style="margin:0;">© ${new Date().getFullYear()} TRFC — Thika Road Fitness Community</p>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim()
+}
+
+export function buildFlashShareLinkEmailText(data: FlashShareLinkEmailData): string {
+  return [
+    "You're invited to TRFC flash deals",
+    'Open the link below and enter your M-Pesa phone number and email to unlock them.',
+    `The link works for ${data.hours} hours and can be used by up to ${peopleLabel(data.maxUses)}. Each person can place one flash deal order, paid with the phone number they entered.`,
+    `UNLOCK FLASH DEALS: ${data.url}`,
+    'See you at the run,\nCoach Maurice\nTRFC',
+    `© ${new Date().getFullYear()} TRFC — Thika Road Fitness Community`,
+  ].join('\n\n')
+}
+
 export default {
   buildTicketEmailHTML,
   buildTicketEmailText,

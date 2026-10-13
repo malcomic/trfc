@@ -3,6 +3,10 @@ const STORAGE_KEY = 'flashAccess'
 export interface StoredFlashAccess {
   token: string
   expiresAt: string
+  /** Set when access came from an admin share link; checkout must use the same phone and email. */
+  passCode?: string
+  phone?: string
+  email?: string
 }
 
 export function saveFlashAccess(access: StoredFlashAccess) {
@@ -30,7 +34,13 @@ export function loadFlashAccess(): StoredFlashAccess | null {
       clearFlashAccess()
       return null
     }
-    return { token: parsed.token, expiresAt: parsed.expiresAt }
+    return {
+      token: parsed.token,
+      expiresAt: parsed.expiresAt,
+      ...(parsed.passCode ? { passCode: parsed.passCode } : {}),
+      ...(parsed.phone ? { phone: parsed.phone } : {}),
+      ...(parsed.email ? { email: parsed.email } : {}),
+    }
   } catch {
     clearFlashAccess()
     return null

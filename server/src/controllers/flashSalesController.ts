@@ -1,8 +1,27 @@
 import { Request, Response } from 'express'
 import { query } from '../config/db.js'
-import { FLASH_ACCESS_HOURS, findEligibleTicket, resolveFlashAccess, signFlashToken } from '../utils/flashAccess.js'
+import {
+  FLASH_ACCESS_HOURS,
+  findEligibleTicket,
+  resolveFlashAccess,
+  signFlashToken,
+  signGuestFlashToken,
+} from '../utils/flashAccess.js'
+import {
+  SHARE_LINK_HOURS,
+  ShareLinkError,
+  createShareLink,
+  listShareLinks,
+  parseMaxUses,
+  redeemShareLink,
+  revokeShareLink,
+} from '../utils/flashShareLinks.js'
+import { sendEmail } from '../utils/emailService.js'
+import { buildFlashShareLinkEmailHTML, buildFlashShareLinkEmailText } from '../utils/emailTemplates.js'
 import { variantsJsonSql } from '../utils/productVariants.js'
-import { productInZoneSql, zonesJsonSql } from '../utils/zones.js'
+import { isUuid, productInZoneSql, zonesJsonSql } from '../utils/zones.js'
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 /** Units reserved by a flash sale: paid orders plus pending orders from the last 15 minutes. */
 export const FLASH_SOLD_UNITS_SQL = `
@@ -47,6 +66,10 @@ export async function requestFlashAccess(req: Request, res: Response) {
       })
     } else {
       access = await resolveFlashAccess(req)
+      // Share link access is per redemption and must not be converted into a ticket token.
+      if (access && !access.ticketId) {
+        access = req.user?.id ? await findEligibleTicket({ userId: req.user.id }) : null
+      }
     }
 
     if (!access) {
@@ -57,6 +80,93 @@ export async function requestFlashAccess(req: Request, res: Response) {
   } catch (error) {
     console.error(error)
     res.status(500).json({ error: 'Failed to verify flash deal access' })
+  }
+}
+
+export async function redeemFlashShareLink(req: Request, res: Response) {
+  try {
+    const { code, phone, email } = (req.body || {}) as Record<string, unknown>
+    const redemption = await redeemShareLink({ code, phone, email })
+    res.json({
+      token: signGuestFlashToken(redemption),
+      expiresAt: redemption.expiresAt.toISOString(),
+      phone: redemption.phone,
+      email: redemption.email,
+    })
+  } catch (error) {
+    if (error instanceof ShareLinkError) {
+      return res.status(error.status).json({ error: error.message })
+    }
+    console.error(error)
+    res.status(500).json({ error: 'Failed to unlock flash deals' })
+  }
+}
+
+export async function createFlashShareLink(req: Request, res: Response) {
+  try {
+    const body = (req.body || {}) as { zone_id?: unknown; email?: unknown; max_uses?: unknown }
+    const maxUses = parseMaxUses(body.max_uses)
+    const zoneId = body.zone_id === undefined || body.zone_id === null || body.zone_id === '' ? null : body.zone_id
+    if (zoneId !== null && !isUuid(zoneId)) {
+      return res.status(400).json({ error: 'Invalid zone' })
+    }
+    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
+    if (email && !EMAIL_PATTERN.test(email)) {
+      return res.status(400).json({ error: 'Enter a valid email address' })
+    }
+
+    const link = await createShareLink({ createdBy: req.user?.id ?? null, zoneId, sentTo: email || null, maxUses })
+
+    let emailSent = false
+    let emailError: string | undefined
+    if (email) {
+      const emailData = { url: link.url, hours: SHARE_LINK_HOURS, maxUses: link.maxUses }
+      const result = await sendEmail({
+        to: email,
+        subject: "You're invited to TRFC flash deals",
+        html: buildFlashShareLinkEmailHTML(emailData),
+        text: buildFlashShareLinkEmailText(emailData),
+      })
+      emailSent = result.success
+      if (!result.success) emailError = result.error || 'Email could not be sent'
+    }
+
+    res.status(201).json({
+      id: link.id,
+      url: link.url,
+      expiresAt: link.expiresAt.toISOString(),
+      maxUses: link.maxUses,
+      emailSent,
+      ...(emailError ? { emailError } : {}),
+    })
+  } catch (error) {
+    if (error instanceof ShareLinkError) {
+      return res.status(error.status).json({ error: error.message })
+    }
+    console.error(error)
+    res.status(500).json({ error: 'Failed to create share link' })
+  }
+}
+
+export async function getFlashShareLinks(_req: Request, res: Response) {
+  try {
+    res.json(await listShareLinks())
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: 'Failed to fetch share links' })
+  }
+}
+
+export async function revokeFlashShareLink(req: Request, res: Response) {
+  try {
+    const { id } = req.params
+    if (!isUuid(id) || !(await revokeShareLink(id))) {
+      return res.status(404).json({ error: 'Share link not found' })
+    }
+    res.json({ message: 'Share link revoked' })
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: 'Failed to revoke share link' })
   }
 }
 

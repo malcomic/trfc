@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { AlertCircle, MapPin, ShoppingCart, Zap } from 'lucide-react'
-import { getFlashSales, requestFlashAccess } from '../api/flashSales'
+import { getFlashSales, redeemFlashPass, requestFlashAccess } from '../api/flashSales'
 import FlashSaleOffers from '../components/FlashSaleOffers'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../store/cartStore'
@@ -32,6 +32,10 @@ export default function FlashSales() {
   const [reference, setReference] = useState('')
   const [contact, setContact] = useState('')
   const [unlocking, setUnlocking] = useState(false)
+  const [passCode, setPassCode] = useState<string | null>(null)
+  const [passPhone, setPassPhone] = useState('')
+  const [passEmail, setPassEmail] = useState('')
+  const [passClosed, setPassClosed] = useState(false)
 
   const loadDeals = useCallback(async (token: string) => {
     const data = await getFlashSales(token)
@@ -39,11 +43,38 @@ export default function FlashSales() {
     setNeedsUnlock(false)
   }, [])
 
+  const dropPassParam = () => {
+    const next = new URLSearchParams(window.location.search)
+    next.delete('pass')
+    setSearchParams(next, { replace: true, preventScrollReset: true })
+  }
+
   useEffect(() => {
     if (authLoading) return
     let cancelled = false
     const init = async () => {
       setLoading(true)
+      const urlPass = searchParams.get('pass')
+      if (urlPass) {
+        const stored = loadFlashAccess()
+        if (stored?.passCode === urlPass) {
+          try {
+            await loadDeals(stored.token)
+            dropPassParam()
+            if (!cancelled) setLoading(false)
+            return
+          } catch {
+            clearFlashAccess()
+          }
+        }
+        if (!cancelled) {
+          setPassCode(urlPass)
+          setNeedsUnlock(true)
+          setLoading(false)
+        }
+        return
+      }
+
       const urlToken = searchParams.get('access')
       if (urlToken) {
         const expiresAt = decodeTokenExpiry(urlToken)
@@ -113,6 +144,37 @@ export default function FlashSales() {
     }
   }
 
+  const handleRedeemPass = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!passCode) return
+    const phone = passPhone.trim()
+    const email = passEmail.trim().toLowerCase()
+    if (!phone || !email) {
+      setError('Enter your M-Pesa phone number and email')
+      return
+    }
+    try {
+      setUnlocking(true)
+      setError('')
+      const access = await redeemFlashPass({ code: passCode, phone, email })
+      saveFlashAccess({
+        token: access.token,
+        expiresAt: access.expiresAt,
+        passCode,
+        phone: access.phone,
+        email: access.email,
+      })
+      await loadDeals(access.token)
+      setPassCode(null)
+      dropPassParam()
+    } catch (err: any) {
+      setPassClosed(err.response?.status === 410)
+      setError(err.response?.data?.error || 'Could not unlock flash deals')
+    } finally {
+      setUnlocking(false)
+    }
+  }
+
   const flashInCart = items.filter((item) => item.flashSaleId).length
 
   const zoneBadge = deals && (
@@ -136,6 +198,60 @@ export default function FlashSales() {
         {loading ? (
           <div className="flex justify-center py-24">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-accent light:border-accent-light" />
+          </div>
+        ) : needsUnlock && passCode ? (
+          <div className="max-w-md mx-auto bg-ash light:bg-ash-light border border-white/5 light:border-black/8 p-8">
+            <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light flex items-center gap-2 mb-2">
+              <Zap size={14} /> You've been invited
+            </div>
+            <h1 className="font-bebas text-4xl mb-2">
+              UNLOCK <span className="text-accent light:text-accent-light">FLASH DEALS</span>
+            </h1>
+            <p className="text-fog light:text-fog-light text-sm mb-6">
+              Enter the M-Pesa phone number and email you'll check out with. Your flash deal order must be paid from this
+              phone number, and you can place one flash deal order with this link.
+            </p>
+            {error && (
+              <div className="flex items-start gap-2 text-red-400 text-sm mb-4">
+                <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+            )}
+            {passClosed ? (
+              <p className="text-sm text-fog light:text-fog-light">
+                Ask for a new link, or{' '}
+                <Link to="/events" className="text-accent light:text-accent-light">
+                  browse events
+                </Link>{' '}
+                to unlock deals with a ticket.
+              </p>
+            ) : (
+              <form onSubmit={handleRedeemPass} className="space-y-4">
+                <input
+                  value={passPhone}
+                  onChange={(e) => setPassPhone(e.target.value)}
+                  placeholder="M-Pesa phone e.g. 0712345678"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  className={inputClass}
+                />
+                <input
+                  value={passEmail}
+                  onChange={(e) => setPassEmail(e.target.value)}
+                  placeholder="Email address"
+                  type="email"
+                  autoComplete="email"
+                  className={inputClass}
+                />
+                <button
+                  type="submit"
+                  disabled={unlocking}
+                  className="w-full bg-accent light:bg-accent-light text-black light:text-white py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-accent/90 light:hover:bg-accent-light/90 disabled:opacity-60"
+                >
+                  {unlocking ? 'Checking…' : 'Unlock deals'}
+                </button>
+              </form>
+            )}
           </div>
         ) : needsUnlock ? (
           <div className="max-w-md mx-auto bg-ash light:bg-ash-light border border-white/5 light:border-black/8 p-8">

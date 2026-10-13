@@ -394,3 +394,32 @@ CREATE TABLE IF NOT EXISTS product_zones (
   PRIMARY KEY (product_id, zone_id)
 );
 CREATE INDEX IF NOT EXISTS idx_product_zones_zone ON product_zones(zone_id);
+
+-- Admin-shared flash deal links: 24 hours, admin-chosen number of people, one paid flash order each
+CREATE TABLE IF NOT EXISTS flash_share_links (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code VARCHAR(32) UNIQUE NOT NULL,
+  created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  zone_id UUID REFERENCES regions(id) ON DELETE SET NULL,
+  max_uses INT NOT NULL DEFAULT 3 CHECK (max_uses > 0),
+  use_count INT NOT NULL DEFAULT 0,
+  sent_to VARCHAR(150),
+  expires_at TIMESTAMPTZ NOT NULL,
+  revoked_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_flash_share_links_created ON flash_share_links(created_at);
+
+CREATE TABLE IF NOT EXISTS flash_share_redemptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  link_id UUID NOT NULL REFERENCES flash_share_links(id) ON DELETE CASCADE,
+  phone VARCHAR(15) NOT NULL,
+  email VARCHAR(150) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (link_id, phone),
+  UNIQUE (link_id, email)
+);
+
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS flash_share_redemption_id UUID
+  REFERENCES flash_share_redemptions(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_orders_flash_redemption ON orders(flash_share_redemption_id);

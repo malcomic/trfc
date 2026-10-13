@@ -24,7 +24,12 @@ import {
 } from '../controllers/partnershipsController.js'
 import { getAdminSponsorshipTiers } from '../controllers/sponsorshipTiersController.js'
 import { getAdminProductCategories } from '../controllers/productCategoriesController.js'
-import { getAdminFlashSales } from '../controllers/flashSalesController.js'
+import {
+  getAdminFlashSales,
+  createFlashShareLink,
+  getFlashShareLinks,
+  revokeFlashShareLink,
+} from '../controllers/flashSalesController.js'
 import {
   getTypography,
   updateTypography,
@@ -60,6 +65,9 @@ router.delete('/events/:eventId/ticket-types/:typeId', deleteEventTicketType)
 router.get('/products', getAdminProducts)
 router.get('/product-categories', getAdminProductCategories)
 router.get('/flash-sales', getAdminFlashSales)
+router.get('/flash-share-links', getFlashShareLinks)
+router.post('/flash-share-links', createFlashShareLink)
+router.post('/flash-share-links/:id/revoke', revokeFlashShareLink)
 router.get('/equipment/hire', getAdminEquipmentHire)
 router.get('/tickets', getAdminTickets)
 router.post('/tickets/:id/resend', resendAdminTicket)

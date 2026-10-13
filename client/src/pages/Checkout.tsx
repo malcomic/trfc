@@ -51,6 +51,18 @@ export default function Checkout() {
     setFlashRejected(false)
     setError('')
   }
+  const guestPass = useMemo(() => {
+    if (!hasFlashItems) return null
+    const access = loadFlashAccess()
+    return access?.phone && access.email ? { phone: access.phone, email: access.email } : null
+  }, [hasFlashItems])
+
+  useEffect(() => {
+    if (!guestPass) return
+    setValue('phone', guestPass.phone)
+    setValue('email', guestPass.email)
+  }, [guestPass, setValue])
+
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [checkoutRequestId, setCheckoutRequestId] = useState('')
   const [phone, setPhone] = useState('')
@@ -146,7 +158,10 @@ export default function Checkout() {
       const status = err.response?.status
       const message: string =
         err.response?.data?.error || err.response?.data?.customerMessage || 'Checkout failed. Please try again.'
-      setFlashRejected(hasFlashItems && (status === 403 || (status === 409 && /flash/i.test(message))))
+      const contactMismatch = Boolean(guestPass) && status === 403 && /phone and email/i.test(message)
+      setFlashRejected(
+        hasFlashItems && !contactMismatch && (status === 403 || (status === 409 && /flash/i.test(message)))
+      )
       setError(message)
     } finally {
       setLoading(false)
@@ -210,6 +225,12 @@ export default function Checkout() {
                     CONTACT <span className="text-accent light:text-accent-light">AND DELIVERY</span>
                   </h2>
                   <div className="space-y-5">
+                    {guestPass && (
+                      <p className="text-sm text-accent light:text-accent-light">
+                        Use the phone and email you unlocked this deal with. M-Pesa payment must come from{' '}
+                        {guestPass.phone}.
+                      </p>
+                    )}
                     <FormInput
                       label="Email Address"
                       id="checkout-email"

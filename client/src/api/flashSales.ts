@@ -15,6 +15,20 @@ export const requestFlashAccess = async (body: {
   return response.data
 }
 
+export interface FlashPassResponse extends FlashAccessResponse {
+  phone: string
+  email: string
+}
+
+export const redeemFlashPass = async (body: {
+  code: string
+  phone: string
+  email: string
+}): Promise<FlashPassResponse> => {
+  const response = await api.post('/flash-sales/redeem', body)
+  return response.data
+}
+
 export const getFlashSales = async (token?: string): Promise<FlashSalesResponse> => {
   const response = await api.get('/flash-sales', {
     headers: token ? { 'X-Flash-Access': token } : undefined,
