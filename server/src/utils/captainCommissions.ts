@@ -1,13 +1,14 @@
 import { query } from '../config/db.js'
 import { toKenyanMsisdn } from './phone.js'
 
-export type CommissionSourceType = 'order' | 'medal' | 'equipment_hire'
+export type CommissionSourceType = 'order' | 'medal' | 'equipment_hire' | 'ticket'
 export type CommissionMatchMethod = 'account' | 'email' | 'phone'
 
 const SOURCE_TABLES: Record<CommissionSourceType, string> = {
   order: 'orders',
   medal: 'medal_purchases',
   equipment_hire: 'equipment_hire',
+  ticket: 'tickets',
 }
 
 const PURCHASE_QUERIES: Record<CommissionSourceType, string> = {
@@ -25,6 +26,13 @@ const PURCHASE_QUERIES: Record<CommissionSourceType, string> = {
     SELECT h.user_id, NULL AS email, h.phone, COALESCE(h.total_cost, 0) AS base_amount
     FROM equipment_hire h
     WHERE h.id = $1 AND h.payment_status = 'paid'`,
+  ticket: `
+    SELECT t.user_id, t.email, t.phone,
+           COALESCE(t.unit_price, ett.price, e.price, 0) AS base_amount
+    FROM tickets t
+    JOIN events e ON e.id = t.event_id
+    LEFT JOIN event_ticket_types ett ON ett.id = t.ticket_type_id
+    WHERE t.id = $1 AND t.payment_status = 'paid' AND t.commission_eligible`,
 }
 
 interface PurchaseRow {

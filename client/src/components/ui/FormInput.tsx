@@ -5,10 +5,11 @@ interface FormInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'si
   error?: string;
   helperText?: string;
   size?: 'sm' | 'md' | 'lg';
+  endAdornment?: React.ReactNode;
 }
 
 const FormInput = React.forwardRef<HTMLInputElement, FormInputProps>(
-  ({ label, error, helperText, size = 'md', className = '', ...props }, ref) => {
+  ({ label, error, helperText, size = 'md', endAdornment, className = '', ...props }, ref) => {
     const sizeStyles = {
       sm: 'px-3 py-2 text-xs',
       md: 'px-4 py-3 text-sm',
@@ -23,20 +24,24 @@ const FormInput = React.forwardRef<HTMLInputElement, FormInputProps>(
             {props.required && <span className="text-danger-red ml-1">*</span>}
           </label>
         )}
-        <input
-          ref={ref}
-          className={`
-            w-full bg-smoke light:bg-smoke-light border border-mist light:border-mist-light rounded-lg
-            text-chalk light:text-chalk-light placeholder-fog light:placeholder-fog-light
-            focus:outline-none focus:border-accent light:focus:border-accent-light focus:ring-2 focus:ring-accent/30 light:focus:ring-accent-light/30
-            transition-all duration-300
-            ${error ? 'border-danger-red focus:ring-danger-red/30 focus:border-danger-red' : ''}
-            disabled:bg-ash light:disabled:bg-ash-light disabled:opacity-60 disabled:cursor-not-allowed
-            ${sizeStyles[size]}
-            ${className}
-          `}
-          {...props}
-        />
+        <div className="relative">
+          <input
+            ref={ref}
+            className={`
+              w-full bg-smoke light:bg-smoke-light border border-mist light:border-mist-light rounded-lg
+              text-chalk light:text-chalk-light placeholder-fog light:placeholder-fog-light
+              focus:outline-none focus:border-accent light:focus:border-accent-light focus:ring-2 focus:ring-accent/30 light:focus:ring-accent-light/30
+              transition-all duration-300
+              ${error ? 'border-danger-red focus:ring-danger-red/30 focus:border-danger-red' : ''}
+              disabled:bg-ash light:disabled:bg-ash-light disabled:opacity-60 disabled:cursor-not-allowed
+              ${sizeStyles[size]}
+              ${endAdornment ? 'pr-11' : ''}
+              ${className}
+            `}
+            {...props}
+          />
+          {endAdornment}
+        </div>
         {error && <p className="text-danger-red text-xs mt-1">{error}</p>}
         {helperText && !error && <p className="text-fog light:text-fog-light text-xs mt-1">{helperText}</p>}
       </div>

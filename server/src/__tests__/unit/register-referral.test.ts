@@ -10,6 +10,10 @@ vi.mock('../../utils/tokenUtils.js', () => ({
   generateAccessToken: vi.fn(() => 'access'),
   generateRefreshToken: vi.fn(() => 'refresh'),
   verifyRefreshToken: vi.fn(),
+  isTokenStale: vi.fn(() => false),
+}))
+vi.mock('../../utils/accountWelcome.js', () => ({
+  sendAccountWelcomeOnce: vi.fn(async () => false),
 }))
 
 import { query } from '../../config/db.js'
@@ -19,7 +23,8 @@ const USER = { id: '22222222-2222-4222-8222-222222222222', name: 'Jane', email: 
 
 function mockDb() {
   vi.mocked(query).mockImplementation((async (sql: string) => {
-    if (sql.startsWith('SELECT id FROM users WHERE email')) return { rows: [] }
+    if (sql.includes('FROM users WHERE phone_normalized')) return { rows: [] }
+    if (sql.includes('FROM users WHERE LOWER(email)')) return { rows: [] }
     if (sql.includes('INSERT INTO users')) return { rows: [USER] }
     if (sql.includes('UPDATE users u')) return { rows: [{ id: USER.id }] }
     return { rows: [] }
@@ -37,7 +42,7 @@ describe('register with a referral code', () => {
 
   it('links the new user to the captain and stores a normalized phone', async () => {
     const res = makeRes()
-    await register({ body: { ...USER, password: 'password123', referralCode: 'nrb-jane24' } } as any, res)
+    await register({ body: { ...USER, password: 'Password123', referralCode: 'nrb-jane24' } } as any, res)
 
     expect(res.status).toHaveBeenCalledWith(201)
     const insert = vi.mocked(query).mock.calls.find(([sql]) => String(sql).includes('INSERT INTO users'))!

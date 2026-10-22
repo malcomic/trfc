@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { CreditCard, Ticket, Award, User, ArrowRight, QrCode, LayoutDashboard, Flag } from 'lucide-react'
+import { CreditCard, Ticket, Award, User, ArrowRight, QrCode, LayoutDashboard, LayoutGrid, Flag } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { pageRoot, cardSurface } from '../utils/themeClasses'
 
@@ -9,6 +9,7 @@ export default function Account() {
   const isAdmin = user?.role === 'admin'
 
   const links = [
+    { to: '/dashboard', label: 'My Dashboard', desc: 'Your activity, tickets, medals and profile', icon: LayoutGrid },
     ...(user?.role === 'captain'
       ? [{ to: '/captain', label: 'Captain Dashboard', desc: 'Your referral link, referred members and commissions', icon: Flag }]
       : []),

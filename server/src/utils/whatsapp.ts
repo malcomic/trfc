@@ -58,3 +58,8 @@ export async function sendTemplateMessage(
 export function sendSignupWelcome(to: string, programName: string): Promise<boolean> {
   return sendTemplateMessage(to, config.whatsapp.templateName, [programName])
 }
+
+/** Welcome sent once after a website account is created. Template variables: first name, captain label. */
+export function sendAccountWelcome(to: string, firstName: string, captainLabel: string): Promise<boolean> {
+  return sendTemplateMessage(to, config.whatsapp.welcomeTemplateName, [firstName, captainLabel])
+}

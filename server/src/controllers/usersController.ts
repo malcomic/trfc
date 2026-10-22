@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import { query } from '../config/db.js';
+import { findCaptainSummary } from '../utils/captainSummary.js';
 
 const USER_FIELDS = 'id, name, email, phone, role, created_at';
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 async function getAdminCount(): Promise<number> {
   const result = await query("SELECT COUNT(*)::int AS cnt FROM users WHERE role = 'admin'");
@@ -17,7 +19,7 @@ async function ensureNotLastAdmin(userId: string): Promise<boolean> {
 
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
-    const { search, role } = req.query;
+    const { search, role, captainId } = req.query;
     const conditions: string[] = [];
     const params: unknown[] = [];
 
@@ -31,16 +33,31 @@ export const getAllUsers = async (req: Request, res: Response) => {
       conditions.push(`u.role = $${params.length}`);
     }
 
+    if (captainId === 'none') {
+      conditions.push('u.captain_id IS NULL');
+    } else if (typeof captainId === 'string' && UUID_PATTERN.test(captainId)) {
+      params.push(captainId);
+      conditions.push(`u.captain_id = $${params.length}`);
+    }
+
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const result = await query(
       `SELECT u.id, u.name, u.email, u.phone, u.role, u.created_at,
+              u.whatsapp, u.marketing_opt_in, u.welcome_whatsapp_sent_at,
               u.referred_by_captain_id, u.referred_at,
               cu.name AS referred_by_captain_name,
-              r.name AS referred_by_region
+              r.name AS referred_by_region,
+              u.captain_id,
+              mcu.name AS captain_name,
+              mr.name AS captain_zone,
+              (u.referred_by_captain_id IS NOT NULL) AS referred
        FROM users u
        LEFT JOIN captains c ON c.user_id = u.referred_by_captain_id
        LEFT JOIN users cu ON cu.id = c.user_id
        LEFT JOIN regions r ON r.id = c.region_id
+       LEFT JOIN captains mc ON mc.user_id = u.captain_id
+       LEFT JOIN users mcu ON mcu.id = mc.user_id
+       LEFT JOIN regions mr ON mr.id = mc.region_id
        ${where}
        ORDER BY u.created_at DESC`,
       params
@@ -49,6 +66,56 @@ export const getAllUsers = async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch users' });
+  }
+};
+
+export const getMyDashboard = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const profile = await query(
+      `SELECT id, name, email, phone, whatsapp, marketing_opt_in, role, created_at
+       FROM users WHERE id = $1`,
+      [userId]
+    );
+    if (profile.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const stats = await query(
+      `SELECT
+         (SELECT COUNT(*)::int FROM tickets WHERE user_id = $1 AND payment_status = 'paid') AS tickets,
+         (SELECT COUNT(DISTINCT t.event_id)::int
+            FROM tickets t JOIN events e ON e.id = t.event_id
+            WHERE t.user_id = $1 AND t.payment_status = 'paid' AND e.event_date >= CURRENT_DATE) AS upcoming_events,
+         (SELECT COUNT(*)::int FROM medal_purchases WHERE user_id = $1 AND payment_status = 'paid') AS medals,
+         (SELECT COUNT(*)::int FROM orders WHERE user_id = $1 AND payment_status = 'paid') AS orders,
+         (SELECT COUNT(*)::int FROM equipment_hire WHERE user_id = $1 AND payment_status = 'paid') AS equipment_hires,
+         (
+           (SELECT COUNT(*) FROM tickets WHERE user_id = $1 AND payment_status = 'pending') +
+           (SELECT COUNT(*) FROM medal_purchases WHERE user_id = $1 AND payment_status = 'pending') +
+           (SELECT COUNT(*) FROM orders WHERE user_id = $1 AND payment_status = 'pending') +
+           (SELECT COUNT(*) FROM equipment_hire WHERE user_id = $1 AND payment_status = 'pending')
+         )::int AS pending_payments,
+         (
+           (SELECT COALESCE(SUM(COALESCE(t.unit_price, ett.price, e.price)), 0)
+              FROM tickets t
+              JOIN events e ON e.id = t.event_id
+              LEFT JOIN event_ticket_types ett ON ett.id = t.ticket_type_id
+              WHERE t.user_id = $1 AND t.payment_status = 'paid') +
+           (SELECT COALESCE(SUM(o.price), 0)
+              FROM medal_purchases p JOIN medal_options o ON o.id = p.medal_option_id
+              WHERE p.user_id = $1 AND p.payment_status = 'paid') +
+           (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE user_id = $1 AND payment_status = 'paid') +
+           (SELECT COALESCE(SUM(total_cost), 0) FROM equipment_hire WHERE user_id = $1 AND payment_status = 'paid')
+         )::float AS total_spent`,
+      [userId]
+    );
+
+    const captain = await findCaptainSummary(userId);
+    res.json({ profile: profile.rows[0], captain, stats: stats.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to load your dashboard' });
   }
 };
 
@@ -166,7 +233,7 @@ export const resetUserPassword = async (req: Request, res: Response) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const result = await query(
-      'UPDATE users SET password_hash = $1 WHERE id = $2 RETURNING id',
+      'UPDATE users SET password_hash = $1, password_changed_at = NOW() WHERE id = $2 RETURNING id',
       [passwordHash, id]
     );
 

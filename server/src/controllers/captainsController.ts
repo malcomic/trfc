@@ -68,7 +68,50 @@ export async function getReferrer(req: Request, res: Response) {
   }
 }
 
+export async function getCaptainDirectory(_req: Request, res: Response) {
+  try {
+    const result = await query(
+      `SELECT c.user_id AS id, u.name, r.name AS zone
+       FROM captains c
+       JOIN users u ON u.id = c.user_id
+       JOIN regions r ON r.id = c.region_id
+       WHERE c.status = 'active'
+       ORDER BY r.name ASC, u.name ASC`
+    )
+    res.json(
+      result.rows.map((row) => ({
+        id: row.id,
+        name: (row.name ?? '').trim().split(/\s+/)[0] || 'Captain',
+        zone: row.zone,
+      }))
+    )
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: 'Failed to fetch captains' })
+  }
+}
+
 // ---------- Captain ----------
+
+export async function getMyTeam(req: Request, res: Response) {
+  try {
+    const captainId = req.user!.id
+    const result = await query(
+      `SELECT u.id, u.name,
+              COALESCE(u.referred_at, u.captain_chosen_at, u.created_at) AS joined_at,
+              CASE WHEN u.referred_by_captain_id = $1 THEN 'link' ELSE 'chosen' END AS joined_via
+       FROM users u
+       WHERE u.captain_id = $1
+       ORDER BY joined_at DESC NULLS LAST
+       LIMIT 500`,
+      [captainId]
+    )
+    res.json(result.rows.map(({ name, ...row }) => ({ ...row, name: maskName(name) })))
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: 'Failed to fetch team members' })
+  }
+}
 
 export async function getMyCaptainProfile(req: Request, res: Response) {
   try {
@@ -90,6 +133,7 @@ export async function getMyCaptainProfile(req: Request, res: Response) {
     const stats = await query(
       `SELECT
          (SELECT COUNT(*)::int FROM users WHERE referred_by_captain_id = $1) AS referred_customers,
+         (SELECT COUNT(*)::int FROM users WHERE captain_id = $1) AS team_members,
          ${COMMISSION_TOTALS_SQL}
        FROM captain_commissions cc
        WHERE cc.captain_id = $1`,

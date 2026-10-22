@@ -564,6 +564,44 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       CREATE INDEX IF NOT EXISTS idx_orders_flash_redemption ON orders(flash_share_redemption_id);
     `,
   },
+  {
+    name: '025_ticket_commissions',
+    sql: `
+      -- Tickets that existed before captain ticket commissions launched are never commissioned.
+      ALTER TABLE tickets ADD COLUMN IF NOT EXISTS commission_eligible BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE tickets ALTER COLUMN commission_eligible SET DEFAULT true;
+    `,
+  },
+  {
+    name: '026_password_resets',
+    sql: `
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_hash VARCHAR(64) UNIQUE NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        used_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user ON password_reset_tokens(user_id);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ;
+    `,
+  },
+  {
+    name: '027_member_captain_and_consent',
+    sql: `
+      -- captain_id is the member's captain (chosen or referred); only referred_by_captain_id earns commission.
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS captain_id UUID REFERENCES captains(user_id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS captain_chosen_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS marketing_opt_in BOOLEAN NOT NULL DEFAULT false,
+        ADD COLUMN IF NOT EXISTS marketing_opt_in_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS welcome_whatsapp_sent_at TIMESTAMPTZ;
+      CREATE INDEX IF NOT EXISTS idx_users_captain ON users(captain_id);
+      UPDATE users SET captain_id = referred_by_captain_id
+      WHERE captain_id IS NULL AND referred_by_captain_id IS NOT NULL;
+    `,
+  },
 ]
 
 export async function runMigrations() {

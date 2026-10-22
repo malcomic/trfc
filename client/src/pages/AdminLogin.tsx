@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { loginUser } from '../api/auth'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { PasswordToggle } from '../components/ui'
 
 const STAFF_ROLES = ['admin', 'scanner'] as const
 
@@ -10,6 +11,7 @@ export default function AdminLogin() {
   const { register, handleSubmit, formState: { errors } } = useForm()
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { login, user } = useAuth()
@@ -93,12 +95,19 @@ export default function AdminLogin() {
 
             <div>
               <label className="block text-sm font-semibold mb-2 text-gray-900 dark:text-white">Password</label>
-              <input
-                type="password"
-                {...register('password', { required: 'Password is required' })}
-                placeholder="••••••••"
-                className="w-full border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2 bg-white dark:bg-[#2A2A2A] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-50"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  {...register('password', { required: 'Password is required' })}
+                  placeholder="••••••••"
+                  className="w-full border border-gray-300 dark:border-gray-700 rounded-lg pl-4 pr-11 py-2 bg-white dark:bg-[#2A2A2A] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-50"
+                />
+                <PasswordToggle
+                  visible={showPassword}
+                  onToggle={() => setShowPassword((v) => !v)}
+                  className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                />
+              </div>
               {errors.password && <span className="text-red-500 dark:text-red-400 text-sm">{errors.password.message as string}</span>}
             </div>
 

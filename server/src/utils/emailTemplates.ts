@@ -880,6 +880,105 @@ export function buildFlashShareLinkEmailText(data: FlashShareLinkEmailData): str
   ].join('\n\n')
 }
 
+export interface PasswordResetEmailData {
+  name: string | null
+  url: string
+  expiresInMinutes: number
+}
+
+function greeting(name: string | null): string {
+  const first = name?.trim().split(/\s+/)[0]
+  return first ? `Hi ${first},` : 'Hi,'
+}
+
+function accountEmailShell(title: string, heading: string, body: string): string {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#111827;">
+  <div style="max-width:600px;margin:24px auto;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;">
+    <div style="background:#0a0a0a;color:#ffffff;padding:28px 24px;text-align:center;">
+      <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#f59e0b;">TRFC</p>
+      <h1 style="margin:0;font-size:24px;font-weight:700;">${heading}</h1>
+    </div>
+    <div style="padding:28px 24px;">
+${body}
+    </div>
+    <div style="background:#f9fafb;padding:20px 24px;text-align:center;font-size:12px;color:#6b7280;border-top:1px solid #e5e7eb;">
+      <p style="margin:0;">© ${new Date().getFullYear()} TRFC — Thika Road Fitness Community</p>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim()
+}
+
+export function buildPasswordResetEmailHTML(data: PasswordResetEmailData): string {
+  const url = escapeHtml(data.url)
+  return accountEmailShell(
+    'Reset your TRFC password',
+    'Reset your password',
+    `
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.5;color:#374151;">${escapeHtml(greeting(data.name))}</p>
+      <p style="margin:0 0 24px;font-size:15px;line-height:1.5;color:#374151;">
+        We received a request to reset the password for your TRFC account. Click the button below to choose a new one.
+        This link expires in <strong>${data.expiresInMinutes} minutes</strong> and can only be used once.
+      </p>
+      <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto 24px;">
+        <tr><td style="background:#f59e0b;border-radius:6px;">
+          <a href="${url}" style="display:inline-block;padding:16px 36px;font-size:16px;font-weight:800;letter-spacing:0.08em;color:#111827;text-decoration:none;">RESET PASSWORD</a>
+        </td></tr>
+      </table>
+      <p style="text-align:center;font-size:12px;color:#6b7280;margin:0 0 24px;word-break:break-all;">
+        Button not working? <a href="${url}" style="color:#b45309;">${url}</a>
+      </p>
+      <p style="margin:0;font-size:14px;line-height:1.5;color:#6b7280;">
+        If you didn't ask to reset your password, you can ignore this email. Your password won't change.
+      </p>`
+  )
+}
+
+export function buildPasswordResetEmailText(data: PasswordResetEmailData): string {
+  return [
+    greeting(data.name),
+    `We received a request to reset the password for your TRFC account. Open the link below to choose a new one. It expires in ${data.expiresInMinutes} minutes and can only be used once.`,
+    `RESET PASSWORD: ${data.url}`,
+    "If you didn't ask to reset your password, you can ignore this email. Your password won't change.",
+    `© ${new Date().getFullYear()} TRFC — Thika Road Fitness Community`,
+  ].join('\n\n')
+}
+
+export function buildPasswordChangedEmailHTML(data: { name: string | null }): string {
+  return accountEmailShell(
+    'Your TRFC password was changed',
+    'Password changed',
+    `
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.5;color:#374151;">${escapeHtml(greeting(data.name))}</p>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.5;color:#374151;">
+        The password for your TRFC account was just changed, and any other devices you were signed in on have been signed out.
+      </p>
+      <p style="margin:0;font-size:15px;line-height:1.5;color:#374151;">
+        If you didn't make this change, contact us right away at
+        <a href="mailto:${escapeHtml(config.contact.email)}" style="color:#b45309;">${escapeHtml(config.contact.email)}</a>
+        or ${escapeHtml(config.contact.phone)}.
+      </p>`
+  )
+}
+
+export function buildPasswordChangedEmailText(data: { name: string | null }): string {
+  return [
+    greeting(data.name),
+    'The password for your TRFC account was just changed, and any other devices you were signed in on have been signed out.',
+    `If you didn't make this change, contact us right away at ${config.contact.email} or ${config.contact.phone}.`,
+    `© ${new Date().getFullYear()} TRFC — Thika Road Fitness Community`,
+  ].join('\n\n')
+}
+
 export default {
   buildTicketEmailHTML,
   buildTicketEmailText,

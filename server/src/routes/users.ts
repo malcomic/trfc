@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   getAllUsers,
+  getMyDashboard,
   createUser,
   updateUser,
   updateUserRole,
@@ -11,6 +12,7 @@ import { authMiddleware, adminMiddleware } from '../middleware/auth.js';
 
 const router = Router();
 
+router.get('/me/dashboard', authMiddleware, getMyDashboard);
 router.get('/', authMiddleware, adminMiddleware, getAllUsers);
 router.post('/', authMiddleware, adminMiddleware, createUser);
 router.put('/:id', authMiddleware, adminMiddleware, updateUser);

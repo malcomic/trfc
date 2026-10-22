@@ -186,7 +186,9 @@ export async function markEntitiesPaidByCheckoutId(
   )
   const signupCount = await activateSignupsByCheckoutId(checkoutRequestId, mpesaReceipt || null)
 
-  if ((orderResult.rowCount || 0) + (hireResult.rowCount || 0) + (medalResult.rowCount || 0) > 0) {
+  const commissionableCount =
+    (orderResult.rowCount || 0) + (ticketResult.rowCount || 0) + (hireResult.rowCount || 0) + (medalResult.rowCount || 0)
+  if (commissionableCount > 0) {
     await recordCaptainCommissionsForCheckout(checkoutRequestId)
   }
 

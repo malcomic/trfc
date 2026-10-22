@@ -3,17 +3,19 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { loginUser } from '../api/auth'
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { AlertCircle } from 'lucide-react'
-import { Button, FormInput } from '../components/ui'
+import { AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Button, FormInput, PasswordToggle } from '../components/ui'
 import { Logo } from '../components/Logo'
 
 export default function Login() {
   const { register, handleSubmit, formState: { errors } } = useForm()
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { login } = useAuth()
+  const passwordWasReset = searchParams.get('reset') === 'success'
 
   const defaultPathForRole = (role?: string) => {
     if (role === 'scanner') return '/admin/scan'
@@ -100,6 +102,13 @@ export default function Login() {
           Sign in to access events, track your progress, and connect with the community.
         </p>
 
+        {passwordWasReset && !errorMessage && (
+          <div className="flex items-start gap-2.5 bg-green-500/10 border border-green-500/25 border-l-4 border-l-green-500 px-4 py-3.5 mb-7 text-sm text-green-700 dark:text-green-400 animate-fadeUp" role="status">
+            <CheckCircle2 size={16} className="flex-shrink-0 mt-0.25" />
+            <span>Your password has been reset. Sign in with your new password.</span>
+          </div>
+        )}
+
         {/* Error message */}
         {errorMessage && (
           <div className="flex items-start gap-2.5 bg-red-500/10 border border-red-500/25 border-l-4 border-l-red-500 px-4 py-3.5 mb-7 text-sm text-red-600 dark:text-red-400 animate-fadeUp" role="alert">
@@ -125,17 +134,18 @@ export default function Login() {
             <FormInput
               label="Password"
               id="login-password"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               placeholder="••••••••"
               autoComplete="current-password"
               error={errors.password ? (errors.password.message as string) : undefined}
+              endAdornment={<PasswordToggle visible={showPassword} onToggle={() => setShowPassword((v) => !v)} />}
               {...register('password', { required: 'Password is required' })}
             />
           </div>
 
           {/* Forgot password */}
           <div className="flex justify-end mb-8">
-            <Link to="/contact" className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light transition-colors duration-200 hover:text-accent light:hover:text-accent-light no-underline">Forgot password?</Link>
+            <Link to="/forgot-password" className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light transition-colors duration-200 hover:text-accent light:hover:text-accent-light no-underline">Forgot password?</Link>
           </div>
 
           {/* Submit */}

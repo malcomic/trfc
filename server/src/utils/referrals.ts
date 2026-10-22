@@ -20,9 +20,12 @@ export async function findActiveCaptainByCode(code: unknown) {
   return result.rows[0] ?? null
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 /**
- * Ties a user to the captain owning `code`. Only applies when the user has no captain yet,
- * so a referral can never be overwritten. Invalid codes are ignored.
+ * Ties a user to the captain owning `code`. Only applies when the user has no referring captain yet,
+ * so a referral can never be overwritten. The referrer also becomes the member's captain.
+ * Invalid codes are ignored.
  */
 export async function applyReferral(userId: string, code: unknown): Promise<boolean> {
   const normalized = normalizeReferralCode(code)
@@ -30,7 +33,7 @@ export async function applyReferral(userId: string, code: unknown): Promise<bool
   try {
     const result = await query(
       `UPDATE users u
-       SET referred_by_captain_id = c.user_id, referred_at = NOW()
+       SET referred_by_captain_id = c.user_id, referred_at = NOW(), captain_id = c.user_id
        FROM captains c
        WHERE u.id = $1
          AND u.referred_by_captain_id IS NULL
@@ -43,6 +46,31 @@ export async function applyReferral(userId: string, code: unknown): Promise<bool
     return result.rows.length > 0
   } catch (error) {
     console.error(`Failed to apply referral code ${normalized} to user ${userId}:`, error)
+    return false
+  }
+}
+
+/**
+ * Sets the captain a member picked at signup. This never sets `referred_by_captain_id`,
+ * so a chosen captain does not earn commission. Unknown or inactive captains are ignored.
+ */
+export async function assignChosenCaptain(userId: string, captainId: unknown): Promise<boolean> {
+  if (typeof captainId !== 'string' || !UUID_PATTERN.test(captainId)) return false
+  try {
+    const result = await query(
+      `UPDATE users u
+       SET captain_id = c.user_id, captain_chosen_at = NOW()
+       FROM captains c
+       WHERE u.id = $1
+         AND c.user_id = $2
+         AND c.status = 'active'
+         AND c.user_id <> u.id
+       RETURNING u.id`,
+      [userId, captainId]
+    )
+    return result.rows.length > 0
+  } catch (error) {
+    console.error(`Failed to assign captain ${captainId} to user ${userId}:`, error)
     return false
   }
 }

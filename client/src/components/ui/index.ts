@@ -1,5 +1,6 @@
 export { default as Button } from './Button';
 export { default as FormInput } from './FormInput';
+export { default as PasswordToggle } from './PasswordToggle';
 export { default as FormSelect } from './FormSelect';
 export { default as FormCheckbox } from './FormCheckbox';
 export { default as Badge } from './Badge';

@@ -12,6 +12,7 @@ import {
   type AdminUser,
   type StaffRole,
 } from '../../api/users'
+import { getCaptainDirectory, type CaptainDirectoryEntry } from '../../api/captains'
 import { useAuth } from '../../context/AuthContext'
 import AdminConfirmDialog from '../../components/AdminConfirmDialog'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
@@ -38,6 +39,8 @@ export default function AdminUsers() {
   const [updating, setUpdating] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('')
+  const [captainFilter, setCaptainFilter] = useState('')
+  const [captains, setCaptains] = useState<CaptainDirectoryEntry[]>([])
   const [modalMode, setModalMode] = useState<ModalMode>(null)
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -57,9 +60,10 @@ export default function AdminUsers() {
     try {
       setLoading(true)
       setError('')
-      const params: { search?: string; role?: RoleFilter } = {}
+      const params: { search?: string; role?: RoleFilter; captainId?: string } = {}
       if (searchQuery.trim()) params.search = searchQuery.trim()
       if (roleFilter) params.role = roleFilter
+      if (captainFilter) params.captainId = captainFilter
       const data = await getAllUsers(params)
       setUsers(Array.isArray(data) ? data : [])
     } catch (err) {
@@ -68,7 +72,13 @@ export default function AdminUsers() {
     } finally {
       setLoading(false)
     }
-  }, [searchQuery, roleFilter])
+  }, [searchQuery, roleFilter, captainFilter])
+
+  useEffect(() => {
+    getCaptainDirectory()
+      .then(setCaptains)
+      .catch(() => setCaptains([]))
+  }, [])
 
   useEffect(() => {
     const timer = setTimeout(fetchUsers, searchQuery ? 300 : 0)
@@ -246,17 +256,40 @@ export default function AdminUsers() {
     </span>
   )
 
-  const referredBy = (user: AdminUser) =>
-    user.referred_by_captain_name ? (
+  const captainCell = (user: AdminUser) => {
+    const name = user.captain_name ?? user.referred_by_captain_name
+    if (!name) return <span className="text-gray-400">—</span>
+    const zone = user.captain_zone ?? user.referred_by_region
+    const referred = user.referred ?? Boolean(user.referred_by_captain_id)
+    return (
       <span className="text-sm">
-        {user.referred_by_captain_name}
-        {user.referred_by_region && (
-          <span className="block text-xs text-gray-500 dark:text-gray-400">{user.referred_by_region}</span>
-        )}
+        <span className="flex flex-wrap items-center gap-2">
+          {name}
+          <span
+            className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+              referred
+                ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+            }`}
+            title={referred ? 'Joined with the captain’s link — earns commission' : 'Chose this captain — no commission'}
+          >
+            {referred ? 'Referred' : 'Chosen'}
+          </span>
+        </span>
+        {zone && <span className="block text-xs text-gray-500 dark:text-gray-400">{zone}</span>}
       </span>
-    ) : (
-      <span className="text-gray-400">—</span>
     )
+  }
+
+  const whatsappCell = (user: AdminUser) => (
+    <span className="text-sm">
+      {user.whatsapp || <span className="text-gray-400">—</span>}
+      <span className="block text-xs text-gray-500 dark:text-gray-400">
+        {user.marketing_opt_in ? 'Opted in' : 'Not opted in'}
+        {user.welcome_whatsapp_sent_at && ' · Welcome sent'}
+      </span>
+    </span>
+  )
 
   const userActions = (user: AdminUser) => (
     <div className="flex flex-wrap items-center gap-2">
@@ -364,6 +397,20 @@ export default function AdminUsers() {
           <option value="admin">Admins</option>
           <option value="captain">Captains</option>
         </select>
+        <select
+          value={captainFilter}
+          onChange={(e) => setCaptainFilter(e.target.value)}
+          className="px-4 py-2 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white sm:w-56"
+          aria-label="Filter by captain"
+        >
+          <option value="">All captains</option>
+          <option value="none">No captain</option>
+          {captains.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}{c.zone ? `, Team ${c.zone}` : ''}
+            </option>
+          ))}
+        </select>
       </div>
 
       {error && (
@@ -382,18 +429,19 @@ export default function AdminUsers() {
         isEmpty={users.length === 0}
         empty={
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center text-gray-600 dark:text-gray-400">
-            {searchQuery || roleFilter ? 'No users match your filters' : 'No users found'}
+            {searchQuery || roleFilter || captainFilter ? 'No users match your filters' : 'No users found'}
           </div>
         }
         desktop={
-          <table className="w-full min-w-[1000px]">
+          <table className="w-full min-w-[1150px]">
             <thead className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <tr>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Name</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Email</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Phone</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Role</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Referred by</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">WhatsApp</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Captain</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Joined</th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Actions</th>
               </tr>
@@ -408,7 +456,8 @@ export default function AdminUsers() {
                   <td className="px-6 py-4">{user.email}</td>
                   <td className="px-6 py-4">{user.phone}</td>
                   <td className="px-6 py-4">{roleBadge(user.role)}</td>
-                  <td className="px-6 py-4">{referredBy(user)}</td>
+                  <td className="px-6 py-4">{whatsappCell(user)}</td>
+                  <td className="px-6 py-4">{captainCell(user)}</td>
                   <td className="px-6 py-4">{new Date(user.created_at).toLocaleDateString()}</td>
                   <td className="px-6 py-4">{userActions(user)}</td>
                 </tr>
@@ -422,7 +471,8 @@ export default function AdminUsers() {
             <AdminMobileCardRow label="Email" value={user.email} />
             <AdminMobileCardRow label="Phone" value={user.phone || '—'} />
             <AdminMobileCardRow label="Role" value={roleBadge(user.role)} />
-            <AdminMobileCardRow label="Referred by" value={referredBy(user)} />
+            <AdminMobileCardRow label="WhatsApp" value={whatsappCell(user)} />
+            <AdminMobileCardRow label="Captain" value={captainCell(user)} />
             <AdminMobileCardRow label="Joined" value={new Date(user.created_at).toLocaleDateString()} />
           </AdminMobileCard>
         ))}

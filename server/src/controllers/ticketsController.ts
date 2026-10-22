@@ -9,6 +9,7 @@ import {
 import { generateTicketPDF } from '../utils/ticketPDFGenerator.js'
 import { phonesMatch } from '../utils/phone.js'
 import { findActiveZone } from '../utils/zones.js'
+import { recordCaptainCommission, reverseCaptainCommission } from '../utils/captainCommissions.js'
 import {
   findPaidTicketsByReceipt,
   maskEmail,
@@ -373,6 +374,12 @@ export async function updateTicketPaymentStatus(req: Request, res: Response) {
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Ticket not found' })
+    }
+
+    if (paymentStatus === 'paid') {
+      await recordCaptainCommission('ticket', ticketId, { reinstate: true })
+    } else {
+      await reverseCaptainCommission('ticket', ticketId)
     }
 
     res.json(result.rows[0])

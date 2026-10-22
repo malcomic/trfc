@@ -14,12 +14,53 @@ export interface AdminUser {
   referred_by_captain_name?: string | null;
   referred_by_region?: string | null;
   referred_at?: string | null;
+  whatsapp?: string | null;
+  marketing_opt_in?: boolean;
+  welcome_whatsapp_sent_at?: string | null;
+  captain_id?: string | null;
+  captain_name?: string | null;
+  captain_zone?: string | null;
+  referred?: boolean;
 }
 
 export interface UserListParams {
   search?: string;
   role?: UserRole | '';
+  /** A captain's user id, or 'none' for members without a captain. */
+  captainId?: string;
 }
+
+export interface MemberStats {
+  tickets: number;
+  upcoming_events: number;
+  medals: number;
+  orders: number;
+  equipment_hires: number;
+  pending_payments: number;
+  total_spent: number;
+}
+
+export interface MemberProfile {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  whatsapp: string | null;
+  marketing_opt_in: boolean | null;
+  role: UserRole;
+  created_at: string;
+}
+
+export interface MemberDashboard {
+  profile: MemberProfile;
+  captain: { name: string; zone: string } | null;
+  stats: MemberStats;
+}
+
+export const getMyDashboard = async (): Promise<MemberDashboard> => {
+  const response = await api.get('/users/me/dashboard');
+  return response.data;
+};
 
 export const getAllUsers = async (params?: UserListParams) => {
   const response = await api.get('/users', { params });

@@ -1,7 +1,7 @@
 import api from './index'
 
 export type CommissionStatus = 'pending' | 'approved' | 'paid' | 'reversed'
-export type CommissionSourceType = 'order' | 'medal' | 'equipment_hire'
+export type CommissionSourceType = 'order' | 'medal' | 'equipment_hire' | 'ticket'
 
 export interface Referrer {
   code: string
@@ -9,8 +9,22 @@ export interface Referrer {
   region: string
 }
 
+export interface CaptainDirectoryEntry {
+  id: string
+  name: string
+  zone: string
+}
+
+export interface CaptainTeamMember {
+  id: string
+  name: string
+  joined_at: string | null
+  joined_via: 'link' | 'chosen'
+}
+
 export interface CaptainStats {
   referred_customers: number
+  team_members: number
   referred_sales: number
   pending_amount: number
   approved_amount: number
@@ -74,10 +88,21 @@ export const SOURCE_LABELS: Record<CommissionSourceType, string> = {
   order: 'Shop order',
   medal: 'Medal',
   equipment_hire: 'Equipment hire',
+  ticket: 'Event ticket',
 }
 
 export const getReferrer = async (code: string): Promise<Referrer> => {
   const response = await api.get(`/captains/ref/${encodeURIComponent(code)}`)
+  return response.data
+}
+
+export const getCaptainDirectory = async (): Promise<CaptainDirectoryEntry[]> => {
+  const response = await api.get('/captains/directory')
+  return response.data
+}
+
+export const getMyTeam = async (): Promise<CaptainTeamMember[]> => {
+  const response = await api.get('/captains/me/team')
   return response.data
 }
 

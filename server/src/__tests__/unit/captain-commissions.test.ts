@@ -153,6 +153,23 @@ describe('recordCaptainCommission', () => {
     expect(inserts[1][1]).toEqual([CUSTOMER_ID, 'equipment_hire', 'account', 3500, ORDER_ID])
   })
 
+  it('uses the ticket price snapshot and only commissions eligible tickets', async () => {
+    routeQueries((sql) => {
+      if (sql.includes('FROM tickets t')) {
+        expect(sql).toContain('COALESCE(t.unit_price, ett.price, e.price, 0) AS base_amount')
+        expect(sql).toContain('t.commission_eligible')
+        return { rows: [{ user_id: CUSTOMER_ID, email: null, phone: null, base_amount: '1200' }] }
+      }
+      if (sql.includes('INSERT INTO captain_commissions')) return { rows: [{ id: 'c' }] }
+      return undefined
+    })
+    expect(await recordCaptainCommission('ticket', ORDER_ID)).toBe(true)
+
+    const [sql, params] = insertCall()!
+    expect(params).toEqual([CUSTOMER_ID, 'ticket', 'account', 1200, ORDER_ID])
+    expect(String(sql)).toContain('JOIN tickets s ON s.id = $5')
+  })
+
   it('skips unpaid purchases, zero-value purchases and unmatched guests', async () => {
     routeQueries(() => undefined)
     expect(await recordCaptainCommission('order', ORDER_ID)).toBe(false)
@@ -178,20 +195,25 @@ describe('recordCaptainCommission', () => {
 describe('recordCaptainCommissionsForCheckout', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('records commissions for paid orders, medals and hires on the checkout but not tickets', async () => {
+  it('records commissions for paid orders, medals, hires and tickets on the checkout', async () => {
     routeQueries((sql) => {
       if (sql.includes('SELECT id FROM orders')) return { rows: [{ id: 'o1' }] }
       if (sql.includes('SELECT id FROM medal_purchases')) return { rows: [{ id: 'm1' }, { id: 'm2' }] }
       if (sql.includes('SELECT id FROM equipment_hire')) return { rows: [] }
-      if (sql.includes('FROM orders o') || sql.includes('FROM medal_purchases p')) {
+      if (sql.includes('SELECT id FROM tickets')) return { rows: [{ id: 't1' }, { id: 't2' }] }
+      if (sql.includes('FROM orders o') || sql.includes('FROM medal_purchases p') || sql.includes('FROM tickets t')) {
         return { rows: [{ user_id: CUSTOMER_ID, email: null, phone: null, base_amount: 100 }] }
       }
       if (sql.includes('INSERT INTO captain_commissions')) return { rows: [{ id: 'c' }] }
       return undefined
     })
 
-    expect(await recordCaptainCommissionsForCheckout('ws_CO_1')).toBe(3)
-    expect(sqlCalls().some((s) => s.includes('tickets'))).toBe(false)
+    expect(await recordCaptainCommissionsForCheckout('ws_CO_1')).toBe(5)
+    const inserted = vi
+      .mocked(query)
+      .mock.calls.filter(([sql]) => String(sql).includes('INSERT INTO captain_commissions'))
+      .map(([, params]) => (params as any[])[1])
+    expect(inserted.filter((type) => type === 'ticket')).toHaveLength(2)
   })
 })
 

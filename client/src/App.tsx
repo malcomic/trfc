@@ -35,6 +35,8 @@ import EquipmentCheckout from './pages/EquipmentCheckout'
 import HireConfirmation from './pages/HireConfirmation'
 import Register from './pages/Register'
 import Login from './pages/Login'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 import Account from './pages/Account'
 import PaymentHistory from './pages/PaymentHistory'
 import MyTickets from './pages/MyTickets'
@@ -69,6 +71,7 @@ import AdminScan from './pages/admin/AdminScan'
 import AdminCaptains from './pages/admin/AdminCaptains'
 import AdminRegions from './pages/admin/AdminRegions'
 import CaptainDashboard from './pages/CaptainDashboard'
+import MemberDashboard from './pages/MemberDashboard'
 import { captureReferralFromUrl } from './utils/referral'
 
 function TikTokPixelTracker() {
@@ -184,7 +187,10 @@ const router = createBrowserRouter(
           <Route path="/hire-confirmation/:id" element={<HireConfirmation />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/account" element={<PrivateRoute><Account /></PrivateRoute>} />
+          <Route path="/dashboard" element={<PrivateRoute><MemberDashboard /></PrivateRoute>} />
           <Route path="/account/payments" element={<PrivateRoute><PaymentHistory /></PrivateRoute>} />
           <Route path="/account/tickets" element={<PrivateRoute><MyTickets /></PrivateRoute>} />
           <Route path="/account/medals" element={<PrivateRoute><MyMedals /></PrivateRoute>} />

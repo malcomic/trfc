@@ -2,8 +2,17 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { JWTPayload } from '../types/index.js';
 import { query } from '../config/db.js';
+import { isTokenStale } from '../utils/tokenUtils.js';
 
-export const optionalAuthMiddleware = (req: Request, res: Response, next: NextFunction) => {
+type DecodedToken = JWTPayload & { iat?: number };
+
+/** A password change signs out every session issued before it. */
+async function isSessionRevoked(decoded: DecodedToken): Promise<boolean> {
+  const result = await query('SELECT password_changed_at FROM users WHERE id = $1', [decoded.id]);
+  return isTokenStale(decoded.iat, result.rows[0]?.password_changed_at);
+}
+
+export const optionalAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
@@ -11,28 +20,41 @@ export const optionalAuthMiddleware = (req: Request, res: Response, next: NextFu
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || '') as JWTPayload;
-    req.user = decoded;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || '') as DecodedToken;
+    if (!(await isSessionRevoked(decoded))) {
+      req.user = decoded;
+    }
     next();
   } catch {
     next();
   }
 };
 
-export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ error: 'No token provided' });
-    }
+export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
 
+  let decoded: DecodedToken;
+  try {
     const token = authHeader.replace('Bearer ', '');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || '') as JWTPayload;
-    req.user = decoded;
-    next();
+    decoded = jwt.verify(token, process.env.JWT_SECRET || '') as DecodedToken;
   } catch (error) {
     return res.status(401).json({ error: 'Invalid token' });
   }
+
+  try {
+    if (await isSessionRevoked(decoded)) {
+      return res.status(401).json({ error: 'Session expired. Please sign in again.' });
+    }
+  } catch (error) {
+    console.error('Failed to check session validity:', error);
+    return res.status(500).json({ error: 'Failed to verify session' });
+  }
+
+  req.user = decoded;
+  next();
 };
 
 export const adminMiddleware = (req: Request, res: Response, next: NextFunction) => {

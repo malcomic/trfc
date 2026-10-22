@@ -4,6 +4,9 @@ export interface User {
   email: string;
   phone: string;
   role: 'member' | 'admin' | 'scanner' | 'captain';
+  whatsapp?: string | null;
+  marketing_opt_in?: boolean | null;
+  created_at?: string;
 }
 
 export interface EventTicketType {
