@@ -102,6 +102,7 @@ export default function AdminEvents() {
         event_date: data.event_date,
         location: data.location,
         image_url: imageUrl,
+        installments_allowed: Number(data.installments_allowed ?? 0),
       }
 
       if (editingId) {
@@ -143,6 +144,7 @@ export default function AdminEvents() {
     reset({
       ...event,
       event_date: toDatetimeLocalValue(event.event_date),
+      installments_allowed: String(event.installments_allowed ?? 0),
     })
     setShowModal(true)
   }
@@ -376,6 +378,22 @@ export default function AdminEvents() {
                   {...register('location')}
                   className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Installments</label>
+                <select
+                  {...register('installments_allowed')}
+                  defaultValue="0"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="0">Off (pay in full only)</option>
+                  <option value="2">Up to 2 payments</option>
+                  <option value="3">Up to 3 payments</option>
+                </select>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Members need at least 7 days per installment before the event (14 days for 2, 21 for 3).
+                </p>
               </div>
 
               <p className="text-sm text-gray-500 dark:text-gray-400">

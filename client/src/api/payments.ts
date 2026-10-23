@@ -18,14 +18,51 @@ export interface PaymentInitiateResponse {
   customerMessage: string
 }
 
+export type WalletTxType =
+  | 'topup'
+  | 'ticket_payment'
+  | 'installment'
+  | 'cancellation_credit'
+  | 'plan_expiry_credit'
+  | 'adjustment'
+
 export interface PaymentHistoryItem {
   id: string
-  type: 'order' | 'ticket' | 'equipment_hire' | 'medal'
+  type: 'order' | 'ticket' | 'equipment_hire' | 'medal' | 'wallet'
   amount: number | null
   payment_status: string
   mpesa_receipt: string | null
   checkout_request_id: string | null
   created_at: string
+  /** Wallet rows only */
+  wallet_type?: WalletTxType
+  wallet_amount?: number
+  note?: string | null
+}
+
+export const WALLET_TX_LABELS: Record<WalletTxType, string> = {
+  topup: 'Wallet top-up',
+  ticket_payment: 'Ticket paid from wallet',
+  installment: 'Installment payment',
+  cancellation_credit: 'Cancellation credit',
+  plan_expiry_credit: 'Unfinished plan credit',
+  adjustment: 'Wallet adjustment',
+}
+
+export function paymentTypeLabel(item: Pick<PaymentHistoryItem, 'type' | 'wallet_type'>): string {
+  if (item.type === 'wallet') return item.wallet_type ? WALLET_TX_LABELS[item.wallet_type] : 'Wallet'
+  switch (item.type) {
+    case 'order':
+      return 'Product Order'
+    case 'ticket':
+      return 'Event Ticket'
+    case 'equipment_hire':
+      return 'Equipment Hire'
+    case 'medal':
+      return 'Medal Challenge'
+    default:
+      return item.type
+  }
 }
 
 export async function initiateSTKPush(data: PaymentInitiateRequest) {

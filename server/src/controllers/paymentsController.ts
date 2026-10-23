@@ -29,6 +29,7 @@ import {
 import { getLocalPaymentStatus, toStatusResponse } from '../utils/paymentStatus.js'
 import { activateSignup, notifyPaidSignupsByCheckoutId } from '../utils/signupActivation.js'
 import { recordCaptainCommissionsForCheckout } from '../utils/captainCommissions.js'
+import { settleWalletCheckout } from '../utils/walletPayments.js'
 
 const MPESA_QUERY_GRACE_MS = 10_000
 const MPESA_QUERY_INTERVAL_MS = 12_000
@@ -123,7 +124,7 @@ async function applyPaymentFromAccountRef(
     const batchId = accountRef.replace('TICKET-BATCH-', '')
     const result = await query(
       `UPDATE tickets SET payment_status = $1, mpesa_receipt = $2, checkout_request_id = $3
-       WHERE purchase_batch_id = $4`,
+       WHERE purchase_batch_id = $4 AND payment_status IN ('pending', 'failed')`,
       ['paid', mpesaReceipt, checkoutRequestId, batchId]
     )
     return result.rowCount || 0
@@ -137,6 +138,10 @@ async function applyPaymentFromAccountRef(
       ['paid', mpesaReceipt, checkoutRequestId, batchId]
     )
     return result.rowCount || 0
+  }
+
+  if (accountRef.startsWith('WALLET-') || accountRef.startsWith('PLAN-')) {
+    return settleWalletCheckout(checkoutRequestId, mpesaReceipt)
   }
 
   if (accountRef.startsWith('SIGNUP-')) {
@@ -239,57 +244,24 @@ export async function initiateSTKPush(req: Request, res: Response) {
       return res.status(validation.status).json({ error: validation.error })
     }
 
-    const token = await getMPesaToken()
-    let stkResponse: STKPushResponse
-    let retryCount = 0
-    const maxRetries = 2
+    const stkResponse = await sendStkPush(phone, amount, accountReference)
 
-    while (retryCount <= maxRetries) {
-      try {
-        stkResponse = await Promise.race([
-          mpesaInitiateStkPush(
-            phone,
-            amount,
-            accountReference,
-            `TRFC Payment for ${accountReference}`,
-            token
-          ),
-          new Promise<STKPushResponse>((_, reject) =>
-            setTimeout(
-              () => reject(new Error('STK Push request timeout')),
-              30000
-            )
-          ),
-        ])
-        break
-      } catch (error: any) {
-        retryCount++
-        if (retryCount > maxRetries) {
-          throw error
-        }
-        if (error.message !== 'STK Push request timeout') {
-          throw error
-        }
-        await new Promise((resolve) => setTimeout(resolve, 1000 * retryCount))
-      }
-    }
+    logSTKInitiation(phone, amount, orderId, ticketId, equipmentHireId, stkResponse.ResponseCode, null)
 
-    logSTKInitiation(phone, amount, orderId, ticketId, equipmentHireId, stkResponse!.ResponseCode, null)
-
-    if (stkResponse!.ResponseCode !== '0') {
-      logError('STK_PUSH_FAILED', stkResponse!.ResponseCode, {
+    if (stkResponse.ResponseCode !== '0') {
+      logError('STK_PUSH_FAILED', stkResponse.ResponseCode, {
         phone,
         amount,
         accountReference,
-        customerMessage: stkResponse!.CustomerMessage,
+        customerMessage: stkResponse.CustomerMessage,
       })
       return res.status(400).json({
-        error: stkResponse!.CustomerMessage || 'Failed to initiate payment. Please try again.',
-        responseCode: stkResponse!.ResponseCode,
+        error: stkResponse.CustomerMessage || 'Failed to initiate payment. Please try again.',
+        responseCode: stkResponse.ResponseCode,
       })
     }
 
-    const checkoutRequestId = stkResponse!.CheckoutRequestID
+    const checkoutRequestId = stkResponse.CheckoutRequestID
     if (orderId) {
       await query(
         'UPDATE orders SET checkout_request_id = $1 WHERE id = $2',
@@ -325,29 +297,48 @@ export async function initiateSTKPush(req: Request, res: Response) {
     }
 
     res.json({
-      checkoutRequestId: stkResponse!.CheckoutRequestID,
-      merchantRequestId: stkResponse!.MerchantRequestID,
-      responseCode: stkResponse!.ResponseCode,
-      customerMessage: stkResponse!.CustomerMessage,
+      checkoutRequestId: stkResponse.CheckoutRequestID,
+      merchantRequestId: stkResponse.MerchantRequestID,
+      responseCode: stkResponse.ResponseCode,
+      customerMessage: stkResponse.CustomerMessage,
     })
   } catch (error: any) {
     console.error('Error initiating STK push:', describeMpesaError(error))
     if (error?.response?.status === 401) clearMPesaTokenCache()
     logError('STK_PUSH_EXCEPTION', describeMpesaError(error), { phone: req.body.phone })
-
-    let errorMessage = 'Failed to initiate payment'
-    if (error.message === 'STK Push request timeout') {
-      errorMessage = 'Payment request timeout. M-Pesa service is currently busy. Please try again.'
-    } else if (error.response?.status === 401) {
-      errorMessage = 'Authentication failed with M-Pesa service. Please try again.'
-    } else if (error.response?.status === 503) {
-      errorMessage = 'M-Pesa service is temporarily unavailable. Please try again later.'
-    } else if (error.code === 'ECONNREFUSED') {
-      errorMessage = 'Unable to connect to M-Pesa service. Please check your internet connection and try again.'
-    }
-
-    res.status(500).json({ error: errorMessage })
+    res.status(500).json({ error: stkErrorMessage(error) })
   }
+}
+
+/** Sends an STK push, retrying up to twice when Safaricom times out. */
+export async function sendStkPush(phone: string, amount: number, accountReference: string): Promise<STKPushResponse> {
+  const token = await getMPesaToken()
+  const maxRetries = 2
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await Promise.race([
+        mpesaInitiateStkPush(phone, amount, accountReference, `TRFC Payment for ${accountReference}`, token),
+        new Promise<STKPushResponse>((_, reject) =>
+          setTimeout(() => reject(new Error('STK Push request timeout')), 30000)
+        ),
+      ])
+    } catch (error: any) {
+      if (attempt >= maxRetries || error.message !== 'STK Push request timeout') throw error
+      await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)))
+    }
+  }
+}
+
+export function stkErrorMessage(error: any): string {
+  if (error?.message === 'STK Push request timeout') {
+    return 'Payment request timeout. M-Pesa service is currently busy. Please try again.'
+  }
+  if (error?.response?.status === 401) return 'Authentication failed with M-Pesa service. Please try again.'
+  if (error?.response?.status === 503) return 'M-Pesa service is temporarily unavailable. Please try again later.'
+  if (error?.code === 'ECONNREFUSED') {
+    return 'Unable to connect to M-Pesa service. Please check your internet connection and try again.'
+  }
+  return 'Failed to initiate payment'
 }
 
 export async function handleCallback(req: Request, res: Response) {
@@ -593,11 +584,25 @@ export async function getPaymentHistory(req: Request, res: Response) {
       [userId]
     )
 
+    const walletPayments = await query(
+      `SELECT
+        id, 'wallet' as type, type as wallet_type,
+        COALESCE(mpesa_amount, ABS(amount))::float as amount,
+        amount::float as wallet_amount,
+        CASE status WHEN 'completed' THEN 'paid' ELSE status END as payment_status,
+        mpesa_receipt, checkout_request_id, note, created_at
+       FROM wallet_transactions
+       WHERE user_id = $1 AND NOT (status = 'failed' AND type <> 'topup')
+       ORDER BY created_at DESC`,
+      [userId]
+    )
+
     const allPayments = [
       ...orderPayments.rows,
       ...ticketPayments.rows,
       ...equipmentPayments.rows,
       ...medalPayments.rows,
+      ...walletPayments.rows,
     ].sort(
       (a, b) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()

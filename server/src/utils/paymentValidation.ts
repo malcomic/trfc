@@ -2,6 +2,7 @@ import { query } from '../config/db.js'
 import { phonesMatch } from './phone.js'
 import { activateSignupsByCheckoutId } from './signupActivation.js'
 import { recordCaptainCommissionsForCheckout } from './captainCommissions.js'
+import { failWalletCheckout, settleWalletCheckout } from './walletPayments.js'
 
 export async function validatePaymentReference(
   orderId?: string,
@@ -71,6 +72,9 @@ export async function validatePaymentReference(
     }
     const batch = result.rows
     const ticket = batch[0]
+    if (batch.some((row: { payment_status: string }) => ['paid', 'reserved', 'cancelled'].includes(row.payment_status))) {
+      return { ok: false, status: 409, error: 'These tickets are already paid, reserved or cancelled' }
+    }
     if (phone && ticket.phone && !phonesMatch(phone, ticket.phone)) {
       return { ok: false, status: 403, error: 'Phone number does not match ticket batch' }
     }
@@ -185,6 +189,7 @@ export async function markEntitiesPaidByCheckoutId(
     [checkoutRequestId, mpesaReceipt || null]
   )
   const signupCount = await activateSignupsByCheckoutId(checkoutRequestId, mpesaReceipt || null)
+  const walletCount = await settleWalletCheckout(checkoutRequestId, mpesaReceipt || null)
 
   const commissionableCount =
     (orderResult.rowCount || 0) + (ticketResult.rowCount || 0) + (hireResult.rowCount || 0) + (medalResult.rowCount || 0)
@@ -197,7 +202,8 @@ export async function markEntitiesPaidByCheckoutId(
     (ticketResult.rowCount || 0) +
     (hireResult.rowCount || 0) +
     (medalResult.rowCount || 0) +
-    signupCount
+    signupCount +
+    walletCount
   )
 }
 
@@ -222,6 +228,7 @@ async function markEntitiesFailedByCheckoutId(checkoutRequestId: string) {
     `UPDATE signups SET payment_status = 'failed' WHERE checkout_request_id = $1 AND payment_status = 'pending'`,
     [checkoutRequestId]
   )
+  await failWalletCheckout(checkoutRequestId)
 }
 
 export { markEntitiesFailedByCheckoutId }

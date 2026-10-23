@@ -6,11 +6,22 @@ import { AlertCircle, Loader, Ticket, ArrowLeft, Zap, ArrowRight } from 'lucide-
 import { pageRoot, cardSurface } from '../utils/themeClasses'
 import { formatEventDate } from '../utils/eventDate'
 import { formatTimeLeft, loadFlashAccess } from '../utils/flashAccess'
+import CancelTicketDialog, { type CancellableTicket } from '../components/wallet/CancelTicketDialog'
+
+const STATUS_STYLES: Record<string, string> = {
+  paid: 'bg-green-500/20 text-green-400',
+  pending: 'bg-yellow-500/20 text-yellow-400',
+  reserved: 'bg-blue-500/20 text-blue-300',
+  cancelled: 'bg-white/5 text-fog line-through',
+  failed: 'bg-red-500/20 text-red-400',
+}
 
 export default function MyTickets() {
   const [tickets, setTickets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [cancelTarget, setCancelTarget] = useState<CancellableTicket | null>(null)
+  const [notice, setNotice] = useState('')
   const [flashExpiresAt, setFlashExpiresAt] = useState<string | null>(null)
 
   useEffect(() => {
@@ -99,15 +110,45 @@ export default function MyTickets() {
                 </p>
               </div>
               <div className="text-right">
-                <span className={`inline-block px-3 py-1 text-xs font-bold uppercase ${t.payment_status === 'paid' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                <span className={`inline-block px-3 py-1 text-xs font-bold uppercase ${STATUS_STYLES[t.payment_status] ?? STATUS_STYLES.pending}`}>
                   {t.payment_status}
                 </span>
                 {t.price != null && <p className="font-bebas text-xl text-accent light:text-accent-light mt-2">KES {Number(t.price).toLocaleString()}</p>}
+                {t.payment_status === 'reserved' && (
+                  <Link to="/dashboard?tab=wallet" className="block text-xs text-accent light:text-accent-light mt-1 no-underline hover:underline">
+                    Installment plan
+                  </Link>
+                )}
+                {t.can_cancel ? (
+                  <button type="button" onClick={() => setCancelTarget(t)} className="block ml-auto text-xs text-red-400 mt-2 hover:underline">
+                    Cancel ticket
+                  </button>
+                ) : (
+                  (t.payment_status === 'paid' || t.payment_status === 'reserved') &&
+                  t.cancel_blocked_reason && (
+                    <p className="text-xs text-fog light:text-fog-light mt-2 max-w-[14rem] ml-auto">{t.cancel_blocked_reason}</p>
+                  )
+                )}
               </div>
             </div>
           ))}
         </div>
+        {notice && <p className="mt-6 text-sm text-green-400">{notice}</p>}
       </div>
+
+      <CancelTicketDialog
+        ticket={cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onCancelled={(result) => {
+          setCancelTarget(null)
+          setNotice(
+            result.credited > 0
+              ? `Ticket cancelled. KES ${result.credited.toLocaleString()} was added to your wallet.`
+              : 'Ticket cancelled.'
+          )
+          getUserTickets().then(setTickets).catch(() => undefined)
+        }}
+      />
     </div>
   )
 }

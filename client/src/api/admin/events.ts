@@ -26,6 +26,7 @@ export interface AdminEvent {
   ticket_types?: AdminTicketType[];
   min_price?: number | null;
   all_types_sold_out?: boolean;
+  installments_allowed?: number;
 }
 
 export const getEventsForAdmin = async (): Promise<AdminEvent[]> => {
@@ -39,6 +40,7 @@ export const createEvent = async (data: {
   location?: string;
   event_date: string;
   image_url?: string;
+  installments_allowed?: number;
 }) => {
   const response = await api.post('/events', data);
   return response.data;
@@ -53,6 +55,7 @@ export const updateEvent = async (
     event_date: string;
     image_url?: string;
     is_active: boolean;
+    installments_allowed?: number;
   }
 ) => {
   const response = await api.put(`/events/${id}`, data);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getPaymentHistory, PaymentHistoryItem } from '../api/payments'
+import { getPaymentHistory, PaymentHistoryItem, paymentTypeLabel } from '../api/payments'
 import { Calendar, DollarSign, Download, Eye, Loader, AlertCircle, FileText } from 'lucide-react'
 import { downloadReceiptAsText, downloadReceiptAsCSV } from '../utils/receiptGenerator'
 import TicketDownloadButton from '../components/TicketDownloadButton'
@@ -56,20 +56,6 @@ export default function PaymentHistory() {
     return true
   })
 
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'order':
-        return 'Product Order'
-      case 'ticket':
-        return 'Event Ticket'
-      case 'equipment_hire':
-        return 'Equipment Hire'
-      case 'medal':
-        return 'Medal Challenge'
-      default:
-        return type
-    }
-  }
 
   const getStatusClasses = (status: string) => {
     switch (status) {
@@ -140,6 +126,7 @@ export default function PaymentHistory() {
                 <option value="ticket">Event Tickets</option>
                 <option value="medal">Medal Challenges</option>
                 <option value="equipment_hire">Equipment Hire</option>
+                <option value="wallet">Wallet</option>
               </select>
             </div>
             <div>
@@ -188,7 +175,7 @@ export default function PaymentHistory() {
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
                   <div>
                     <p className="text-xs text-fog light:text-fog-light mb-1 font-barlow-condensed font-bold tracking-widest uppercase">Type</p>
-                    <p className="font-barlow-condensed font-bold text-chalk light:text-chalk-light">{getTypeLabel(payment.type)}</p>
+                    <p className="font-barlow-condensed font-bold text-chalk light:text-chalk-light">{paymentTypeLabel(payment)}</p>
                   </div>
 
                   <div>
@@ -269,7 +256,7 @@ export default function PaymentHistory() {
                 <div className="bg-smoke light:bg-smoke-light border border-white/5 light:border-black/8 p-4 space-y-3 text-sm">
                   <div className="flex justify-between">
                     <span className="text-fog light:text-fog-light">Payment Type</span>
-                    <span className="font-semibold">{getTypeLabel(selectedPayment.type)}</span>
+                    <span className="font-semibold">{paymentTypeLabel(selectedPayment)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-fog light:text-fog-light">Status</span>

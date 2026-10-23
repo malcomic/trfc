@@ -52,6 +52,12 @@ import {
   getAdminPayouts,
   createPayout,
 } from '../controllers/captainsController.js'
+import {
+  createWalletAdjustment,
+  getAdminPaymentPlans,
+  getAdminWalletLedger,
+  getAdminWallets,
+} from '../controllers/adminWalletsController.js'
 import { authMiddleware, adminMiddleware } from '../middleware/auth.js'
 
 const router = Router()
@@ -98,5 +104,9 @@ router.post('/captain-commissions/sync', syncCommissions)
 router.post('/captain-commissions/:id/reverse', reverseCommission)
 router.get('/captain-payouts', getAdminPayouts)
 router.post('/captain-payouts', createPayout)
+router.get('/wallets', getAdminWallets)
+router.get('/wallets/plans', getAdminPaymentPlans)
+router.post('/wallets/adjustments', createWalletAdjustment)
+router.get('/wallets/:userId', getAdminWalletLedger)
 
 export default router

@@ -58,6 +58,7 @@ export const config = {
     phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || '',
     templateName: process.env.WHATSAPP_TEMPLATE_NAME || 'trfc_signup_welcome',
     welcomeTemplateName: process.env.WHATSAPP_WELCOME_TEMPLATE || 'trfc_account_welcome',
+    installmentTemplateName: process.env.WHATSAPP_INSTALLMENT_TEMPLATE || '',
     templateLang: process.env.WHATSAPP_TEMPLATE_LANG || 'en',
     apiVersion: process.env.WHATSAPP_API_VERSION || 'v20.0',
   },

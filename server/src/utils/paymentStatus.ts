@@ -3,12 +3,30 @@ import { query } from '../config/db.js'
 export interface LocalPaymentStatus {
   payment_status: 'paid' | 'failed' | 'pending'
   mpesa_receipt?: string | null
-  source: 'callback' | 'order' | 'ticket' | 'equipment_hire' | 'medal' | 'signup'
+  source: 'callback' | 'order' | 'ticket' | 'equipment_hire' | 'medal' | 'signup' | 'wallet'
 }
 
 export async function getLocalPaymentStatus(
   checkoutRequestId: string
 ): Promise<LocalPaymentStatus | null> {
+  // Checked before callbacks: a wallet payment only counts as paid once it has been applied,
+  // which happens just after the callback row is stored.
+  const walletResult = await query(
+    `SELECT status, mpesa_receipt
+     FROM wallet_transactions
+     WHERE checkout_request_id = $1
+     LIMIT 1`,
+    [checkoutRequestId]
+  )
+  if (walletResult.rows.length > 0) {
+    const row = walletResult.rows[0]
+    return {
+      payment_status: row.status === 'completed' ? 'paid' : row.status === 'failed' ? 'failed' : 'pending',
+      mpesa_receipt: row.mpesa_receipt,
+      source: 'wallet',
+    }
+  }
+
   const callbackResult = await query(
     `SELECT payment_status, mpesa_receipt_number
      FROM payment_callbacks

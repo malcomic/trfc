@@ -979,6 +979,135 @@ export function buildPasswordChangedEmailText(data: { name: string | null }): st
   ].join('\n\n')
 }
 
+const kes = (value: number) => `KES ${Number(value).toLocaleString('en-KE', { maximumFractionDigits: 2 })}`
+const dashboardWalletUrl = () => `${config.frontendUrl.replace(/\/$/, '')}/dashboard?tab=wallet`
+const paragraph = (html: string) =>
+  `<p style="margin:0 0 16px;font-size:15px;line-height:1.5;color:#374151;">${html}</p>`
+const walletButton = (label: string) => `
+      <table role="presentation" cellspacing="0" cellpadding="0" style="margin:8px auto 0;">
+        <tr><td style="background:#f59e0b;border-radius:6px;">
+          <a href="${escapeHtml(dashboardWalletUrl())}" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:800;letter-spacing:0.08em;color:#111827;text-decoration:none;">${label}</a>
+        </td></tr>
+      </table>`
+const footerText = () => `© ${new Date().getFullYear()} TRFC — Thika Road Fitness Community`
+
+export interface TicketCancelledEmailData {
+  name: string | null
+  eventTitle: string
+  ticketCount: number
+  credited: number
+  balance: number
+}
+
+export function buildTicketCancelledEmailHTML(data: TicketCancelledEmailData): string {
+  const what = data.ticketCount > 1 ? `${data.ticketCount} tickets` : 'ticket'
+  return accountEmailShell(
+    'Your TRFC ticket was cancelled',
+    'Ticket cancelled',
+    `
+      ${paragraph(escapeHtml(greeting(data.name)))}
+      ${paragraph(`Your ${what} for <strong>${escapeHtml(data.eventTitle)}</strong> has been cancelled.`)}
+      ${paragraph(
+        `Cancellations aren't refunded. Instead, <strong>${kes(data.credited)}</strong> has been added to your TRFC wallet,
+        and you can use it on any upcoming event. Your wallet balance is now <strong>${kes(data.balance)}</strong>.`
+      )}
+      ${walletButton('VIEW MY WALLET')}`
+  )
+}
+
+export function buildTicketCancelledEmailText(data: TicketCancelledEmailData): string {
+  const what = data.ticketCount > 1 ? `${data.ticketCount} tickets` : 'ticket'
+  return [
+    greeting(data.name),
+    `Your ${what} for ${data.eventTitle} has been cancelled.`,
+    `Cancellations aren't refunded. Instead, ${kes(data.credited)} has been added to your TRFC wallet, and you can use it on any upcoming event. Your wallet balance is now ${kes(data.balance)}.`,
+    `View your wallet: ${dashboardWalletUrl()}`,
+    footerText(),
+  ].join('\n\n')
+}
+
+export interface InstallmentReminderEmailData {
+  name: string | null
+  eventTitle: string
+  amountDue: number
+  dueAt: Date
+  overdue: boolean
+  remaining: number
+}
+
+const formatDueDate = (date: Date) =>
+  date.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Africa/Nairobi' })
+
+export function buildInstallmentReminderEmailHTML(data: InstallmentReminderEmailData): string {
+  const when = data.overdue
+    ? `was due on <strong>${formatDueDate(data.dueAt)}</strong>`
+    : `is due on <strong>${formatDueDate(data.dueAt)}</strong>`
+  return accountEmailShell(
+    'Installment reminder',
+    'Installment reminder',
+    `
+      ${paragraph(escapeHtml(greeting(data.name)))}
+      ${paragraph(
+        `Your next installment of <strong>${kes(data.amountDue)}</strong> for <strong>${escapeHtml(data.eventTitle)}</strong> ${when}.
+        You have ${kes(data.remaining)} left to pay in total.`
+      )}
+      ${paragraph(
+        'Your tickets stay reserved until event day. They are issued as soon as the plan is fully paid. If it is not finished by then, what you have paid moves to your wallet.'
+      )}
+      ${walletButton('PAY NOW')}`
+  )
+}
+
+export function buildInstallmentReminderEmailText(data: InstallmentReminderEmailData): string {
+  const when = data.overdue ? `was due on ${formatDueDate(data.dueAt)}` : `is due on ${formatDueDate(data.dueAt)}`
+  return [
+    greeting(data.name),
+    `Your next installment of ${kes(data.amountDue)} for ${data.eventTitle} ${when}. You have ${kes(data.remaining)} left to pay in total.`,
+    'Your tickets stay reserved until event day. They are issued as soon as the plan is fully paid. If it is not finished by then, what you have paid moves to your wallet.',
+    `Pay now: ${dashboardWalletUrl()}`,
+    footerText(),
+  ].join('\n\n')
+}
+
+export interface PlanExpiredEmailData {
+  name: string | null
+  eventTitle: string
+  credited: number
+  balance: number
+}
+
+export function buildPlanExpiredEmailHTML(data: PlanExpiredEmailData): string {
+  const credit =
+    data.credited > 0
+      ? `The <strong>${kes(data.credited)}</strong> you paid has been added to your TRFC wallet for future events. Your balance is now <strong>${kes(data.balance)}</strong>.`
+      : 'No payments had been made on the plan.'
+  return accountEmailShell(
+    'Your installment plan has ended',
+    'Installment plan ended',
+    `
+      ${paragraph(escapeHtml(greeting(data.name)))}
+      ${paragraph(
+        `Your installment plan for <strong>${escapeHtml(data.eventTitle)}</strong> wasn't completed in time, so the reserved tickets have been released.`
+      )}
+      ${paragraph(credit)}
+      ${walletButton('VIEW MY WALLET')}`
+  )
+}
+
+export function buildPlanExpiredEmailText(data: PlanExpiredEmailData): string {
+  const credit =
+    data.credited > 0
+      ? `The ${kes(data.credited)} you paid has been added to your TRFC wallet for future events. Your balance is now ${kes(data.balance)}.`
+      : 'No payments had been made on the plan.'
+  return [
+    greeting(data.name),
+    `Your installment plan for ${data.eventTitle} wasn't completed in time, so the reserved tickets have been released.`,
+    credit,
+    `View your wallet: ${dashboardWalletUrl()}`,
+    footerText(),
+  ].join('\n\n')
+}
+
 export default {
   buildTicketEmailHTML,
   buildTicketEmailText,

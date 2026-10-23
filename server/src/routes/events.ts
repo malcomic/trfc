@@ -14,6 +14,7 @@ import {
   getTicketsByCheckoutRequestId,
   findTickets,
   updateTicketEmail,
+  cancelMyTicket,
 } from '../controllers/ticketsController.js'
 import { authMiddleware, adminMiddleware, optionalAuthMiddleware } from '../middleware/auth.js'
 import { simpleRateLimit } from '../middleware/simpleRateLimit.js'
@@ -27,6 +28,7 @@ router.get('/tickets/list/user', authMiddleware, getUserTickets)
 router.get('/tickets/checkout/:checkoutRequestId', optionalAuthMiddleware, getTicketsByCheckoutRequestId)
 router.get('/tickets/:ticketId/download', optionalAuthMiddleware, downloadTicketPDF)
 router.get('/tickets/:id', optionalAuthMiddleware, getTicketById)
+router.post('/tickets/:id/cancel', authMiddleware, simpleRateLimit(10, 15 * 60_000), cancelMyTicket)
 router.post('/:eventId/tickets', optionalAuthMiddleware, buyTicket)
 router.get('/:id', getEventById)
 router.post('/', authMiddleware, adminMiddleware, createEvent)

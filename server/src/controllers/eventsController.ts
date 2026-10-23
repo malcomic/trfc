@@ -33,13 +33,26 @@ export const getEventById = async (req: Request, res: Response) => {
   }
 }
 
+const INSTALLMENT_OPTIONS = [0, 2, 3]
+
+/** `undefined` when the field wasn't sent; `null` when it was sent but invalid. */
+function parseInstallmentsAllowed(value: unknown): number | null | undefined {
+  if (value === undefined || value === null || value === '') return undefined
+  const parsed = Number(value)
+  return INSTALLMENT_OPTIONS.includes(parsed) ? parsed : null
+}
+
 export const createEvent = async (req: Request, res: Response) => {
   try {
     const { title, description, location, event_date, image_url } = req.body
+    const installmentsAllowed = parseInstallmentsAllowed(req.body.installments_allowed)
+    if (installmentsAllowed === null) {
+      return res.status(400).json({ error: 'installments_allowed must be 0, 2 or 3' })
+    }
     const result = await query(
-      `INSERT INTO events (title, description, location, event_date, price, capacity, image_url)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [title, description, location, event_date, 0, null, image_url]
+      `INSERT INTO events (title, description, location, event_date, price, capacity, image_url, installments_allowed)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [title, description, location, event_date, 0, null, image_url, installmentsAllowed ?? 0]
     )
     const [event] = await attachTicketTypesToEvents(result.rows, false)
     res.status(201).json(event)
@@ -53,12 +66,16 @@ export const updateEvent = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
     const { title, description, location, event_date, image_url, is_active } = req.body
+    const installmentsAllowed = parseInstallmentsAllowed(req.body.installments_allowed)
+    if (installmentsAllowed === null) {
+      return res.status(400).json({ error: 'installments_allowed must be 0, 2 or 3' })
+    }
     const result = await query(
       `UPDATE events
        SET title = $1, description = $2, location = $3, event_date = $4,
-           image_url = $5, is_active = $6
+           image_url = $5, is_active = $6, installments_allowed = COALESCE($8, installments_allowed)
        WHERE id = $7 RETURNING *`,
-      [title, description, location, event_date, image_url, is_active, id]
+      [title, description, location, event_date, image_url, is_active, id, installmentsAllowed ?? null]
     )
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Event not found' })

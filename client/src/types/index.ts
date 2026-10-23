@@ -35,6 +35,8 @@ export interface Event {
   ticket_types?: EventTicketType[];
   min_price?: number | null;
   all_types_sold_out?: boolean;
+  /** 0 = installments off, otherwise the number of equal payments (2 or 3). */
+  installments_allowed?: number;
 }
 
 export interface Product {

@@ -602,6 +602,85 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       WHERE captain_id IS NULL AND referred_by_captain_id IS NOT NULL;
     `,
   },
+  {
+    name: '028_wallets',
+    sql: `
+      CREATE TABLE IF NOT EXISTS wallets (
+        user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        balance NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (balance >= 0),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      -- Append-only ledger. amount is signed: positive credits the wallet, negative debits it.
+      CREATE TABLE IF NOT EXISTS wallet_transactions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        type VARCHAR(30) NOT NULL,
+        amount NUMERIC(12,2) NOT NULL,
+        balance_after NUMERIC(12,2),
+        status VARCHAR(20) NOT NULL DEFAULT 'completed',
+        reference_type VARCHAR(30),
+        reference_id UUID,
+        phone VARCHAR(20),
+        checkout_request_id VARCHAR(100),
+        mpesa_receipt VARCHAR(100),
+        note TEXT,
+        created_by UUID REFERENCES users(id),
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      -- What the member paid through M-Pesa for this entry (top-ups and M-Pesa installments); amount is the wallet effect.
+      ALTER TABLE wallet_transactions ADD COLUMN IF NOT EXISTS mpesa_amount NUMERIC(12,2);
+      CREATE INDEX IF NOT EXISTS idx_wallet_tx_user ON wallet_transactions(user_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_wallet_tx_checkout ON wallet_transactions(checkout_request_id);
+      ALTER TABLE tickets ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ;
+    `,
+  },
+  {
+    name: '029_ticket_cancellations',
+    sql: `
+      CREATE TABLE IF NOT EXISTS ticket_cancellations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        ticket_id UUID NOT NULL UNIQUE REFERENCES tickets(id),
+        credited_amount NUMERIC(12,2) NOT NULL,
+        wallet_transaction_id UUID REFERENCES wallet_transactions(id),
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_ticket_cancellations_user ON ticket_cancellations(user_id, created_at);
+    `,
+  },
+  {
+    name: '030_installments',
+    sql: `
+      ALTER TABLE events ADD COLUMN IF NOT EXISTS installments_allowed INT NOT NULL DEFAULT 0;
+      CREATE TABLE IF NOT EXISTS ticket_payment_plans (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        purchase_batch_id UUID NOT NULL UNIQUE,
+        event_id UUID NOT NULL REFERENCES events(id),
+        total_amount NUMERIC(12,2) NOT NULL,
+        amount_paid NUMERIC(12,2) NOT NULL DEFAULT 0,
+        installment_count INT NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'active',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        completed_at TIMESTAMPTZ
+      );
+      CREATE INDEX IF NOT EXISTS idx_payment_plans_user ON ticket_payment_plans(user_id, status);
+      CREATE TABLE IF NOT EXISTS ticket_plan_installments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        plan_id UUID NOT NULL REFERENCES ticket_payment_plans(id) ON DELETE CASCADE,
+        seq INT NOT NULL,
+        amount NUMERIC(12,2) NOT NULL,
+        due_at TIMESTAMPTZ NOT NULL,
+        paid_at TIMESTAMPTZ,
+        checkout_request_id VARCHAR(100),
+        wallet_transaction_id UUID REFERENCES wallet_transactions(id),
+        last_reminded_at TIMESTAMPTZ,
+        UNIQUE (plan_id, seq)
+      );
+      CREATE INDEX IF NOT EXISTS idx_plan_installments_checkout ON ticket_plan_installments(checkout_request_id);
+      CREATE INDEX IF NOT EXISTS idx_plan_installments_due ON ticket_plan_installments(due_at) WHERE paid_at IS NULL;
+    `,
+  },
 ]
 
 export async function runMigrations() {

@@ -38,6 +38,8 @@ export interface MemberStats {
   equipment_hires: number;
   pending_payments: number;
   total_spent: number;
+  wallet_balance: number;
+  active_plans: number;
 }
 
 export interface MemberProfile {
@@ -59,6 +61,41 @@ export interface MemberDashboard {
 
 export const getMyDashboard = async (): Promise<MemberDashboard> => {
   const response = await api.get('/users/me/dashboard');
+  return response.data;
+};
+
+export type CalendarStatus = 'going' | 'reserved' | 'pending' | 'attended' | 'missed' | 'none';
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  /** Kenya wall-clock time serialized with a trailing Z; read it with UTC getters. */
+  event_date: string;
+  /** YYYY-MM-DD of the event in Kenya time. */
+  event_day: string;
+  location: string | null;
+  image_url: string | null;
+  min_price: number | null;
+  sold_out: boolean;
+  is_past: boolean;
+  my_status: CalendarStatus;
+  my_ticket_count: number;
+  plan_remaining: number | null;
+}
+
+export interface CalendarResponse {
+  from: string;
+  to: string;
+  /** Today's date in Nairobi, YYYY-MM-DD. */
+  today: string;
+  /** Day of the earliest and latest active events, or null when there are none. */
+  earliest: string | null;
+  latest: string | null;
+  events: CalendarEvent[];
+}
+
+export const getMyCalendar = async (from: string, to: string): Promise<CalendarResponse> => {
+  const response = await api.get('/users/me/calendar', { params: { from, to } });
   return response.data;
 };
 

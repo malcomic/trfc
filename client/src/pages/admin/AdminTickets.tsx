@@ -56,6 +56,10 @@ export default function AdminTickets() {
         return 'text-green-600 dark:text-green-400'
       case 'failed':
         return 'text-red-600 dark:text-red-400'
+      case 'reserved':
+        return 'text-blue-600 dark:text-blue-400'
+      case 'cancelled':
+        return 'text-gray-500 dark:text-gray-400 line-through'
       default:
         return 'text-yellow-600 dark:text-yellow-400'
     }
@@ -171,6 +175,8 @@ export default function AdminTickets() {
         'M-Pesa receipt': t.mpesa_receipt ?? '',
         Zone: t.zone_name ?? '',
         Status: t.payment_status,
+        'Paid via': t.payment_provider ?? '',
+        Cancelled: t.cancelled_at ?? '',
         'Checked in': t.checked_in_at ?? '',
         Batch: t.purchase_batch_id ?? '',
         Purchased: t.created_at,
@@ -241,6 +247,8 @@ export default function AdminTickets() {
           <option value="paid">Paid</option>
           <option value="pending">Pending</option>
           <option value="failed">Failed</option>
+          <option value="reserved">Reserved (installments)</option>
+          <option value="cancelled">Cancelled</option>
         </select>
         <label className="text-sm font-medium text-gray-700 dark:text-gray-300 sm:ml-4">Zone</label>
         <select
@@ -318,8 +326,14 @@ export default function AdminTickets() {
                     )}
                   </td>
                   <td className="px-6 py-4">{t.zone_name || '—'}</td>
-                  <td className={`px-6 py-4 capitalize font-medium ${statusColor(t.payment_status)}`}>
-                    {t.payment_status}
+                  <td className="px-6 py-4">
+                    <span className={`capitalize font-medium ${statusColor(t.payment_status)}`}>{t.payment_status}</span>
+                    {t.cancelled_at && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400">{new Date(t.cancelled_at).toLocaleDateString()}</div>
+                    )}
+                    {t.payment_provider === 'wallet' && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400">via wallet</div>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     {t.checked_in_at ? (
@@ -353,7 +367,12 @@ export default function AdminTickets() {
             <AdminMobileCardRow label="Zone" value={t.zone_name || '—'} />
             <AdminMobileCardRow
               label="Status"
-              value={<span className={`capitalize font-medium ${statusColor(t.payment_status)}`}>{t.payment_status}</span>}
+              value={
+                <span className={`capitalize font-medium ${statusColor(t.payment_status)}`}>
+                  {t.payment_status}
+                  {t.cancelled_at ? ` · ${new Date(t.cancelled_at).toLocaleDateString()}` : ''}
+                </span>
+              }
             />
             <AdminMobileCardRow
               label="Check-in"

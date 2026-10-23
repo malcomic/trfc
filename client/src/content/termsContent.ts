@@ -9,7 +9,7 @@ export const termsMeta: LegalPageMeta = {
   intro:
     'These Terms of Service govern your use of the TRFC website, account, and related services. Please read them carefully before registering or making a purchase.',
   watermark: 'TERMS',
-  lastUpdated: 'June 7, 2026',
+  lastUpdated: 'October 22, 2026',
 }
 
 export const termsSections: LegalSection[] = [
@@ -77,10 +77,27 @@ export const termsSections: LegalSection[] = [
     ],
   },
   {
+    id: 'wallet',
+    title: 'TRFC Wallet',
+    paragraphs: [
+      'Members can add money to their TRFC wallet by M-Pesa. Wallet funds can only be used to pay for TRFC event tickets, in full or in installments. They cannot be used for shop orders, medals or equipment hire.',
+      'Wallet funds, including credits from cancelled tickets or unfinished installment plans, are non-refundable, cannot be withdrawn or transferred to another account, and do not earn interest.',
+    ],
+  },
+  {
+    id: 'installments',
+    title: 'Installment Plans',
+    paragraphs: [
+      'Where an event allows it, tickets can be paid in 2 or 3 equal installments on a fixed schedule ending on the day of the event. The first installment is paid at booking. Tickets are reserved while the plan is in progress and issued once it is fully paid.',
+      'If the first installment is not paid within 24 hours, the reservation is released. If a plan is not fully paid by the day of the event, the reserved tickets are released and the amount already paid is credited to your wallet. It is not refunded.',
+    ],
+  },
+  {
     id: 'refunds-and-cancellations',
     title: 'Refunds and Cancellations',
     paragraphs: [
-      'Refund and cancellation policies may vary by event, product, or hire type. Where refunds are offered, they will be processed to the original M-Pesa number used for payment where possible.',
+      'Paid event tickets can be cancelled from your dashboard at least 7 days before the event. You can cancel one ticket per calendar month (Nairobi time). Cancelled tickets are not refunded: the ticket price is credited to your TRFC wallet for future events. Cancelling a ticket on an installment plan cancels the whole plan, and the amount paid so far is credited to your wallet. Tickets that have been used for entry cannot be cancelled.',
+      'Refund and cancellation policies for products and equipment hire may vary. Where refunds are offered, they will be processed to the original M-Pesa number used for payment where possible.',
       'Contact us at ' + siteContact.email + ' within a reasonable time if you believe a transaction was made in error or if you wish to request a refund. Each request will be reviewed on a case-by-case basis.',
     ],
   },

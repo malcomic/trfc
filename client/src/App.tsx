@@ -65,6 +65,7 @@ import AdminTickets from './pages/admin/AdminTickets'
 import AdminPartnerships from './pages/admin/AdminPartnerships'
 import AdminSponsorshipTiers from './pages/admin/AdminSponsorshipTiers'
 import AdminSignups from './pages/admin/AdminSignups'
+import AdminWallets from './pages/admin/AdminWallets'
 import AdminMedals from './pages/admin/AdminMedals'
 import AdminAppearance from './pages/admin/AdminAppearance'
 import AdminScan from './pages/admin/AdminScan'
@@ -150,6 +151,7 @@ const router = createBrowserRouter(
           <Route path="partnerships" element={<AdminPartnerships />} />
           <Route path="sponsorship-tiers" element={<AdminSponsorshipTiers />} />
           <Route path="signups" element={<AdminSignups />} />
+          <Route path="wallets" element={<AdminWallets />} />
           <Route path="appearance" element={<AdminAppearance />} />
           <Route path="captains" element={<AdminCaptains />} />
           <Route path="captains/regions" element={<AdminRegions />} />

@@ -1,10 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { getEventById, buyEventTickets } from '../api/events'
 import { initiateTicketPayment } from '../api/payments'
 import { getZones, type Zone } from '../api/zones'
+import {
+  createPlan,
+  getShortfall,
+  getWallet,
+  payFromWallet,
+  payPlan,
+  previewPlanSchedule,
+  type ScheduleItem,
+} from '../api/wallet'
 import PaymentStatusModal from '../components/PaymentStatusModal'
+import TopUpModal from '../components/wallet/TopUpModal'
+import { formatDate, formatKes } from '../utils/captainDisplay'
 import { AlertCircle, Loader, ArrowLeft } from 'lucide-react'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 import { useAuth } from '../context/AuthContext'
@@ -18,6 +29,11 @@ type CheckoutForm = {
   phone: string
   zoneId: string
 }
+
+type PaymentMethod = 'mpesa' | 'wallet' | 'installments'
+
+/** A booking created on this page that still needs paying, reused on retry instead of booking again. */
+type PendingBooking = { batchId: string; ticketTypeId: string; quantity: number; totalPrice: number; eventTitle: string }
 
 const ZONE_STORAGE_KEY = 'trfc_zone'
 
@@ -74,9 +90,59 @@ export default function EventCheckout() {
     zoneName?: string
   } | null>(null)
 
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('mpesa')
+  const [walletBalance, setWalletBalance] = useState<number | null>(null)
+  const [installmentCount, setInstallmentCount] = useState(2)
+  const [schedule, setSchedule] = useState<ScheduleItem[] | null>(null)
+  const [scheduleError, setScheduleError] = useState('')
+  const [depositSource, setDepositSource] = useState<'wallet' | 'mpesa'>('mpesa')
+  const [pendingBooking, setPendingBooking] = useState<PendingBooking | null>(null)
+  const [topUpShortfall, setTopUpShortfall] = useState<number | null>(null)
+  const [afterPaymentPath, setAfterPaymentPath] = useState<string | null>(null)
+
   const quantity = watch('quantity')
   const unitPrice = selectedType ? Number(selectedType.price) : 0
   const totalPrice = unitPrice * Number(quantity || 0)
+  const maxInstallments = event?.installments_allowed ?? 0
+  const installmentOptions = [2, 3].filter((n) => n <= maxInstallments)
+
+  const refreshWallet = useCallback(() => {
+    if (!user) return
+    getWallet()
+      .then((w) => setWalletBalance(w.balance))
+      .catch(() => setWalletBalance(null))
+  }, [user])
+
+  useEffect(() => {
+    refreshWallet()
+  }, [refreshWallet])
+
+  useEffect(() => {
+    if (maxInstallments >= 2 && installmentCount > maxInstallments) setInstallmentCount(2)
+  }, [maxInstallments, installmentCount])
+
+  useEffect(() => {
+    if (paymentMethod !== 'installments' || !eventId || totalPrice <= 0) {
+      setSchedule(null)
+      setScheduleError('')
+      return
+    }
+    let cancelled = false
+    previewPlanSchedule({ eventId, total: totalPrice, installments: installmentCount })
+      .then((data) => {
+        if (cancelled) return
+        setSchedule(data.schedule)
+        setScheduleError('')
+      })
+      .catch((err: any) => {
+        if (cancelled) return
+        setSchedule(null)
+        setScheduleError(err.response?.data?.error || 'Installments are not available for this event')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [paymentMethod, eventId, totalPrice, installmentCount])
   const maxQty =
     selectedType?.remaining != null
       ? Math.min(10, selectedType.remaining)
@@ -141,6 +207,79 @@ export default function EventCheckout() {
     })
   }, [event, selectedType, initialQty])
 
+  const bookTickets = async (data: CheckoutForm, normalizedEmail: string): Promise<PendingBooking> => {
+    if (
+      pendingBooking &&
+      pendingBooking.ticketTypeId === selectedType!.id &&
+      pendingBooking.quantity === Number(data.quantity)
+    ) {
+      return pendingBooking
+    }
+    const ticketResult = await buyEventTickets(eventId!, {
+      ticketTypeId: selectedType!.id,
+      quantity: Number(data.quantity),
+      email: normalizedEmail,
+      phone: data.phone,
+      attendeeName: data.attendeeName.trim(),
+      zoneId: data.zoneId,
+    })
+    storeZone(data.zoneId)
+    const booking: PendingBooking = {
+      batchId: ticketResult.purchaseBatchId,
+      ticketTypeId: selectedType!.id,
+      quantity: ticketResult.quantity,
+      totalPrice: ticketResult.totalPrice,
+      eventTitle: ticketResult.eventTitle,
+    }
+    setPendingBooking(booking)
+    return booking
+  }
+
+  const payWithWallet = async (booking: PendingBooking, contact: { phone: string; email: string }) => {
+    try {
+      const result = await payFromWallet([booking.batchId])
+      setPendingBooking(null)
+      const reference = result.references[0]
+      const params = new URLSearchParams(contact)
+      navigate(`/ticket-confirmation/${reference}?${params.toString()}`, {
+        state: {
+          eventTitle: booking.eventTitle,
+          quantity: booking.quantity,
+          totalPrice: booking.totalPrice,
+          ...contact,
+        },
+      })
+    } catch (err: any) {
+      const shortfall = getShortfall(err)
+      if (shortfall != null) {
+        setTopUpShortfall(shortfall)
+        return
+      }
+      throw err
+    }
+  }
+
+  const startInstallments = async (booking: PendingBooking, contactPhone: string) => {
+    const plan = await createPlan({ purchaseBatchId: booking.batchId, installments: installmentCount })
+    setPendingBooking(null)
+    const plans = '/dashboard?tab=wallet'
+    // The plan exists even if the deposit doesn't go through; it can be paid from the dashboard.
+    try {
+      const result = await payPlan(plan.id, { mode: 'next', source: depositSource, phone: contactPhone })
+      if (result.source === 'mpesa' && result.checkoutRequestId) {
+        setAfterPaymentPath(plans)
+        setCheckoutRequestId(result.checkoutRequestId)
+        setShowPaymentModal(true)
+        return
+      }
+      navigate(plans)
+    } catch (err: any) {
+      navigate(plans, {
+        state: { notice: err.response?.data?.error || 'Your plan was created, but the deposit was not paid yet.' },
+      })
+    }
+  }
+
   const onSubmit = async (data: CheckoutForm) => {
     if (!selectedType) {
       setError('Please select a ticket type')
@@ -150,16 +289,33 @@ export default function EventCheckout() {
       setSubmitting(true)
       setError('')
       const normalizedEmail = data.email.trim().toLowerCase()
-      const normalizedName = data.attendeeName.trim()
       setPhone(data.phone)
       setEmail(normalizedEmail)
+
+      const chosen: PaymentMethod = user && totalPrice > 0 ? paymentMethod : 'mpesa'
+
+      if (chosen === 'wallet') {
+        const booking = await bookTickets(data, normalizedEmail)
+        await payWithWallet(booking, { phone: data.phone, email: normalizedEmail })
+        return
+      }
+
+      if (chosen === 'installments') {
+        if (!schedule) {
+          setError(scheduleError || 'Installments are not available for this booking')
+          return
+        }
+        const booking = await bookTickets(data, normalizedEmail)
+        await startInstallments(booking, data.phone)
+        return
+      }
 
       const ticketResult = await buyEventTickets(eventId!, {
         ticketTypeId: selectedType.id,
         quantity: Number(data.quantity),
         email: normalizedEmail,
         phone: data.phone,
-        attendeeName: normalizedName,
+        attendeeName: data.attendeeName.trim(),
         zoneId: data.zoneId,
       })
       storeZone(data.zoneId)
@@ -196,6 +352,10 @@ export default function EventCheckout() {
 
   const handleModalClose = () => {
     setShowPaymentModal(false)
+    if (afterPaymentPath) {
+      navigate(afterPaymentPath)
+      return
+    }
     const params = new URLSearchParams({ phone, email })
     navigate(`/ticket-confirmation/${checkoutRequestId}?${params.toString()}`, {
       state: {
@@ -230,6 +390,20 @@ export default function EventCheckout() {
   }
 
   const qtyOptions = Array.from({ length: Math.max(0, maxQty) }, (_, i) => i + 1)
+
+  const method: PaymentMethod = user && totalPrice > 0 ? paymentMethod : 'mpesa'
+  const submitLabel =
+    method === 'wallet'
+      ? 'Pay from Wallet'
+      : method === 'installments'
+        ? `Reserve & pay ${schedule ? formatKes(schedule[0].amount) : 'deposit'}`
+        : 'Pay with M-Pesa'
+  const summaryNote =
+    method === 'wallet'
+      ? 'The total is deducted from your TRFC wallet and your tickets are issued immediately.'
+      : method === 'installments'
+        ? `Paid in ${installmentCount} installments. Tickets are issued once the final payment is made.`
+        : 'An M-Pesa prompt will appear on your phone after checkout. Enter your PIN to complete payment.'
 
   return (
     <div className={pageRoot}>
@@ -335,6 +509,106 @@ export default function EventCheckout() {
             {errors.zoneId && <p className="text-red-400 text-sm mt-1">{errors.zoneId.message}</p>}
             <p className="text-xs text-fog light:text-fog-light mt-1">We use this to show flash deals available in your area.</p>
           </div>
+          {user && totalPrice > 0 && (
+            <div>
+              <label className="block text-sm font-semibold mb-2">Payment method</label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {([
+                  { id: 'mpesa', label: 'M-Pesa', hint: 'Pay in full now' },
+                  {
+                    id: 'wallet',
+                    label: 'Wallet',
+                    hint: walletBalance == null ? 'Balance unavailable' : `Balance ${formatKes(walletBalance)}`,
+                  },
+                  ...(installmentOptions.length
+                    ? [{ id: 'installments', label: 'Installments', hint: `Up to ${maxInstallments} payments` }]
+                    : []),
+                ] as { id: PaymentMethod; label: string; hint: string }[]).map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setPaymentMethod(opt.id)}
+                    className={`text-left px-3 py-2 border transition-colors ${
+                      paymentMethod === opt.id
+                        ? 'border-accent light:border-accent-light bg-accent/10 light:bg-accent-light/10'
+                        : 'border-white/10 light:border-black/10 hover:border-white/30 light:hover:border-black/30'
+                    }`}
+                  >
+                    <span className="block font-semibold text-sm">{opt.label}</span>
+                    <span className="block text-xs text-fog light:text-fog-light">{opt.hint}</span>
+                  </button>
+                ))}
+              </div>
+
+              {paymentMethod === 'wallet' && walletBalance != null && walletBalance < totalPrice && (
+                <p className="text-xs text-amber-400 mt-2">
+                  Your wallet is {formatKes(totalPrice - walletBalance)} short. You'll be asked to top up via M-Pesa
+                  first.
+                </p>
+              )}
+
+              {paymentMethod === 'installments' && (
+                <div className="mt-3 space-y-3">
+                  {installmentOptions.length > 1 && (
+                    <div className="flex gap-2">
+                      {installmentOptions.map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setInstallmentCount(n)}
+                          className={`px-3 py-1 text-sm border ${
+                            installmentCount === n
+                              ? 'border-accent light:border-accent-light text-accent light:text-accent-light'
+                              : 'border-white/10 light:border-black/10'
+                          }`}
+                        >
+                          {n} payments
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {scheduleError && <p className="text-sm text-red-300">{scheduleError}</p>}
+                  {schedule && (
+                    <ul className="text-sm divide-y divide-white/5 light:divide-black/5 border border-white/10 light:border-black/10">
+                      {schedule.map((s) => (
+                        <li key={s.seq} className="flex justify-between px-3 py-2">
+                          <span>
+                            {s.seq === 1 ? 'Today' : `Payment ${s.seq} · due ${formatDate(s.due_at)}`}
+                          </span>
+                          <span className="font-semibold">{formatKes(s.amount)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div>
+                    <p className="text-xs font-semibold mb-1">Pay the first installment from</p>
+                    <div className="flex gap-4 text-sm">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          checked={depositSource === 'mpesa'}
+                          onChange={() => setDepositSource('mpesa')}
+                        />
+                        M-Pesa
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          checked={depositSource === 'wallet'}
+                          onChange={() => setDepositSource('wallet')}
+                        />
+                        Wallet{walletBalance != null && ` (${formatKes(walletBalance)})`}
+                      </label>
+                    </div>
+                  </div>
+                  <p className="text-xs text-fog light:text-fog-light">
+                    Your tickets are reserved while you pay. They're issued once the last installment is paid. If the
+                    plan isn't finished by event day, what you paid moves to your wallet.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
           {error && (
             <div className="bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-300 flex gap-2">
               <AlertCircle size={16} className="flex-shrink-0" /> {error}
@@ -345,7 +619,7 @@ export default function EventCheckout() {
             disabled={submitting || !selectedType || qtyOptions.length === 0}
             className="w-full bg-accent light:bg-accent-light text-black light:text-white py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-accent/90 light:hover:bg-accent-light/90 disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            {submitting ? <><Loader className="w-4 h-4 animate-spin" /> Processing…</> : 'Pay with M-Pesa'}
+            {submitting ? <><Loader className="w-4 h-4 animate-spin" /> Processing…</> : submitLabel}
           </button>
         </form>
 
@@ -356,7 +630,7 @@ export default function EventCheckout() {
           <p className="font-bebas text-3xl text-accent light:text-accent-light">
             {totalPrice === 0 ? 'FREE' : `KES ${totalPrice.toLocaleString()}`}
           </p>
-          <p className="text-xs text-fog light:text-fog-light mt-4">An M-Pesa prompt will appear on your phone after checkout. Enter your PIN to complete payment.</p>
+          <p className="text-xs text-fog light:text-fog-light mt-4">{summaryNote}</p>
         </div>
       </div>
 
@@ -365,6 +639,27 @@ export default function EventCheckout() {
         checkoutRequestId={checkoutRequestId}
         phone={phone}
         onClose={handleModalClose}
+      />
+
+      <TopUpModal
+        isOpen={topUpShortfall != null}
+        defaultAmount={topUpShortfall ?? undefined}
+        title="Top up to finish paying"
+        onClose={() => setTopUpShortfall(null)}
+        onSuccess={async () => {
+          setTopUpShortfall(null)
+          refreshWallet()
+          if (!pendingBooking) return
+          try {
+            setSubmitting(true)
+            setError('')
+            await payWithWallet(pendingBooking, { phone, email })
+          } catch (err: any) {
+            setError(err.response?.data?.error || 'Wallet payment failed. Please try again.')
+          } finally {
+            setSubmitting(false)
+          }
+        }}
       />
     </div>
   )

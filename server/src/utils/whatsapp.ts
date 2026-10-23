@@ -63,3 +63,17 @@ export function sendSignupWelcome(to: string, programName: string): Promise<bool
 export function sendAccountWelcome(to: string, firstName: string, captainLabel: string): Promise<boolean> {
   return sendTemplateMessage(to, config.whatsapp.welcomeTemplateName, [firstName, captainLabel])
 }
+
+/** Installment reminder. Template variables: first name, amount, event title, due date. Skipped when no template is set. */
+export async function sendInstallmentReminder(
+  to: string,
+  params: { firstName: string; amount: string; eventTitle: string; dueDate: string }
+): Promise<boolean> {
+  if (!config.whatsapp.installmentTemplateName) return false
+  return sendTemplateMessage(to, config.whatsapp.installmentTemplateName, [
+    params.firstName,
+    params.amount,
+    params.eventTitle,
+    params.dueDate,
+  ])
+}

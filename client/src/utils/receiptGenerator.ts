@@ -1,4 +1,4 @@
-import { PaymentHistoryItem } from '../api/payments'
+import { PaymentHistoryItem, paymentTypeLabel } from '../api/payments'
 import { formatSelectedOptions } from './productOptions'
 
 interface ReceiptData {
@@ -18,9 +18,20 @@ interface ReceiptData {
   }>
 }
 
+function labelFor(data: PaymentHistoryItem | ReceiptData): string {
+  return data.type === 'wallet' ? paymentTypeLabel(data as PaymentHistoryItem) : getTypeLabel(data.type)
+}
+
+function paymentMethodFor(data: PaymentHistoryItem | ReceiptData): string {
+  if (data.type !== 'wallet') return 'M-Pesa'
+  const walletType = (data as PaymentHistoryItem).wallet_type
+  if (walletType === 'topup' || data.mpesa_receipt) return 'M-Pesa'
+  return 'TRFC Wallet'
+}
+
 export function generateReceiptText(data: PaymentHistoryItem | ReceiptData): string {
   const date = new Date(data.created_at)
-  const typeLabel = getTypeLabel(data.type)
+  const typeLabel = labelFor(data)
 
   return `
 ╔════════════════════════════════════════╗
@@ -51,7 +62,7 @@ ${data.items.map((item) => `${item.name}${formatSelectedOptions(item) ? ` (${for
 ────────────────────────────────────────
 ` : ''}
 
-PAYMENT METHOD: M-Pesa
+PAYMENT METHOD: ${paymentMethodFor(data)}
 
 CONTACT INFORMATION
 Email: support@trfc.com
@@ -94,7 +105,7 @@ export function downloadReceiptAsCSV(
   const headers = ['ID', 'Type', 'Amount (KES)', 'Status', 'Date', 'M-Pesa Receipt', 'Reference']
   const rows = payments.map((payment) => [
     payment.id,
-    getTypeLabel(payment.type),
+    labelFor(payment),
     payment.amount ? payment.amount.toFixed(2) : 'N/A',
     payment.payment_status,
     new Date(payment.created_at).toLocaleDateString('en-KE'),

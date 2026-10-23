@@ -26,7 +26,7 @@ export async function getEventTicketTypes(
      LEFT JOIN (
        SELECT ticket_type_id, COUNT(*)::int AS cnt
        FROM tickets
-       WHERE payment_status IN ('pending', 'paid')
+       WHERE payment_status IN ('pending', 'paid', 'reserved')
          AND ticket_type_id IS NOT NULL
        GROUP BY ticket_type_id
      ) sold ON sold.ticket_type_id = ett.id

@@ -21,6 +21,7 @@ import {
   MAX_GUEST_EMAIL_CHANGES,
   resendTicketBatch,
 } from '../utils/ticketEmail.js'
+import { annotateCancellation, cancelTicket, CancellationError } from '../utils/ticketCancellation.js'
 import { randomUUID } from 'crypto'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -111,7 +112,7 @@ export async function buyTicket(req: Request, res: Response) {
     if (ticketType.capacity != null) {
       const countResult = await query(
         `SELECT COUNT(*)::int AS cnt FROM tickets
-         WHERE ticket_type_id = $1 AND payment_status IN ('pending', 'paid')`,
+         WHERE ticket_type_id = $1 AND payment_status IN ('pending', 'paid', 'reserved')`,
         [ticketTypeId]
       )
       const existing = countResult.rows[0].cnt
@@ -202,10 +203,29 @@ export async function getUserTickets(req: Request, res: Response) {
       [userId]
     )
 
-    res.json(result.rows)
+    res.json(await annotateCancellation(userId, result.rows))
   } catch (error) {
     console.error('Error fetching user tickets:', error)
     res.status(500).json({ error: 'Failed to fetch tickets' })
+  }
+}
+
+export async function cancelMyTicket(req: Request, res: Response) {
+  const userId = req.user?.id
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' })
+  try {
+    const result = await cancelTicket(String(req.params.id), userId)
+    res.json({
+      credited: result.credited,
+      balance: result.balance,
+      cancelledTicketIds: result.cancelledTicketIds,
+    })
+  } catch (error) {
+    if (error instanceof CancellationError) {
+      return res.status(error.status).json({ error: error.message })
+    }
+    console.error('Error cancelling ticket:', error)
+    res.status(500).json({ error: 'Failed to cancel ticket' })
   }
 }
 

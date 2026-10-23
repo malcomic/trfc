@@ -107,7 +107,9 @@ export const getMyDashboard = async (req: Request, res: Response) => {
               WHERE p.user_id = $1 AND p.payment_status = 'paid') +
            (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE user_id = $1 AND payment_status = 'paid') +
            (SELECT COALESCE(SUM(total_cost), 0) FROM equipment_hire WHERE user_id = $1 AND payment_status = 'paid')
-         )::float AS total_spent`,
+         )::float AS total_spent,
+         COALESCE((SELECT balance FROM wallets WHERE user_id = $1), 0)::float AS wallet_balance,
+         (SELECT COUNT(*) FROM ticket_payment_plans WHERE user_id = $1 AND status = 'active')::int AS active_plans`,
       [userId]
     );
 
@@ -116,6 +118,148 @@ export const getMyDashboard = async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to load your dashboard' });
+  }
+};
+
+export type CalendarStatus = 'going' | 'reserved' | 'pending' | 'attended' | 'missed' | 'none';
+
+export interface CalendarRow {
+  event_day: string;
+  paid_count: number;
+  reserved_count: number;
+  pending_count: number;
+  checked_in: boolean;
+}
+
+const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_CALENDAR_DAYS = 400;
+const NAIROBI_OFFSET_MS = 3 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const dayString = (date: Date) => date.toISOString().slice(0, 10);
+
+/** Today's date in Nairobi (UTC+3, no daylight saving) as YYYY-MM-DD. */
+export function nairobiToday(now: Date = new Date()): string {
+  return dayString(new Date(now.getTime() + NAIROBI_OFFSET_MS));
+}
+
+function parseDay(value: unknown): Date | null {
+  if (typeof value !== 'string' || !DAY_PATTERN.test(value)) return null;
+  const date = new Date(`${value}T00:00:00Z`);
+  return Number.isNaN(date.getTime()) || dayString(date) !== value ? null : date;
+}
+
+/** The member's relationship to an event, from their ticket counts. Cancelled and failed tickets aren't counted. */
+export function deriveCalendarStatus(row: CalendarRow, today: string): CalendarStatus {
+  const past = row.event_day < today;
+  if (Number(row.paid_count) > 0) {
+    if (past) return row.checked_in ? 'attended' : 'missed';
+    return 'going';
+  }
+  if (past) return 'none';
+  if (Number(row.reserved_count) > 0) return 'reserved';
+  if (Number(row.pending_count) > 0) return 'pending';
+  return 'none';
+}
+
+export const getMyCalendar = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const today = nairobiToday();
+
+    let from: Date | null;
+    let to: Date | null;
+    if (req.query.from === undefined && req.query.to === undefined) {
+      const [year, month] = today.split('-').map(Number);
+      from = new Date(Date.UTC(year, month - 1, 1));
+      to = new Date(Date.UTC(year, month, 0));
+    } else {
+      from = parseDay(req.query.from);
+      to = parseDay(req.query.to);
+    }
+    if (!from || !to) {
+      return res.status(400).json({ error: 'from and to must be dates in the format YYYY-MM-DD' });
+    }
+    if (to < from) return res.status(400).json({ error: '"to" must be on or after "from"' });
+    if ((to.getTime() - from.getTime()) / DAY_MS + 1 > MAX_CALENDAR_DAYS) {
+      return res.status(400).json({ error: `The range can be at most ${MAX_CALENDAR_DAYS} days` });
+    }
+
+    const [events, earliest] = await Promise.all([
+      query(
+        `SELECT e.id, e.title, e.event_date, e.location, e.image_url,
+                to_char(e.event_date, 'YYYY-MM-DD') AS event_day,
+                COALESCE(types.min_price, e.price)::float AS min_price,
+                (COALESCE(types.type_count, 0) > 0 AND COALESCE(types.all_sold, false)) AS sold_out,
+                COALESCE(mine.paid_count, 0)::int AS paid_count,
+                COALESCE(mine.reserved_count, 0)::int AS reserved_count,
+                COALESCE(mine.pending_count, 0)::int AS pending_count,
+                COALESCE(mine.checked_in, false) AS checked_in,
+                plan.remaining::float AS plan_remaining
+         FROM events e
+         LEFT JOIN LATERAL (
+           SELECT MIN(ett.price) AS min_price, COUNT(*) AS type_count,
+                  bool_and(ett.capacity IS NOT NULL AND (
+                    SELECT COUNT(*) FROM tickets x
+                    WHERE x.ticket_type_id = ett.id AND x.payment_status IN ('pending', 'paid', 'reserved')
+                  ) >= ett.capacity) AS all_sold
+           FROM event_ticket_types ett
+           WHERE ett.event_id = e.id AND ett.is_active = true
+         ) types ON TRUE
+         LEFT JOIN LATERAL (
+           SELECT COUNT(*) FILTER (WHERE t.payment_status = 'paid') AS paid_count,
+                  COUNT(*) FILTER (WHERE t.payment_status = 'reserved') AS reserved_count,
+                  COUNT(*) FILTER (WHERE t.payment_status = 'pending') AS pending_count,
+                  bool_or(t.checked_in_at IS NOT NULL) AS checked_in
+           FROM tickets t
+           WHERE t.user_id = $1 AND t.event_id = e.id
+             AND t.payment_status IN ('paid', 'reserved', 'pending')
+         ) mine ON TRUE
+         LEFT JOIN LATERAL (
+           SELECT SUM(p.total_amount - p.amount_paid) AS remaining
+           FROM ticket_payment_plans p
+           WHERE p.user_id = $1 AND p.event_id = e.id AND p.status = 'active'
+         ) plan ON TRUE
+         WHERE e.is_active = true
+           AND e.event_date >= $2::date
+           AND e.event_date < ($3::date + 1)
+         ORDER BY e.event_date ASC`,
+        [userId, dayString(from), dayString(to)]
+      ),
+      query(
+        `SELECT to_char(MIN(event_date), 'YYYY-MM-DD') AS earliest,
+                to_char(MAX(event_date), 'YYYY-MM-DD') AS latest
+         FROM events WHERE is_active = true`
+      ),
+    ]);
+
+    res.json({
+      from: dayString(from),
+      to: dayString(to),
+      today,
+      earliest: earliest.rows[0]?.earliest ?? null,
+      latest: earliest.rows[0]?.latest ?? null,
+      events: events.rows.map((row) => {
+        const status = deriveCalendarStatus(row, today);
+        return {
+          id: row.id,
+          title: row.title,
+          event_date: row.event_date,
+          event_day: row.event_day,
+          location: row.location,
+          image_url: row.image_url,
+          min_price: row.min_price,
+          sold_out: Boolean(row.sold_out),
+          is_past: row.event_day < today,
+          my_status: status,
+          my_ticket_count: Number(row.paid_count) + Number(row.reserved_count),
+          plan_remaining: status === 'reserved' ? row.plan_remaining : null,
+        };
+      }),
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to load your calendar' });
   }
 };
 

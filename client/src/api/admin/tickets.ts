@@ -14,6 +14,8 @@ export interface AdminTicket {
   mpesa_receipt?: string | null
   checked_in_at?: string | null
   checked_in_by?: string | null
+  cancelled_at?: string | null
+  payment_provider?: string | null
   email?: string | null
   attendee_name?: string | null
   zone_id?: string | null
