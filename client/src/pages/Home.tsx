@@ -1,15 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertCircle, Footprints, Flame, Timer, Mountain, Star, type LucideIcon } from 'lucide-react'
+import { AlertCircle, ArrowRight, Footprints, Flame, Timer, Mountain, Star, type LucideIcon } from 'lucide-react'
 import { getEvents } from '../api/events'
 import { getHeroSlides, type HeroSlide } from '../api/gallery'
 import { getTestimonials, Testimonial } from '../api/testimonials'
 import { pageRoot, cardSurface } from '../utils/themeClasses'
 import { getSafeImageUrl } from '../utils/imageUrl'
 import HeroCarousel from '../components/HeroCarousel'
-import OnboardingFlow, { type StartRequest } from '../components/onboarding/OnboardingFlow'
-import { PROGRAMS, PROGRAM_ORDER, type ProgramId } from '../content/programs'
-import { HERO_COPY } from '../content/onboarding'
+import HomeHero, { HOME_HERO_COPY } from '../components/home/HomeHero'
+import CtaButton from '../components/programs/CtaButton'
+import { PROGRAMS, PROGRAM_ORDER, formatKsh, programPath, type ProgramId } from '../content/programs'
 
 const EVENT_IMAGE_FALLBACK =
   'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=600&q=80'
@@ -27,8 +27,6 @@ export default function Home() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [startRequest, setStartRequest] = useState<StartRequest | null>(null)
-  const heroRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     fetchData()
@@ -54,15 +52,10 @@ export default function Home() {
     }
   }
 
-  const startFlow = (program?: ProgramId) => {
-    setStartRequest({ program, nonce: Date.now() })
-    heroRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-
   return (
     <div className={pageRoot}>
 
-      {/* ── HERO + ONBOARDING FLOW ─────────────────────────────────── */}
+      {/* ── HERO ──────────────────────────────────────────────────── */}
       <style>{`
         @keyframes slideRight {
           from { opacity: 0; transform: translateX(-60px); }
@@ -85,7 +78,7 @@ export default function Home() {
         .hero-ctas { opacity: 0; animation: fadeUp 0.8s ease 0.8s forwards; }
       `}</style>
 
-      <section ref={heroRef} className="relative min-h-screen w-full flex items-center overflow-hidden scroll-mt-16">
+      <section className="relative min-h-screen w-full flex items-center overflow-hidden">
       <div className="absolute inset-0 z-0 w-full h-full bg-ink light:bg-ink-light">
           {heroSlides.length > 0 && <HeroCarousel slides={heroSlides} />}
         </div>
@@ -96,7 +89,7 @@ export default function Home() {
         <div className="absolute left-[6%] top-[15%] bottom-[15%] w-0.5 bg-gradient-to-b from-transparent via-accent light:via-accent-light to-transparent opacity-60 z-10" />
 
         <div className="max-w-[1200px] mx-auto px-[6%] py-[80px] relative z-10 w-full">
-          <OnboardingFlow startRequest={startRequest} />
+          <HomeHero />
         </div>
       </section>
 
@@ -140,11 +133,10 @@ export default function Home() {
               const program = PROGRAMS[id]
               const Icon = PROGRAM_ICONS[id]
               return (
-                <button
+                <Link
                   key={id}
-                  type="button"
-                  onClick={() => startFlow(id)}
-                  className={`${cardSurface} text-left p-6 flex flex-col transition-all duration-300 hover:-translate-y-1.5 hover:border-accent light:hover:border-accent-light group`}
+                  to={programPath(id)}
+                  className={`${cardSurface} text-left p-6 flex flex-col no-underline transition-all duration-300 hover:-translate-y-1.5 hover:border-accent light:hover:border-accent-light group`}
                 >
                   <div className="flex items-center justify-between mb-5">
                     <div className="w-11 h-11 bg-accent/10 light:bg-accent-light/10 border border-accent/20 light:border-accent-light/20 flex items-center justify-center text-accent light:text-accent-light">
@@ -152,12 +144,12 @@ export default function Home() {
                     </div>
                     <span
                       className={`font-barlow-condensed font-bold text-[11px] tracking-widest uppercase px-2 py-0.5 ${
-                        program.requiresPaid
+                        program.price > 0
                           ? 'border border-white/20 light:border-black/20 text-chalk/80 light:text-chalk-light/80'
                           : 'bg-accent light:bg-accent-light text-black light:text-white'
                       }`}
                     >
-                      {program.requiresPaid ? 'TRFC+' : 'Free'}
+                      {formatKsh(program.price)}
                     </span>
                   </div>
                   <h3 className="font-barlow-condensed font-bold text-2xl tracking-tighter text-chalk light:text-chalk-light mb-2">
@@ -167,7 +159,7 @@ export default function Home() {
                   <span className="font-barlow-condensed text-xs tracking-widest uppercase font-bold text-accent light:text-accent-light">
                     See the program →
                   </span>
-                </button>
+                </Link>
               )
             })}
           </div>
@@ -283,15 +275,11 @@ export default function Home() {
             <h2 className="font-bebas text-[clamp(36px,5vw,64px)] text-chalk light:text-chalk-light leading-tight mb-3">
               FIND YOUR PROGRAM.<br />START THIS WEEK.
             </h2>
-            <p className="text-fog light:text-fog-light text-base max-w-sm">{HERO_COPY.smallLine}</p>
+            <p className="text-fog light:text-fog-light text-base max-w-sm">{HOME_HERO_COPY.smallLine}</p>
           </div>
-          <button
-            type="button"
-            onClick={() => startFlow()}
-            className="bg-accent light:bg-accent-light text-black light:text-white px-12 py-4 font-barlow-condensed font-black text-lg tracking-widest uppercase clip-angled-lg inline-block transition-all duration-200 hover:scale-106 hover:bg-accent/90 light:hover:bg-accent-light/90 animate-pulse-ring"
-          >
-            {HERO_COPY.button}
-          </button>
+          <CtaButton to="/find-my-program" className="max-sm:w-full">
+            {HOME_HERO_COPY.button} <ArrowRight size={20} aria-hidden="true" />
+          </CtaButton>
         </div>
       </section>
 

@@ -1,12 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { AlertCircle, ArrowRight, Check, ChevronDown, Lock, Mail, MapPin, MessageCircle, Phone, User, Users } from 'lucide-react'
 import { registerUser } from '../../api/auth'
 import { getCaptainDirectory, getReferrer, type CaptainDirectoryEntry, type Referrer } from '../../api/captains'
 import { useAuth } from '../../context/AuthContext'
 import { clearReferral, getStoredReferral } from '../../utils/referral'
 import { getPasswordStrength } from '../../utils/passwordStrength'
+import { safeRedirect } from '../../utils/safeRedirect'
 import { PasswordToggle } from '../ui'
 import { SIGNUP_ANCHOR } from './SignupCta'
 
@@ -109,7 +110,10 @@ export default function RegisterForm() {
     formState: { errors },
   } = useForm<RegisterFormValues>({ defaultValues: { captainId: '' } })
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { login } = useAuth()
+  const redirectTo = safeRedirect(searchParams.get('redirect'), '/dashboard')
+  const loginPath = searchParams.get('redirect') ? `/login?redirect=${encodeURIComponent(redirectTo)}` : '/login'
 
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
@@ -168,7 +172,7 @@ export default function RegisterForm() {
       })
       clearReferral()
       login(response.token, response.user, response.refreshToken)
-      navigate('/')
+      navigate(redirectTo)
     } catch (error: any) {
       setErrorMessage(error.response?.data?.error || 'Registration failed. Please try again.')
     } finally {
@@ -194,7 +198,7 @@ export default function RegisterForm() {
               {errorMessage.includes('Sign in instead') && (
                 <>
                   {' '}
-                  <Link to="/login" className="font-bold underline text-current">Sign in</Link>
+                  <Link to={loginPath} className="font-bold underline text-current">Sign in</Link>
                 </>
               )}
             </span>
@@ -364,7 +368,7 @@ export default function RegisterForm() {
           <button
             type="submit"
             disabled={loading || !agreed}
-            className="w-full min-h-14 bg-accent light:bg-accent-light border-0 text-black light:text-white font-barlow-condensed font-black text-lg tracking-widest uppercase px-8 cursor-pointer clip-angled transition-all duration-200 flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent/90 light:hover:bg-accent-light/90"
+            className="w-full min-h-14 bg-cta border-0 text-cta-ink font-barlow-condensed font-black text-lg tracking-widest uppercase px-8 cursor-pointer clip-angled transition-all duration-200 flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-cta/90"
           >
             {loading ? 'Creating your account…' : <><span>Make my free account</span> <ArrowRight size={18} /></>}
           </button>
@@ -375,7 +379,7 @@ export default function RegisterForm() {
         </p>
         <p className="m-0 text-sm text-fog light:text-fog-light">
           Already have an account?{' '}
-          <Link to="/login" className="font-barlow-condensed font-black tracking-widest uppercase text-accent light:text-accent-light no-underline hover:underline">
+          <Link to={loginPath} className="font-barlow-condensed font-black tracking-widest uppercase text-accent light:text-accent-light no-underline hover:underline">
             Sign in
           </Link>
         </p>

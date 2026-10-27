@@ -201,7 +201,7 @@ export function ProductOptionsModal({
           type="button"
           disabled={!canConfirm}
           onClick={() => onConfirm(selection, quantity)}
-          className="mt-6 w-full py-3.5 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase flex items-center justify-center gap-2 bg-accent light:bg-accent-light text-black light:text-white hover:bg-accent/90 light:hover:bg-accent-light/90 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="mt-6 w-full py-3.5 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase flex items-center justify-center gap-2 bg-cta text-cta-ink hover:bg-cta/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <ShoppingCart size={16} />
           {complete ? confirmLabel : 'Choose your options'}

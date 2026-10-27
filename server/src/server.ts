@@ -34,6 +34,8 @@ import signupsRoutes from './routes/signups.js';
 import captainsRoutes from './routes/captains.js';
 import zonesRoutes from './routes/zones.js';
 import walletRoutes from './routes/wallet.js';
+import pageVideosRoutes from './routes/pageVideos.js';
+import programsRoutes from './routes/programs.js';
 
 dotenv.config();
 
@@ -74,6 +76,8 @@ app.use('/api/signups', signupsRoutes);
 app.use('/api/captains', captainsRoutes);
 app.use('/api/zones', zonesRoutes);
 app.use('/api/wallet', walletRoutes);
+app.use('/api/page-videos', pageVideosRoutes);
+app.use('/api/programs', programsRoutes);
 
 // Start server
 const startServer = async () => {

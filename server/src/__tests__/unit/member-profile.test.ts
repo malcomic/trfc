@@ -19,7 +19,7 @@ vi.mock('../../utils/emailService.js', () => ({
 import bcrypt from 'bcrypt'
 import { query } from '../../config/db.js'
 import { changeMyPassword, updateMyProfile } from '../../controllers/authController.js'
-import { getMyDashboard } from '../../controllers/usersController.js'
+import { getMyDashboard, membershipFrom } from '../../controllers/usersController.js'
 
 const USER_ID = '22222222-2222-4222-8222-222222222222'
 const OTHER_ID = '44444444-4444-4444-8444-444444444444'
@@ -151,15 +151,38 @@ describe('getMyDashboard', () => {
       equipment_hires: 0,
       pending_payments: 1,
       total_spent: 3500,
+      saturdays_attended: 3,
     }
     routeQueries((sql) => {
-      if (sql.includes('FROM users WHERE id = $1')) return { rows: [UPDATED] }
+      if (sql.includes('FROM users WHERE id = $1')) return { rows: [{ ...UPDATED, member_until: null }] }
       if (sql.includes('AS total_spent')) return { rows: [stats] }
       return undefined
     })
     const res = makeRes()
     await getMyDashboard(makeReq({}), res)
-    expect(res.json).toHaveBeenCalledWith({ profile: UPDATED, captain: null, stats })
+    expect(res.json).toHaveBeenCalledWith({
+      profile: UPDATED,
+      captain: null,
+      stats,
+      program: null,
+      membership: { active: false, until: null },
+    })
+  })
+
+  it('returns the active enrolment and counts only checked-in Saturday events', async () => {
+    const enrolledAt = '2026-10-27T10:00:00.000Z'
+    routeQueries((sql) => {
+      if (sql.includes('FROM users WHERE id = $1')) return { rows: [{ ...UPDATED, member_until: null }] }
+      if (sql.includes('AS total_spent')) return { rows: [{ saturdays_attended: 1 }] }
+      if (sql.includes('FROM program_enrollments')) return { rows: [{ program: 'foundations', enrolled_at: enrolledAt }] }
+      return undefined
+    })
+    const res = makeRes()
+    await getMyDashboard(makeReq({}), res)
+    const statsSql = vi.mocked(query).mock.calls.map(([sql]) => String(sql)).find((sql) => sql.includes('AS total_spent'))!
+    expect(statsSql).toMatch(/checked_in_at IS NOT NULL/)
+    expect(statsSql).toMatch(/EXTRACT\(DOW FROM e\.event_date\) = 6/)
+    expect(res.json.mock.calls[0][0].program).toEqual({ id: 'foundations', enrolled_at: enrolledAt })
   })
 
   it('returns 404 when the user no longer exists', async () => {
@@ -167,5 +190,21 @@ describe('getMyDashboard', () => {
     const res = makeRes()
     await getMyDashboard(makeReq({}), res)
     expect(res.status).toHaveBeenCalledWith(404)
+  })
+})
+
+describe('membershipFrom', () => {
+  const now = new Date('2026-12-15T00:00:00Z')
+
+  it('is inactive without a date', () => {
+    expect(membershipFrom(null, now)).toEqual({ active: false, until: null })
+  })
+
+  it('is active until the end date', () => {
+    expect(membershipFrom('2027-12-01T00:00:00Z', now)).toEqual({ active: true, until: '2027-12-01T00:00:00.000Z' })
+  })
+
+  it('is inactive once the date has passed', () => {
+    expect(membershipFrom('2026-12-01T00:00:00Z', now).active).toBe(false)
   })
 })

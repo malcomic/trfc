@@ -1,4 +1,8 @@
 import axios from 'axios';
+import { metaRequestHeaders } from '../utils/metaPixel';
+
+/** Requests that start or complete a payment; these carry the Meta browser identifiers. */
+const PAYMENT_PATHS = /^\/?(payments\/mpesa\/stkpush|wallet\/checkout|wallet\/plans\/[^/]+\/pay)/;
 
 const API_URL = (import.meta.env.VITE_API_URL as string) || 'http://localhost:5000/api';
 
@@ -13,6 +17,9 @@ api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  if (config.url && PAYMENT_PATHS.test(config.url)) {
+    Object.assign(config.headers, metaRequestHeaders());
   }
   return config;
 });

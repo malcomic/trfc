@@ -57,7 +57,10 @@ import {
   getAdminPaymentPlans,
   getAdminWalletLedger,
   getAdminWallets,
+  getWalletLimitSettingsHandler,
+  updateWalletLimitSettingsHandler,
 } from '../controllers/adminWalletsController.js'
+import { deletePageVideo, upsertPageVideo } from '../controllers/pageVideosController.js'
 import { authMiddleware, adminMiddleware } from '../middleware/auth.js'
 
 const router = Router()
@@ -107,6 +110,10 @@ router.post('/captain-payouts', createPayout)
 router.get('/wallets', getAdminWallets)
 router.get('/wallets/plans', getAdminPaymentPlans)
 router.post('/wallets/adjustments', createWalletAdjustment)
+router.get('/wallets/settings', getWalletLimitSettingsHandler)
+router.put('/wallets/settings', updateWalletLimitSettingsHandler)
 router.get('/wallets/:userId', getAdminWalletLedger)
+router.put('/page-videos/:slot', upsertPageVideo)
+router.delete('/page-videos/:slot', deletePageVideo)
 
 export default router

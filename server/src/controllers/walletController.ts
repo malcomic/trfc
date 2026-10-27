@@ -7,10 +7,11 @@ import {
   InsufficientFundsError,
   MAX_TOPUP,
   MIN_TOPUP,
-  createPendingMpesaTx,
   getWalletBalance,
   getWalletTransactions,
 } from '../utils/wallet.js'
+import { WalletLimitError, getTopUpHeadroom, reserveTopup } from '../utils/walletLimit.js'
+import { captureMetaContext, saveMetaContext } from '../utils/metaConversions.js'
 import {
   InstallmentError,
   buildSchedule,
@@ -30,6 +31,9 @@ function insufficientFunds(res: Response, error: InsufficientFundsError) {
 
 export function sendWalletError(res: Response, error: unknown, fallback: string) {
   if (error instanceof InsufficientFundsError) return insufficientFunds(res, error)
+  if (error instanceof WalletLimitError) {
+    return res.status(error.status).json({ error: error.message, cap: error.cap, headroom: error.headroom })
+  }
   if (error instanceof MpesaStartError || error instanceof WalletCheckoutError || error instanceof InstallmentError) {
     return res.status(error.status).json({ error: error.message })
   }
@@ -44,7 +48,8 @@ export async function getWallet(req: Request, res: Response) {
       getWalletBalance(userId),
       getWalletTransactions(userId, { limit: 10 }),
     ])
-    res.json({ balance, transactions: recent.transactions })
+    const { cap, headroom } = await getTopUpHeadroom(userId, balance)
+    res.json({ balance, cap, headroom, transactions: recent.transactions })
   } catch (error) {
     console.error(error)
     res.status(500).json({ error: 'Failed to load your wallet' })
@@ -66,7 +71,7 @@ export async function listWalletTransactions(req: Request, res: Response) {
 export async function walletCheckout(req: Request, res: Response) {
   try {
     const batchIds = Array.isArray(req.body?.purchaseBatchIds) ? req.body.purchaseBatchIds : []
-    const result = await payBatchesFromWallet(req.user!.id, batchIds)
+    const result = await payBatchesFromWallet(req.user!.id, batchIds, captureMetaContext(req))
     res.json(result)
   } catch (error) {
     sendWalletError(res, error, 'Failed to pay from your wallet')
@@ -96,15 +101,13 @@ export async function topUpWallet(req: Request, res: Response) {
     }
 
     const roundedAmount = Math.round(amount)
-    const txId = await createPendingMpesaTx(req.user!.id, {
-      type: 'topup',
-      walletAmount: roundedAmount,
-      mpesaAmount: roundedAmount,
+    const { txId, cap, headroom } = await reserveTopup(req.user!.id, {
+      amount: roundedAmount,
       phone,
       note: 'M-Pesa top-up',
     })
     const result = await startMpesaForTx(txId, phone, roundedAmount, `WALLET-${txId}`)
-    res.json({ ...result, transactionId: txId, amount: roundedAmount })
+    res.json({ ...result, transactionId: txId, amount: roundedAmount, cap, headroom })
   } catch (error) {
     sendWalletError(res, error, 'Failed to start your top-up')
   }
@@ -157,6 +160,7 @@ export async function payPaymentPlan(req: Request, res: Response) {
     if (source === 'mpesa' && !phone) {
       return res.status(400).json({ error: 'Enter a valid M-Pesa number, e.g. 07XX XXX XXX' })
     }
+    await saveMetaContext(`PLAN-${String(req.params.id)}`, captureMetaContext(req))
     const result = await payPlanInstallments(String(req.params.id), req.user!.id, { mode, source, phone })
     res.json(result)
   } catch (error) {

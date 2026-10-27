@@ -44,6 +44,10 @@ export default {
           light: '#D4D4D4',
         },
         gold: '#C9A84C',
+        cta: {
+          DEFAULT: '#FFC83D',
+          ink: '#111111',
+        },
         // Fitness-inspired status colors
         'success-green': '#22C55E',
         'warning-amber': '#F59E0B',

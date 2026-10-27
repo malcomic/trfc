@@ -61,7 +61,7 @@ export default function Cart() {
           <p className="text-sm text-mist light:text-mist-light mb-9">
             Head to the shop and grab some TRFC gear.
           </p>
-          <Link to="/shop" className="inline-flex items-center gap-4 bg-accent light:bg-accent-light text-black light:text-white no-underline font-barlow-condensed font-black text-sm tracking-widest uppercase px-9 py-3.5 clip-angled transition-all duration-200 hover:bg-accent/90 light:hover:bg-accent-light/90 hover:scale-103">
+          <Link to="/shop" className="inline-flex items-center gap-4 bg-cta text-cta-ink no-underline font-barlow-condensed font-black text-sm tracking-widest uppercase px-9 py-3.5 clip-angled transition-all duration-200 hover:bg-cta/90 hover:scale-103">
             <ShoppingBag size={16} />
             Browse the Shop
           </Link>
@@ -223,7 +223,7 @@ export default function Cart() {
             </div>
 
             {/* Checkout CTA */}
-            <Link to="/checkout" className="flex items-center justify-center gap-2.5 w-full mx-0 my-5 bg-accent light:bg-accent-light text-black light:text-white no-underline font-barlow-condensed font-black text-base tracking-widest uppercase px-6 py-4 clip-angled transition-all duration-200 hover:bg-accent/90 light:hover:bg-accent-light/90 hover:scale-102 mx-6 w-calc-100%-48px">
+            <Link to="/checkout" className="flex items-center justify-center gap-2.5 w-full mx-0 my-5 bg-cta text-cta-ink no-underline font-barlow-condensed font-black text-base tracking-widest uppercase px-6 py-4 clip-angled transition-all duration-200 hover:bg-cta/90 hover:scale-102 mx-6 w-calc-100%-48px">
               Proceed to Checkout <ArrowRight size={16} />
             </Link>
 

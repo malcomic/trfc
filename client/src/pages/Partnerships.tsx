@@ -208,7 +208,7 @@ export default function Partnerships() {
                     <AlertCircle size={16} className="flex-shrink-0" /> {error}
                   </div>
                 )}
-                <button type="submit" disabled={submitting || tiers.length === 0} className="w-full bg-accent light:bg-accent-light text-black light:text-white py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-accent/90 light:hover:bg-accent-light/90 disabled:opacity-50">
+                <button type="submit" disabled={submitting || tiers.length === 0} className="w-full bg-cta text-cta-ink py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-cta/90 disabled:opacity-50">
                   {submitting ? 'Submitting…' : 'Submit Inquiry'}
                 </button>
               </form>

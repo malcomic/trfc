@@ -30,6 +30,7 @@ import { getLocalPaymentStatus, toStatusResponse } from '../utils/paymentStatus.
 import { activateSignup, notifyPaidSignupsByCheckoutId } from '../utils/signupActivation.js'
 import { recordCaptainCommissionsForCheckout } from '../utils/captainCommissions.js'
 import { settleWalletCheckout } from '../utils/walletPayments.js'
+import { captureMetaContext, reportMetaPurchase, saveMetaContext } from '../utils/metaConversions.js'
 
 const MPESA_QUERY_GRACE_MS = 10_000
 const MPESA_QUERY_INTERVAL_MS = 12_000
@@ -262,6 +263,7 @@ export async function initiateSTKPush(req: Request, res: Response) {
     }
 
     const checkoutRequestId = stkResponse.CheckoutRequestID
+    await saveMetaContext(checkoutRequestId, captureMetaContext(req))
     if (orderId) {
       await query(
         'UPDATE orders SET checkout_request_id = $1 WHERE id = $2',
@@ -421,6 +423,7 @@ export async function handleCallback(req: Request, res: Response) {
       await maybeSendOrderEmails(checkoutRequestId)
       await notifyPaidSignupsByCheckoutId(checkoutRequestId)
       await recordCaptainCommissionsForCheckout(checkoutRequestId)
+      reportMetaPurchase(checkoutRequestId)
     }
 
     logCallbackProcessing(
@@ -492,6 +495,7 @@ export async function queryPaymentStatus(req: Request, res: Response) {
           await maybeSendMedalEmail(checkoutRequestId)
           await maybeSendOrderEmails(checkoutRequestId)
           await notifyPaidSignupsByCheckoutId(checkoutRequestId)
+          reportMetaPurchase(checkoutRequestId)
         }
 
         return res.json({

@@ -62,6 +62,14 @@ export const config = {
     templateLang: process.env.WHATSAPP_TEMPLATE_LANG || 'en',
     apiVersion: process.env.WHATSAPP_API_VERSION || 'v20.0',
   },
+  meta: {
+    pixelId: process.env.META_PIXEL_ID || '1069156702175878',
+    /** Conversions API access token from Events Manager → Settings → Conversions API. Events are skipped when empty. */
+    capiAccessToken: process.env.META_CAPI_ACCESS_TOKEN || '',
+    /** Optional: routes events to Events Manager → Test events while verifying the setup. */
+    testEventCode: process.env.META_TEST_EVENT_CODE || '',
+    apiVersion: process.env.META_API_VERSION || 'v20.0',
+  },
   afrikasTalking: {
     apiKey: process.env.AT_API_KEY || '',
     username: process.env.AT_USERNAME || 'sandbox',

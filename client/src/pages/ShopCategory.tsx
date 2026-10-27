@@ -110,7 +110,7 @@ export default function ShopCategory() {
           </p>
           <Link
             to="/shop"
-            className="inline-flex items-center gap-2 font-barlow-condensed font-black text-xs tracking-widest uppercase px-7 py-3 clip-angled bg-accent light:bg-accent-light text-black light:text-white no-underline"
+            className="inline-flex items-center gap-2 font-barlow-condensed font-black text-xs tracking-widest uppercase px-7 py-3 clip-angled bg-cta text-cta-ink no-underline"
           >
             Back to shop
           </Link>
@@ -256,7 +256,7 @@ export default function ShopCategory() {
                         className={`font-barlow-condensed font-black text-xs tracking-widest uppercase px-7 py-3 clip-angled transition-all duration-300 ease-out disabled:opacity-50 flex items-center gap-2 ${
                           added
                             ? 'bg-green-900/40 text-green-400 border border-green-600/50'
-                            : 'bg-accent light:bg-accent-light text-black light:text-white border border-accent light:border-accent-light hover:bg-accent/90 light:hover:bg-accent-light/90'
+                            : 'bg-cta text-cta-ink border border-cta hover:bg-cta/90'
                         }`}
                         style={{ transform: added ? 'translateY(0)' : 'translateY(10px)' }}
                       >

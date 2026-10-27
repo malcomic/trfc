@@ -5,6 +5,7 @@ import { pollPaymentStatus } from '../api/payments'
 import { AlertCircle, CheckCircle, Clock } from 'lucide-react'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 import { trackCompletePayment } from '../utils/tiktokPixel'
+import { trackMetaPurchase } from '../utils/metaPixel'
 import { formatSelectedOptions } from '../utils/productOptions'
 
 interface Order {
@@ -90,6 +91,15 @@ export default function OrderConfirmation() {
       })),
       value: Number(order.total_amount),
     })
+    trackMetaPurchase(
+      order.checkout_request_id || `order_${order.id}`,
+      Number(order.total_amount),
+      (order.items ?? []).map((item) => ({
+        id: String(item.product_id),
+        quantity: item.quantity,
+        item_price: Number(item.unit_price),
+      }))
+    )
   }, [paymentStatus, order])
 
   const handlePhoneVerify = async (e: React.FormEvent) => {
@@ -125,7 +135,7 @@ export default function OrderConfirmation() {
               placeholder="254712345678"
               className={`w-full px-4 py-3 ${inputField}`}
             />
-            <button type="submit" className="w-full bg-accent light:bg-accent-light text-black light:text-white py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-accent/90 light:hover:bg-accent-light/90">
+            <button type="submit" className="w-full bg-cta text-cta-ink py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-cta/90">
               View Order
             </button>
           </form>
@@ -152,7 +162,7 @@ export default function OrderConfirmation() {
           <AlertCircle className="w-6 h-6 text-red-400 flex-shrink-0" />
           <div>
             <p className="text-red-300 mb-4">{error || 'Order not found'}</p>
-            <button onClick={() => navigate('/shop')} className="bg-accent light:bg-accent-light text-black light:text-white px-4 py-2 clip-angled-sm">Back to Shop</button>
+            <button onClick={() => navigate('/shop')} className="bg-cta text-cta-ink px-4 py-2 clip-angled-sm">Back to Shop</button>
           </div>
         </div>
       </div>
@@ -218,7 +228,7 @@ export default function OrderConfirmation() {
         </div>
 
         <div className="flex gap-3">
-          <button onClick={() => navigate('/shop')} className="flex-1 bg-accent light:bg-accent-light text-black light:text-white py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-accent/90 light:hover:bg-accent-light/90">
+          <button onClick={() => navigate('/shop')} className="flex-1 bg-cta text-cta-ink py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-cta/90">
             {paymentStatus === 'paid' ? 'Continue Shopping' : 'Back to Shop'}
           </button>
           {paymentStatus === 'pending' && (

@@ -8,7 +8,7 @@ import { pageRoot } from '../utils/themeClasses'
 const inputClass =
   'w-full bg-smoke light:bg-smoke-light border border-white/10 light:border-black/10 px-4 py-3 text-chalk light:text-chalk-light focus:outline-none focus:border-accent light:focus:border-accent-light'
 const primaryButtonClass =
-  'w-full bg-accent light:bg-accent-light text-black light:text-white py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-accent/90 light:hover:bg-accent-light/90 disabled:opacity-60'
+  'w-full bg-cta text-cta-ink py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-cta/90 disabled:opacity-60'
 const secondaryButtonClass =
   'w-full border border-white/15 light:border-black/15 py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase text-chalk light:text-chalk-light hover:border-accent light:hover:border-accent-light disabled:opacity-60'
 

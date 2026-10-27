@@ -1,6 +1,7 @@
 import {
   createBrowserRouter,
   createRoutesFromElements,
+  Navigate,
   Outlet,
   Route,
   RouterProvider,
@@ -21,7 +22,6 @@ import FindTickets from './pages/FindTickets'
 import MedalDetail from './pages/MedalDetail'
 import MedalCheckout from './pages/MedalCheckout'
 import MedalConfirmation from './pages/MedalConfirmation'
-import MyMedals from './pages/MyMedals'
 import Medals from './pages/Medals'
 import Shop from './pages/Shop'
 import ShopCategory from './pages/ShopCategory'
@@ -37,12 +37,11 @@ import Register from './pages/Register'
 import Login from './pages/Login'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
-import Account from './pages/Account'
-import PaymentHistory from './pages/PaymentHistory'
-import MyTickets from './pages/MyTickets'
 import AdminLogin from './pages/AdminLogin'
 import Gallery from './pages/Gallery'
 import Programs from './pages/Programs'
+import ProgramPage from './pages/ProgramPage'
+import FindMyProgram from './pages/FindMyProgram'
 import Testimonials from './pages/Testimonials'
 import Contact from './pages/Contact'
 import Privacy from './pages/Privacy'
@@ -57,6 +56,7 @@ import AdminProducts from './pages/admin/AdminProducts'
 import AdminProductCategories from './pages/admin/AdminProductCategories'
 import AdminFlashSales from './pages/admin/AdminFlashSales'
 import AdminGallery from './pages/admin/AdminGallery'
+import AdminPageVideos from './pages/admin/AdminPageVideos'
 import AdminOrders from './pages/admin/AdminOrders'
 import AdminUsers from './pages/admin/AdminUsers'
 import AdminTestimonials from './pages/admin/AdminTestimonials'
@@ -71,8 +71,19 @@ import AdminAppearance from './pages/admin/AdminAppearance'
 import AdminScan from './pages/admin/AdminScan'
 import AdminCaptains from './pages/admin/AdminCaptains'
 import AdminRegions from './pages/admin/AdminRegions'
-import CaptainDashboard from './pages/CaptainDashboard'
-import MemberDashboard from './pages/MemberDashboard'
+import MemberLayout from './components/member/MemberLayout'
+import MemberOverview from './pages/member/MemberOverview'
+import MemberCalendar from './pages/member/MemberCalendar'
+import MemberTickets from './pages/member/MemberTickets'
+import MemberWallet from './pages/member/MemberWallet'
+import MemberMedals from './pages/member/MemberMedals'
+import MemberPayments from './pages/member/MemberPayments'
+import MemberProfilePage from './pages/member/MemberProfilePage'
+import MemberCaptain from './pages/member/MemberCaptain'
+import MemberPrograms from './pages/member/MemberPrograms'
+import MemberZone from './pages/member/MemberZone'
+import MemberPoints from './pages/member/MemberPoints'
+import MemberGuides from './pages/member/MemberGuides'
 import { captureReferralFromUrl } from './utils/referral'
 
 function TikTokPixelTracker() {
@@ -142,6 +153,7 @@ const router = createBrowserRouter(
           <Route path="products/categories" element={<AdminProductCategories />} />
           <Route path="products/flash-sales" element={<AdminFlashSales />} />
           <Route path="gallery" element={<AdminGallery />} />
+          <Route path="page-videos" element={<AdminPageVideos />} />
           <Route path="orders" element={<AdminOrders />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="testimonials" element={<AdminTestimonials />} />
@@ -158,6 +170,35 @@ const router = createBrowserRouter(
           <Route path="zones" element={<AdminRegions standalone />} />
         </Route>
 
+        <Route
+          path="/dashboard"
+          element={
+            <PrivateRoute>
+              <MemberLayout />
+            </PrivateRoute>
+          }
+        >
+          <Route index element={<MemberOverview />} />
+          <Route path="calendar" element={<MemberCalendar />} />
+          <Route path="tickets" element={<MemberTickets />} />
+          <Route path="wallet" element={<MemberWallet />} />
+          <Route path="medals" element={<MemberMedals />} />
+          <Route path="payments" element={<MemberPayments />} />
+          <Route path="profile" element={<MemberProfilePage />} />
+          <Route path="captain" element={<MemberCaptain />} />
+          <Route path="programs" element={<MemberPrograms />} />
+          <Route path="zone" element={<MemberZone />} />
+          <Route path="points" element={<MemberPoints />} />
+          <Route path="guides" element={<MemberGuides />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Route>
+        <Route path="/account" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/account/tickets" element={<Navigate to="/dashboard/tickets" replace />} />
+        <Route path="/account/payments" element={<Navigate to="/dashboard/payments" replace />} />
+        <Route path="/account/medals" element={<Navigate to="/dashboard/medals" replace />} />
+        <Route path="/account/*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/captain" element={<Navigate to="/dashboard/captain" replace />} />
+
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
@@ -173,6 +214,8 @@ const router = createBrowserRouter(
           <Route path="/medal-confirmation/:checkoutRequestId" element={<MedalConfirmation />} />
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/programs" element={<Programs />} />
+          <Route path="/programs/:slug" element={<ProgramPage />} />
+          <Route path="/find-my-program" element={<FindMyProgram />} />
           <Route path="/testimonials" element={<Testimonials />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/privacy" element={<Privacy />} />
@@ -191,12 +234,6 @@ const router = createBrowserRouter(
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/account" element={<PrivateRoute><Account /></PrivateRoute>} />
-          <Route path="/dashboard" element={<PrivateRoute><MemberDashboard /></PrivateRoute>} />
-          <Route path="/account/payments" element={<PrivateRoute><PaymentHistory /></PrivateRoute>} />
-          <Route path="/account/tickets" element={<PrivateRoute><MyTickets /></PrivateRoute>} />
-          <Route path="/account/medals" element={<PrivateRoute><MyMedals /></PrivateRoute>} />
-          <Route path="/captain" element={<PrivateRoute role="captain"><CaptainDashboard /></PrivateRoute>} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

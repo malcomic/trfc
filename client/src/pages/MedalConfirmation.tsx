@@ -9,6 +9,7 @@ import { AlertCircle, CheckCircle, Clock, Award } from 'lucide-react'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 import MedalDownloadButton from '../components/MedalDownloadButton'
 import MedalResendButton from '../components/MedalResendButton'
+import { trackMetaPurchase } from '../utils/metaPixel'
 
 interface NavState {
   tierName?: string
@@ -85,6 +86,18 @@ export default function MedalConfirmation() {
     }
     load()
   }, [checkoutRequestId, email, phone, gatePrompt])
+
+  useEffect(() => {
+    if (paymentStatus !== 'paid' || !checkoutRequestId || !details) return
+    const quantity = details.quantity || 1
+    trackMetaPurchase(checkoutRequestId, Number(details.total_price), [
+      {
+        id: `medal_${details.tier_slug}_${details.distance_km}`,
+        quantity,
+        item_price: Number(details.unit_price),
+      },
+    ])
+  }, [paymentStatus, checkoutRequestId, details])
 
   const handleGateVerify = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -167,7 +180,7 @@ export default function MedalConfirmation() {
           />
           <button
             type="submit"
-            className="w-full bg-accent light:bg-accent-light text-black light:text-white py-3 font-barlow-condensed font-bold tracking-widest uppercase"
+            className="w-full bg-cta text-cta-ink py-3 font-barlow-condensed font-bold tracking-widest uppercase"
           >
             Verify
           </button>
@@ -329,12 +342,12 @@ export default function MedalConfirmation() {
         <div className="flex flex-wrap gap-3">
           <Link
             to="/medals"
-            className="bg-accent light:bg-accent-light text-black light:text-white px-6 py-3 font-barlow-condensed font-bold tracking-widest uppercase no-underline clip-angled-sm"
+            className="bg-cta text-cta-ink px-6 py-3 font-barlow-condensed font-bold tracking-widest uppercase no-underline clip-angled-sm"
           >
             Browse Medals
           </Link>
           <Link
-            to="/account/medals"
+            to="/dashboard/medals"
             className="border border-white/20 light:border-black/20 px-6 py-3 font-barlow-condensed font-bold tracking-widest uppercase no-underline text-chalk light:text-chalk-light"
           >
             My Medals

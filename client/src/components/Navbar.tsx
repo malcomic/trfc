@@ -1,6 +1,6 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { ShoppingCart, X, Menu, LogOut, LogIn, UserPlus, QrCode, Flag } from 'lucide-react'
+import { ShoppingCart, X, Menu, LogOut, LogIn, UserPlus, QrCode, LayoutGrid } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../store/cartStore'
 import { ThemeToggle } from './ThemeToggle'
@@ -15,8 +15,6 @@ export default function Navbar() {
   const location = useLocation()
   const cartCount = items.reduce((s, i) => s + i.quantity, 0)
   const canScan = user?.role === 'admin' || user?.role === 'scanner'
-  const isCaptain = user?.role === 'captain'
-
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
     window.addEventListener('scroll', onScroll, { passive: true })
@@ -132,23 +130,15 @@ export default function Navbar() {
                   {canScan && (
                     <Link
                       to="/admin/scan"
-                      className="font-barlow-condensed font-bold text-xs tracking-wider text-black light:text-white no-underline px-3.5 py-2 bg-accent light:bg-accent-light transition-all duration-200 flex items-center gap-1.5 hover:bg-accent/90 light:hover:bg-accent-light/90 clip-angled-sm"
+                      className="font-barlow-condensed font-bold text-xs tracking-wider text-cta-ink no-underline px-3.5 py-2 bg-cta transition-all duration-200 flex items-center gap-1.5 hover:bg-cta/90 clip-angled-sm"
                     >
                       <QrCode size={13} />
                       Scanner
                     </Link>
                   )}
-                  {isCaptain && (
-                    <Link
-                      to="/captain"
-                      className="font-barlow-condensed font-bold text-xs tracking-wider text-black light:text-white no-underline px-3.5 py-2 bg-accent light:bg-accent-light transition-all duration-200 flex items-center gap-1.5 hover:bg-accent/90 light:hover:bg-accent-light/90 clip-angled-sm"
-                    >
-                      <Flag size={13} />
-                      Captain
-                    </Link>
-                  )}
-                  <Link to="/account" className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 dark:text-white/55 light:text-black/55 no-underline px-3.5 py-2 border border-white/7 dark:border-white/7 light:border-black/8 transition-all duration-200 flex items-center gap-1.5 bg-transparent hover:text-chalk light:hover:text-chalk-light hover:border-white/20 light:hover:border-black/20 dark:hover:border-white/20 clip-angled-sm">
-                    Account
+                  <Link to="/dashboard" className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 dark:text-white/55 light:text-black/55 no-underline px-3.5 py-2 border border-white/7 dark:border-white/7 light:border-black/8 transition-all duration-200 flex items-center gap-1.5 bg-transparent hover:text-chalk light:hover:text-chalk-light hover:border-white/20 light:hover:border-black/20 dark:hover:border-white/20 clip-angled-sm">
+                    <LayoutGrid size={13} />
+                    Dashboard
                   </Link>
                   <button onClick={handleLogout} className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 dark:text-white/55 light:text-black/55 no-underline px-3.5 py-2 border border-white/7 dark:border-white/7 light:border-black/8 transition-all duration-200 flex items-center gap-1.5 bg-transparent cursor-pointer hover:text-chalk light:hover:text-chalk-light hover:border-white/20 light:hover:border-black/20 dark:hover:border-white/20 clip-angled-sm">
                     <LogOut size={13} />
@@ -161,7 +151,7 @@ export default function Navbar() {
                     <LogIn size={13} />
                     Login
                   </Link>
-                  <Link to="/register" className="font-barlow-condensed font-black text-xs tracking-wider text-black light:text-white no-underline px-5 py-2 bg-accent light:bg-accent-light clip-angled-lg transition-all duration-200 flex items-center gap-1.5 border-none cursor-pointer hover:bg-accent/90 light:hover:bg-accent-light/90 hover:scale-103">
+                  <Link to="/register" className="font-barlow-condensed font-black text-xs tracking-wider text-cta-ink no-underline px-5 py-2 bg-cta clip-angled-lg transition-all duration-200 flex items-center gap-1.5 border-none cursor-pointer hover:bg-cta/90 hover:scale-103">
                     <UserPlus size={13} />
                     Join
                   </Link>
@@ -230,32 +220,23 @@ export default function Navbar() {
                 {canScan && (
                   <Link
                     to="/admin/scan"
-                    className="font-barlow-condensed font-bold text-xs tracking-wider text-black light:text-white no-underline px-3.5 py-3.5 bg-accent light:bg-accent-light flex items-center justify-center gap-1.5 hover:bg-accent/90 light:hover:bg-accent-light/90 clip-angled-lg transition-all duration-200"
+                    className="font-barlow-condensed font-bold text-xs tracking-wider text-cta-ink no-underline px-3.5 py-3.5 bg-cta flex items-center justify-center gap-1.5 hover:bg-cta/90 clip-angled-lg transition-all duration-200"
                     onClick={() => setIsOpen(false)}
                   >
                     <QrCode size={15} />
                     Open Scanner
                   </Link>
                 )}
-                {isCaptain && (
-                  <Link
-                    to="/captain"
-                    className="font-barlow-condensed font-bold text-xs tracking-wider text-black light:text-white no-underline px-3.5 py-3.5 bg-accent light:bg-accent-light flex items-center justify-center gap-1.5 hover:bg-accent/90 light:hover:bg-accent-light/90 clip-angled-lg transition-all duration-200"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <Flag size={15} />
-                    Captain Dashboard
-                  </Link>
-                )}
-                <Link to="/account" className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 light:text-black/55 no-underline px-3.5 py-3.5 border border-white/7 light:border-black/8 flex items-center justify-center bg-transparent hover:text-chalk light:hover:text-chalk-light clip-angled-lg transition-all duration-200" onClick={() => setIsOpen(false)}>
-                  Account
+                <Link to="/dashboard" className="font-barlow-condensed font-bold text-xs tracking-wider text-white/55 light:text-black/55 no-underline px-3.5 py-3.5 border border-white/7 light:border-black/8 flex items-center justify-center gap-1.5 bg-transparent hover:text-chalk light:hover:text-chalk-light clip-angled-lg transition-all duration-200" onClick={() => setIsOpen(false)}>
+                  <LayoutGrid size={15} />
+                  My Dashboard
                 </Link>
                 <button
                   onClick={handleLogout}
                   className={`font-barlow-condensed font-bold text-xs tracking-wider no-underline px-3.5 py-3.5 w-full flex items-center justify-center gap-1.5 cursor-pointer clip-angled-lg transition-all duration-200 ${
-                    canScan || isCaptain
+                    canScan
                       ? 'text-white/55 dark:text-white/55 light:text-black/55 border border-white/7 dark:border-white/7 light:border-black/8 hover:text-chalk light:hover:text-chalk-light hover:border-white/20 light:hover:border-black/20'
-                      : 'text-black light:text-white bg-accent light:bg-accent-light hover:bg-accent/90 light:hover:bg-accent-light/90'
+                      : 'text-cta-ink bg-cta hover:bg-cta/90'
                   }`}
                 >
                   <LogOut size={15} />
@@ -274,7 +255,7 @@ export default function Navbar() {
                 </Link>
                 <Link
                   to="/register"
-                  className="font-barlow-condensed font-black text-xs tracking-wider text-black light:text-white no-underline px-3.5 py-3.5 bg-accent light:bg-accent-light flex items-center justify-center gap-1.5 cursor-pointer hover:bg-accent/90 light:hover:bg-accent-light/90 clip-angled-lg transition-all duration-200"
+                  className="font-barlow-condensed font-black text-xs tracking-wider text-cta-ink no-underline px-3.5 py-3.5 bg-cta flex items-center justify-center gap-1.5 cursor-pointer hover:bg-cta/90 clip-angled-lg transition-all duration-200"
                   onClick={() => setIsOpen(false)}
                 >
                   <UserPlus size={15} />

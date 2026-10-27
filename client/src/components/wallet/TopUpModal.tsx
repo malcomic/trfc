@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from 'react'
 import { AlertCircle, CheckCircle, Loader } from 'lucide-react'
 import { Modal, Button, FormInput } from '../ui'
-import { topUpWallet } from '../../api/wallet'
+import { MAX_TOPUP, MIN_TOPUP, topUpWallet } from '../../api/wallet'
 import { usePaymentPolling } from '../../hooks/usePaymentPolling'
 import { useAuth } from '../../context/AuthContext'
 import { formatKes } from '../../utils/captainDisplay'
@@ -13,13 +13,28 @@ interface TopUpModalProps {
   onSuccess: (amount: number) => void
   defaultAmount?: number
   title?: string
+  /** Wallet limit and remaining top-up room; omit to allow up to the per-transaction maximum. */
+  cap?: number
+  headroom?: number
 }
 
 const QUICK_AMOUNTS = [500, 1000, 2000, 5000]
 
-export default function TopUpModal({ isOpen, onClose, onSuccess, defaultAmount, title = 'Top up wallet' }: TopUpModalProps) {
+export default function TopUpModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  defaultAmount,
+  title = 'Top up wallet',
+  cap,
+  headroom,
+}: TopUpModalProps) {
   const { user } = useAuth()
-  const [amount, setAmount] = useState(defaultAmount ? String(Math.ceil(defaultAmount)) : '')
+  const maxAmount = headroom == null ? MAX_TOPUP : Math.min(MAX_TOPUP, Math.floor(headroom))
+  const atLimit = maxAmount < MIN_TOPUP
+  const initialAmount = defaultAmount ? String(Math.min(Math.ceil(defaultAmount), Math.max(maxAmount, 0))) : ''
+  const shortOfNeed = defaultAmount != null && !atLimit && Math.ceil(defaultAmount) > maxAmount
+  const [amount, setAmount] = useState(initialAmount)
   const [phone, setPhone] = useState(user?.phone ?? '')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -32,11 +47,12 @@ export default function TopUpModal({ isOpen, onClose, onSuccess, defaultAmount, 
 
   useEffect(() => {
     if (!isOpen) return
-    setAmount(defaultAmount ? String(Math.ceil(defaultAmount)) : '')
+    setAmount(initialAmount)
     setPhone(user?.phone ?? '')
     setError('')
     setCheckoutRequestId(null)
     notified.current = false
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, defaultAmount, user?.phone])
 
   useEffect(() => {
@@ -64,13 +80,37 @@ export default function TopUpModal({ isOpen, onClose, onSuccess, defaultAmount, 
 
   return (
     <Modal isOpen={isOpen} onClose={status === 'pending' && waiting ? () => undefined : onClose} title={title}>
-      {!waiting && (
+      {!waiting && atLimit && (
+        <div className="space-y-4">
+          <p className="text-sm text-fog light:text-fog-light">
+            Your wallet is at its limit{cap != null ? ` of ${formatKes(cap)}` : ''}. The limit follows the cost of
+            upcoming events, so spend some of your balance on tickets before topping up again.
+          </p>
+          <div className="flex justify-end">
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Close
+            </Button>
+          </div>
+        </div>
+      )}
+      {!waiting && !atLimit && (
         <form onSubmit={submit} className="space-y-4">
           <p className="text-sm text-fog light:text-fog-light">
             Wallet funds can be used for event tickets and installments. They are non-refundable.
           </p>
+          {headroom != null && cap != null && (
+            <p className="text-sm text-chalk light:text-chalk-light">
+              You can add up to <strong>{formatKes(maxAmount)}</strong> (wallet limit {formatKes(cap)}).
+            </p>
+          )}
+          {shortOfNeed && (
+            <p className="text-sm text-yellow-400 light:text-yellow-700">
+              You need {formatKes(Math.ceil(defaultAmount!))}, but your wallet limit only allows {formatKes(maxAmount)}{' '}
+              more. Pay the rest directly with M-Pesa at checkout.
+            </p>
+          )}
           <div className="flex flex-wrap gap-2">
-            {QUICK_AMOUNTS.map((value) => (
+            {QUICK_AMOUNTS.filter((value) => value <= maxAmount).map((value) => (
               <button
                 key={value}
                 type="button"
@@ -88,8 +128,8 @@ export default function TopUpModal({ isOpen, onClose, onSuccess, defaultAmount, 
           <FormInput
             label="Amount (KES)"
             type="number"
-            min={10}
-            max={150000}
+            min={MIN_TOPUP}
+            max={maxAmount}
             step={1}
             required
             value={amount}

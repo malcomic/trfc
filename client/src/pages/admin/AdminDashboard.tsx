@@ -15,6 +15,7 @@ const quickActions = [
   { to: '/admin/events', label: 'Events', desc: 'Create, edit, or delete events', color: 'blue' },
   { to: '/admin/products', label: 'Products', desc: 'Create, edit, or delete products', color: 'green' },
   { to: '/admin/gallery', label: 'Gallery', desc: 'Upload and manage media', color: 'purple' },
+  { to: '/admin/page-videos', label: 'Program Videos', desc: 'Find My Program page videos', color: 'purple' },
   { to: '/admin/orders', label: 'Orders', desc: 'Track and manage orders', color: 'orange' },
   { to: '/admin/analytics', label: 'Analytics', desc: 'View performance metrics', color: 'indigo' },
   { to: '/admin/reports', label: 'Reports', desc: 'Generate custom reports', color: 'teal' },

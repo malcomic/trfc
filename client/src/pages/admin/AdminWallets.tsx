@@ -8,10 +8,14 @@ import {
   getAdminPaymentPlans,
   getAdminWalletLedger,
   getAdminWallets,
+  getWalletLimit,
+  updateWalletLimit,
   type AdminPaymentPlan,
   type AdminPlanFilter,
   type AdminWallet,
   type AdminWalletLedger,
+  type WalletLimit,
+  type WalletLimitSettings,
 } from '../../api/admin/wallets'
 import { WALLET_TX_LABELS } from '../../api/payments'
 
@@ -169,6 +173,116 @@ function LedgerPanel({ userId, onClose, onAdjusted }: { userId: string; onClose:
   )
 }
 
+const LIMIT_FIELDS: { key: keyof WalletLimitSettings; label: string; step: string; hint: string }[] = [
+  { key: 'capMultiplier', label: 'Multiplier', step: '0.1', hint: 'Applied to the cost of upcoming events' },
+  { key: 'ticketsPerEvent', label: 'Tickets per event', step: '1', hint: 'Room for members buying for a group' },
+  { key: 'capFloor', label: 'Minimum limit (KES)', step: '1', hint: 'Used when few or no events are upcoming' },
+  { key: 'capCeiling', label: 'Maximum limit (KES)', step: '1', hint: 'Hard ceiling for any wallet' },
+]
+
+function WalletLimitPanel() {
+  const [limit, setLimit] = useState<WalletLimit | null>(null)
+  const [form, setForm] = useState<Record<keyof WalletLimitSettings, string> | null>(null)
+  const [error, setError] = useState('')
+  const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  const apply = (value: WalletLimit) => {
+    setLimit(value)
+    setForm({
+      capMultiplier: String(value.settings.capMultiplier),
+      ticketsPerEvent: String(value.settings.ticketsPerEvent),
+      capFloor: String(value.settings.capFloor),
+      capCeiling: String(value.settings.capCeiling),
+    })
+  }
+
+  useEffect(() => {
+    getWalletLimit()
+      .then(apply)
+      .catch(() => setError('Failed to load wallet limit settings'))
+  }, [])
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!form) return
+    setSaving(true)
+    setError('')
+    setSaved(false)
+    try {
+      apply(
+        await updateWalletLimit({
+          capMultiplier: Number(form.capMultiplier),
+          ticketsPerEvent: Number(form.ticketsPerEvent),
+          capFloor: Number(form.capFloor),
+          capCeiling: Number(form.capCeiling),
+        })
+      )
+      setSaved(true)
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to save wallet limit settings')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-5 mb-6 text-gray-900 dark:text-gray-100">
+      <div className="flex flex-wrap justify-between gap-2 mb-4">
+        <div>
+          <h3 className="font-semibold">Wallet limit</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Limit = multiplier × (highest ticket price × tickets per event, summed over upcoming events), kept between the
+            minimum and maximum. It only blocks new top-ups; refunds always go through.
+          </p>
+        </div>
+        {limit && (
+          <div className="text-right">
+            <p className="text-sm text-gray-500 dark:text-gray-400">Current limit</p>
+            <p className="text-2xl font-bold">{kes(limit.cap)}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Upcoming events total {kes(limit.base)}</p>
+          </div>
+        )}
+      </div>
+      {error && <ErrorBox message={error} />}
+      {form && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            {LIMIT_FIELDS.map((field) => (
+              <label key={field.key} className="block text-sm">
+                <span className="font-medium">{field.label}</span>
+                <input
+                  type="number"
+                  min={0}
+                  step={field.step}
+                  required
+                  value={form[field.key]}
+                  onChange={(e) => {
+                    setSaved(false)
+                    setForm({ ...form, [field.key]: e.target.value })
+                  }}
+                  className={`${inputClass} mt-1`}
+                />
+                <span className="text-xs text-gray-500 dark:text-gray-400">{field.hint}</span>
+              </label>
+            ))}
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-4 py-2 min-h-[44px] rounded-lg bg-primary dark:bg-primary-dark text-white font-semibold disabled:opacity-50"
+            >
+              {saving ? 'Saving…' : 'Save limit'}
+            </button>
+            {saved && <span className="text-sm text-green-600 dark:text-green-400">Saved</span>}
+          </div>
+        </>
+      )}
+    </form>
+  )
+}
+
 function WalletsView() {
   const [wallets, setWallets] = useState<AdminWallet[]>([])
   const [liability, setLiability] = useState(0)
@@ -183,7 +297,7 @@ function WalletsView() {
       setLoading(true)
       setError('')
       const data = await getAdminWallets({ search: term || undefined })
-      setWallets(data.wallets)
+      setWallets(Array.isArray(data.wallets) ? data.wallets : [])
       setLiability(data.liability)
       setFunded(data.funded)
     } catch {
@@ -200,6 +314,7 @@ function WalletsView() {
 
   return (
     <>
+      <WalletLimitPanel />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-5">
           <p className="text-sm text-gray-500 dark:text-gray-400">Total wallet liability</p>

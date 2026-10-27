@@ -54,6 +54,24 @@ export const getAdminWalletLedger = async (userId: string, page = 1): Promise<Ad
 export const createWalletAdjustment = async (data: { userId: string; amount: number; note: string }) =>
   (await api.post('/admin/wallets/adjustments', data)).data as WalletTransaction
 
+export interface WalletLimitSettings {
+  capMultiplier: number
+  ticketsPerEvent: number
+  capFloor: number
+  capCeiling: number
+}
+
+export interface WalletLimit {
+  cap: number
+  base: number
+  settings: WalletLimitSettings
+}
+
+export const getWalletLimit = async (): Promise<WalletLimit> => (await api.get('/admin/wallets/settings')).data
+
+export const updateWalletLimit = async (settings: WalletLimitSettings): Promise<WalletLimit> =>
+  (await api.put('/admin/wallets/settings', settings)).data
+
 export const getAdminPaymentPlans = async (status: AdminPlanFilter = '', page = 1) =>
   (await api.get('/admin/wallets/plans', { params: { status: status || undefined, page } })).data as {
     plans: AdminPaymentPlan[]

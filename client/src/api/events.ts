@@ -63,6 +63,7 @@ export interface ConfirmationTicket {
 }
 
 export interface TicketConfirmationDetails {
+  event_id?: string;
   event_title: string;
   event_date: string;
   location: string | null;

@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import { Button, FormInput, PasswordToggle } from '../components/ui'
 import { Logo } from '../components/Logo'
+import { safeRedirect } from '../utils/safeRedirect'
 
 export default function Login() {
   const { register, handleSubmit, formState: { errors } } = useForm()
@@ -20,24 +21,14 @@ export default function Login() {
   const defaultPathForRole = (role?: string) => {
     if (role === 'scanner') return '/admin/scan'
     if (role === 'admin') return '/admin'
-    return '/'
+    return '/dashboard'
   }
 
   const getRedirectPath = (role?: string) => {
-    const redirect = searchParams.get('redirect')
-    if (!redirect) return defaultPathForRole(role)
-    try {
-      const decoded = decodeURIComponent(redirect)
-      if (decoded.startsWith('/') && !decoded.startsWith('//')) {
-        if (role === 'scanner' && !decoded.startsWith('/admin/scan')) {
-          return '/admin/scan'
-        }
-        return decoded
-      }
-    } catch {
-      /* ignore malformed redirect */
-    }
-    return defaultPathForRole(role)
+    const fallback = defaultPathForRole(role)
+    const target = safeRedirect(searchParams.get('redirect'), fallback)
+    if (role === 'scanner' && !target.startsWith('/admin/scan')) return '/admin/scan'
+    return target
   }
 
   const onSubmit = async (data: any) => {

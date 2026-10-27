@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import {
   AlertCircle,
   Check,
@@ -14,7 +15,8 @@ import {
   Clock,
   BadgeCheck,
 } from 'lucide-react'
-import { pageRoot, cardSurface } from '../utils/themeClasses'
+import { cardSurface } from '../../utils/themeClasses'
+import { useAuth } from '../../context/AuthContext'
 import {
   getMyCaptainProfile,
   getMyCommissions,
@@ -29,12 +31,12 @@ import {
   type CaptainReferral,
   type CaptainTeamMember,
   type CommissionStatus,
-} from '../api/captains'
-import { buildReferralLink } from '../utils/referral'
-import { COMMISSION_STATUS_STYLES, formatDate, formatKes, formatRate } from '../utils/captainDisplay'
-import StatTile from '../components/dashboard/StatTile'
-import DashboardTabs from '../components/dashboard/DashboardTabs'
-import DashboardHeader from '../components/dashboard/DashboardHeader'
+} from '../../api/captains'
+import { buildReferralLink } from '../../utils/referral'
+import { COMMISSION_STATUS_STYLES, formatDate, formatKes, formatRate } from '../../utils/captainDisplay'
+import StatTile from '../../components/dashboard/StatTile'
+import DashboardTabs from '../../components/dashboard/DashboardTabs'
+import MemberPageHeader from '../../components/member/MemberPageHeader'
 
 type Tab = 'commissions' | 'referrals' | 'team' | 'payouts'
 
@@ -47,7 +49,13 @@ const TAB_LABELS: Record<Tab, string> = {
 
 const PAGE_SIZE = 20
 
-export default function CaptainDashboard() {
+export default function MemberCaptain() {
+  const { user } = useAuth()
+  if (user && user.role !== 'captain') return <Navigate to="/dashboard" replace />
+  return <CaptainContent />
+}
+
+function CaptainContent() {
   const [profile, setProfile] = useState<CaptainProfile | null>(null)
   const [qr, setQr] = useState<{ link: string; dataUrl: string } | null>(null)
   const [loading, setLoading] = useState(true)
@@ -133,22 +141,23 @@ export default function CaptainDashboard() {
   const totalPages = commissions ? Math.max(1, Math.ceil(commissions.total / PAGE_SIZE)) : 1
 
   return (
-    <div className={pageRoot}>
-      <DashboardHeader title="CAPTAIN" highlight="DASHBOARD">
-        {profile && (
-          <div className="flex flex-wrap items-center gap-3 mt-3">
-            <span className="text-chalk light:text-chalk-light font-barlow-condensed font-bold text-lg">{profile.name}</span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent/15 light:bg-accent-light/15 border border-accent/30 light:border-accent-light/30 text-accent light:text-accent-light font-barlow-condensed font-bold text-xs tracking-widest uppercase">
-              <MapPin size={12} /> {profile.region_name} · {profile.region_code}
-            </span>
-            <span className="text-sm text-fog light:text-fog-light">
-              Earning {formatRate(profile.commission_rate)} on referred purchases
-            </span>
-          </div>
-        )}
-      </DashboardHeader>
+    <>
+      <MemberPageHeader
+        title="CAPTAIN"
+        highlight="DASHBOARD"
+        subtitle={
+          profile && (
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent/15 light:bg-accent-light/15 border border-accent/30 light:border-accent-light/30 text-accent light:text-accent-light font-barlow-condensed font-bold text-xs tracking-widest uppercase">
+                <MapPin size={12} /> {profile.region_name} · {profile.region_code}
+              </span>
+              <span>Earning {formatRate(profile.commission_rate)} on referred purchases</span>
+            </div>
+          )
+        }
+      />
 
-      <div className="max-w-5xl mx-auto px-[6%] py-10 pb-20 space-y-8">
+      <div className="space-y-8">
         {loading && (
           <div className="flex justify-center py-16">
             <Loader className="w-10 h-10 animate-spin text-accent light:text-accent-light" />
@@ -180,7 +189,7 @@ export default function CaptainDashboard() {
                   <button
                     type="button"
                     onClick={copyLink}
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-accent light:bg-accent-light text-black light:text-white font-barlow-condensed font-bold text-sm tracking-widest uppercase"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-cta text-cta-ink font-barlow-condensed font-bold text-sm tracking-widest uppercase"
                   >
                     {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copied' : 'Copy'}
                   </button>
@@ -375,6 +384,6 @@ export default function CaptainDashboard() {
           </>
         )}
       </div>
-    </div>
+    </>
   )
 }

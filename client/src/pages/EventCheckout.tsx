@@ -92,6 +92,7 @@ export default function EventCheckout() {
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('mpesa')
   const [walletBalance, setWalletBalance] = useState<number | null>(null)
+  const [walletLimit, setWalletLimit] = useState<{ cap: number; headroom: number } | null>(null)
   const [installmentCount, setInstallmentCount] = useState(2)
   const [schedule, setSchedule] = useState<ScheduleItem[] | null>(null)
   const [scheduleError, setScheduleError] = useState('')
@@ -109,8 +110,14 @@ export default function EventCheckout() {
   const refreshWallet = useCallback(() => {
     if (!user) return
     getWallet()
-      .then((w) => setWalletBalance(w.balance))
-      .catch(() => setWalletBalance(null))
+      .then((w) => {
+        setWalletBalance(w.balance)
+        setWalletLimit({ cap: w.cap, headroom: w.headroom })
+      })
+      .catch(() => {
+        setWalletBalance(null)
+        setWalletLimit(null)
+      })
   }, [user])
 
   useEffect(() => {
@@ -262,7 +269,7 @@ export default function EventCheckout() {
   const startInstallments = async (booking: PendingBooking, contactPhone: string) => {
     const plan = await createPlan({ purchaseBatchId: booking.batchId, installments: installmentCount })
     setPendingBooking(null)
-    const plans = '/dashboard?tab=wallet'
+    const plans = '/dashboard/wallet'
     // The plan exists even if the deposit doesn't go through; it can be paid from the dashboard.
     try {
       const result = await payPlan(plan.id, { mode: 'next', source: depositSource, phone: contactPhone })
@@ -382,7 +389,7 @@ export default function EventCheckout() {
           <AlertCircle className="w-6 h-6 text-red-400" />
           <div>
             <p className="text-red-300 mb-4">{error || 'Event not found'}</p>
-            <button onClick={() => navigate('/events')} className="bg-accent light:bg-accent-light text-black light:text-white px-4 py-2 clip-angled-sm">Back to Events</button>
+            <button onClick={() => navigate('/events')} className="bg-cta text-cta-ink px-4 py-2 clip-angled-sm">Back to Events</button>
           </div>
         </div>
       </div>
@@ -617,7 +624,7 @@ export default function EventCheckout() {
           <button
             type="submit"
             disabled={submitting || !selectedType || qtyOptions.length === 0}
-            className="w-full bg-accent light:bg-accent-light text-black light:text-white py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-accent/90 light:hover:bg-accent-light/90 disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full bg-cta text-cta-ink py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-cta/90 disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {submitting ? <><Loader className="w-4 h-4 animate-spin" /> Processing…</> : submitLabel}
           </button>
@@ -645,6 +652,8 @@ export default function EventCheckout() {
         isOpen={topUpShortfall != null}
         defaultAmount={topUpShortfall ?? undefined}
         title="Top up to finish paying"
+        cap={walletLimit?.cap}
+        headroom={walletLimit?.headroom}
         onClose={() => setTopUpShortfall(null)}
         onSuccess={async () => {
           setTopUpShortfall(null)

@@ -15,6 +15,7 @@ import { googleCalendarUrl, downloadIcs } from '../utils/calendar'
 import { formatEventDateTime } from '../utils/eventDate'
 import { pageRoot } from '../utils/themeClasses'
 import { trackCompletePayment } from '../utils/tiktokPixel'
+import { trackMetaPurchase } from '../utils/metaPixel'
 
 interface NavState {
   eventTitle?: string
@@ -108,6 +109,12 @@ export default function TicketConfirmation() {
       }],
       value: value != null ? Number(value) : undefined,
     })
+    if (value != null) {
+      const total = Number(value)
+      trackMetaPurchase(checkoutRequestId, total, [
+        { id: details?.event_id ? `event_${details.event_id}` : checkoutRequestId, quantity: qty, item_price: total / qty },
+      ])
+    }
   }, [paymentStatus, details, checkoutRequestId, state.eventTitle, state.quantity, state.totalPrice])
 
   useEffect(() => {
@@ -197,7 +204,7 @@ export default function TicketConfirmation() {
             />
             <button
               type="submit"
-              className="w-full bg-accent light:bg-accent-light text-black light:text-white py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-accent/90 light:hover:bg-accent-light/90"
+              className="w-full bg-cta text-cta-ink py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-cta/90"
             >
               View Tickets
             </button>
@@ -413,7 +420,7 @@ export default function TicketConfirmation() {
         <div className="flex gap-3 print:hidden">
           <button
             onClick={() => navigate('/events')}
-            className="flex-1 bg-accent light:bg-accent-light text-black light:text-white py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-accent/90 light:hover:bg-accent-light/90"
+            className="flex-1 bg-cta text-cta-ink py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-cta/90"
           >
             Back to Events
           </button>

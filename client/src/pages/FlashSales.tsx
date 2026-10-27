@@ -246,7 +246,7 @@ export default function FlashSales() {
                 <button
                   type="submit"
                   disabled={unlocking}
-                  className="w-full bg-accent light:bg-accent-light text-black light:text-white py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-accent/90 light:hover:bg-accent-light/90 disabled:opacity-60"
+                  className="w-full bg-cta text-cta-ink py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-cta/90 disabled:opacity-60"
                 >
                   {unlocking ? 'Checking…' : 'Unlock deals'}
                 </button>
@@ -277,7 +277,7 @@ export default function FlashSales() {
               <button
                 type="submit"
                 disabled={unlocking}
-                className="w-full bg-accent light:bg-accent-light text-black light:text-white py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-accent/90 light:hover:bg-accent-light/90 disabled:opacity-60"
+                className="w-full bg-cta text-cta-ink py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-cta/90 disabled:opacity-60"
               >
                 {unlocking ? 'Checking…' : 'Unlock deals'}
               </button>
@@ -305,7 +305,7 @@ export default function FlashSales() {
               <div className="mt-8 flex justify-end">
                 <Link
                   to="/cart"
-                  className="inline-flex items-center gap-2 bg-accent light:bg-accent-light text-black light:text-white px-6 py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase no-underline"
+                  className="inline-flex items-center gap-2 bg-cta text-cta-ink px-6 py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase no-underline"
                 >
                   <ShoppingCart size={16} /> Go to cart
                 </Link>

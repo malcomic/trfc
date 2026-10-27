@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Users, Target, Heart, Trophy, ArrowRight } from 'lucide-react'
 import { pageRoot, cardSurface } from '../utils/themeClasses'
+import { COACH_PHOTO } from '../content/programs'
 
 const VALUES = [
   {
@@ -73,9 +74,9 @@ export default function About() {
           <div className={`${cardSurface} p-8 md:p-10 flex flex-col md:flex-row gap-8 items-start`}>
             <div className="w-32 h-32 md:w-40 md:h-40 flex-shrink-0 bg-ash light:bg-ash-light border border-accent/20 light:border-accent-light/20 overflow-hidden">
               <img
-                src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&q=80"
+                src={COACH_PHOTO}
                 alt="Coach Maurice"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover object-top"
               />
             </div>
             <div className="flex-1">
@@ -101,7 +102,7 @@ export default function About() {
           <p className="text-fog light:text-fog-light text-sm mb-6 max-w-lg">
             Membership is free. Show up for a group run, enter an event, or sign up online — your community is waiting.
           </p>
-          <Link to="/register" className="inline-flex bg-accent light:bg-accent-light text-black light:text-white px-8 py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase no-underline hover:bg-accent/90 light:hover:bg-accent-light/90">
+          <Link to="/register" className="inline-flex bg-cta text-cta-ink px-8 py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase no-underline hover:bg-cta/90">
             Join TRFC
           </Link>
         </section>

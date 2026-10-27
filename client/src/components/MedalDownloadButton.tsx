@@ -62,7 +62,7 @@ export default function MedalDownloadButton({
           ${compact ? 'px-3 py-2' : 'px-4 py-2.5'}
           ${
             isDownloadable
-              ? 'bg-accent light:bg-accent-light text-black light:text-white hover:bg-accent/90 light:hover:bg-accent-light/90 cursor-pointer'
+              ? 'bg-cta text-cta-ink hover:bg-cta/90 cursor-pointer'
               : 'bg-smoke light:bg-smoke-light text-fog light:text-fog-light cursor-not-allowed'
           }
           ${isLoading ? 'opacity-70' : ''}

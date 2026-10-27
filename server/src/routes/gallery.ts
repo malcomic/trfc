@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   getGallery,
   getHeroSlides,
+  getProgramPhotos,
   uploadMedia,
   uploadFile,
   updateMedia,
@@ -14,6 +15,7 @@ const router = Router();
 
 router.get('/', getGallery);
 router.get('/hero', getHeroSlides);
+router.get('/program-photos', getProgramPhotos);
 router.post('/', authMiddleware, adminMiddleware, uploadMedia);
 router.post('/upload', authMiddleware, adminMiddleware, uploadFile);
 router.patch('/hero/reorder', authMiddleware, adminMiddleware, reorderHeroSlides);

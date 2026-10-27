@@ -69,17 +69,28 @@ export const getAllUsers = async (req: Request, res: Response) => {
   }
 };
 
+export function membershipFrom(
+  memberUntil: Date | string | null | undefined,
+  now: Date = new Date()
+): { active: boolean; until: string | null } {
+  if (!memberUntil) return { active: false, until: null };
+  const until = new Date(memberUntil);
+  if (Number.isNaN(until.getTime())) return { active: false, until: null };
+  return { active: until.getTime() > now.getTime(), until: until.toISOString() };
+}
+
 export const getMyDashboard = async (req: Request, res: Response) => {
   try {
     const userId = req.user!.id;
     const profile = await query(
-      `SELECT id, name, email, phone, whatsapp, marketing_opt_in, role, created_at
+      `SELECT id, name, email, phone, whatsapp, marketing_opt_in, role, created_at, member_until
        FROM users WHERE id = $1`,
       [userId]
     );
     if (profile.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
+    const { member_until: memberUntil, ...profileRow } = profile.rows[0];
 
     const stats = await query(
       `SELECT
@@ -109,12 +120,30 @@ export const getMyDashboard = async (req: Request, res: Response) => {
            (SELECT COALESCE(SUM(total_cost), 0) FROM equipment_hire WHERE user_id = $1 AND payment_status = 'paid')
          )::float AS total_spent,
          COALESCE((SELECT balance FROM wallets WHERE user_id = $1), 0)::float AS wallet_balance,
-         (SELECT COUNT(*) FROM ticket_payment_plans WHERE user_id = $1 AND status = 'active')::int AS active_plans`,
+         (SELECT COUNT(*) FROM ticket_payment_plans WHERE user_id = $1 AND status = 'active')::int AS active_plans,
+         (SELECT COUNT(DISTINCT e.id)::int
+            FROM tickets t JOIN events e ON e.id = t.event_id
+            WHERE t.user_id = $1 AND t.checked_in_at IS NOT NULL
+              AND EXTRACT(DOW FROM e.event_date) = 6) AS saturdays_attended`,
       [userId]
     );
 
+    const enrollment = await query(
+      `SELECT program, enrolled_at FROM program_enrollments
+       WHERE user_id = $1 AND status = 'active'
+       ORDER BY enrolled_at DESC LIMIT 1`,
+      [userId]
+    );
+    const programRow = enrollment.rows[0];
+
     const captain = await findCaptainSummary(userId);
-    res.json({ profile: profile.rows[0], captain, stats: stats.rows[0] });
+    res.json({
+      profile: profileRow,
+      captain,
+      stats: stats.rows[0],
+      program: programRow ? { id: programRow.program, enrolled_at: programRow.enrolled_at } : null,
+      membership: membershipFrom(memberUntil),
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to load your dashboard' });

@@ -5,6 +5,7 @@ import {
   Calendar,
   Package,
   Image,
+  Film,
   ShoppingCart,
   Users,
   BarChart3,
@@ -44,6 +45,7 @@ const navItems = [
   { path: '/admin/medals', label: 'Medals', icon: Award },
   { path: '/admin/products', label: 'Products', icon: Package },
   { path: '/admin/gallery', label: 'Gallery', icon: Image },
+  { path: '/admin/page-videos', label: 'Program Videos', icon: Film },
   { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
   { path: '/admin/signups', label: 'Signups', icon: UserPlus },
   { path: '/admin/users', label: 'Users', icon: Users },
@@ -174,7 +176,7 @@ export default function AdminLayout() {
       {/* Mobile drawer */}
       <div
         className={`fixed inset-0 z-50 lg:hidden ${navOpen ? '' : 'pointer-events-none'}`}
-        aria-hidden={!navOpen}
+        {...(!navOpen ? { inert: '' } : {})}
       >
         <div
           className={`absolute inset-0 bg-black/50 transition-opacity duration-300 ${

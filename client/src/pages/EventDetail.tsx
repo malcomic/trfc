@@ -71,7 +71,7 @@ export default function EventDetail() {
             <AlertCircle className="w-6 h-6 text-red-400 flex-shrink-0" />
             <div>
               <p className="text-red-300 mb-4">{error || 'Event not found'}</p>
-              <button onClick={() => (error ? fetchEvent() : navigate('/events'))} className="bg-accent light:bg-accent-light text-black light:text-white px-4 py-2 clip-angled-sm mr-3">
+              <button onClick={() => (error ? fetchEvent() : navigate('/events'))} className="bg-cta text-cta-ink px-4 py-2 clip-angled-sm mr-3">
                 {error ? 'Retry' : 'Back to Events'}
               </button>
             </div>
@@ -229,7 +229,7 @@ export default function EventDetail() {
                     state: { quantity, ticketTypeId: selectedType!.id },
                   })
                 }
-                className="w-full bg-accent light:bg-accent-light text-black light:text-white py-4 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-accent/90 light:hover:bg-accent-light/90 flex items-center justify-center gap-2"
+                className="w-full bg-cta text-cta-ink py-4 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-cta/90 flex items-center justify-center gap-2"
               >
                 <Ticket size={18} />
                 Buy {quantity} {selectedType!.name} Ticket{quantity > 1 ? 's' : ''}

@@ -11,6 +11,7 @@ import {
 } from '../../api/admin/gallery'
 import AdminConfirmDialog from '../../components/AdminConfirmDialog'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
+import { PROGRAMS, PROGRAM_ORDER, isProgramId } from '../../content/programs'
 
 interface GalleryItem {
   id: string
@@ -19,7 +20,12 @@ interface GalleryItem {
   caption?: string
   show_on_hero?: boolean
   hero_sort_order?: number
+  program_photo?: string | null
   uploaded_at: string
+}
+
+function programPhotoName(value: string | null | undefined): string | null {
+  return isProgramId(value) ? PROGRAMS[value].name : null
 }
 
 function GalleryMedia({ item }: { item: GalleryItem }) {
@@ -67,6 +73,7 @@ export default function AdminGallery() {
   const [reordering, setReordering] = useState(false)
   const { register, handleSubmit, reset, watch } = useForm()
   const fileInput = watch('file')
+  const mediaTypeInput = watch('media_type')
 
   const heroItems = useMemo(
     () =>
@@ -114,6 +121,7 @@ export default function AdminGallery() {
       caption: item.caption || '',
       media_type: item.media_type || 'image',
       show_on_hero: item.show_on_hero ?? false,
+      program_photo: item.program_photo ?? '',
     })
     setShowModal(true)
   }
@@ -123,6 +131,8 @@ export default function AdminGallery() {
       setUploading(true)
       setError('')
       const showOnHero = Boolean(data.show_on_hero)
+      const programPhoto =
+        data.media_type !== 'video' && isProgramId(data.program_photo) ? data.program_photo : null
 
       if (editingId) {
         const existing = items.find((i) => i.id === editingId)
@@ -135,6 +145,7 @@ export default function AdminGallery() {
               ? existing.hero_sort_order ?? 0
               : nextHeroSortOrder(items)
             : 0,
+          program_photo: programPhoto,
         })
       } else {
         let mediaUrl = data.media_url
@@ -160,6 +171,7 @@ export default function AdminGallery() {
           caption: data.caption,
           show_on_hero: showOnHero,
           hero_sort_order: showOnHero ? nextHeroSortOrder(items) : 0,
+          program_photo: programPhoto,
         })
       }
       setShowModal(false)
@@ -316,6 +328,15 @@ export default function AdminGallery() {
                     Hero
                   </span>
                 )}
+                {programPhotoName(item.program_photo) && (
+                  <span
+                    className={`absolute left-2 bg-yellow-400 text-black text-xs font-semibold px-2 py-1 rounded ${
+                      item.show_on_hero ? 'top-10' : 'top-2'
+                    }`}
+                  >
+                    {programPhotoName(item.program_photo)}
+                  </span>
+                )}
                 <div className="absolute top-2 right-2 flex gap-2">
                   <button
                     onClick={() => handleEdit(item)}
@@ -338,6 +359,9 @@ export default function AdminGallery() {
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {item.media_type || 'image'}
                   {item.show_on_hero ? ' · Homepage hero' : ''}
+                  {programPhotoName(item.program_photo)
+                    ? ` · ${programPhotoName(item.program_photo)} card photo`
+                    : ''}
                   {' · '}
                   {new Date(item.uploaded_at).toLocaleDateString()}
                 </p>
@@ -432,6 +456,33 @@ export default function AdminGallery() {
                   />
                   <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Show on homepage hero</span>
                 </label>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="program_photo"
+                  className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100"
+                >
+                  Use as program card photo
+                </label>
+                <select
+                  id="program_photo"
+                  {...register('program_photo')}
+                  disabled={mediaTypeInput === 'video'}
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+                >
+                  <option value="">None</option>
+                  {PROGRAM_ORDER.map((id) => (
+                    <option key={id} value={id}>
+                      {PROGRAMS[id].name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  {mediaTypeInput === 'video'
+                    ? 'Only images can be used as program card photos.'
+                    : 'Shown on the Programs page. Choosing a program replaces its current photo.'}
+                </p>
               </div>
 
               <div className="flex gap-2 justify-end pt-4">

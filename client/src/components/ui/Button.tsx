@@ -23,7 +23,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     // Base styles
     const baseStyles =
-      'font-barlow-condensed font-700 transition-all duration-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-night light:focus:ring-offset-night-light focus:ring-accent light:focus:ring-accent-light disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2';
+      'font-barlow-condensed font-700 transition-all duration-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-night light:focus:ring-offset-night-light focus:ring-cta disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2';
 
     // Size styles
     const sizeStyles = {
@@ -35,7 +35,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     // Variant styles
     const variantStyles = {
       primary:
-        'bg-accent text-night light:bg-accent-light light:text-night-light hover:bg-chalk/85 light:hover:bg-chalk-light/85 uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-white/10 light:shadow-black/20',
+        'bg-cta text-cta-ink hover:bg-cta/90 uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-cta/20',
       secondary:
         'bg-smoke light:bg-smoke-light border border-mist light:border-mist-light text-chalk light:text-chalk-light hover:bg-mist light:hover:bg-mist-light hover:scale-[1.02] active:scale-[0.98] transition-colors',
       outline:

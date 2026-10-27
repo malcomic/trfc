@@ -1,4 +1,5 @@
 import api from './index';
+import type { ProgramId } from '../content/programs';
 
 export type StaffRole = 'member' | 'admin' | 'scanner';
 export type UserRole = StaffRole | 'captain';
@@ -40,6 +41,7 @@ export interface MemberStats {
   total_spent: number;
   wallet_balance: number;
   active_plans: number;
+  saturdays_attended: number;
 }
 
 export interface MemberProfile {
@@ -53,10 +55,23 @@ export interface MemberProfile {
   created_at: string;
 }
 
+export interface MemberCaptainSummary {
+  name: string;
+  zone: string;
+  whatsapp: string | null;
+}
+
+export interface MemberMembership {
+  active: boolean;
+  until: string | null;
+}
+
 export interface MemberDashboard {
   profile: MemberProfile;
-  captain: { name: string; zone: string } | null;
+  captain: MemberCaptainSummary | null;
   stats: MemberStats;
+  program: { id: ProgramId; enrolled_at: string } | null;
+  membership: MemberMembership;
 }
 
 export const getMyDashboard = async (): Promise<MemberDashboard> => {

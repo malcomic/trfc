@@ -72,7 +72,7 @@ export default function PaymentStatusModal({
           {status !== 'pending' && (
             <button
               onClick={onClose}
-              className="w-full bg-accent light:bg-accent-light text-black light:text-white px-4 py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-accent/90 light:hover:bg-accent-light/90 transition-colors duration-200"
+              className="w-full bg-cta text-cta-ink px-4 py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-cta/90 transition-colors duration-200"
             >
               Close
             </button>

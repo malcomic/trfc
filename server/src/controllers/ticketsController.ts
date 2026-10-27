@@ -306,6 +306,7 @@ export async function getTicketsByCheckoutRequestId(req: Request, res: Response)
     )
 
     res.json({
+      event_id: ticket.event_id,
       event_title: ticket.event_title,
       event_date: ticket.event_date,
       location: ticket.location,

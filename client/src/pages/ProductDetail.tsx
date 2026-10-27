@@ -135,7 +135,7 @@ export default function ProductDetail() {
                 <button
                   onClick={handleAdd}
                   disabled={!selectionComplete}
-                  className={`w-full py-4 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${added ? 'bg-green-600/30 text-green-400 light:text-green-700' : 'bg-accent light:bg-accent-light text-black light:text-white hover:bg-accent/90 light:hover:bg-accent-light/90'}`}
+                  className={`w-full py-4 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${added ? 'bg-green-600/30 text-green-400 light:text-green-700' : 'bg-cta text-cta-ink hover:bg-cta/90'}`}
                 >
                   <ShoppingCart size={18} />
                   {added ? 'Added to Cart!' : selectionComplete ? 'Add to Cart' : 'Choose your options'}

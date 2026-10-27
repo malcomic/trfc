@@ -160,7 +160,7 @@ export default function MedalCheckout() {
             <p className="text-red-300 mb-4">{error}</p>
             <button
               onClick={() => navigate('/medals')}
-              className="bg-accent light:bg-accent-light text-black light:text-white px-4 py-2 clip-angled-sm"
+              className="bg-cta text-cta-ink px-4 py-2 clip-angled-sm"
             >
               Back to Medals
             </button>
@@ -264,7 +264,7 @@ export default function MedalCheckout() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-accent light:bg-accent-light text-black light:text-white py-4 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled disabled:opacity-60"
+            className="w-full bg-cta text-cta-ink py-4 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled disabled:opacity-60"
           >
             {submitting ? 'Processing…' : 'Pay with M-Pesa'}
           </button>

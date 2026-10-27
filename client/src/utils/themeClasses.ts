@@ -1,6 +1,8 @@
 export const pageRoot =
   'min-h-screen bg-night light:bg-night-light text-chalk light:text-chalk-light font-barlow antialiased'
 
+export const ctaButton = 'bg-cta text-cta-ink border-cta hover:bg-cta/90'
+
 export const cardSurface =
   'bg-ash light:bg-ash-light border border-white/5 light:border-black/8'
 

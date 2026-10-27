@@ -18,8 +18,15 @@ export interface WalletTransaction {
 
 export interface WalletSummary {
   balance: number
+  /** Most the wallet may hold; derived from upcoming event prices and set by admins. */
+  cap: number
+  /** How much more can be topped up right now (cap minus balance and unconfirmed top-ups). */
+  headroom: number
   transactions: WalletTransaction[]
 }
+
+export const MIN_TOPUP = 10
+export const MAX_TOPUP = 150_000
 
 export interface PayableBatch {
   purchase_batch_id: string
@@ -85,7 +92,10 @@ export const getWalletTransactions = async (
 ): Promise<{ transactions: WalletTransaction[]; total: number; page: number; limit: number }> =>
   (await api.get('/wallet/transactions', { params: { page, limit } })).data
 
-export const topUpWallet = async (data: { amount: number; phone: string }): Promise<MpesaStart & { amount: number }> =>
+export const topUpWallet = async (data: {
+  amount: number
+  phone: string
+}): Promise<MpesaStart & { amount: number; cap: number; headroom: number }> =>
   (await api.post('/wallet/topup', data)).data
 
 export const getPayableBatches = async (): Promise<PayableBatch[]> => (await api.get('/wallet/payable')).data

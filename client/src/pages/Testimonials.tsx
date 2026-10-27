@@ -112,7 +112,7 @@ export default function Testimonials() {
                 </div>
               </div>
               {submitError && <p className="text-red-400 text-xs">{submitError}</p>}
-              <button type="submit" disabled={submitting} className="w-full bg-accent light:bg-accent-light text-black light:text-white py-2.5 clip-angled font-barlow-condensed font-black text-xs tracking-widest uppercase hover:bg-accent/90 light:hover:bg-accent-light/90 disabled:opacity-50">
+              <button type="submit" disabled={submitting} className="w-full bg-cta text-cta-ink py-2.5 clip-angled font-barlow-condensed font-black text-xs tracking-widest uppercase hover:bg-cta/90 disabled:opacity-50">
                 {submitting ? 'Submitting…' : 'Submit'}
               </button>
             </form>

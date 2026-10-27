@@ -2,6 +2,7 @@ import { query } from '../config/db.js'
 import { InsufficientFundsError, applyEntry, roundKes, withWallet } from './wallet.js'
 import { sendTicketBatchEmail } from './ticketEmail.js'
 import { recordCaptainCommissionsForCheckout } from './captainCommissions.js'
+import { reportMetaPurchase, type MetaBrowserContext } from './metaConversions.js'
 
 export class WalletCheckoutError extends Error {
   constructor(message: string, public status = 400) {
@@ -29,7 +30,11 @@ export interface WalletCheckoutResult {
  * Pays one or more pending ticket batches from the member's wallet in a single transaction.
  * Either every batch is paid or none is.
  */
-export async function payBatchesFromWallet(userId: string, batchIds: string[]): Promise<WalletCheckoutResult> {
+export async function payBatchesFromWallet(
+  userId: string,
+  batchIds: string[],
+  context?: MetaBrowserContext
+): Promise<WalletCheckoutResult> {
   const uniqueIds = [...new Set(batchIds.filter((id) => typeof id === 'string' && id))]
   if (uniqueIds.length === 0) throw new WalletCheckoutError('Choose at least one booking to pay for')
   if (uniqueIds.length > 20) throw new WalletCheckoutError('You can pay for at most 20 bookings at once')
@@ -90,6 +95,7 @@ export async function payBatchesFromWallet(userId: string, batchIds: string[]): 
 
   for (const reference of result.references) {
     await recordCaptainCommissionsForCheckout(reference)
+    reportMetaPurchase(reference, context)
     sendTicketBatchEmail(reference).catch((error: Error) => {
       console.error(`Error sending ticket email for ${reference}: ${error.message}`)
     })

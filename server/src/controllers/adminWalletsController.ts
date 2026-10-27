@@ -8,8 +8,10 @@ import {
   roundKes,
   withWallet,
 } from '../utils/wallet.js'
+import { getWalletLimit, updateWalletLimitSettings, type WalletLimitSettings } from '../utils/walletLimit.js'
 
 const MAX_ADJUSTMENT = 500_000
+const MAX_CAP = 1_000_000
 
 function pageParams(req: Request, defaultLimit = 50) {
   const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10) || 1)
@@ -39,7 +41,7 @@ export async function getAdminWallets(req: Request, res: Response) {
         [...params, limit, offset]
       ),
       query(
-        `SELECT COALESCE(SUM(w.balance), 0)::float AS liability, COUNT(*)::int AS wallets,
+        `SELECT COALESCE(SUM(w.balance), 0)::float AS liability, COUNT(*)::int AS wallet_count,
                 COUNT(*) FILTER (WHERE w.balance > 0)::int AS funded
          FROM wallets w JOIN users u ON u.id = w.user_id
          WHERE TRUE ${where}`,
@@ -99,6 +101,48 @@ export async function createWalletAdjustment(req: Request, res: Response) {
     }
     console.error(error)
     res.status(500).json({ error: 'Failed to adjust the wallet' })
+  }
+}
+
+export async function getWalletLimitSettingsHandler(_req: Request, res: Response) {
+  try {
+    res.json(await getWalletLimit({ fresh: true }))
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: 'Failed to load wallet limit settings' })
+  }
+}
+
+export function parseWalletLimitSettings(body: any): WalletLimitSettings | string {
+  const settings = {
+    capMultiplier: Number(body?.capMultiplier),
+    ticketsPerEvent: Number(body?.ticketsPerEvent),
+    capFloor: roundKes(Number(body?.capFloor)),
+    capCeiling: roundKes(Number(body?.capCeiling)),
+  }
+  if (!Number.isFinite(settings.capMultiplier) || settings.capMultiplier < 1 || settings.capMultiplier > 10) {
+    return 'Multiplier must be between 1 and 10'
+  }
+  if (!Number.isInteger(settings.ticketsPerEvent) || settings.ticketsPerEvent < 1 || settings.ticketsPerEvent > 50) {
+    return 'Tickets per event must be a whole number between 1 and 50'
+  }
+  if (!Number.isFinite(settings.capFloor) || settings.capFloor < 0) return 'Minimum limit cannot be negative'
+  if (!Number.isFinite(settings.capCeiling) || settings.capCeiling > MAX_CAP) {
+    return `Maximum limit must be at most KES ${MAX_CAP.toLocaleString()}`
+  }
+  if (settings.capCeiling < settings.capFloor) return 'Maximum limit must be at least the minimum limit'
+  return settings
+}
+
+export async function updateWalletLimitSettingsHandler(req: Request, res: Response) {
+  try {
+    const parsed = parseWalletLimitSettings(req.body)
+    if (typeof parsed === 'string') return res.status(400).json({ error: parsed })
+    await updateWalletLimitSettings(parsed, req.user!.id)
+    res.json(await getWalletLimit({ fresh: true }))
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: 'Failed to save wallet limit settings' })
   }
 }
 

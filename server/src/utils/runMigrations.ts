@@ -681,6 +681,85 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       CREATE INDEX IF NOT EXISTS idx_plan_installments_due ON ticket_plan_installments(due_at) WHERE paid_at IS NULL;
     `,
   },
+  {
+    name: '031_gallery_program_photo',
+    sql: `
+      ALTER TABLE gallery ADD COLUMN IF NOT EXISTS program_photo VARCHAR(20);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_gallery_program_photo
+        ON gallery (program_photo)
+        WHERE program_photo IS NOT NULL;
+    `,
+  },
+  {
+    name: '032_wallet_limits',
+    sql: `
+      CREATE TABLE IF NOT EXISTS wallet_settings (
+        id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+        cap_multiplier NUMERIC(5,2) NOT NULL DEFAULT 1.5,
+        tickets_per_event INT NOT NULL DEFAULT 4,
+        cap_floor NUMERIC(12,2) NOT NULL DEFAULT 5000,
+        cap_ceiling NUMERIC(12,2) NOT NULL DEFAULT 100000,
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_by UUID REFERENCES users(id)
+      );
+      INSERT INTO wallet_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+    `,
+  },
+  {
+    name: '033_page_videos',
+    sql: `
+      CREATE TABLE IF NOT EXISTS page_videos (
+        slot VARCHAR(50) PRIMARY KEY,
+        source VARCHAR(10) NOT NULL CHECK (source IN ('upload', 'link')),
+        provider VARCHAR(10) NOT NULL CHECK (provider IN ('file', 'youtube', 'vimeo')),
+        video_url TEXT NOT NULL,
+        poster_url TEXT,
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_by UUID REFERENCES users(id)
+      );
+    `,
+  },
+  {
+    name: '034_program_enrollments',
+    sql: `
+      CREATE TABLE IF NOT EXISTS program_enrollments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        program VARCHAR(20) NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'active',
+        amount INT NOT NULL DEFAULT 0,
+        quiz_answers JSONB,
+        enrolled_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE (user_id, program)
+      );
+      CREATE INDEX IF NOT EXISTS idx_program_enrollments_user ON program_enrollments(user_id, status);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS member_until TIMESTAMPTZ;
+    `,
+  },
+  {
+    name: '035_meta_conversions',
+    sql: `
+      -- Buyer's browser details captured when checkout starts, so the later M-Pesa callback can report a website event.
+      CREATE TABLE IF NOT EXISTS meta_checkout_context (
+        reference VARCHAR(120) PRIMARY KEY,
+        client_ip VARCHAR(64),
+        user_agent TEXT,
+        fbp VARCHAR(255),
+        fbc VARCHAR(255),
+        source_url TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      -- One row per Conversions API event, so callbacks and status polls never report the same purchase twice.
+      CREATE TABLE IF NOT EXISTS meta_events (
+        event_id VARCHAR(160) PRIMARY KEY,
+        event_name VARCHAR(40) NOT NULL,
+        value NUMERIC(12,2),
+        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+        error TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `,
+  },
 ]
 
 export async function runMigrations() {

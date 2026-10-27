@@ -156,7 +156,7 @@ export default function FlashSaleOffers({
                 <button
                   onClick={() => handleGet(offer)}
                   disabled={disabled}
-                  className={`${compact ? 'mt-1 px-3 py-2' : 'mt-2 px-4 py-2.5'} flex items-center justify-center gap-2 font-barlow-condensed font-black text-xs tracking-widest uppercase clip-angled-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-accent light:bg-accent-light text-black light:text-white border border-accent light:border-accent-light hover:bg-accent/90 light:hover:bg-accent-light/90`}
+                  className={`${compact ? 'mt-1 px-3 py-2' : 'mt-2 px-4 py-2.5'} flex items-center justify-center gap-2 font-barlow-condensed font-black text-xs tracking-widest uppercase clip-angled-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-cta text-cta-ink border border-cta hover:bg-cta/90`}
                 >
                   {offer.sold_out || sizesGone ? 'Sold out' : <><ShoppingCart size={14} /> Get my jersey</>}
                 </button>

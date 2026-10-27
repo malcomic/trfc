@@ -1,6 +1,7 @@
 import type { PoolClient } from 'pg'
 import { query } from '../config/db.js'
 import { recordCaptainCommissionsForCheckout } from './captainCommissions.js'
+import { reportMetaPurchase } from './metaConversions.js'
 import { sendTicketBatchEmail } from './ticketEmail.js'
 import { applyEntry, createPendingMpesaTx, roundKes, withWallet } from './wallet.js'
 import { startMpesaForTx } from './walletMpesa.js'
@@ -201,6 +202,7 @@ export async function completePlanIfPaid(client: PoolClient, planId: string): Pr
 /** Post-commit side effects once a plan's tickets are issued. */
 export async function afterPlanCompleted(reference: string) {
   await recordCaptainCommissionsForCheckout(reference)
+  reportMetaPurchase(reference)
   sendTicketBatchEmail(reference).catch((error: Error) => {
     console.error(`Error sending ticket email for ${reference}: ${error.message}`)
   })

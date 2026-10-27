@@ -78,7 +78,7 @@ export default function Medals() {
               <p className="text-red-300 mb-4">{error}</p>
               <button
                 onClick={() => window.location.reload()}
-                className="bg-accent light:bg-accent-light text-black light:text-white px-4 py-2 clip-angled-sm"
+                className="bg-cta text-cta-ink px-4 py-2 clip-angled-sm"
               >
                 Retry
               </button>

@@ -2,6 +2,32 @@ import { Request, Response } from 'express';
 import { query } from '../config/db.js';
 import { uploadToCloudinary } from '../utils/cloudinary.js';
 
+export const PROGRAM_PHOTO_IDS = ['foundations', 'fat_loss', 'endurance', 'hiking'] as const;
+export type ProgramPhotoId = (typeof PROGRAM_PHOTO_IDS)[number];
+
+export function normalizeProgramPhoto(value: unknown, mediaType?: string): ProgramPhotoId | null {
+  if (mediaType === 'video') return null;
+  if (typeof value !== 'string') return null;
+  return (PROGRAM_PHOTO_IDS as readonly string[]).includes(value) ? (value as ProgramPhotoId) : null;
+}
+
+export const getProgramPhotos = async (req: Request, res: Response) => {
+  try {
+    const result = await query(
+      "SELECT program_photo, media_url FROM gallery WHERE program_photo IS NOT NULL AND media_type = 'image'"
+    );
+    const photos: Partial<Record<ProgramPhotoId, string>> = {};
+    for (const row of result.rows) {
+      const id = normalizeProgramPhoto(row.program_photo);
+      if (id) photos[id] = row.media_url;
+    }
+    res.json(photos);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch program photos' });
+  }
+};
+
 export const getGallery = async (req: Request, res: Response) => {
   try {
     const result = await query(
@@ -28,15 +54,21 @@ export const getHeroSlides = async (req: Request, res: Response) => {
 
 export const uploadMedia = async (req: Request, res: Response) => {
   try {
-    const { media_url, media_type, caption, show_on_hero, hero_sort_order } = req.body;
+    const { media_url, media_type, caption, show_on_hero, hero_sort_order, program_photo } = req.body;
+    const type = media_type || 'image';
+    const programPhoto = normalizeProgramPhoto(program_photo, type);
+    if (programPhoto) {
+      await query('UPDATE gallery SET program_photo = NULL WHERE program_photo = $1', [programPhoto]);
+    }
     const result = await query(
-      'INSERT INTO gallery (media_url, media_type, caption, show_on_hero, hero_sort_order) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      'INSERT INTO gallery (media_url, media_type, caption, show_on_hero, hero_sort_order, program_photo) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
       [
         media_url,
-        media_type || 'image',
+        type,
         caption,
         show_on_hero === true || show_on_hero === 'true',
         hero_sort_order ?? 0,
+        programPhoto,
       ]
     );
     res.status(201).json(result.rows[0]);
@@ -64,14 +96,19 @@ export const uploadFile = async (req: Request, res: Response) => {
 export const updateMedia = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { caption, media_type, show_on_hero, hero_sort_order } = req.body;
+    const { caption, media_type, show_on_hero, hero_sort_order, program_photo } = req.body;
+    const programPhoto = normalizeProgramPhoto(program_photo, media_type);
+    if (programPhoto) {
+      await query('UPDATE gallery SET program_photo = NULL WHERE program_photo = $1 AND id <> $2', [programPhoto, id]);
+    }
     const result = await query(
-      'UPDATE gallery SET caption = $1, media_type = $2, show_on_hero = $3, hero_sort_order = $4 WHERE id = $5 RETURNING *',
+      'UPDATE gallery SET caption = $1, media_type = $2, show_on_hero = $3, hero_sort_order = $4, program_photo = $5 WHERE id = $6 RETURNING *',
       [
         caption,
         media_type,
         show_on_hero === true || show_on_hero === 'true',
         hero_sort_order ?? 0,
+        programPhoto,
         id,
       ]
     );

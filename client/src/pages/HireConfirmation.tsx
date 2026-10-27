@@ -4,6 +4,7 @@ import { getEquipmentHireById } from '../api/equipment'
 import { pollPaymentStatus } from '../api/payments'
 import { AlertCircle, CheckCircle, Clock, Package } from 'lucide-react'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
+import { trackMetaPurchase } from '../utils/metaPixel'
 
 export default function HireConfirmation() {
   const { id } = useParams()
@@ -68,6 +69,13 @@ export default function HireConfirmation() {
     load()
   }, [id, phone, phonePrompt])
 
+  useEffect(() => {
+    const reference = hire?.checkout_request_id || state.checkoutRequestId
+    if (paymentStatus !== 'paid' || !hire || !reference) return
+    const total = Number(hire.total_cost ?? state.totalPrice)
+    trackMetaPurchase(reference, total, [{ id: `hire_${hire.id}`, quantity: 1, item_price: total }])
+  }, [paymentStatus, hire, state.checkoutRequestId, state.totalPrice])
+
   const handlePhoneVerify = async (e: React.FormEvent) => {
     e.preventDefault()
     const normalized = phone.replace(/\s+/g, '')
@@ -106,7 +114,7 @@ export default function HireConfirmation() {
               placeholder="254712345678"
               className={`w-full px-4 py-3 ${inputField}`}
             />
-            <button type="submit" className="w-full bg-accent light:bg-accent-light text-black light:text-white py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-accent/90 light:hover:bg-accent-light/90">
+            <button type="submit" className="w-full bg-cta text-cta-ink py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-cta/90">
               View Hire
             </button>
           </form>
@@ -166,7 +174,7 @@ export default function HireConfirmation() {
         </div>
 
         <div className="flex gap-3">
-          <button onClick={() => navigate('/equipment')} className="flex-1 bg-accent light:bg-accent-light text-black light:text-white py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-accent/90 light:hover:bg-accent-light/90">
+          <button onClick={() => navigate('/equipment')} className="flex-1 bg-cta text-cta-ink py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-cta/90">
             Back to Equipment
           </button>
           {paymentStatus === 'pending' && !loading && (

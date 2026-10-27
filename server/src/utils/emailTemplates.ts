@@ -980,7 +980,7 @@ export function buildPasswordChangedEmailText(data: { name: string | null }): st
 }
 
 const kes = (value: number) => `KES ${Number(value).toLocaleString('en-KE', { maximumFractionDigits: 2 })}`
-const dashboardWalletUrl = () => `${config.frontendUrl.replace(/\/$/, '')}/dashboard?tab=wallet`
+const dashboardWalletUrl = () => `${config.frontendUrl.replace(/\/$/, '')}/dashboard/wallet`
 const paragraph = (html: string) =>
   `<p style="margin:0 0 16px;font-size:15px;line-height:1.5;color:#374151;">${html}</p>`
 const walletButton = (label: string) => `
