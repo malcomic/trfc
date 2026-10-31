@@ -159,7 +159,7 @@ export default function RegisterForm() {
       setLoading(true)
       setErrorMessage('')
       const referralCode = referrer?.code ?? getStoredReferral() ?? undefined
-      const captainId = !referralCode && values.captainId && values.captainId !== NO_CAPTAIN ? values.captainId : undefined
+      const captainId = values.captainId && values.captainId !== NO_CAPTAIN ? values.captainId : undefined
       const response = await registerUser({
         name: values.name.trim(),
         email: values.email.trim(),
@@ -180,7 +180,8 @@ export default function RegisterForm() {
     }
   }
 
-  const showCaptainSelect = !referrer && captains !== null && captains.length > 0
+  const captainChoices = referrer ? (captains ?? []).filter((c) => c.region_id === referrer.region_id) : captains ?? []
+  const showCaptainSelect = captainChoices.length > 0
 
   return (
     <section id={SIGNUP_ANCHOR} className="px-6 md:px-10 py-20 scroll-mt-20">
@@ -327,32 +328,31 @@ export default function RegisterForm() {
             {toggle}
           </Field>
 
-          {referrer ? (
+          {referrer && (
             <div>
-              <span className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-chalk/60 light:text-chalk-light/60 mb-2 block">Your captain</span>
+              <span className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-chalk/60 light:text-chalk-light/60 mb-2 block">Your zone</span>
               <div className="flex items-center gap-2.5 bg-accent/10 light:bg-accent-light/10 border border-accent/25 light:border-accent-light/25 border-l-4 border-l-accent light:border-l-accent-light px-4 py-3 text-sm text-chalk light:text-chalk-light">
                 <MapPin size={15} className="flex-shrink-0 text-accent light:text-accent-light" />
                 <span>
-                  <strong>{referrer.name}</strong>
-                  <span className="text-fog light:text-fog-light"> · Team {referrer.region}</span>
+                  Joining the <strong>{referrer.zone}</strong> zone
                 </span>
               </div>
             </div>
-          ) : (
-            showCaptainSelect && (
-              <Field id="reg-captain" label="Your captain" icon={<Users size={14} />}>
-                <select id="reg-captain" className={`${inputClass} pr-11 appearance-none cursor-pointer`} {...register('captainId')}>
-                  <option value="">Choose your captain</option>
-                  {captains!.map((captain) => (
-                    <option key={captain.id} value={captain.id}>
-                      {captain.name}, Team {captain.zone}
-                    </option>
-                  ))}
-                  <option value={NO_CAPTAIN}>I don&apos;t have one yet</option>
-                </select>
-                <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-fog light:text-fog-light pointer-events-none" />
-              </Field>
-            )
+          )}
+
+          {showCaptainSelect && (
+            <Field id="reg-captain" label="Your captain" icon={<Users size={14} />}>
+              <select id="reg-captain" className={`${inputClass} pr-11 appearance-none cursor-pointer`} {...register('captainId')}>
+                <option value="">{referrer ? `Choose your ${referrer.zone} captain` : 'Choose your captain'}</option>
+                {captainChoices.map((captain) => (
+                  <option key={captain.id} value={captain.id}>
+                    {captain.name}, Team {captain.zone}
+                  </option>
+                ))}
+                <option value={NO_CAPTAIN}>I don&apos;t have one yet</option>
+              </select>
+              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-fog light:text-fog-light pointer-events-none" />
+            </Field>
           )}
 
           <CheckRow id="reg-marketing" checked={marketingOptIn} onChange={setMarketingOptIn}>

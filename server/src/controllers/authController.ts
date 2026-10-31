@@ -124,9 +124,9 @@ export const register = async (req: Request, res: Response) => {
         );
 
     const user = result.rows[0];
-    const referred = referralCode ? await applyReferral(user.id, referralCode) : false;
-    if (!referred && captainId) {
-      await assignChosenCaptain(user.id, captainId);
+    const zone = referralCode ? await applyReferral(user.id, referralCode) : null;
+    if (captainId) {
+      await assignChosenCaptain(user.id, captainId, zone?.region_id);
     }
     const captain = await findCaptainSummary(user.id);
 

@@ -20,20 +20,13 @@ import {
   MemberPriceCard,
   PointsCard,
 } from '../../components/member/dashboard/MembershipCards'
-
-const LEGACY_TABS = new Set(['calendar', 'tickets', 'wallet', 'medals', 'payments', 'profile', 'captain'])
-
-/** Maps an old `/dashboard?tab=x` value to its page, or null to stay on the overview. */
-export function legacyTabPath(tab: string | null): string | null {
-  if (!tab || !LEGACY_TABS.has(tab)) return null
-  return `/dashboard/${tab}`
-}
+import { legacyTabPath } from '../../utils/legacyTabs'
 
 export default function MemberOverview() {
   const [searchParams] = useSearchParams()
   const location = useLocation()
   const navigate = useNavigate()
-  const { data, loading, error, tickets, wallet, balance, payable, openTopUp, openPayEvents, isMember } = useMemberDashboard()
+  const { data, loading, error, tickets, wallet, ticketValue, payable, openPayEvents, isMember } = useMemberDashboard()
   const [events, setEvents] = useState<Event[] | null>(null)
 
   useEffect(() => {
@@ -110,11 +103,11 @@ export default function MemberOverview() {
           </div>
           <div className="space-y-6">
             <WalletCard
-              balance={balance}
-              cap={wallet?.cap}
-              headroom={wallet?.headroom}
+              ticketValue={ticketValue}
+              upcoming={wallet?.upcoming ?? 0}
+              credits={wallet?.credits ?? []}
+              creditDays={wallet?.creditDays ?? 60}
               payableCount={payable.length}
-              onTopUp={() => openTopUp()}
               onPayEvents={openPayEvents}
             />
             {isMember ? (

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { AlertCircle } from 'lucide-react'
 import { Modal, Button } from '../ui'
-import { cancelTicket } from '../../api/wallet'
+import { TICKET_VALUE_NOTE, cancelTicket, type CancelTicketResult } from '../../api/wallet'
 import { formatKes } from '../../utils/captainDisplay'
 
 export interface CancellableTicket {
@@ -9,12 +9,13 @@ export interface CancellableTicket {
   event_title: string
   payment_status: string
   cancel_credit_amount?: number
+  cancel_notice_status?: 'cancelled_early' | 'no_show' | null
 }
 
 interface CancelTicketDialogProps {
   ticket: CancellableTicket | null
   onClose: () => void
-  onCancelled: (result: { credited: number; balance: number; cancelledTicketIds: string[] }) => void
+  onCancelled: (result: CancelTicketResult) => void
 }
 
 export default function CancelTicketDialog({ ticket, onClose, onCancelled }: CancelTicketDialogProps) {
@@ -33,7 +34,7 @@ export default function CancelTicketDialog({ ticket, onClose, onCancelled }: Can
     try {
       onCancelled(await cancelTicket(ticket.id))
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Could not cancel this ticket. Please try again.')
+      setError(err.response?.data?.error || 'Could not record this. Please try again.')
     } finally {
       setSubmitting(false)
     }
@@ -41,19 +42,31 @@ export default function CancelTicketDialog({ ticket, onClose, onCancelled }: Can
 
   const credit = Number(ticket?.cancel_credit_amount ?? 0)
   const isPlan = ticket?.payment_status === 'reserved'
+  const late = ticket?.cancel_notice_status === 'no_show'
 
   return (
-    <Modal isOpen={!!ticket} onClose={submitting ? () => undefined : close} title="Cancel ticket?">
+    <Modal isOpen={!!ticket} onClose={submitting ? () => undefined : close} title="Can't make it?">
       {ticket && (
         <div className="space-y-4 text-sm">
           <p className="text-chalk light:text-chalk-light font-semibold">{ticket.event_title}</p>
-          <p className="text-fog light:text-fog-light">
-            No refund. <strong className="text-chalk light:text-chalk-light">{formatKes(credit)}</strong> will be added to
-            your wallet for future events. You can cancel one ticket per month.
-          </p>
+          {late ? (
+            <p className="text-fog light:text-fog-light">
+              The event is less than 24 hours away, so this is recorded as a <strong>no-show</strong>. You still get{' '}
+              <strong className="text-chalk light:text-chalk-light">{formatKes(credit)}</strong> of ticket value. It appears
+              the morning after the event and lasts 60 days.
+            </p>
+          ) : (
+            <p className="text-fog light:text-fog-light">
+              Thanks for telling us early. This is recorded as <strong>cancelled early</strong>, and{' '}
+              <strong className="text-chalk light:text-chalk-light">{formatKes(credit)}</strong> becomes ticket value you
+              can use straight away, for 60 days after the event.
+            </p>
+          )}
+          <p className="text-xs text-fog light:text-fog-light">{TICKET_VALUE_NOTE}</p>
           {isPlan && (
             <p className="text-amber-400">
-              This ticket is on an installment plan. Cancelling it cancels the whole plan and releases every ticket on it.
+              This ticket is being paid in parts. Every ticket in this booking is released, and what you've paid becomes
+              ticket value.
             </p>
           )}
           {error && (
@@ -66,7 +79,7 @@ export default function CancelTicketDialog({ ticket, onClose, onCancelled }: Can
               Keep ticket
             </Button>
             <Button onClick={confirm} isLoading={submitting}>
-              Cancel ticket
+              I can't make it
             </Button>
           </div>
         </div>

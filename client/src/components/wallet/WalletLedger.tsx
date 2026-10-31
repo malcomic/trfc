@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Loader } from 'lucide-react'
-import { getWalletTransactions, type WalletTransaction } from '../../api/wallet'
+import { CREDIT_REASON_LABELS, getWalletTransactions, type WalletTransaction } from '../../api/wallet'
 import { WALLET_TX_LABELS } from '../../api/payments'
 import { cardSurface } from '../../utils/themeClasses'
 import { formatDate, formatKes } from '../../utils/captainDisplay'
@@ -9,7 +9,7 @@ const PAGE_SIZE = 20
 
 function signedAmount(tx: WalletTransaction) {
   if (tx.amount === 0 && tx.mpesa_amount) {
-    return { text: `${formatKes(tx.mpesa_amount)} via M-Pesa`, className: 'text-fog light:text-fog-light' }
+    return { text: `${formatKes(tx.mpesa_amount)} by M-Pesa`, className: 'text-fog light:text-fog-light' }
   }
   if (tx.amount > 0) return { text: `+${formatKes(tx.amount)}`, className: 'text-green-400' }
   return { text: `−${formatKes(Math.abs(tx.amount))}`, className: 'text-red-400' }
@@ -20,6 +20,7 @@ interface WalletLedgerProps {
   initial: WalletTransaction[]
 }
 
+/** History of ticket value and part payments, with the reason for each change. */
 export default function WalletLedger({ initial }: WalletLedgerProps) {
   const [rows, setRows] = useState(initial)
   const [page, setPage] = useState(0)
@@ -42,17 +43,21 @@ export default function WalletLedger({ initial }: WalletLedgerProps) {
   const canLoadMore = total === null ? initial.length >= 10 : rows.length < total
 
   if (rows.length === 0) {
-    return <p className="text-sm text-fog light:text-fog-light py-6 text-center">No wallet activity yet.</p>
+    return <p className="text-sm text-fog light:text-fog-light py-6 text-center">Nothing here yet.</p>
   }
 
   return (
     <div className="space-y-2">
       {rows.map((tx) => {
         const amount = signedAmount(tx)
+        const reason = tx.reason ? CREDIT_REASON_LABELS[tx.reason] : null
         return (
           <div key={tx.id} className={`${cardSurface} p-3 flex flex-wrap justify-between gap-3 items-center`}>
             <div className="min-w-0">
-              <p className="font-barlow-condensed font-bold">{WALLET_TX_LABELS[tx.type] ?? tx.type}</p>
+              <p className="font-barlow-condensed font-bold">
+                {WALLET_TX_LABELS[tx.type] ?? tx.type}
+                {reason ? <span className="font-normal text-fog light:text-fog-light"> · {reason}</span> : null}
+              </p>
               <p className="text-xs text-fog light:text-fog-light truncate">
                 {formatDate(tx.created_at)}
                 {tx.note ? ` · ${tx.note}` : ''}
@@ -62,10 +67,12 @@ export default function WalletLedger({ initial }: WalletLedgerProps) {
             <div className="text-right">
               <p className={`font-bebas text-lg ${amount.className}`}>{amount.text}</p>
               {tx.status === 'pending' ? (
-                <p className="text-xs text-yellow-400">Pending</p>
+                <p className="text-xs text-yellow-400">Waiting for M-Pesa</p>
               ) : (
                 tx.balance_after != null &&
-                tx.amount !== 0 && <p className="text-xs text-fog light:text-fog-light">Balance {formatKes(tx.balance_after)}</p>
+                tx.amount !== 0 && (
+                  <p className="text-xs text-fog light:text-fog-light">Ticket value {formatKes(tx.balance_after)}</p>
+                )
               )}
             </div>
           </div>

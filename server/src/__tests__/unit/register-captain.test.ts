@@ -24,6 +24,7 @@ import { DEFAULT_CAPTAIN_LABEL, sendAccountWelcomeOnce } from '../../utils/accou
 
 const USER_ID = '22222222-2222-4222-8222-222222222222'
 const CAPTAIN_ID = '33333333-3333-4333-8333-333333333333'
+const ZONE = { region_id: 'zone-nrb', region_name: 'Nairobi', region_code: 'NRB', referral_code: 'NRB' }
 const BODY = { name: 'Jane Wanjiku', email: 'Jane@Example.com', phone: '0712345678', password: 'password123' }
 const CREATED = { id: USER_ID, name: 'Jane Wanjiku', email: 'jane@example.com', phone: '0712345678', role: 'member' }
 
@@ -40,7 +41,8 @@ function mockDb(state: DbState = {}) {
     if (sql.includes('FROM users WHERE phone_normalized')) return { rows: state.phoneOwner ? [state.phoneOwner] : [] }
     if (sql.includes('FROM users WHERE LOWER(email)')) return { rows: state.emailOwner ? [state.emailOwner] : [] }
     if (sql.includes('INSERT INTO users') || sql.trim().startsWith('UPDATE users\n')) return { rows: [CREATED] }
-    if (sql.includes('SET referred_by_captain_id')) return { rows: state.referralMatches ? [{ id: USER_ID }] : [] }
+    if (sql.includes('FROM regions r')) return { rows: state.referralMatches ? [ZONE] : [] }
+    if (sql.includes('SET referred_by_region_id')) return { rows: state.referralMatches ? [{ id: USER_ID }] : [] }
     if (sql.includes('SET captain_id')) return { rows: state.captainActive ? [{ id: USER_ID }] : [] }
     if (sql.includes('u.marketing_opt_in')) return { rows: state.welcomeUser ? [state.welcomeUser] : [] }
     return { rows: [] }
@@ -57,14 +59,27 @@ describe('register: captain rules', () => {
     vi.clearAllMocks()
   })
 
-  it('a referral link wins over a chosen captain', async () => {
+  it('a zone link joins the zone and keeps the chosen captain only if they are in that zone', async () => {
     mockDb({ referralMatches: true, captainActive: true })
     const res = makeRes()
-    await register({ body: { ...BODY, referralCode: 'NRB-JANE24', captainId: CAPTAIN_ID } } as any, res)
+    await register({ body: { ...BODY, referralCode: 'NRB', captainId: CAPTAIN_ID } } as any, res)
 
     expect(res.status).toHaveBeenCalledWith(201)
-    expect(callsMatching('SET referred_by_captain_id')).toHaveLength(1)
-    expect(callsMatching('SET captain_id')).toHaveLength(0)
+    expect(callsMatching('SET referred_by_region_id')).toHaveLength(1)
+    const assign = callsMatching('SET captain_id')
+    expect(assign).toHaveLength(1)
+    expect(String(assign[0][0])).toContain('c.region_id = $3::uuid')
+    expect(assign[0][1]).toEqual([USER_ID, CAPTAIN_ID, 'zone-nrb'])
+  })
+
+  it('a captain from another zone is not assigned on a zone link', async () => {
+    mockDb({ referralMatches: true, captainActive: false })
+    const res = makeRes()
+    await register({ body: { ...BODY, referralCode: 'NRB', captainId: CAPTAIN_ID } } as any, res)
+
+    expect(res.status).toHaveBeenCalledWith(201)
+    expect(callsMatching('SET referred_by_region_id')).toHaveLength(1)
+    expect(res.json.mock.calls[0][0].user.captain).toBeNull()
   })
 
   it('a chosen captain only sets captain_id, never the commission referral', async () => {
@@ -75,18 +90,20 @@ describe('register: captain rules', () => {
     expect(res.status).toHaveBeenCalledWith(201)
     const assign = callsMatching('SET captain_id')
     expect(assign).toHaveLength(1)
-    expect(String(assign[0][0])).not.toContain('referred_by_captain_id')
-    expect(assign[0][1]).toEqual([USER_ID, CAPTAIN_ID])
-    expect(callsMatching('SET referred_by_captain_id')).toHaveLength(0)
+    expect(String(assign[0][0])).not.toContain('referred_by_region_id')
+    expect(assign[0][1]).toEqual([USER_ID, CAPTAIN_ID, null])
+    expect(callsMatching('SET referred_by_region_id')).toHaveLength(0)
   })
 
-  it('falls back to the chosen captain when the referral code does not match', async () => {
+  it('falls back to any chosen captain when the referral code does not match', async () => {
     mockDb({ referralMatches: false, captainActive: true })
     const res = makeRes()
     await register({ body: { ...BODY, referralCode: 'NRB-NOPE01', captainId: CAPTAIN_ID } } as any, res)
 
     expect(res.status).toHaveBeenCalledWith(201)
-    expect(callsMatching('SET captain_id')).toHaveLength(1)
+    const assign = callsMatching('SET captain_id')
+    expect(assign).toHaveLength(1)
+    expect(assign[0][1]).toEqual([USER_ID, CAPTAIN_ID, null])
   })
 
   it('ignores a malformed captain id', async () => {
@@ -245,7 +262,7 @@ describe('getMyTeam', () => {
   it('lists members with masked names and how they joined', async () => {
     vi.mocked(query).mockResolvedValueOnce({
       rows: [
-        { id: 'a', name: 'Jane Wanjiku', joined_at: '2026-10-01', joined_via: 'link' },
+        { id: 'a', name: 'Jane Wanjiku', joined_at: '2026-10-01', joined_via: 'zone_link' },
         { id: 'b', name: 'Tom', joined_at: '2026-10-02', joined_via: 'chosen' },
       ],
     } as any)
@@ -256,7 +273,7 @@ describe('getMyTeam', () => {
     expect(String(sql)).toContain('WHERE u.captain_id = $1')
     expect(params).toEqual([CAPTAIN_ID])
     expect(res.json).toHaveBeenCalledWith([
-      { id: 'a', name: 'Jane W.', joined_at: '2026-10-01', joined_via: 'link' },
+      { id: 'a', name: 'Jane W.', joined_at: '2026-10-01', joined_via: 'zone_link' },
       { id: 'b', name: 'Tom', joined_at: '2026-10-02', joined_via: 'chosen' },
     ])
   })

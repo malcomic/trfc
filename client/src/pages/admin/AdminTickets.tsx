@@ -247,7 +247,7 @@ export default function AdminTickets() {
           <option value="paid">Paid</option>
           <option value="pending">Pending</option>
           <option value="failed">Failed</option>
-          <option value="reserved">Reserved (installments)</option>
+          <option value="reserved">Reserved (paying in parts)</option>
           <option value="cancelled">Cancelled</option>
         </select>
         <label className="text-sm font-medium text-gray-700 dark:text-gray-300 sm:ml-4">Zone</label>
@@ -332,7 +332,7 @@ export default function AdminTickets() {
                       <div className="text-xs text-gray-500 dark:text-gray-400">{new Date(t.cancelled_at).toLocaleDateString()}</div>
                     )}
                     {t.payment_provider === 'wallet' && (
-                      <div className="text-xs text-gray-500 dark:text-gray-400">via wallet</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">via ticket credit</div>
                     )}
                   </td>
                   <td className="px-6 py-4">

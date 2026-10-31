@@ -4,6 +4,7 @@ import {
   getMyCalendar,
   getMyDashboard,
   type CalendarResponse,
+  type MemberCaptainSummary,
   type MemberDashboard as MemberDashboardData,
   type MemberProfile,
 } from '../api/users'
@@ -20,7 +21,6 @@ import { formatKes } from '../utils/captainDisplay'
 import { PROGRAMS, isProgramId } from '../content/programs'
 import { monthOfDay, monthRange, nairobiToday } from '../utils/calendarGrid'
 import { ToastStack, type ToastMessage } from '../components/Toast'
-import TopUpModal from '../components/wallet/TopUpModal'
 import PayEventsModal from '../components/wallet/PayEventsModal'
 import CancelTicketDialog from '../components/wallet/CancelTicketDialog'
 
@@ -38,6 +38,8 @@ export interface MemberTicket {
   can_cancel?: boolean
   cancel_blocked_reason?: string | null
   cancel_credit_amount?: number
+  cancel_notice_status?: 'cancelled_early' | 'no_show' | null
+  attendance_status?: string | null
 }
 
 type Notify = (type: ToastMessage['type'], title: string, message?: string) => void
@@ -47,6 +49,7 @@ interface MemberDashboardValue {
   loading: boolean
   error: string
   setProfile: (profile: MemberProfile) => void
+  setCaptain: (captain: MemberCaptainSummary | null) => void
   /** True only while the account has an active membership. */
   isMember: boolean
 
@@ -56,7 +59,8 @@ interface MemberDashboardValue {
   payable: PayableBatch[]
   plansByBatch: Map<string, PaymentPlan>
   ledgerKey: number
-  balance: number
+  /** Ticket value the member can use right now. */
+  ticketValue: number
   loadTickets: () => Promise<void>
   loadWallet: () => Promise<void>
   refreshAll: () => void
@@ -67,7 +71,6 @@ interface MemberDashboardValue {
   refreshKey: number
   fetchCalendarMonth: (month: string) => Promise<CalendarResponse>
 
-  openTopUp: (amount?: number) => void
   openPayEvents: () => void
   cancelTicket: (ticket: MemberTicket) => void
   notify: Notify
@@ -93,8 +96,6 @@ export function MemberDashboardProvider({ children }: { children: ReactNode }) {
   const [refreshKey, setRefreshKey] = useState(0)
   const calendarCache = useRef(new Map<string, CalendarResponse>())
 
-  const [topUpAmount, setTopUpAmount] = useState<number | undefined>(undefined)
-  const [topUpOpen, setTopUpOpen] = useState(false)
   const [payEventsOpen, setPayEventsOpen] = useState(false)
   const [cancelTarget, setCancelTarget] = useState<MemberTicket | null>(null)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
@@ -120,7 +121,7 @@ export function MemberDashboardProvider({ children }: { children: ReactNode }) {
     setPlans(p)
     setPayable(b)
     setLedgerKey((k) => k + 1)
-    if (w) setData((d) => (d ? { ...d, stats: { ...d.stats, wallet_balance: w.balance } } : d))
+    if (w) setData((d) => (d ? { ...d, stats: { ...d.stats, wallet_balance: w.ticketValue } } : d))
   }, [])
 
   const fetchCalendarMonth = useCallback(async (month: string) => {
@@ -152,7 +153,7 @@ export function MemberDashboardProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const state = location.state as { notice?: string; joined?: string } | null
     if (!state?.notice && !state?.joined) return
-    if (state.notice) notify('error', 'Installment plan', state.notice)
+    if (state.notice) notify('error', 'Paying in parts', state.notice)
     if (isProgramId(state.joined)) {
       notify('success', "You're in", `${PROGRAMS[state.joined].name} is now in your dashboard.`)
     }
@@ -160,16 +161,14 @@ export function MemberDashboardProvider({ children }: { children: ReactNode }) {
   }, [location, navigate, notify])
 
   const plansByBatch = useMemo(() => new Map(plans.map((p) => [p.purchase_batch_id, p])), [plans])
-  const balance = wallet?.balance ?? data?.stats.wallet_balance ?? 0
-
-  const openTopUp = useCallback((amount?: number) => {
-    setTopUpAmount(amount)
-    setPayEventsOpen(false)
-    setTopUpOpen(true)
-  }, [])
+  const ticketValue = wallet?.ticketValue ?? data?.stats.wallet_balance ?? 0
 
   const setProfile = useCallback(
     (profile: MemberProfile) => setData((d) => (d ? { ...d, profile } : d)),
+    []
+  )
+  const setCaptain = useCallback(
+    (captain: MemberCaptainSummary | null) => setData((d) => (d ? { ...d, captain } : d)),
     []
   )
 
@@ -178,6 +177,7 @@ export function MemberDashboardProvider({ children }: { children: ReactNode }) {
     loading,
     error,
     setProfile,
+    setCaptain,
     isMember: data?.membership?.active ?? false,
     tickets,
     wallet,
@@ -185,7 +185,7 @@ export function MemberDashboardProvider({ children }: { children: ReactNode }) {
     payable,
     plansByBatch,
     ledgerKey,
-    balance,
+    ticketValue,
     loadTickets,
     loadWallet,
     refreshAll,
@@ -193,7 +193,6 @@ export function MemberDashboardProvider({ children }: { children: ReactNode }) {
     setCalendarMonth,
     refreshKey,
     fetchCalendarMonth,
-    openTopUp,
     openPayEvents: () => setPayEventsOpen(true),
     cancelTicket: setCancelTarget,
     notify,
@@ -203,29 +202,19 @@ export function MemberDashboardProvider({ children }: { children: ReactNode }) {
     <MemberDashboardContext.Provider value={value}>
       {children}
 
-      <TopUpModal
-        isOpen={topUpOpen}
-        defaultAmount={topUpAmount}
-        cap={wallet?.cap}
-        headroom={wallet?.headroom}
-        onClose={() => setTopUpOpen(false)}
-        onSuccess={(amount) => {
-          notify('success', 'Wallet topped up', `${formatKes(amount)} added to your wallet.`)
-          loadWallet()
-        }}
-      />
       <PayEventsModal
         isOpen={payEventsOpen}
         onClose={() => setPayEventsOpen(false)}
         batches={payable}
-        balance={balance}
-        onNeedTopUp={openTopUp}
+        ticketValue={ticketValue}
         onPaid={(result) => {
           setPayEventsOpen(false)
           notify(
             'success',
-            'Tickets paid',
-            `${formatKes(result.total)} paid from your wallet. Your tickets have been emailed to you.`
+            result.status === 'paid' ? 'Tickets paid' : 'Payment sent',
+            result.status === 'paid'
+              ? `${formatKes(result.creditUsed)} of ticket value used. Your tickets have been emailed to you.`
+              : 'Your tickets are emailed as soon as M-Pesa confirms the payment.'
           )
           refreshAll()
         }}
@@ -237,8 +226,12 @@ export function MemberDashboardProvider({ children }: { children: ReactNode }) {
           setCancelTarget(null)
           notify(
             'success',
-            'Ticket cancelled',
-            result.credited > 0 ? `${formatKes(result.credited)} added to your wallet.` : undefined
+            result.noticeStatus === 'cancelled_early' ? 'Cancelled early' : 'Recorded as a no-show',
+            result.credited > 0
+              ? result.noticeStatus === 'cancelled_early'
+                ? `${formatKes(result.credited)} is now ticket value you can use on another event.`
+                : `${formatKes(result.credited)} of ticket value appears the morning after the event.`
+              : undefined
           )
           refreshAll()
         }}

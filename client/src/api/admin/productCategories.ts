@@ -8,6 +8,7 @@ export interface ProductCategoryPayload {
   image_url?: string
   sort_order: number
   is_active: boolean
+  is_clothing: boolean
 }
 
 export const getProductCategoriesForAdmin = async (): Promise<ProductCategory[]> => {

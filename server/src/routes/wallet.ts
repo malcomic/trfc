@@ -7,7 +7,8 @@ import {
   listWalletTransactions,
   payPaymentPlan,
   previewPlan,
-  topUpWallet,
+  releasePaymentPlan,
+  movePaymentPlan,
   walletCheckout,
 } from '../controllers/walletController.js'
 import { authMiddleware } from '../middleware/auth.js'
@@ -19,12 +20,13 @@ router.use(authMiddleware)
 
 router.get('/', getWallet)
 router.get('/transactions', listWalletTransactions)
-router.post('/topup', simpleRateLimit(10, 10 * 60_000), topUpWallet)
 router.get('/payable', listPayableBatches)
-router.post('/checkout', walletCheckout)
+router.post('/checkout', simpleRateLimit(10, 10 * 60_000), walletCheckout)
 router.get('/plans/preview', previewPlan)
 router.get('/plans', listPaymentPlans)
 router.post('/plans', simpleRateLimit(10, 10 * 60_000), createPaymentPlan)
 router.post('/plans/:id/pay', simpleRateLimit(10, 10 * 60_000), payPaymentPlan)
+router.post('/plans/:id/release', simpleRateLimit(10, 10 * 60_000), releasePaymentPlan)
+router.post('/plans/:id/move', simpleRateLimit(10, 10 * 60_000), movePaymentPlan)
 
 export default router

@@ -809,31 +809,32 @@ export const analyticsController = {
           COALESCE(SUM(cc.amount), 0) AS commission,
           COUNT(cc.id) AS purchases
         FROM regions r
-        LEFT JOIN captains c ON c.region_id = r.id
-        LEFT JOIN captain_commissions cc ON cc.captain_id = c.user_id AND cc.status <> 'reversed'${d.clause}
+        LEFT JOIN captain_commissions cc ON cc.region_id = r.id AND cc.status <> 'reversed'${d.clause}
         GROUP BY r.id, r.name, r.code, r.is_active
         HAVING r.is_active OR COUNT(cc.id) > 0
         ORDER BY referred_sales DESC, r.name ASC`,
         d.params
       )
 
+      // Money belongs to zones, so captains are ranked by the members who joined their team in the range.
+      const joined = dateRangeSql('COALESCE(tu.captain_chosen_at, tu.referred_at, tu.created_at)', range, 1)
       const topCaptains = await pool.query(
         `SELECT
+          c.user_id,
           u.name,
-          c.referral_code,
           r.name AS region,
-          COALESCE(SUM(cc.base_amount), 0) AS referred_sales,
-          COALESCE(SUM(cc.amount), 0) AS commission,
-          COUNT(cc.id) AS purchases
-        FROM captain_commissions cc
-        JOIN captains c ON c.user_id = cc.captain_id
+          (r.lead_captain_id = c.user_id) AS is_lead,
+          COUNT(tu.id) AS new_members,
+          (SELECT COUNT(*) FROM users all_tu WHERE all_tu.captain_id = c.user_id) AS team_members
+        FROM captains c
         JOIN users u ON u.id = c.user_id
         JOIN regions r ON r.id = c.region_id
-        WHERE cc.status <> 'reversed'${d.clause}
-        GROUP BY c.user_id, u.name, c.referral_code, r.name
-        ORDER BY referred_sales DESC
+        LEFT JOIN users tu ON tu.captain_id = c.user_id${joined.clause}
+        WHERE c.status = 'active'
+        GROUP BY c.user_id, u.name, r.name, r.lead_captain_id
+        ORDER BY new_members DESC, team_members DESC, u.name ASC
         LIMIT 10`,
-        d.params
+        joined.params
       )
 
       return res.json({
@@ -846,12 +847,12 @@ export const analyticsController = {
           purchases: parseInt(row.purchases),
         })),
         topCaptains: topCaptains.rows.map((row: any) => ({
+          id: row.user_id,
           name: row.name,
-          referralCode: row.referral_code,
           region: row.region,
-          referredSales: parseFloat(row.referred_sales),
-          commission: parseFloat(row.commission),
-          purchases: parseInt(row.purchases),
+          isLead: row.is_lead === true,
+          newMembers: parseInt(row.new_members),
+          teamMembers: parseInt(row.team_members),
         })),
       })
     } catch (error: any) {

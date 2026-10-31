@@ -85,6 +85,12 @@ export const captainMiddleware = async (req: Request, res: Response, next: NextF
   }
 };
 
+/** Admins, or active captains (per-event zone checks happen in the handler). */
+export const adminOrCaptainMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+  if (req.user?.role === 'admin') return next();
+  return captainMiddleware(req, res, next);
+};
+
 export const staffMiddleware = (req: Request, res: Response, next: NextFunction) => {
   if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'scanner')) {
     return res.status(403).json({ error: 'Staff access required' });

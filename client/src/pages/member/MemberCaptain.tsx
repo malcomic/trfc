@@ -14,6 +14,8 @@ import {
   TrendingUp,
   Clock,
   BadgeCheck,
+  ClipboardCheck,
+  Crown,
 } from 'lucide-react'
 import { cardSurface } from '../../utils/themeClasses'
 import { useAuth } from '../../context/AuthContext'
@@ -37,14 +39,17 @@ import { COMMISSION_STATUS_STYLES, formatDate, formatKes, formatRate } from '../
 import StatTile from '../../components/dashboard/StatTile'
 import DashboardTabs from '../../components/dashboard/DashboardTabs'
 import MemberPageHeader from '../../components/member/MemberPageHeader'
+import ScanListPanel from '../../components/attendance/ScanListPanel'
+import { getAttendanceEvents, type AttendanceEvent } from '../../api/attendance'
 
-type Tab = 'commissions' | 'referrals' | 'team' | 'payouts'
+type Tab = 'commissions' | 'referrals' | 'team' | 'payouts' | 'attendance'
 
 const TAB_LABELS: Record<Tab, string> = {
   commissions: 'Commissions',
   referrals: 'Referrals',
   team: 'Team members',
   payouts: 'Payouts',
+  attendance: 'Scan lists',
 }
 
 const PAGE_SIZE = 20
@@ -69,6 +74,8 @@ function CaptainContent() {
   const [referrals, setReferrals] = useState<CaptainReferral[] | null>(null)
   const [team, setTeam] = useState<CaptainTeamMember[] | null>(null)
   const [payouts, setPayouts] = useState<CaptainPayout[] | null>(null)
+  const [attendanceEvents, setAttendanceEvents] = useState<AttendanceEvent[] | null>(null)
+  const [scanEventId, setScanEventId] = useState<string | null>(null)
   const [tabLoading, setTabLoading] = useState(false)
 
   useEffect(() => {
@@ -120,9 +127,16 @@ function CaptainContent() {
         .catch(() => setPayouts([]))
         .finally(() => setTabLoading(false))
     }
-  }, [profile, tab, referrals, team, payouts])
+    if (tab === 'attendance' && attendanceEvents === null) {
+      setTabLoading(true)
+      getAttendanceEvents()
+        .then(setAttendanceEvents)
+        .catch(() => setAttendanceEvents([]))
+        .finally(() => setTabLoading(false))
+    }
+  }, [profile, tab, referrals, team, payouts, attendanceEvents])
 
-  const referralLink = qr?.link ?? (profile ? buildReferralLink(profile.referral_code) : '')
+  const referralLink = qr?.link ?? (profile ? buildReferralLink(profile.zone.referral_code) : '')
 
   const copyLink = async () => {
     try {
@@ -135,7 +149,7 @@ function CaptainContent() {
   }
 
   const whatsappHref = `https://wa.me/?text=${encodeURIComponent(
-    `Join me at TRFC - Kenya's fitness and wellness community! Sign up with my link: ${referralLink}`
+    `Join me at TRFC - Kenya's fitness and wellness community! Sign up with our ${profile?.zone.name ?? ''} zone link: ${referralLink}`
   )}`
 
   const totalPages = commissions ? Math.max(1, Math.ceil(commissions.total / PAGE_SIZE)) : 1
@@ -149,9 +163,16 @@ function CaptainContent() {
           profile && (
             <div className="flex flex-wrap items-center gap-3">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent/15 light:bg-accent-light/15 border border-accent/30 light:border-accent-light/30 text-accent light:text-accent-light font-barlow-condensed font-bold text-xs tracking-widest uppercase">
-                <MapPin size={12} /> {profile.region_name} · {profile.region_code}
+                <MapPin size={12} /> {profile.zone.name} · {profile.zone.code}
               </span>
-              <span>Earning {formatRate(profile.commission_rate)} on referred purchases</span>
+              {profile.zone.is_lead && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent/15 light:bg-accent-light/15 border border-accent/30 light:border-accent-light/30 text-accent light:text-accent-light font-barlow-condensed font-bold text-xs tracking-widest uppercase">
+                  <Crown size={12} /> Lead captain
+                </span>
+              )}
+              <span>
+                The {profile.zone.name} zone earns {formatRate(profile.zone.commission_rate)} on referred purchases
+              </span>
             </div>
           )
         }
@@ -173,10 +194,12 @@ function CaptainContent() {
           <>
             <div className={`${cardSurface} p-6 grid gap-6 md:grid-cols-[1fr_auto] items-center`}>
               <div className="min-w-0">
-                <h2 className="font-barlow-condensed font-bold text-xl tracking-tighter mb-1">Your referral link</h2>
+                <h2 className="font-barlow-condensed font-bold text-xl tracking-tighter mb-1">Your zone&apos;s referral link</h2>
                 <p className="text-sm text-fog light:text-fog-light mb-4">
-                  Share this link. Everyone who signs up with it is linked to you, and you earn on every product,
-                  event ticket, medal and equipment hire they buy.
+                  Every captain in {profile.zone.name} shares this link. Everyone who signs up with it joins the zone,
+                  and the zone earns on every product, event ticket, medal and equipment hire they buy. Earnings go to
+                  the {profile.zone.name} zone and are paid to{' '}
+                  {profile.zone.is_lead ? 'you as the lead captain' : profile.zone.lead_captain_name ?? 'the zone’s lead captain'}.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input
@@ -203,7 +226,7 @@ function CaptainContent() {
                   </a>
                 </div>
                 <p className="mt-3 text-xs text-fog light:text-fog-light">
-                  Referral code: <strong className="text-chalk light:text-chalk-light tracking-wider">{profile.referral_code}</strong>
+                  Zone referral code: <strong className="text-chalk light:text-chalk-light tracking-wider">{profile.zone.referral_code}</strong>
                 </p>
               </div>
               {qr && (
@@ -211,7 +234,7 @@ function CaptainContent() {
                   <img src={qr.dataUrl} alt="Referral QR code" className="w-36 h-36 bg-white p-1" />
                   <a
                     href={qr.dataUrl}
-                    download={`trfc-referral-${profile.referral_code}.png`}
+                    download={`trfc-referral-${profile.zone.referral_code}.png`}
                     className="inline-flex items-center gap-1.5 text-xs text-accent light:text-accent-light no-underline hover:underline"
                   >
                     <Download size={12} /> Download QR
@@ -221,12 +244,12 @@ function CaptainContent() {
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              <StatTile label="Team members" value={profile.stats.team_members ?? 0} icon={UsersRound} />
-              <StatTile label="Referred customers" value={profile.stats.referred_customers} icon={Users} />
-              <StatTile label="Referred sales" value={formatKes(profile.stats.referred_sales)} icon={TrendingUp} />
-              <StatTile label="Pending" value={formatKes(profile.stats.pending_amount)} icon={Clock} />
-              <StatTile label="Approved" value={formatKes(profile.stats.approved_amount)} icon={BadgeCheck} />
-              <StatTile label="Paid out" value={formatKes(profile.stats.paid_amount)} icon={Wallet} />
+              <StatTile label="Your team" value={profile.stats.team_members ?? 0} icon={UsersRound} />
+              <StatTile label="Zone referrals" value={profile.stats.referred_customers} icon={Users} />
+              <StatTile label="Zone sales" value={formatKes(profile.stats.referred_sales)} icon={TrendingUp} />
+              <StatTile label="Zone pending" value={formatKes(profile.stats.pending_amount)} icon={Clock} />
+              <StatTile label="Zone approved" value={formatKes(profile.stats.approved_amount)} icon={BadgeCheck} />
+              <StatTile label="Zone paid out" value={formatKes(profile.stats.paid_amount)} icon={Wallet} />
             </div>
 
             <div>
@@ -259,7 +282,7 @@ function CaptainContent() {
                   </div>
                   {commissions.commissions.length === 0 ? (
                     <p className="text-center py-10 text-fog light:text-fog-light">
-                      No commissions yet. Share your link to start earning.
+                      No zone commissions yet. Share the zone link to start earning.
                     </p>
                   ) : (
                     commissions.commissions.map((c) => (
@@ -267,7 +290,11 @@ function CaptainContent() {
                         <div>
                           <p className="font-barlow-condensed font-bold text-lg">{SOURCE_LABELS[c.source_type]}</p>
                           <p className="text-sm text-fog light:text-fog-light">
-                            {c.customer_name} · {formatDate(c.created_at)} · {formatKes(c.base_amount)} purchase
+                            {c.source_type === 'event_share'
+                              ? `${c.event_title ?? 'Event'} · ${formatDate(c.created_at)} · ${c.used_tickets ?? 0} used referral ticket${
+                                  c.used_tickets === 1 ? '' : 's'
+                                }`
+                              : `${c.customer_name} · ${formatDate(c.created_at)} · ${formatKes(c.base_amount)} purchase`}
                           </p>
                         </div>
                         <div className="text-right">
@@ -308,7 +335,7 @@ function CaptainContent() {
               {!tabLoading && tab === 'referrals' && referrals && (
                 <div className="space-y-3">
                   {referrals.length === 0 ? (
-                    <p className="text-center py-10 text-fog light:text-fog-light">No one has signed up with your link yet.</p>
+                    <p className="text-center py-10 text-fog light:text-fog-light">No one has signed up with the zone link yet.</p>
                   ) : (
                     referrals.map((r) => (
                       <div key={r.id} className={`${cardSurface} p-4 flex flex-wrap justify-between gap-3 items-center`}>
@@ -320,7 +347,7 @@ function CaptainContent() {
                           <p className="text-chalk light:text-chalk-light">
                             {r.purchases} purchase{r.purchases === 1 ? '' : 's'} · {formatKes(r.total_spent)}
                           </p>
-                          <p className="text-accent light:text-accent-light">You earned {formatKes(r.commission_earned)}</p>
+                          <p className="text-accent light:text-accent-light">Zone earned {formatKes(r.commission_earned)}</p>
                         </div>
                       </div>
                     ))
@@ -331,7 +358,7 @@ function CaptainContent() {
               {!tabLoading && tab === 'team' && team && (
                 <div className="space-y-3">
                   <p className="text-sm text-fog light:text-fog-light">
-                    Members who joined with your link or chose you as their captain. You earn commission only on members who joined with your link.
+                    Members who chose you as their captain. Their purchases earn for the zone only if they joined with a zone link.
                   </p>
                   {team.length === 0 ? (
                     <p className="text-center py-10 text-fog light:text-fog-light">No team members yet.</p>
@@ -344,12 +371,12 @@ function CaptainContent() {
                         </div>
                         <span
                           className={`inline-block px-2.5 py-1 text-xs font-barlow-condensed font-bold tracking-widest uppercase border ${
-                            member.joined_via === 'link'
+                            member.joined_via === 'zone_link'
                               ? 'bg-accent/15 light:bg-accent-light/15 border-accent/30 light:border-accent-light/30 text-accent light:text-accent-light'
                               : 'bg-white/5 light:bg-black/5 border-white/10 light:border-black/10 text-fog light:text-fog-light'
                           }`}
                         >
-                          {member.joined_via === 'link' ? 'Joined with your link' : 'Chose you'}
+                          {member.joined_via === 'zone_link' ? 'Joined with zone link' : 'Chose you'}
                         </span>
                       </div>
                     ))
@@ -361,8 +388,8 @@ function CaptainContent() {
                 <div className="space-y-3">
                   {payouts.length === 0 ? (
                     <p className="text-center py-10 text-fog light:text-fog-light">
-                      No payouts yet. Approved commissions are paid to your M-Pesa
-                      {profile.payout_phone ? ` (${profile.payout_phone})` : ''}.
+                      No zone payouts yet. Approved commissions are paid to the lead captain&apos;s M-Pesa
+                      {profile.zone.is_lead && profile.payout_phone ? ` (${profile.payout_phone})` : ''}.
                     </p>
                   ) : (
                     payouts.map((p) => (
@@ -371,6 +398,7 @@ function CaptainContent() {
                           <p className="font-barlow-condensed font-bold text-lg">{formatKes(p.amount)}</p>
                           <p className="text-sm text-fog light:text-fog-light">
                             {formatDate(p.paid_at)} · {p.commission_count} commission{p.commission_count === 1 ? '' : 's'}
+                            {p.paid_to_name ? ` · Paid to ${p.paid_to_name}` : ''}
                             {p.note ? ` · ${p.note}` : ''}
                           </p>
                         </div>
@@ -380,10 +408,52 @@ function CaptainContent() {
                   )}
                 </div>
               )}
+              {!tabLoading && tab === 'attendance' && attendanceEvents && (
+                <div className="space-y-3">
+                  <p className="text-sm text-fog light:text-fog-light">
+                    Events in your zone. After an event, confirm the scan list; anyone who came but wasn't scanned can be
+                    marked present for 48 hours.
+                  </p>
+                  {attendanceEvents.length === 0 ? (
+                    <p className="text-center py-10 text-fog light:text-fog-light">No recent events in your zone.</p>
+                  ) : (
+                    attendanceEvents.map((ev) => (
+                      <div key={ev.id} className={`${cardSurface} p-4 flex flex-wrap justify-between gap-3 items-center`}>
+                        <div>
+                          <p className="font-barlow-condensed font-bold text-lg">{ev.title}</p>
+                          <p className="text-sm text-fog light:text-fog-light">
+                            {formatDate(ev.event_date)} · {ev.scanned}/{ev.paid} scanned
+                            {ev.cancelled_at
+                              ? ' · Cancelled by TRFC'
+                              : ev.scan_list_confirmed_at
+                                ? ` · Confirmed · ${ev.no_shows} no-show${ev.no_shows === 1 ? '' : 's'}`
+                                : ''}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setScanEventId(ev.id)}
+                          className="inline-flex items-center gap-2 px-4 py-2 border border-white/10 light:border-black/10 font-barlow-condensed font-bold text-sm tracking-widest uppercase"
+                        >
+                          <ClipboardCheck size={14} /> Scan list
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
           </>
         )}
       </div>
+      {scanEventId && (
+        <ScanListPanel
+          eventId={scanEventId}
+          tone="member"
+          onClose={() => setScanEventId(null)}
+          onChanged={() => getAttendanceEvents().then(setAttendanceEvents).catch(() => undefined)}
+        />
+      )}
     </>
   )
 }

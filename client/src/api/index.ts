@@ -2,7 +2,7 @@ import axios from 'axios';
 import { metaRequestHeaders } from '../utils/metaPixel';
 
 /** Requests that start or complete a payment; these carry the Meta browser identifiers. */
-const PAYMENT_PATHS = /^\/?(payments\/mpesa\/stkpush|wallet\/checkout|wallet\/plans\/[^/]+\/pay)/;
+const PAYMENT_PATHS = /^\/?(payments\/mpesa\/stkpush|wallet\/checkout|wallet\/plans\/[^/]+\/(pay|move))/;
 
 const API_URL = (import.meta.env.VITE_API_URL as string) || 'http://localhost:5000/api';
 

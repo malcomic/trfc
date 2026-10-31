@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { Trash2, Edit2, Plus, Ticket } from 'lucide-react'
+import { Trash2, Edit2, Plus, Ticket, ClipboardCheck, Coins, Ban } from 'lucide-react'
 import {
   getEventsForAdmin,
   createEvent,
@@ -9,6 +9,7 @@ import {
   createEventTicketType,
   updateEventTicketType,
   deleteEventTicketType,
+  cancelEventByTrfc,
   AdminEvent,
   AdminTicketType,
 } from '../../api/admin/events'
@@ -17,7 +18,31 @@ import AdminConfirmDialog from '../../components/AdminConfirmDialog'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/AdminMobileCard'
 import AdminResponsiveData from '../../components/admin/AdminResponsiveData'
+import ZoneChips from '../../components/admin/ZoneChips'
+import EventSettlementPanel from '../../components/admin/EventSettlementPanel'
+import EventWaitlistPanel from '../../components/admin/EventWaitlistPanel'
+import ScanListPanel from '../../components/attendance/ScanListPanel'
+import { getZones, type Zone } from '../../api/zones'
 import { formatEventDate, toDatetimeLocalValue } from '../../utils/eventDate'
+
+const optionalNumber = (value: unknown) =>
+  value === '' || value === null || value === undefined ? null : Number(value)
+
+function seatSummary(event: AdminEvent) {
+  const b = event.seat_breakdown
+  if (!b || b.total == null) return null
+  const taken = b.memberTaken + b.openTaken
+  if (!b.priorityPct) return `${taken}/${b.total} seats taken`
+  return `${taken}/${b.total} taken · members ${b.memberTaken}/${b.memberSeats} (${b.priorityPct}%)${
+    b.released ? ' · member seats opened to all' : ''
+  }`
+}
+
+function statusLabel(event: AdminEvent) {
+  if (event.cancelled_at) return { text: 'Cancelled', cls: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' }
+  if (event.is_active) return { text: 'Active', cls: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' }
+  return { text: 'Inactive', cls: 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300' }
+}
 
 function formatMinPrice(event: AdminEvent) {
   if (event.min_price == null) return 'No types'
@@ -48,9 +73,19 @@ export default function AdminEvents() {
   })
   const [savingType, setSavingType] = useState(false)
   const [deleteType, setDeleteType] = useState<{ eventId: string; typeId: string } | null>(null)
+  const [zones, setZones] = useState<Zone[]>([])
+  const [zoneIds, setZoneIds] = useState<string[]>([])
+  const [scanEventId, setScanEventId] = useState<string | null>(null)
+  const [settlementEventId, setSettlementEventId] = useState<string | null>(null)
+  const [waitlistEvent, setWaitlistEvent] = useState<AdminEvent | null>(null)
+  const [cancelTarget, setCancelTarget] = useState<AdminEvent | null>(null)
+  const [cancelReason, setCancelReason] = useState('')
+  const [cancelling, setCancelling] = useState(false)
+  const [notice, setNotice] = useState('')
 
   useEffect(() => {
     fetchEvents()
+    getZones().then(setZones).catch(() => setZones([]))
   }, [])
 
   useEffect(() => {
@@ -102,7 +137,11 @@ export default function AdminEvents() {
         event_date: data.event_date,
         location: data.location,
         image_url: imageUrl,
-        installments_allowed: Number(data.installments_allowed ?? 0),
+        installments_enabled: Boolean(data.installments_enabled),
+        payment_deadline_days: optionalNumber(data.payment_deadline_days),
+        member_priority_pct: optionalNumber(data.member_priority_pct),
+        capacity: optionalNumber(data.capacity),
+        zone_ids: zoneIds,
       }
 
       if (editingId) {
@@ -144,10 +183,36 @@ export default function AdminEvents() {
     reset({
       ...event,
       event_date: toDatetimeLocalValue(event.event_date),
-      installments_allowed: String(event.installments_allowed ?? 0),
+      installments_enabled: Number(event.installments_allowed ?? 0) > 0,
+      payment_deadline_days: event.payment_deadline_days ?? '',
+      member_priority_pct: event.member_priority_pct ?? '',
+      capacity: event.capacity ?? '',
     })
+    setZoneIds((event.zones ?? []).map((z) => z.id))
     setShowModal(true)
   }
+
+  const confirmCancelEvent = async () => {
+    if (!cancelTarget) return
+    try {
+      setCancelling(true)
+      setError('')
+      const result = await cancelEventByTrfc(cancelTarget.id, cancelReason.trim())
+      setNotice(
+        `${cancelTarget.title} cancelled. ${result.ticketsCredited} ticket(s) became ticket value` +
+          (result.guestTickets ? `; ${result.guestTickets} guest ticket(s) have no account and need follow-up.` : '.')
+      )
+      setCancelTarget(null)
+      setCancelReason('')
+      fetchEvents()
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to cancel the event')
+    } finally {
+      setCancelling(false)
+    }
+  }
+
+  const eventStarted = (event: AdminEvent) => new Date(event.event_date).getTime() <= Date.now()
 
   const openTypeModal = (event: AdminEvent, type?: AdminTicketType) => {
     setTypesEvent(event)
@@ -221,6 +286,7 @@ export default function AdminEvents() {
               setEditingId(null)
               setFilePreview(null)
               reset()
+              setZoneIds([])
               setShowModal(true)
             }}
             className="flex items-center justify-center gap-2 bg-primary dark:bg-primary-dark text-white dark:text-black px-6 py-2 rounded-lg hover:opacity-90 transition w-full sm:w-auto"
@@ -234,6 +300,11 @@ export default function AdminEvents() {
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-6">
           {error}
+        </div>
+      )}
+      {notice && (
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-lg mb-6">
+          {notice}
         </div>
       )}
 
@@ -259,7 +330,10 @@ export default function AdminEvents() {
             <tbody>
               {events.map((event) => (
                 <tr key={event.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-900 dark:text-gray-100">
-                  <td className="px-6 py-4">{event.title}</td>
+                  <td className="px-6 py-4">
+                    <div>{event.title}</div>
+                    <div className="mt-1"><ZoneChips zones={event.zones} /></div>
+                  </td>
                   <td className="px-6 py-4">{formatEventDate(event.event_date, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
                   <td className="px-6 py-4">{event.location || '—'}</td>
                   <td className="px-6 py-4">
@@ -267,14 +341,21 @@ export default function AdminEvents() {
                     <div className="text-xs text-gray-500 dark:text-gray-400">
                       {event.ticket_types?.length || 0} type(s)
                     </div>
+                    {seatSummary(event) && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400">{seatSummary(event)}</div>
+                    )}
+                    {(event.waitlist_count ?? 0) > 0 && (
+                      <button
+                        onClick={() => setWaitlistEvent(event)}
+                        className="text-xs text-primary dark:text-primary-dark hover:underline"
+                      >
+                        {event.waitlist_count} on the waiting list
+                      </button>
+                    )}
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                      event.is_active
-                        ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
-                    }`}>
-                      {event.is_active ? 'Active' : 'Inactive'}
+                    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${statusLabel(event).cls}`}>
+                      {statusLabel(event).text}
                     </span>
                   </td>
                   <td className="px-6 py-4 flex gap-2 flex-wrap">
@@ -288,6 +369,21 @@ export default function AdminEvents() {
                     <button onClick={() => handleEdit(event)} className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 min-h-[44px]">
                       <Edit2 size={18} />
                     </button>
+                    {eventStarted(event) && (
+                      <button onClick={() => setScanEventId(event.id)} className="flex items-center gap-1 text-gray-700 dark:text-gray-300 hover:opacity-80 min-h-[44px]" title="Scan list">
+                        <ClipboardCheck size={18} />
+                      </button>
+                    )}
+                    {eventStarted(event) && !event.cancelled_at && (
+                      <button onClick={() => setSettlementEventId(event.id)} className="flex items-center gap-1 text-amber-600 dark:text-amber-400 hover:opacity-80 min-h-[44px]" title="Captains' profit share">
+                        <Coins size={18} />
+                      </button>
+                    )}
+                    {!event.cancelled_at && (
+                      <button onClick={() => setCancelTarget(event)} className="flex items-center gap-1 text-orange-600 dark:text-orange-400 hover:opacity-80 min-h-[44px]" title="Cancel event (TRFC)">
+                        <Ban size={18} />
+                      </button>
+                    )}
                     <button onClick={() => setDeleteId(event.id)} className="flex items-center gap-1 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 min-h-[44px]">
                       <Trash2 size={18} />
                     </button>
@@ -308,6 +404,21 @@ export default function AdminEvents() {
                 <button onClick={() => handleEdit(event)} className="flex items-center gap-1 text-blue-600 dark:text-blue-400 min-h-[44px] px-3">
                   <Edit2 size={18} /> Edit
                 </button>
+                {eventStarted(event) && (
+                  <button onClick={() => setScanEventId(event.id)} className="flex items-center gap-1 text-gray-700 dark:text-gray-300 min-h-[44px] px-3">
+                    <ClipboardCheck size={18} /> Scan list
+                  </button>
+                )}
+                {eventStarted(event) && !event.cancelled_at && (
+                  <button onClick={() => setSettlementEventId(event.id)} className="flex items-center gap-1 text-amber-600 dark:text-amber-400 min-h-[44px] px-3">
+                    <Coins size={18} /> Share
+                  </button>
+                )}
+                {!event.cancelled_at && (
+                  <button onClick={() => setCancelTarget(event)} className="flex items-center gap-1 text-orange-600 dark:text-orange-400 min-h-[44px] px-3">
+                    <Ban size={18} /> Cancel
+                  </button>
+                )}
                 <button onClick={() => setDeleteId(event.id)} className="flex items-center gap-1 text-red-600 dark:text-red-400 min-h-[44px] px-3">
                   <Trash2 size={18} /> Delete
                 </button>
@@ -318,15 +429,23 @@ export default function AdminEvents() {
             <AdminMobileCardRow label="Date" value={formatEventDate(event.event_date, { year: 'numeric', month: 'short', day: 'numeric' })} />
             <AdminMobileCardRow label="Location" value={event.location || '—'} />
             <AdminMobileCardRow label="Tickets" value={formatMinPrice(event)} />
+            {seatSummary(event) && <AdminMobileCardRow label="Seats" value={seatSummary(event)} />}
+            {(event.waitlist_count ?? 0) > 0 && (
+              <AdminMobileCardRow
+                label="Waiting list"
+                value={
+                  <button onClick={() => setWaitlistEvent(event)} className="text-primary dark:text-primary-dark underline">
+                    {event.waitlist_count} waiting
+                  </button>
+                }
+              />
+            )}
+            <AdminMobileCardRow label="Zones" value={<ZoneChips zones={event.zones} />} />
             <AdminMobileCardRow
               label="Status"
               value={
-                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                  event.is_active
-                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
-                }`}>
-                  {event.is_active ? 'Active' : 'Inactive'}
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusLabel(event).cls}`}>
+                  {statusLabel(event).text}
                 </span>
               }
             />
@@ -380,20 +499,77 @@ export default function AdminEvents() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Installments</label>
-                <select
-                  {...register('installments_allowed')}
-                  defaultValue="0"
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                >
-                  <option value="0">Off (pay in full only)</option>
-                  <option value="2">Up to 2 payments</option>
-                  <option value="3">Up to 3 payments</option>
-                </select>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Members need at least 7 days per installment before the event (14 days for 2, 21 for 3).
+              <div className="space-y-3 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" {...register('installments_enabled')} className="w-4 h-4" />
+                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Paying in parts allowed</span>
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Members pay 30% first (rounded up to KSh 10) and choose dates for the rest. Everything is due by the
+                  deadline below; the QR ticket is issued once fully paid.
                 </p>
+                <div>
+                  <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">
+                    Full payment due (days before the event)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={30}
+                    {...register('payment_deadline_days')}
+                    placeholder="Default from ticket rules (3)"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Total seats</label>
+                  <input type="number" min={0} {...register('capacity')} placeholder="No limit" className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Member priority %</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    {...register('member_priority_pct')}
+                    placeholder="0 = none"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2">
+                For hikes, e.g. 40: that share of seats is held for active members until 7 days before the event, then
+                opened to everyone. Needs a seat total.
+              </p>
+
+              <div>
+                <span className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Zones</span>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  Captains of these zones can confirm the scan list. Leave empty for admin only.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {zones.map((zone) => {
+                    const on = zoneIds.includes(zone.id)
+                    return (
+                      <button
+                        key={zone.id}
+                        type="button"
+                        onClick={() => setZoneIds(on ? zoneIds.filter((id) => id !== zone.id) : [...zoneIds, zone.id])}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold border ${
+                          on
+                            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 border-emerald-300'
+                            : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300'
+                        }`}
+                      >
+                        {zone.name}
+                      </button>
+                    )
+                  })}
+                  {zones.length === 0 && <span className="text-xs text-gray-500">No zones set up yet.</span>}
+                </div>
               </div>
 
               <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -625,6 +801,55 @@ export default function AdminEvents() {
                   {savingType ? 'Saving…' : editingType ? 'Update' : 'Create'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {scanEventId && (
+        <ScanListPanel eventId={scanEventId} onClose={() => setScanEventId(null)} onChanged={fetchEvents} />
+      )}
+      {settlementEventId && (
+        <EventSettlementPanel eventId={settlementEventId} onClose={() => setSettlementEventId(null)} />
+      )}
+      {waitlistEvent && (
+        <EventWaitlistPanel eventId={waitlistEvent.id} title={waitlistEvent.title} onClose={() => setWaitlistEvent(null)} />
+      )}
+
+      {cancelTarget && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6 space-y-4">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Cancel {cancelTarget.title}?</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Every paid or part-paid ticket becomes ticket value straight away, payments in progress close, and nobody is
+              counted as a no-show. Members are notified. This can't be undone.
+            </p>
+            <textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              rows={3}
+              placeholder='Reason shown to members, e.g. "Heavy rain on the trail"'
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            />
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setCancelTarget(null)
+                  setCancelReason('')
+                }}
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg"
+              >
+                Keep event
+              </button>
+              <button
+                type="button"
+                onClick={confirmCancelEvent}
+                disabled={cancelling || cancelReason.trim().length < 3}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg disabled:opacity-50"
+              >
+                {cancelling ? 'Cancelling…' : 'Cancel event'}
+              </button>
             </div>
           </div>
         </div>

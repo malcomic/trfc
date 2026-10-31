@@ -9,6 +9,7 @@ import { recordCaptainCommission, reverseCaptainCommission } from '../utils/capt
 import { FLASH_SOLD_UNITS_SQL } from './flashSalesController.js';
 import { productInZoneSql } from '../utils/zones.js';
 import { ProductOptionsError, resolveSelectedOptions } from '../utils/productVariants.js';
+import { nextDeliveryWednesday } from '../utils/ticketRules.js';
 
 type DbClient = Awaited<ReturnType<typeof getClient>>;
 
@@ -83,7 +84,9 @@ async function fetchOrderItems(orderId: string) {
 
 export const getOrders = async (req: Request, res: Response) => {
   try {
-    const result = await query('SELECT * FROM orders ORDER BY created_at DESC');
+    const result = await query(
+      `SELECT *, to_char(delivery_date, 'YYYY-MM-DD') AS delivery_date FROM orders ORDER BY created_at DESC`
+    );
     const orders = await Promise.all(
       result.rows.map(async (order) => ({
         ...order,
@@ -103,7 +106,10 @@ export const getOrderById = async (req: Request, res: Response) => {
     const phoneQuery = typeof req.query.phone === 'string' ? req.query.phone : undefined;
     const userId = req.user?.id;
 
-    const result = await query('SELECT * FROM orders WHERE id = $1', [id]);
+    const result = await query(
+      `SELECT *, to_char(delivery_date, 'YYYY-MM-DD') AS delivery_date FROM orders WHERE id = $1`,
+      [id]
+    );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Order not found' });
     }
@@ -119,6 +125,7 @@ export const getOrderById = async (req: Request, res: Response) => {
         status: order.payment_status,
         total: order.total_amount,
         created_at: order.created_at,
+        delivery_date: order.delivery_date,
       });
     }
 
@@ -127,6 +134,31 @@ export const getOrderById = async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch order' });
+  }
+};
+
+/** Delivery date clothing in the cart would get if ordered now (Wednesdays only, Tuesday 8 pm cutoff). */
+export const getDeliveryDatePreview = async (req: Request, res: Response) => {
+  try {
+    const ids = String(req.query.productIds ?? '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean)
+      .slice(0, 100);
+    const clothing = ids.length
+      ? await query(
+          `SELECT 1 FROM products p JOIN product_categories pc ON pc.id = p.category_id
+           WHERE p.id::text = ANY($1::text[]) AND pc.is_clothing LIMIT 1`,
+          [ids]
+        )
+      : { rows: [] };
+    res.json({
+      has_clothing: clothing.rows.length > 0,
+      delivery_date: nextDeliveryWednesday(new Date()),
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to work out the delivery date' });
   }
 };
 
@@ -189,6 +221,7 @@ export const createOrder = async (req: Request, res: Response) => {
     }
 
     let subtotal = 0;
+    let hasClothing = false;
     const lines: {
       product_id: string;
       quantity: number;
@@ -207,7 +240,10 @@ export const createOrder = async (req: Request, res: Response) => {
         throw new OrderValidationError(400, 'Invalid item quantity');
       }
       const productResult = await client.query(
-        'SELECT id, price, stock, is_active, name, distance_options FROM products WHERE id = $1',
+        `SELECT p.id, p.price, p.stock, p.is_active, p.name, p.distance_options,
+                COALESCE(pc.is_clothing, false) AS is_clothing
+         FROM products p LEFT JOIN product_categories pc ON pc.id = p.category_id
+         WHERE p.id = $1`,
         [item.product_id]
       );
       if (productResult.rows.length === 0) {
@@ -264,6 +300,7 @@ export const createOrder = async (req: Request, res: Response) => {
         throw new OrderValidationError(400, `Price mismatch for ${product.name}`);
       }
       subtotal += unitPrice * quantity;
+      if (product.is_clothing) hasClothing = true;
       lines.push({
         product_id: product.id,
         quantity,
@@ -281,9 +318,9 @@ export const createOrder = async (req: Request, res: Response) => {
     }
 
     const orderResult = await client.query(
-      `INSERT INTO orders (user_id, total_amount, phone, delivery_address, email, flash_share_redemption_id)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [userId, expectedTotal, phone, delivery_address, email, flashRedemptionId]
+      `INSERT INTO orders (user_id, total_amount, phone, delivery_address, email, flash_share_redemption_id, delivery_date)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *, to_char(delivery_date, 'YYYY-MM-DD') AS delivery_date`,
+      [userId, expectedTotal, phone, delivery_address, email, flashRedemptionId, hasClothing ? nextDeliveryWednesday(new Date()) : null]
     );
 
     const orderId = orderResult.rows[0].id;

@@ -6,6 +6,13 @@ import type { MemberTicket } from '../../context/MemberDashboardContext'
 import TicketDownloadButton from '../TicketDownloadButton'
 import StatusBadge from './StatusBadge'
 
+const ATTENDANCE_BADGES: Record<string, string> = {
+  attended: 'Attended',
+  no_show: 'No-show · now ticket credit',
+  cancelled_early: 'Cancelled early · now ticket credit',
+  excused: 'Cancelled by TRFC · now ticket credit',
+}
+
 export function isUpcoming(ticket: MemberTicket) {
   if (!ticket.event_date) return false
   const today = new Date()
@@ -40,10 +47,14 @@ export default function TicketRow({ ticket, plan, onCancel, onViewPlan }: Ticket
         )}
       </div>
       <div className="flex flex-col items-end gap-2">
-        <StatusBadge
-          status={ticket.payment_status}
-          label={reserved && remaining != null ? `Reserved · ${formatKes(remaining)} remaining` : undefined}
-        />
+        {ticket.attendance_status && ATTENDANCE_BADGES[ticket.attendance_status] ? (
+          <StatusBadge status={ticket.attendance_status} label={ATTENDANCE_BADGES[ticket.attendance_status]} />
+        ) : (
+          <StatusBadge
+            status={ticket.payment_status}
+            label={reserved && remaining != null ? `Paying in parts · ${formatKes(remaining)} left to pay` : undefined}
+          />
+        )}
         {ticket.price != null && (
           <p className="font-bebas text-xl text-accent light:text-accent-light">{formatKes(Number(ticket.price))}</p>
         )}
@@ -52,12 +63,12 @@ export default function TicketRow({ ticket, plan, onCancel, onViewPlan }: Ticket
         )}
         {reserved && (
           <button type="button" onClick={onViewPlan} className="text-xs text-accent light:text-accent-light hover:underline">
-            View plan
+            Pay balance
           </button>
         )}
         {ticket.can_cancel && (
           <button type="button" onClick={() => onCancel(ticket)} className="text-xs text-red-400 hover:underline">
-            Cancel ticket
+            I can't make it
           </button>
         )}
       </div>

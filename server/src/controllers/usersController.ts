@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import { query } from '../config/db.js';
 import { findCaptainSummary } from '../utils/captainSummary.js';
+import { CaptainChangeError, changeMyCaptain, getCaptainOptions } from '../utils/memberCaptain.js';
 
 const USER_FIELDS = 'id, name, email, phone, role, created_at';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -44,17 +45,16 @@ export const getAllUsers = async (req: Request, res: Response) => {
     const result = await query(
       `SELECT u.id, u.name, u.email, u.phone, u.role, u.created_at,
               u.whatsapp, u.marketing_opt_in, u.welcome_whatsapp_sent_at,
-              u.referred_by_captain_id, u.referred_at,
+              u.referred_by_region_id, u.referred_at,
               cu.name AS referred_by_captain_name,
               r.name AS referred_by_region,
               u.captain_id,
               mcu.name AS captain_name,
               mr.name AS captain_zone,
-              (u.referred_by_captain_id IS NOT NULL) AS referred
+              (u.referred_by_region_id IS NOT NULL) AS referred
        FROM users u
-       LEFT JOIN captains c ON c.user_id = u.referred_by_captain_id
-       LEFT JOIN users cu ON cu.id = c.user_id
-       LEFT JOIN regions r ON r.id = c.region_id
+       LEFT JOIN users cu ON cu.id = u.referred_by_captain_id
+       LEFT JOIN regions r ON r.id = u.referred_by_region_id
        LEFT JOIN captains mc ON mc.user_id = u.captain_id
        LEFT JOIN users mcu ON mcu.id = mc.user_id
        LEFT JOIN regions mr ON mr.id = mc.region_id
@@ -147,6 +147,28 @@ export const getMyDashboard = async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to load your dashboard' });
+  }
+};
+
+export const getMyCaptainOptions = async (req: Request, res: Response) => {
+  try {
+    res.json(await getCaptainOptions(req.user!.id));
+  } catch (error) {
+    if (error instanceof CaptainChangeError) return res.status(error.status).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: 'Failed to load captains' });
+  }
+};
+
+export const updateMyCaptain = async (req: Request, res: Response) => {
+  try {
+    await changeMyCaptain(req.user!.id, req.body?.captainId);
+    const [captain, options] = await Promise.all([findCaptainSummary(req.user!.id), getCaptainOptions(req.user!.id)]);
+    res.json({ captain, options });
+  } catch (error) {
+    if (error instanceof CaptainChangeError) return res.status(error.status).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: 'Failed to change your captain' });
   }
 };
 

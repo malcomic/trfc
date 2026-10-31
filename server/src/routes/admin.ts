@@ -53,14 +53,23 @@ import {
   createPayout,
 } from '../controllers/captainsController.js'
 import {
-  createWalletAdjustment,
+  createAdminCredit,
   getAdminPaymentPlans,
   getAdminWalletLedger,
   getAdminWallets,
-  getWalletLimitSettingsHandler,
-  updateWalletLimitSettingsHandler,
+  getTicketRulesHandler,
+  updateTicketRulesHandler,
+  voidAdminCredit,
 } from '../controllers/adminWalletsController.js'
 import { deletePageVideo, upsertPageVideo } from '../controllers/pageVideosController.js'
+import { cancelEvent } from '../controllers/attendanceController.js'
+import { getEventWaitlist } from '../controllers/eventsController.js'
+import {
+  approveEventSettlement,
+  createEventCost,
+  getEventSettlement,
+  removeEventCost,
+} from '../controllers/eventSettlementController.js'
 import { authMiddleware, adminMiddleware } from '../middleware/auth.js'
 
 const router = Router()
@@ -68,6 +77,12 @@ const router = Router()
 router.use(authMiddleware, adminMiddleware)
 
 router.get('/events', getAdminEvents)
+router.post('/events/:id/cancel', cancelEvent)
+router.get('/events/:id/waitlist', getEventWaitlist)
+router.get('/events/:id/settlement', getEventSettlement)
+router.post('/events/:id/costs', createEventCost)
+router.delete('/events/:id/costs/:costId', removeEventCost)
+router.post('/events/:id/settlement/approve', approveEventSettlement)
 router.post('/events/:eventId/ticket-types', createEventTicketType)
 router.put('/events/:eventId/ticket-types/:typeId', updateEventTicketType)
 router.delete('/events/:eventId/ticket-types/:typeId', deleteEventTicketType)
@@ -109,9 +124,10 @@ router.get('/captain-payouts', getAdminPayouts)
 router.post('/captain-payouts', createPayout)
 router.get('/wallets', getAdminWallets)
 router.get('/wallets/plans', getAdminPaymentPlans)
-router.post('/wallets/adjustments', createWalletAdjustment)
-router.get('/wallets/settings', getWalletLimitSettingsHandler)
-router.put('/wallets/settings', updateWalletLimitSettingsHandler)
+router.post('/wallets/credits', createAdminCredit)
+router.post('/wallets/credits/:creditId/void', voidAdminCredit)
+router.get('/ticket-rules', getTicketRulesHandler)
+router.put('/ticket-rules', updateTicketRulesHandler)
 router.get('/wallets/:userId', getAdminWalletLedger)
 router.put('/page-videos/:slot', upsertPageVideo)
 router.delete('/page-videos/:slot', deletePageVideo)

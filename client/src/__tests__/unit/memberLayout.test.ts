@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { isMemberNavActive, memberNavItems } from '../../components/member/MemberLayout'
-import { legacyTabPath } from '../../pages/member/MemberOverview'
+import { isMemberNavActive, memberNavItems } from '../../components/member/memberNav'
+import { legacyTabPath } from '../../utils/legacyTabs'
 
 describe('isMemberNavActive', () => {
   it('matches /dashboard exactly for the overview', () => {
@@ -37,7 +37,7 @@ describe('memberNavItems', () => {
       'My Programs',
       'My Zone',
       'Points',
-      'Wallet',
+      'Ticket value',
       'Medals',
       'Payments',
       'Support',

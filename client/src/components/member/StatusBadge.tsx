@@ -7,6 +7,9 @@ export const STATUS_STYLES: Record<string, string> = {
   going: 'bg-green-500/20 text-green-400',
   attended: 'bg-accent/20 text-accent light:bg-accent-light/20 light:text-accent-light',
   missed: 'bg-red-500/10 text-red-300',
+  no_show: 'bg-red-500/10 text-red-300',
+  cancelled_early: 'bg-white/5 text-fog',
+  excused: 'bg-white/5 text-fog',
 }
 
 export default function StatusBadge({ status, label }: { status: string; label?: string }) {

@@ -64,8 +64,8 @@ export default function MemberTickets() {
             ))
           )}
           <p className="text-xs text-fog light:text-fog-light">
-            Paid tickets can be cancelled up to 7 days before the event, once per calendar month. There's no refund: the
-            ticket value goes to your wallet for future events.
+            Can't make it? Tell us 24 hours or more before the start and the ticket is marked "Cancelled early";
+            later is a "No-show". Either way its value becomes ticket credit for 60 days, for event tickets only.
           </p>
         </div>
       )}

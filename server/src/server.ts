@@ -7,6 +7,7 @@ import { runMigrations } from './utils/runMigrations.js';
 import { verifyEmailTransporter } from './utils/emailService.js';
 import { startFlashReminderScheduler } from './jobs/flashReminders.js';
 import { startInstallmentScheduler } from './jobs/installmentJobs.js';
+import { startCreditScheduler } from './jobs/creditJobs.js';
 
 export { pool };
 
@@ -36,6 +37,7 @@ import zonesRoutes from './routes/zones.js';
 import walletRoutes from './routes/wallet.js';
 import pageVideosRoutes from './routes/pageVideos.js';
 import programsRoutes from './routes/programs.js';
+import attendanceRoutes from './routes/attendance.js';
 
 dotenv.config();
 
@@ -78,6 +80,7 @@ app.use('/api/zones', zonesRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/page-videos', pageVideosRoutes);
 app.use('/api/programs', programsRoutes);
+app.use('/api/attendance', attendanceRoutes);
 
 // Start server
 const startServer = async () => {
@@ -97,6 +100,7 @@ const startServer = async () => {
       console.log(`✓ API base: http://localhost:${PORT}/api`);
       startFlashReminderScheduler();
       startInstallmentScheduler();
+      startCreditScheduler();
     });
   } catch (error) {
     console.error('✗ Failed to connect to database:', error);

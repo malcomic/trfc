@@ -73,7 +73,7 @@ export default function DashboardStats({ data, nextTicket, nextEvent, isMember }
       {data.captain ? (
         <StatCard label={copy.captain.label} value={data.captain.name} note={data.captain.zone} to="/dashboard/zone" />
       ) : (
-        <StatCard label={copy.captain.label} value={copy.captain.none} note={copy.captain.noneNote} to="/dashboard/profile" />
+        <StatCard label={copy.captain.label} value={copy.captain.none} note={copy.captain.noneNote} to="/dashboard/zone" />
       )}
       {isMember && <StatCard label={copy.points.label} value={copy.points.value} note={copy.points.note} />}
     </div>

@@ -76,9 +76,11 @@ describe('buyTicket zone', () => {
     email: 'runner@example.com',
     phone: '254712345678',
     attendeeName: 'Runner One',
+    termsAccepted: true,
   }
 
   function mockTicketDb(zoneActive: boolean) {
+    vi.mocked(getClient).mockResolvedValue({ query, release: vi.fn() } as any)
     routeQueries((sql) => {
       if (sql.includes('FROM regions')) return { rows: zoneActive ? [{ id: ZONE_A, name: 'Nairobi', code: 'NRB' }] : [] }
       if (sql.includes('FROM events')) return { rows: [{ id: 'ev-1', title: 'Run', event_date: '2026-11-01' }] }
@@ -112,7 +114,7 @@ describe('buyTicket zone', () => {
 
     const inserts = vi.mocked(query).mock.calls.filter(([sql]) => String(sql).includes('INSERT INTO tickets'))
     expect(inserts).toHaveLength(2)
-    for (const [, params] of inserts) expect((params as unknown[]).at(-1)).toBe(ZONE_A)
+    for (const [, params] of inserts) expect((params as unknown[])[8]).toBe(ZONE_A)
     expect(res.status).toHaveBeenCalledWith(201)
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ zoneId: ZONE_A, zoneName: 'Nairobi' }))
   })
@@ -172,7 +174,7 @@ describe('createOrder flash zone check', () => {
   function mockOrderClient(inZone: boolean) {
     const client = {
       query: vi.fn(async (sql: string) => {
-        if (sql.includes('FROM products WHERE id')) {
+        if (sql.includes('FROM products p LEFT JOIN product_categories')) {
           return { rows: [{ id: PRODUCT_ID, price: 2000, stock: 10, is_active: true, name: 'Jersey', distance_options: [] }] }
         }
         if (sql.includes('FROM product_variants')) return { rows: [] }

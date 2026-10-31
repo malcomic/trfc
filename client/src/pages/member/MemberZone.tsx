@@ -2,17 +2,23 @@ import { Link } from 'react-router-dom'
 import { Loader, MapPin, MessageCircle, User } from 'lucide-react'
 import { useMemberDashboard } from '../../context/MemberDashboardContext'
 import { CONTACT_PATH, DASHBOARD_COPY, supportLink } from '../../content/dashboard'
+import type { MemberCaptainSummary } from '../../api/users'
 import MemberPageHeader from '../../components/member/MemberPageHeader'
-import CtaButton from '../../components/programs/CtaButton'
+import CaptainPicker from '../../components/member/CaptainPicker'
 import { ctaButton } from '../../utils/themeClasses'
 import { dashCard, dashHeading, dashLink, dashMuted } from '../../components/member/dashboard/ui'
 
 const copy = DASHBOARD_COPY.zone
 
 export default function MemberZone() {
-  const { data, loading } = useMemberDashboard()
+  const { data, loading, setCaptain, notify } = useMemberDashboard()
   const captain = data?.captain ?? null
   const support = supportLink(captain)
+
+  const handleChanged = (next: MemberCaptainSummary | null) => {
+    setCaptain(next)
+    if (next) notify('success', copy.savedTitle, copy.savedBody(next.name))
+  }
 
   return (
     <>
@@ -55,14 +61,15 @@ export default function MemberZone() {
               </Link>
             </div>
           )}
+          <div className="mt-6 pt-5 border-t border-mist light:border-mist-light">
+            <CaptainPicker onChanged={handleChanged} />
+          </div>
         </div>
       ) : (
         <div className={`${dashCard} max-w-xl`}>
           <h2 className={dashHeading}>{copy.noneHeading}</h2>
           <p className={`${dashMuted} mt-2`}>{copy.noneBody}</p>
-          <CtaButton to="/dashboard/profile" size="sm" className="mt-5">
-            {copy.chooseCaptain}
-          </CtaButton>
+          <CaptainPicker startOpen onChanged={handleChanged} />
         </div>
       )}
     </>

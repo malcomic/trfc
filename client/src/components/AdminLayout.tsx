@@ -54,7 +54,7 @@ const navItems = [
   { path: '/admin/testimonials', label: 'Testimonials', icon: MessageSquare },
   { path: '/admin/equipment', label: 'Equipment', icon: Wrench },
   { path: '/admin/tickets', label: 'Tickets', icon: Ticket },
-  { path: '/admin/wallets', label: 'Wallets', icon: Wallet },
+  { path: '/admin/wallets', label: 'Ticket value', icon: Wallet },
   { path: '/admin/partnerships', label: 'Partnerships', icon: Handshake },
   { path: '/admin/sponsorship-tiers', label: 'Sponsorship Tiers', icon: Layers },
   { path: '/admin/appearance', label: 'Appearance', icon: Type },

@@ -192,13 +192,14 @@ export interface CaptainRegionStat {
   purchases: number
 }
 
+/** Captains ranked by members who chose them; commission belongs to zones. */
 export interface TopCaptainStat {
+  id: string
   name: string
-  referralCode: string
   region: string
-  referredSales: number
-  commission: number
-  purchases: number
+  isLead: boolean
+  newMembers: number
+  teamMembers: number
 }
 
 export const getCaptainsByRegion = async (

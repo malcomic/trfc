@@ -2,78 +2,25 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import {
   ArrowLeft,
-  Award,
-  BookOpen,
-  CalendarDays,
   CalendarSearch,
-  CreditCard,
-  Flag,
   Globe,
   LayoutDashboard,
-  LayoutGrid,
-  Library,
-  LifeBuoy,
   LogOut,
   MapPin,
   Menu,
   QrCode,
-  Settings,
-  Star,
-  Ticket,
   WalletCards,
   X,
-  type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { MemberDashboardProvider, useMemberDashboard } from '../../context/MemberDashboardContext'
 import { pageRoot } from '../../utils/themeClasses'
 import { formatKes } from '../../utils/captainDisplay'
-import { CONTACT_PATH, DASHBOARD_COPY, initials, supportLink, type SupportLink } from '../../content/dashboard'
+import { DASHBOARD_COPY, initials, supportLink } from '../../content/dashboard'
 import { Logo } from '../Logo'
 import { ThemeToggle } from '../ThemeToggle'
 
-export interface MemberNavItem {
-  path: string
-  label: string
-  icon: LucideIcon
-  /** Opens outside the app (for example WhatsApp) in a new tab. */
-  external?: boolean
-  /** Shown but not clickable. */
-  disabled?: boolean
-  badge?: string
-}
-
-export function isMemberNavActive(pathname: string, path: string) {
-  if (path === '/dashboard') return pathname === '/dashboard' || pathname === '/dashboard/'
-  return pathname === path || pathname.startsWith(path + '/')
-}
-
-export function memberNavItems(
-  role?: string | null,
-  isMember = false,
-  support: SupportLink = { href: CONTACT_PATH, external: false }
-): MemberNavItem[] {
-  const items: MemberNavItem[] = [
-    { path: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
-    { path: '/dashboard/tickets', label: 'My Tickets', icon: Ticket },
-    { path: '/dashboard/calendar', label: 'Calendar', icon: CalendarDays },
-    { path: '/dashboard/programs', label: 'My Programs', icon: BookOpen },
-    { path: '/dashboard/zone', label: 'My Zone', icon: MapPin },
-    isMember
-      ? { path: '/dashboard/points', label: 'Points', icon: Star }
-      : { path: '/dashboard/points', label: 'Points', icon: Star, disabled: true, badge: DASHBOARD_COPY.nav.membersTag },
-  ]
-  if (isMember) items.push({ path: '/dashboard/guides', label: 'Guides Library', icon: Library })
-  items.push(
-    { path: '/dashboard/wallet', label: 'Wallet', icon: WalletCards },
-    { path: '/dashboard/medals', label: 'Medals', icon: Award },
-    { path: '/dashboard/payments', label: 'Payments', icon: CreditCard },
-    { path: support.href, label: 'Support', icon: LifeBuoy, external: support.external },
-    { path: '/dashboard/profile', label: 'Settings', icon: Settings }
-  )
-  if (role === 'captain') items.push({ path: '/dashboard/captain', label: 'Captain', icon: Flag })
-  return items
-}
+import { isMemberNavActive, memberNavItems, type MemberNavItem } from './memberNav'
 
 const linkBase =
   'flex items-center gap-3 px-4 py-3 min-h-[44px] font-barlow-condensed font-bold text-sm tracking-widest uppercase no-underline transition-colors'
@@ -122,7 +69,7 @@ function NavEntry({ item, pathname, onNavigate }: { item: MemberNavItem; pathnam
 function SidebarContent({ onNavigate, onLogout }: { onNavigate: () => void; onLogout: () => void }) {
   const { pathname } = useLocation()
   const { user } = useAuth()
-  const { data, balance, isMember } = useMemberDashboard()
+  const { data, ticketValue, isMember } = useMemberDashboard()
   const name = data?.profile.name ?? user?.name
   const navCopy = DASHBOARD_COPY.nav
 
@@ -141,9 +88,9 @@ function SidebarContent({ onNavigate, onLogout }: { onNavigate: () => void; onLo
           className="flex items-center justify-between gap-2 px-3 py-2 bg-white/5 light:bg-black/5 no-underline text-chalk light:text-chalk-light hover:bg-white/10 light:hover:bg-black/10"
         >
           <span className="inline-flex items-center gap-2 text-xs font-barlow-condensed font-bold tracking-widest uppercase text-fog light:text-fog-light">
-            <WalletCards size={14} /> Wallet
+            <WalletCards size={14} /> Ticket value
           </span>
-          <span className="font-bebas text-lg text-accent light:text-accent-light">{formatKes(balance)}</span>
+          <span className="font-bebas text-lg text-accent light:text-accent-light">{formatKes(ticketValue)}</span>
         </Link>
       </div>
 

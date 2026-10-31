@@ -27,7 +27,7 @@ const PURCHASE_QUERIES: Record<CommissionSourceType, string> = {
     FROM equipment_hire h
     WHERE h.id = $1 AND h.payment_status = 'paid'`,
   ticket: `
-    SELECT t.user_id, t.email, t.phone,
+    SELECT t.user_id, t.email, t.phone, t.referral_region_id,
            COALESCE(t.unit_price, ett.price, e.price, 0) AS base_amount
     FROM tickets t
     JOIN events e ON e.id = t.event_id
@@ -40,6 +40,7 @@ interface PurchaseRow {
   email: string | null
   phone: string | null
   base_amount: string | number
+  referral_region_id?: string | null
 }
 
 export function isCommissionSourceType(value: unknown): value is CommissionSourceType {
@@ -73,7 +74,8 @@ export async function resolveReferredCustomer(
 }
 
 /**
- * Creates the commission for one paid purchase if its buyer was referred by an active captain.
+ * Creates the zone commission for one paid purchase if its buyer was referred by an active zone.
+ * Captains of that zone never earn the zone commission on their own purchases.
  * Safe to call repeatedly: (source_type, source_id) is unique. A reversed commission stays
  * reversed unless `reinstate` is set (admin explicitly re-marked the purchase as paid).
  */
@@ -102,19 +104,21 @@ export async function recordCaptainCommission(
 
     const inserted = await query(
       `INSERT INTO captain_commissions
-         (captain_id, referred_user_id, source_type, source_id, match_method, base_amount, rate, amount)
-       SELECT c.user_id, u.id, $2, s.id, $3, $4::numeric, c.commission_rate,
-              ROUND($4::numeric * c.commission_rate, 2)
+         (region_id, referred_user_id, source_type, source_id, match_method, base_amount, rate, amount)
+       SELECT r.id, u.id, $2, s.id, $3, $4::numeric, r.commission_rate,
+              ROUND($4::numeric * r.commission_rate, 2)
        FROM users u
-       JOIN captains c ON c.user_id = u.referred_by_captain_id
+       JOIN regions r ON r.id = COALESCE($6::uuid, u.referred_by_region_id)
        JOIN ${table} s ON s.id = $5
        WHERE u.id = $1
-         AND c.status = 'active'
-         AND c.user_id <> u.id
-         AND s.created_at >= COALESCE(u.referred_at, '-infinity'::timestamptz)
+         AND r.is_active = true
+         AND NOT EXISTS (
+           SELECT 1 FROM captains own WHERE own.user_id = u.id AND own.region_id = r.id AND own.status = 'active'
+         )
+         AND ($6::uuid IS NOT NULL OR s.created_at >= COALESCE(u.referred_at, '-infinity'::timestamptz))
        ${onConflict}
        RETURNING id`,
-      [customer.userId, sourceType, customer.method, baseAmount, sourceId]
+      [customer.userId, sourceType, customer.method, baseAmount, sourceId, purchase.referral_region_id ?? null]
     )
     return inserted.rows.length > 0
   } catch (error) {

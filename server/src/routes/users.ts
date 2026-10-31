@@ -3,6 +3,8 @@ import {
   getAllUsers,
   getMyDashboard,
   getMyCalendar,
+  getMyCaptainOptions,
+  updateMyCaptain,
   createUser,
   updateUser,
   updateUserRole,
@@ -15,6 +17,8 @@ const router = Router();
 
 router.get('/me/dashboard', authMiddleware, getMyDashboard);
 router.get('/me/calendar', authMiddleware, getMyCalendar);
+router.get('/me/captain-options', authMiddleware, getMyCaptainOptions);
+router.put('/me/captain', authMiddleware, updateMyCaptain);
 router.get('/', authMiddleware, adminMiddleware, getAllUsers);
 router.post('/', authMiddleware, adminMiddleware, createUser);
 router.put('/:id', authMiddleware, adminMiddleware, updateUser);

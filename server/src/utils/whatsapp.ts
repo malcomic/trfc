@@ -64,8 +64,11 @@ export function sendAccountWelcome(to: string, firstName: string, captainLabel: 
   return sendTemplateMessage(to, config.whatsapp.welcomeTemplateName, [firstName, captainLabel])
 }
 
-/** Installment reminder. Template variables: first name, amount, event title, due date. Skipped when no template is set. */
-export async function sendInstallmentReminder(
+/**
+ * Ticket payment reminder (7 days, 3 days and on the deadline day).
+ * Template variables: first name, amount left to pay, event title, deadline. Skipped when no template is set.
+ */
+export async function sendPaymentReminder(
   to: string,
   params: { firstName: string; amount: string; eventTitle: string; dueDate: string }
 ): Promise<boolean> {
@@ -76,4 +79,40 @@ export async function sendInstallmentReminder(
     params.eventTitle,
     params.dueDate,
   ])
+}
+
+/** Ticket value added. Template variables: first name, amount, last day to use it. Skipped when no template is set. */
+export async function sendCreditCreated(
+  to: string,
+  params: { firstName: string; amount: string; lastDay: string }
+): Promise<boolean> {
+  if (!config.whatsapp.creditCreatedTemplateName) return false
+  return sendTemplateMessage(to, config.whatsapp.creditCreatedTemplateName, [
+    params.firstName,
+    params.amount,
+    params.lastDay,
+  ])
+}
+
+/** Ticket value ending soon. Template variables: first name, amount, last day, days left. Skipped when no template is set. */
+export async function sendCreditExpiring(
+  to: string,
+  params: { firstName: string; amount: string; lastDay: string; daysLeft: string }
+): Promise<boolean> {
+  if (!config.whatsapp.creditExpiringTemplateName) return false
+  return sendTemplateMessage(to, config.whatsapp.creditExpiringTemplateName, [
+    params.firstName,
+    params.amount,
+    params.lastDay,
+    params.daysLeft,
+  ])
+}
+
+/** A seat opened for someone on the waiting list. Template variables: first name, event title, booking link. Skipped when no template is set. */
+export async function sendWaitlistSpot(
+  to: string,
+  params: { firstName: string; eventTitle: string; link: string }
+): Promise<boolean> {
+  if (!config.whatsapp.waitlistTemplateName) return false
+  return sendTemplateMessage(to, config.whatsapp.waitlistTemplateName, [params.firstName, params.eventTitle, params.link])
 }

@@ -122,7 +122,7 @@ describe('createOrder size and distance validation', () => {
     inserted = []
     const client = {
       query: vi.fn(async (sql: string, params: any[] = []) => {
-        if (sql.includes('FROM products WHERE id')) return { rows: products[params[0]] ? [products[params[0]]] : [] }
+        if (sql.includes('FROM products p LEFT JOIN product_categories')) return { rows: products[params[0]] ? [products[params[0]]] : [] }
         if (sql.includes('FROM product_variants')) return { rows: variants[params[0]] ?? [] }
         if (sql.includes('INSERT INTO orders')) return { rows: [{ id: 'order-1' }] }
         if (sql.includes('INSERT INTO order_items')) inserted.push(params)

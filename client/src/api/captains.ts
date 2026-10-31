@@ -1,17 +1,19 @@
 import api from './index'
 
 export type CommissionStatus = 'pending' | 'approved' | 'paid' | 'reversed'
-export type CommissionSourceType = 'order' | 'medal' | 'equipment_hire' | 'ticket'
+export type CommissionSourceType = 'order' | 'medal' | 'equipment_hire' | 'ticket' | 'event_share'
 
+/** The zone a referral link belongs to. */
 export interface Referrer {
   code: string
-  name: string
-  region: string
+  zone: string
+  region_id: string
 }
 
 export interface CaptainDirectoryEntry {
   id: string
   name: string
+  region_id: string
   zone: string
 }
 
@@ -19,7 +21,17 @@ export interface CaptainTeamMember {
   id: string
   name: string
   joined_at: string | null
-  joined_via: 'link' | 'chosen'
+  joined_via: 'zone_link' | 'chosen'
+}
+
+export interface CaptainZoneSummary {
+  id: string
+  name: string
+  code: string
+  referral_code: string
+  commission_rate: number
+  lead_captain_name: string | null
+  is_lead: boolean
 }
 
 export interface CaptainStats {
@@ -33,8 +45,6 @@ export interface CaptainStats {
 
 export interface CaptainProfile {
   user_id: string
-  referral_code: string
-  commission_rate: number
   payout_phone: string | null
   status: 'active' | 'suspended'
   created_at: string
@@ -44,6 +54,7 @@ export interface CaptainProfile {
   region_id: string
   region_name: string
   region_code: string
+  zone: CaptainZoneSummary
   stats: CaptainStats
 }
 
@@ -66,6 +77,8 @@ export interface CaptainCommission {
   created_at: string
   approved_at: string | null
   customer_name: string
+  event_title?: string | null
+  used_tickets?: number | null
 }
 
 export interface CaptainCommissionPage {
@@ -81,6 +94,7 @@ export interface CaptainPayout {
   mpesa_receipt: string | null
   note: string | null
   paid_at: string
+  paid_to_name: string | null
   commission_count: number
 }
 
@@ -89,6 +103,7 @@ export const SOURCE_LABELS: Record<CommissionSourceType, string> = {
   medal: 'Medal',
   equipment_hire: 'Equipment hire',
   ticket: 'Event ticket',
+  event_share: 'Event profit share',
 }
 
 export const getReferrer = async (code: string): Promise<Referrer> => {

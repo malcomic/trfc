@@ -75,7 +75,7 @@ export async function getAdminProductCategories(_req: Request, res: Response) {
 
 export async function createProductCategory(req: Request, res: Response) {
   try {
-    const { slug, name, description, image_url, sort_order, is_active } = req.body
+    const { slug, name, description, image_url, sort_order, is_active, is_clothing } = req.body
     const trimmedName = typeof name === 'string' ? name.trim() : ''
 
     if (!trimmedName) {
@@ -93,8 +93,8 @@ export async function createProductCategory(req: Request, res: Response) {
     const order = Number.isFinite(Number(sort_order)) ? Number(sort_order) : 0
 
     const result = await query(
-      `INSERT INTO product_categories (slug, name, description, image_url, sort_order, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      `INSERT INTO product_categories (slug, name, description, image_url, sort_order, is_active, is_clothing)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
       [
         normalizedSlug,
         trimmedName,
@@ -102,6 +102,7 @@ export async function createProductCategory(req: Request, res: Response) {
         image_url?.trim() || null,
         order,
         typeof is_active === 'boolean' ? is_active : true,
+        is_clothing === true,
       ]
     )
 
@@ -118,7 +119,7 @@ export async function createProductCategory(req: Request, res: Response) {
 export async function updateProductCategory(req: Request, res: Response) {
   try {
     const { id } = req.params
-    const { slug, name, description, image_url, sort_order, is_active } = req.body
+    const { slug, name, description, image_url, sort_order, is_active, is_clothing } = req.body
     const trimmedName = typeof name === 'string' ? name.trim() : ''
 
     if (!trimmedName) {
@@ -142,7 +143,8 @@ export async function updateProductCategory(req: Request, res: Response) {
            description = $3,
            image_url = $4,
            sort_order = $5,
-           is_active = COALESCE($6, is_active)
+           is_active = COALESCE($6, is_active),
+           is_clothing = COALESCE($8, is_clothing)
        WHERE id = $7
        RETURNING *`,
       [
@@ -153,6 +155,7 @@ export async function updateProductCategory(req: Request, res: Response) {
         order,
         typeof is_active === 'boolean' ? is_active : null,
         id,
+        typeof is_clothing === 'boolean' ? is_clothing : null,
       ]
     )
 

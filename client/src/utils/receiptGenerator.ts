@@ -26,7 +26,7 @@ function paymentMethodFor(data: PaymentHistoryItem | ReceiptData): string {
   if (data.type !== 'wallet') return 'M-Pesa'
   const walletType = (data as PaymentHistoryItem).wallet_type
   if (walletType === 'topup' || data.mpesa_receipt) return 'M-Pesa'
-  return 'TRFC Wallet'
+  return 'Ticket credit'
 }
 
 export function generateReceiptText(data: PaymentHistoryItem | ReceiptData): string {

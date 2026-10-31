@@ -26,6 +26,11 @@ export const deleteEvent = async (id: string) => {
   return response.data;
 };
 
+export const joinEventWaitlist = async (
+  eventId: string,
+  data: { name?: string; email: string; phone?: string }
+): Promise<{ position: number }> => (await api.post(`/events/${eventId}/waitlist`, data)).data;
+
 export const buyEventTickets = async (
   eventId: string,
   data: {
@@ -35,6 +40,8 @@ export const buyEventTickets = async (
     phone: string
     attendeeName: string
     zoneId: string
+    /** The buyer accepted the ticket rules shown at checkout. */
+    termsAccepted: boolean
   }
 ) => {
   const response = await api.post(`/events/${eventId}/tickets`, data);

@@ -257,26 +257,26 @@ export default function AdminUsers() {
   )
 
   const captainCell = (user: AdminUser) => {
-    const name = user.captain_name ?? user.referred_by_captain_name
-    if (!name) return <span className="text-gray-400">—</span>
-    const zone = user.captain_zone ?? user.referred_by_region
-    const referred = user.referred ?? Boolean(user.referred_by_captain_id)
+    const referredZone = user.referred ? user.referred_by_region : null
+    if (!user.captain_name && !referredZone) return <span className="text-gray-400">—</span>
     return (
       <span className="text-sm">
-        <span className="flex flex-wrap items-center gap-2">
-          {name}
-          <span
-            className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-              referred
-                ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300'
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-            }`}
-            title={referred ? 'Joined with the captain’s link — earns commission' : 'Chose this captain — no commission'}
-          >
-            {referred ? 'Referred' : 'Chosen'}
+        {user.captain_name ? (
+          <span className="block">
+            {user.captain_name}
+            {user.captain_zone && <span className="text-xs text-gray-500 dark:text-gray-400"> · {user.captain_zone}</span>}
           </span>
-        </span>
-        {zone && <span className="block text-xs text-gray-500 dark:text-gray-400">{zone}</span>}
+        ) : (
+          <span className="block text-gray-400">No captain</span>
+        )}
+        {referredZone && (
+          <span
+            className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300"
+            title="Joined with this zone’s link — the zone earns commission"
+          >
+            Referred · {referredZone}
+          </span>
+        )}
       </span>
     )
   }

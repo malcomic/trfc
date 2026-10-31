@@ -94,7 +94,7 @@ export default function MemberPayments() {
             <option value="ticket">Event tickets</option>
             <option value="medal">Medal challenges</option>
             <option value="equipment_hire">Equipment hire</option>
-            <option value="wallet">Wallet</option>
+            <option value="wallet">Ticket value</option>
           </select>
         </div>
         <div>

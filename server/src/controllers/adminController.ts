@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import { query } from '../config/db.js'
 import { attachTicketTypesToEvents } from '../utils/eventTicketTypes.js'
 import { getAdminProductList } from './productsController.js'
+import { withAdminDetails } from './eventsController.js'
 import { isUuid } from '../utils/zones.js'
 import { resendTicketBatch, sendTicketEmail } from '../utils/ticketEmail.js'
 
@@ -11,7 +12,7 @@ export async function getAdminEvents(_req: Request, res: Response) {
   try {
     const result = await query('SELECT * FROM events ORDER BY event_date ASC')
     const events = await attachTicketTypesToEvents(result.rows, false)
-    res.json(events)
+    res.json(await withAdminDetails(events))
   } catch (error) {
     console.error(error)
     res.status(500).json({ error: 'Failed to fetch events' })

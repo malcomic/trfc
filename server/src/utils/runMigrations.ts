@@ -491,13 +491,20 @@ const MIGRATIONS: { name: string; sql: string }[] = [
         ON captain_commissions(captain_id, status);
       CREATE INDEX IF NOT EXISTS idx_captain_commissions_created ON captain_commissions(created_at);
 
-      INSERT INTO regions (name, slug, code) VALUES
+      -- Skips existing zones before building rows: later migrations add NOT NULL columns
+      -- (regions.referral_code), which ON CONFLICT DO NOTHING would not get past.
+      INSERT INTO regions (name, slug, code)
+      SELECT v.name, v.slug, v.code
+      FROM (VALUES
         ('Nairobi', 'nairobi', 'NRB'),
         ('Mombasa', 'mombasa', 'MSA'),
         ('Kisumu', 'kisumu', 'KSM'),
         ('Nakuru', 'nakuru', 'NKR'),
         ('Eldoret', 'eldoret', 'ELD')
-      ON CONFLICT DO NOTHING;
+      ) AS v(name, slug, code)
+      WHERE NOT EXISTS (
+        SELECT 1 FROM regions r WHERE r.code = v.code OR r.slug = v.slug OR r.name = v.name
+      );
     `,
   },
   {
@@ -758,6 +765,274 @@ const MIGRATIONS: { name: string; sql: string }[] = [
         error TEXT,
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
+    `,
+  },
+  {
+    name: '036_ticket_credits',
+    sql: `
+      CREATE TABLE IF NOT EXISTS ticket_rules_settings (
+        id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+        credit_days INT NOT NULL DEFAULT 60,
+        early_notice_hours INT NOT NULL DEFAULT 24,
+        deposit_pct NUMERIC(5,2) NOT NULL DEFAULT 30,
+        deposit_round_to INT NOT NULL DEFAULT 10,
+        default_deadline_days INT NOT NULL DEFAULT 3,
+        priority_release_days INT NOT NULL DEFAULT 7,
+        mark_present_hours INT NOT NULL DEFAULT 48,
+        captain_profit_share_enabled BOOLEAN NOT NULL DEFAULT true,
+        captain_profit_share_pct NUMERIC(5,2) NOT NULL DEFAULT 20,
+        terms_version VARCHAR(20) NOT NULL DEFAULT '2026-10',
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_by UUID REFERENCES users(id)
+      );
+      INSERT INTO ticket_rules_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
+      -- One row per credit. Ticket value is the sum of remaining over active, unexpired credits.
+      CREATE TABLE IF NOT EXISTS ticket_credits (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        source_ticket_id UUID REFERENCES tickets(id) ON DELETE SET NULL,
+        source_plan_id UUID REFERENCES ticket_payment_plans(id) ON DELETE SET NULL,
+        source_event_id UUID REFERENCES events(id) ON DELETE SET NULL,
+        reason VARCHAR(20) NOT NULL,
+        captain_id UUID REFERENCES captains(user_id) ON DELETE SET NULL,
+        amount NUMERIC(12,2) NOT NULL CHECK (amount > 0),
+        remaining NUMERIC(12,2) NOT NULL CHECK (remaining >= 0),
+        available_from TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        expires_at TIMESTAMPTZ NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'active',
+        note TEXT,
+        created_by UUID REFERENCES users(id),
+        notified_at TIMESTAMPTZ,
+        reminded_14d_at TIMESTAMPTZ,
+        reminded_7d_at TIMESTAMPTZ,
+        reminded_2d_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_ticket_credits_user ON ticket_credits(user_id, status, expires_at);
+      CREATE INDEX IF NOT EXISTS idx_ticket_credits_source_ticket ON ticket_credits(source_ticket_id);
+
+      CREATE TABLE IF NOT EXISTS ticket_credit_uses (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        credit_id UUID NOT NULL REFERENCES ticket_credits(id) ON DELETE CASCADE,
+        purchase_batch_id UUID,
+        plan_id UUID REFERENCES ticket_payment_plans(id) ON DELETE SET NULL,
+        payment_tx_id UUID REFERENCES wallet_transactions(id) ON DELETE SET NULL,
+        amount NUMERIC(12,2) NOT NULL CHECK (amount > 0),
+        status VARCHAR(20) NOT NULL DEFAULT 'held',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        settled_at TIMESTAMPTZ
+      );
+      CREATE INDEX IF NOT EXISTS idx_credit_uses_credit ON ticket_credit_uses(credit_id, status);
+      CREATE INDEX IF NOT EXISTS idx_credit_uses_tx ON ticket_credit_uses(payment_tx_id);
+      CREATE INDEX IF NOT EXISTS idx_credit_uses_batch ON ticket_credit_uses(purchase_batch_id);
+
+      ALTER TABLE tickets
+        ADD COLUMN IF NOT EXISTS referral_captain_id UUID REFERENCES captains(user_id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS terms_version VARCHAR(20),
+        ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ;
+      CREATE INDEX IF NOT EXISTS idx_tickets_referral_captain ON tickets(referral_captain_id);
+
+      -- Existing wallet balances become ticket value valid for 60 days from the conversion day.
+      -- Runs once (guarded by legacy_converted_at); from then on wallets.balance is only a cached
+      -- total recomputed from ticket_credits.
+      ALTER TABLE ticket_rules_settings ADD COLUMN IF NOT EXISTS legacy_converted_at TIMESTAMPTZ;
+      WITH converted AS (
+        INSERT INTO ticket_credits (user_id, reason, amount, remaining, available_from, expires_at, note)
+        SELECT user_id, 'legacy', balance, balance, NOW(),
+               (((NOW() AT TIME ZONE 'Africa/Nairobi')::date + 60) + TIME '23:59:59') AT TIME ZONE 'Africa/Nairobi',
+               'Earlier wallet amount converted to ticket value'
+        FROM wallets
+        WHERE balance > 0
+          AND (SELECT legacy_converted_at FROM ticket_rules_settings WHERE id = 1) IS NULL
+        RETURNING id, user_id, amount
+      )
+      INSERT INTO wallet_transactions (user_id, type, amount, balance_after, status, reference_type, reference_id, note)
+      SELECT user_id, 'credit_added', amount, amount, 'completed', 'ticket_credit', id,
+             'Earlier wallet amount converted to ticket value'
+      FROM converted;
+      UPDATE ticket_rules_settings SET legacy_converted_at = NOW() WHERE id = 1 AND legacy_converted_at IS NULL;
+      UPDATE wallets w SET balance = COALESCE((
+        SELECT SUM(c.remaining) FROM ticket_credits c WHERE c.user_id = w.user_id AND c.status = 'active'
+      ), 0)
+      WHERE balance <> COALESCE((
+        SELECT SUM(c.remaining) FROM ticket_credits c WHERE c.user_id = w.user_id AND c.status = 'active'
+      ), 0);
+    `,
+  },
+  {
+    name: '037_payment_deadline',
+    sql: `
+      ALTER TABLE events ADD COLUMN IF NOT EXISTS payment_deadline_days INT;
+      ALTER TABLE ticket_payment_plans
+        ADD COLUMN IF NOT EXISTS deadline_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS deposit_amount NUMERIC(12,2),
+        ADD COLUMN IF NOT EXISTS reminded_7d_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS reminded_3d_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS reminded_0d_at TIMESTAMPTZ;
+      -- Plans created before deadlines existed keep their old rule: due by the start of event day.
+      UPDATE ticket_payment_plans p SET deadline_at = (e.event_date::date::timestamp) AT TIME ZONE 'Africa/Nairobi'
+      FROM events e WHERE e.id = p.event_id AND p.deadline_at IS NULL;
+      CREATE INDEX IF NOT EXISTS idx_payment_plans_deadline ON ticket_payment_plans(deadline_at) WHERE status = 'active';
+    `,
+  },
+  {
+    name: '038_attendance',
+    sql: `
+      ALTER TABLE tickets
+        ADD COLUMN IF NOT EXISTS attendance_status VARCHAR(20),
+        ADD COLUMN IF NOT EXISTS cancel_notice_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS marked_present_by UUID REFERENCES users(id),
+        ADD COLUMN IF NOT EXISTS marked_present_at TIMESTAMPTZ;
+      CREATE INDEX IF NOT EXISTS idx_tickets_attendance ON tickets(user_id, attendance_status);
+      ALTER TABLE events
+        ADD COLUMN IF NOT EXISTS scan_list_confirmed_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS scan_list_confirmed_by UUID REFERENCES users(id),
+        ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS cancel_reason TEXT;
+      CREATE TABLE IF NOT EXISTS event_zones (
+        event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+        zone_id UUID NOT NULL REFERENCES regions(id) ON DELETE CASCADE,
+        PRIMARY KEY (event_id, zone_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_event_zones_zone ON event_zones(zone_id);
+      -- No-show credit is only given for events after the rules launched, never for older events.
+      ALTER TABLE ticket_rules_settings ADD COLUMN IF NOT EXISTS attendance_since TIMESTAMPTZ NOT NULL DEFAULT NOW();
+    `,
+  },
+  {
+    name: '039_member_priority',
+    sql: `
+      ALTER TABLE events
+        ADD COLUMN IF NOT EXISTS member_priority_pct INT CHECK (member_priority_pct BETWEEN 0 AND 100),
+        ADD COLUMN IF NOT EXISTS priority_release_notified_at TIMESTAMPTZ;
+      ALTER TABLE tickets ADD COLUMN IF NOT EXISTS seat_pool VARCHAR(10);
+      CREATE TABLE IF NOT EXISTS event_waitlist (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        name VARCHAR(150),
+        email VARCHAR(150) NOT NULL,
+        phone VARCHAR(20),
+        notified_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE (event_id, email)
+      );
+      CREATE INDEX IF NOT EXISTS idx_event_waitlist_event ON event_waitlist(event_id, notified_at, created_at);
+    `,
+  },
+  {
+    name: '040_event_settlements',
+    sql: `
+      CREATE TABLE IF NOT EXISTS event_costs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+        label VARCHAR(150) NOT NULL,
+        amount NUMERIC(12,2) NOT NULL CHECK (amount >= 0),
+        created_by UUID REFERENCES users(id),
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_event_costs_event ON event_costs(event_id);
+      CREATE TABLE IF NOT EXISTS event_settlements (
+        event_id UUID PRIMARY KEY REFERENCES events(id) ON DELETE CASCADE,
+        revenue NUMERIC(12,2) NOT NULL,
+        costs NUMERIC(12,2) NOT NULL,
+        gross_profit NUMERIC(12,2) NOT NULL,
+        pct NUMERIC(5,2) NOT NULL,
+        used_count INT NOT NULL,
+        per_ticket_value NUMERIC(12,4) NOT NULL,
+        captain_pool NUMERIC(12,2) NOT NULL,
+        approved_by UUID REFERENCES users(id),
+        approved_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      -- One line per captain per settled event; each line is the source of one captain_commissions row.
+      CREATE TABLE IF NOT EXISTS event_settlement_lines (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        event_id UUID NOT NULL REFERENCES event_settlements(event_id) ON DELETE CASCADE,
+        captain_id UUID NOT NULL REFERENCES captains(user_id),
+        used_tickets INT NOT NULL,
+        amount NUMERIC(12,2) NOT NULL,
+        UNIQUE (event_id, captain_id)
+      );
+    `,
+  },
+  {
+    name: '041_clothing_delivery',
+    sql: `
+      ALTER TABLE product_categories ADD COLUMN IF NOT EXISTS is_clothing BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_date DATE;
+    `,
+  },
+  {
+    name: '042_settlement_payout_reminder',
+    sql: `
+      ALTER TABLE event_settlements ADD COLUMN IF NOT EXISTS payout_reminded_at TIMESTAMPTZ;
+    `,
+  },
+  {
+    name: '043_zone_referrals',
+    sql: `
+      -- Referrals and commission money belong to a zone (region), not a captain. The lead captain
+      -- receives the zone's payouts. Old captain columns stay for history and legacy referral codes.
+      -- Backfills run once, when regions.referral_code is first added.
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns WHERE table_name = 'regions' AND column_name = 'referral_code'
+        ) THEN
+          ALTER TABLE regions
+            ADD COLUMN referral_code VARCHAR(20) UNIQUE,
+            ADD COLUMN commission_rate NUMERIC(5,4) NOT NULL DEFAULT 0.10
+              CHECK (commission_rate >= 0 AND commission_rate <= 1),
+            ADD COLUMN lead_captain_id UUID REFERENCES captains(user_id) ON DELETE SET NULL;
+          UPDATE regions SET referral_code = code;
+          ALTER TABLE regions ALTER COLUMN referral_code SET NOT NULL;
+          UPDATE regions r SET commission_rate = COALESCE(
+            (SELECT MAX(c.commission_rate) FROM captains c WHERE c.region_id = r.id AND c.status = 'active'), 0.10);
+          UPDATE regions r SET lead_captain_id = (
+            SELECT c.user_id FROM captains c WHERE c.region_id = r.id AND c.status = 'active'
+            ORDER BY c.created_at ASC LIMIT 1);
+
+          ALTER TABLE users ADD COLUMN referred_by_region_id UUID REFERENCES regions(id) ON DELETE SET NULL;
+          UPDATE users u SET referred_by_region_id = c.region_id
+          FROM captains c WHERE c.user_id = u.referred_by_captain_id;
+
+          ALTER TABLE tickets ADD COLUMN referral_region_id UUID REFERENCES regions(id) ON DELETE SET NULL;
+          UPDATE tickets t SET referral_region_id = c.region_id
+          FROM captains c WHERE c.user_id = t.referral_captain_id;
+
+          ALTER TABLE ticket_credits ADD COLUMN region_id UUID REFERENCES regions(id) ON DELETE SET NULL;
+          UPDATE ticket_credits tc SET region_id = c.region_id
+          FROM captains c WHERE c.user_id = tc.captain_id;
+
+          ALTER TABLE captain_commissions ADD COLUMN region_id UUID REFERENCES regions(id);
+          UPDATE captain_commissions cc SET region_id = c.region_id
+          FROM captains c WHERE c.user_id = cc.captain_id;
+          ALTER TABLE captain_commissions ALTER COLUMN region_id SET NOT NULL;
+          ALTER TABLE captain_commissions ALTER COLUMN captain_id DROP NOT NULL;
+
+          ALTER TABLE captain_payouts ADD COLUMN region_id UUID REFERENCES regions(id);
+          UPDATE captain_payouts p SET region_id = c.region_id
+          FROM captains c WHERE c.user_id = p.captain_id;
+          ALTER TABLE captain_payouts ALTER COLUMN region_id SET NOT NULL;
+          ALTER TABLE captain_payouts ALTER COLUMN captain_id DROP NOT NULL;
+
+          ALTER TABLE event_settlement_lines ADD COLUMN region_id UUID REFERENCES regions(id);
+          UPDATE event_settlement_lines l SET region_id = c.region_id
+          FROM captains c WHERE c.user_id = l.captain_id;
+          ALTER TABLE event_settlement_lines ALTER COLUMN region_id SET NOT NULL;
+          ALTER TABLE event_settlement_lines ALTER COLUMN captain_id DROP NOT NULL;
+          ALTER TABLE event_settlement_lines DROP CONSTRAINT IF EXISTS event_settlement_lines_event_id_captain_id_key;
+        END IF;
+      END $$;
+
+      CREATE INDEX IF NOT EXISTS idx_users_referred_by_region ON users(referred_by_region_id);
+      CREATE INDEX IF NOT EXISTS idx_tickets_referral_region ON tickets(referral_region_id);
+      CREATE INDEX IF NOT EXISTS idx_captain_commissions_region_status ON captain_commissions(region_id, status);
+      CREATE INDEX IF NOT EXISTS idx_captain_payouts_region ON captain_payouts(region_id);
+      -- Lines settled before this migration are per captain, so two may share a zone.
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_settlement_lines_event_region
+        ON event_settlement_lines(event_id, region_id) WHERE captain_id IS NULL;
     `,
   },
 ]

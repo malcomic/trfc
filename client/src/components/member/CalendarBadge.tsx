@@ -8,7 +8,7 @@ export default function CalendarBadge({ event, onViewWallet }: { event: Calendar
       return <StatusBadge status="going" label={event.my_ticket_count > 1 ? `Going · ${event.my_ticket_count} tickets` : 'Going'} />
     case 'reserved':
       return (
-        <button type="button" onClick={onViewWallet} className="hover:opacity-80" title="View your installment plan">
+        <button type="button" onClick={onViewWallet} className="hover:opacity-80" title="View your payments in progress">
           <StatusBadge
             status="reserved"
             label={event.plan_remaining != null ? `Reserved · ${formatKes(event.plan_remaining)} left` : 'Reserved'}

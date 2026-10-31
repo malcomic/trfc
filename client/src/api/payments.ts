@@ -19,9 +19,15 @@ export interface PaymentInitiateResponse {
 }
 
 export type WalletTxType =
+  | 'credit_added'
+  | 'credit_used'
+  | 'credit_expired'
+  | 'credit_voided'
+  | 'ticket_payment_mpesa'
+  | 'installment'
+  // Older history rows
   | 'topup'
   | 'ticket_payment'
-  | 'installment'
   | 'cancellation_credit'
   | 'plan_expiry_credit'
   | 'adjustment'
@@ -41,16 +47,21 @@ export interface PaymentHistoryItem {
 }
 
 export const WALLET_TX_LABELS: Record<WalletTxType, string> = {
-  topup: 'Wallet top-up',
-  ticket_payment: 'Ticket paid from wallet',
-  installment: 'Installment payment',
-  cancellation_credit: 'Cancellation credit',
-  plan_expiry_credit: 'Unfinished plan credit',
-  adjustment: 'Wallet adjustment',
+  credit_added: 'Ticket value added',
+  credit_used: 'Ticket value used',
+  credit_expired: 'Ticket value ended',
+  credit_voided: 'Ticket value removed',
+  ticket_payment_mpesa: 'Tickets paid by M-Pesa',
+  installment: 'Part payment for a ticket',
+  topup: 'Earlier M-Pesa payment',
+  ticket_payment: 'Tickets paid with ticket value',
+  cancellation_credit: 'Ticket value from a cancelled ticket',
+  plan_expiry_credit: 'Ticket value from an unfinished payment',
+  adjustment: 'Change by TRFC',
 }
 
 export function paymentTypeLabel(item: Pick<PaymentHistoryItem, 'type' | 'wallet_type'>): string {
-  if (item.type === 'wallet') return item.wallet_type ? WALLET_TX_LABELS[item.wallet_type] : 'Wallet'
+  if (item.type === 'wallet') return item.wallet_type ? WALLET_TX_LABELS[item.wallet_type] : 'Ticket value'
   switch (item.type) {
     case 'order':
       return 'Product Order'

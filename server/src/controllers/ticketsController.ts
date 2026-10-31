@@ -1,5 +1,5 @@
 import { Request, Response } from 'express'
-import { query } from '../config/db.js'
+import { getClient, query } from '../config/db.js'
 import { config } from '../config/env.js'
 import {
   generateQRCodeBuffer,
@@ -22,7 +22,46 @@ import {
   resendTicketBatch,
 } from '../utils/ticketEmail.js'
 import { annotateCancellation, cancelTicket, CancellationError } from '../utils/ticketCancellation.js'
+import { allocateSeats, availableFor, isActiveMember, loadSeatState } from '../utils/seatPriority.js'
+import { getTicketRules } from '../utils/ticketRules.js'
 import { randomUUID } from 'crypto'
+import type { PoolClient } from 'pg'
+
+class BookingError extends Error {
+  constructor(message: string, public status = 400, public waitlist = false) {
+    super(message)
+  }
+}
+
+async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+  const client = await getClient()
+  try {
+    await client.query('BEGIN')
+    const result = await fn(client)
+    await client.query('COMMIT')
+    return result
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined)
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+/** The active zone whose referral link this buyer signed up through, if any. */
+async function resolveReferralRegion(
+  client: PoolClient,
+  userId: string | null,
+  email: string
+): Promise<string | null> {
+  const result = await client.query(
+    `SELECT r.id FROM users u JOIN regions r ON r.id = u.referred_by_region_id
+     WHERE r.is_active = true AND ${userId ? 'u.id = $1' : 'LOWER(u.email) = $1'}
+     LIMIT 1`,
+    [userId ?? email]
+  )
+  return result.rows[0]?.id ?? null
+}
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const FIND_TICKETS_NOT_FOUND = 'No paid tickets match that phone number and M-Pesa code'
@@ -89,67 +128,85 @@ export async function buyTicket(req: Request, res: Response) {
       return res.status(400).json({ error: 'Please choose your zone' })
     }
 
-    const eventResult = await query('SELECT * FROM events WHERE id = $1', [eventId])
-
-    if (eventResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Event not found' })
+    if (req.body.termsAccepted !== true) {
+      return res.status(400).json({
+        error: 'Please accept the ticket terms (60-day ticket value, no transfers, payment deadline) to continue',
+      })
     }
 
-    const event = eventResult.rows[0]
+    const rules = await getTicketRules()
+    const booked = await withTransaction(async (client) => {
+      const eventResult = await client.query('SELECT * FROM events WHERE id = $1 FOR UPDATE', [eventId])
+      if (eventResult.rows.length === 0) throw new BookingError('Event not found', 404)
+      const event = eventResult.rows[0]
+      if (event.cancelled_at) throw new BookingError('This event has been cancelled')
 
-    const typeResult = await query(
-      `SELECT * FROM event_ticket_types
-       WHERE id = $1 AND event_id = $2 AND is_active = true`,
-      [ticketTypeId, eventId]
-    )
-    if (typeResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Ticket type not found or inactive' })
-    }
-
-    const ticketType = typeResult.rows[0]
-    const unitPrice = Number(ticketType.price)
-
-    if (ticketType.capacity != null) {
-      const countResult = await query(
-        `SELECT COUNT(*)::int AS cnt FROM tickets
-         WHERE ticket_type_id = $1 AND payment_status IN ('pending', 'paid', 'reserved')`,
-        [ticketTypeId]
+      const typeResult = await client.query(
+        `SELECT * FROM event_ticket_types
+         WHERE id = $1 AND event_id = $2 AND is_active = true`,
+        [ticketTypeId, eventId]
       )
-      const existing = countResult.rows[0].cnt
-      const remaining = Math.max(0, Number(ticketType.capacity) - existing)
-      if (quantity > remaining) {
-        return res.status(400).json({
-          error:
-            remaining === 0
-              ? 'This ticket type is sold out'
-              : `Only ${remaining} ticket(s) available for this type`,
-        })
+      if (typeResult.rows.length === 0) throw new BookingError('Ticket type not found or inactive', 404)
+      const ticketType = typeResult.rows[0]
+
+      if (ticketType.capacity != null) {
+        const countResult = await client.query(
+          `SELECT COUNT(*)::int AS cnt FROM tickets
+           WHERE ticket_type_id = $1 AND payment_status IN ('pending', 'paid', 'reserved')`,
+          [ticketTypeId]
+        )
+        const remaining = Math.max(0, Number(ticketType.capacity) - countResult.rows[0].cnt)
+        if (quantity > remaining) {
+          throw new BookingError(
+            remaining === 0 ? 'This ticket type is sold out' : `Only ${remaining} ticket(s) available for this type`
+          )
+        }
       }
-    }
 
-    const purchaseBatchId = randomUUID()
-    const ticketIds: string[] = []
-    for (let i = 0; i < quantity; i++) {
-      const ticketResult = await query(
-        `INSERT INTO tickets
-           (user_id, event_id, ticket_type_id, unit_price, purchase_batch_id, phone, email, attendee_name, payment_provider, payment_status, zone_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
-        [
-          userId,
-          eventId,
-          ticketTypeId,
-          unitPrice,
-          purchaseBatchId,
-          phone,
-          normalizedEmail,
-          normalizedName,
-          'mpesa',
-          'pending',
-          zone.id,
-        ]
-      )
-      ticketIds.push(ticketResult.rows[0].id)
-    }
+      const member = await isActiveMember(client, userId)
+      const seats = await loadSeatState(client, eventId)
+      const pools = seats ? allocateSeats(seats, member, quantity) : null
+      if (seats && !pools) {
+        const available = availableFor(seats, member) ?? 0
+        throw new BookingError(
+          available === 0
+            ? 'No seats are open right now. Join the waiting list and we will tell you when one opens.'
+            : `Only ${available} seat(s) are open right now`,
+          409,
+          available === 0
+        )
+      }
+
+      const referralRegionId = await resolveReferralRegion(client, userId, normalizedEmail)
+      const purchaseBatchId = randomUUID()
+      const ticketIds: string[] = []
+      for (let i = 0; i < quantity; i++) {
+        const ticketResult = await client.query(
+          `INSERT INTO tickets
+             (user_id, event_id, ticket_type_id, unit_price, purchase_batch_id, phone, email, attendee_name,
+              payment_provider, payment_status, zone_id, seat_pool, referral_region_id, terms_version, terms_accepted_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'mpesa', 'pending', $9, $10, $11, $12, NOW()) RETURNING id`,
+          [
+            userId,
+            eventId,
+            ticketTypeId,
+            Number(ticketType.price),
+            purchaseBatchId,
+            phone,
+            normalizedEmail,
+            normalizedName,
+            zone.id,
+            pools?.[i] ?? 'open',
+            referralRegionId,
+            rules.termsVersion,
+          ]
+        )
+        ticketIds.push(ticketResult.rows[0].id)
+      }
+      return { event, ticketType, purchaseBatchId, ticketIds }
+    })
+    const { event, ticketType, purchaseBatchId, ticketIds } = booked
+    const unitPrice = Number(ticketType.price)
 
     res.status(201).json({
       purchaseBatchId,
@@ -166,6 +223,9 @@ export async function buyTicket(req: Request, res: Response) {
       zoneName: zone.name,
     })
   } catch (error: unknown) {
+    if (error instanceof BookingError) {
+      return res.status(error.status).json({ error: error.message, waitlist: error.waitlist })
+    }
     const pgError = error as { code?: string; message?: string }
     console.error('Error buying ticket:', pgError?.message ?? error)
     if (pgError?.code === '42703') {
@@ -189,8 +249,8 @@ export async function getUserTickets(req: Request, res: Response) {
       `SELECT
         t.id, t.user_id, t.event_id, t.purchase_batch_id, t.payment_status, t.mpesa_receipt,
         t.checkout_request_id, t.attendee_name, t.phone, t.email, t.created_at,
-        t.unit_price, t.ticket_type_id,
-        e.title as event_title, e.event_date, e.location,
+        t.unit_price, t.ticket_type_id, t.attendance_status, t.checked_in_at,
+        e.title as event_title, e.event_date, e.location, e.cancelled_at AS event_cancelled_at,
         COALESCE(t.unit_price, ett.price, e.price) as price,
         ett.name as ticket_type_name,
         t.zone_id, z.name as zone_name
@@ -217,7 +277,9 @@ export async function cancelMyTicket(req: Request, res: Response) {
     const result = await cancelTicket(String(req.params.id), userId)
     res.json({
       credited: result.credited,
-      balance: result.balance,
+      noticeStatus: result.noticeStatus,
+      availableFrom: result.availableFrom,
+      expiresAt: result.expiresAt,
       cancelledTicketIds: result.cancelledTicketIds,
     })
   } catch (error) {

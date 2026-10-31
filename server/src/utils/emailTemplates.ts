@@ -412,7 +412,23 @@ export interface OrderEmailData {
   mpesaReceipt?: string | null
   phone?: string | null
   deliveryAddress?: string | null
+  /** 'YYYY-MM-DD' Wednesday delivery for clothing orders. */
+  deliveryDate?: string | null
   confirmationUrl: string
+}
+
+const CLOTHING_DELIVERY_RULE =
+  'Orders placed before 8:00 pm on Tuesday are delivered on Wednesday. Orders placed after that are delivered the next Wednesday.'
+
+function deliveryLine(data: OrderEmailData): string {
+  if (!data.deliveryDate) return 'It will be delivered within 2-3 business days after payment confirmation.'
+  const date = new Date(`${data.deliveryDate}T12:00:00+03:00`).toLocaleDateString('en-KE', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'Africa/Nairobi',
+  })
+  return `It will be delivered on ${date}. ${CLOTHING_DELIVERY_RULE}`
 }
 
 function formatKes(value: number): string {
@@ -460,7 +476,7 @@ export function buildOrderConfirmationEmailHTML(data: OrderEmailData): string {
       <p style="margin:0 0 16px;font-size:16px;">Hi <strong>${greetingName}</strong>,</p>
       <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#374151;">
         Thanks for your purchase — we've received your payment and your order is being prepared.
-        It will be delivered within 2-3 business days after payment confirmation.
+        ${escapeHtml(deliveryLine(data))}
       </p>
 
       <h2 style="margin:0 0 8px;font-size:16px;">Your items</h2>
@@ -544,7 +560,7 @@ Order #${data.orderNumber} · ${data.orderDate}
 Hi ${data.userEmail.split('@')[0] || 'there'},
 
 Thanks for your purchase — we've received your payment and your order is being prepared.
-It will be delivered within 2-3 business days after payment confirmation.
+${deliveryLine(data)}
 
 YOUR ITEMS
 ${itemLines}
@@ -979,92 +995,194 @@ export function buildPasswordChangedEmailText(data: { name: string | null }): st
   ].join('\n\n')
 }
 
-const kes = (value: number) => `KES ${Number(value).toLocaleString('en-KE', { maximumFractionDigits: 2 })}`
-const dashboardWalletUrl = () => `${config.frontendUrl.replace(/\/$/, '')}/dashboard/wallet`
+const kes = (value: number) => `KSh ${Number(value).toLocaleString('en-KE', { maximumFractionDigits: 2 })}`
+export const siteUrl = (path: string) => `${config.frontendUrl.replace(/\/$/, '')}${path}`
+const dashboardWalletUrl = () => siteUrl('/dashboard/wallet')
 const paragraph = (html: string) =>
   `<p style="margin:0 0 16px;font-size:15px;line-height:1.5;color:#374151;">${html}</p>`
-const walletButton = (label: string) => `
+const actionButton = (label: string, url: string) => `
       <table role="presentation" cellspacing="0" cellpadding="0" style="margin:8px auto 0;">
         <tr><td style="background:#f59e0b;border-radius:6px;">
-          <a href="${escapeHtml(dashboardWalletUrl())}" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:800;letter-spacing:0.08em;color:#111827;text-decoration:none;">${label}</a>
+          <a href="${escapeHtml(url)}" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:800;letter-spacing:0.08em;color:#111827;text-decoration:none;">${label}</a>
         </td></tr>
       </table>`
+const walletButton = (label: string) => actionButton(label, dashboardWalletUrl())
 const footerText = () => `© ${new Date().getFullYear()} TRFC — Thika Road Fitness Community`
+const longDate = (date: Date) =>
+  date.toLocaleDateString('en-KE', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'Africa/Nairobi',
+  })
+const CREDIT_RULES_NOTE = 'Ticket value works for event tickets only. It cannot be transferred or cashed out.'
 
 export interface TicketCancelledEmailData {
   name: string | null
   eventTitle: string
   ticketCount: number
   credited: number
-  balance: number
+  early: boolean
+  availableFrom: Date | null
+  expiresAt: Date | null
+}
+
+function cancelledCreditLine(data: TicketCancelledEmailData, html: boolean): string {
+  if (data.credited <= 0) return 'Nothing had been paid yet, so there is no ticket value to add.'
+  const amount = html ? `<strong>${kes(data.credited)}</strong>` : kes(data.credited)
+  const when =
+    data.availableFrom && data.availableFrom.getTime() > Date.now()
+      ? ` It appears on your dashboard on ${longDate(data.availableFrom)}`
+      : ' You can use it now'
+  const until = data.expiresAt ? ` and can be used until ${longDate(data.expiresAt)}` : ''
+  return `${amount} has been kept as ticket value for a future TRFC event.${when}${until}.`
 }
 
 export function buildTicketCancelledEmailHTML(data: TicketCancelledEmailData): string {
   const what = data.ticketCount > 1 ? `${data.ticketCount} tickets` : 'ticket'
+  const status = data.early
+    ? 'Thanks for letting us know early. Your spot can now go to someone on the waiting list.'
+    : 'Because this was close to the event, it is recorded as a no-show. The ticket value is the same either way.'
   return accountEmailShell(
-    'Your TRFC ticket was cancelled',
-    'Ticket cancelled',
+    "We've noted you can't make it",
+    "You can't make it",
     `
       ${paragraph(escapeHtml(greeting(data.name)))}
-      ${paragraph(`Your ${what} for <strong>${escapeHtml(data.eventTitle)}</strong> has been cancelled.`)}
-      ${paragraph(
-        `Cancellations aren't refunded. Instead, <strong>${kes(data.credited)}</strong> has been added to your TRFC wallet,
-        and you can use it on any upcoming event. Your wallet balance is now <strong>${kes(data.balance)}</strong>.`
-      )}
-      ${walletButton('VIEW MY WALLET')}`
+      ${paragraph(`We've released your ${what} for <strong>${escapeHtml(data.eventTitle)}</strong>. ${status}`)}
+      ${paragraph(cancelledCreditLine(data, true))}
+      ${paragraph(`<span style="color:#6b7280;font-size:13px;">${CREDIT_RULES_NOTE}</span>`)}
+      ${walletButton('VIEW MY TICKET VALUE')}`
   )
 }
 
 export function buildTicketCancelledEmailText(data: TicketCancelledEmailData): string {
   const what = data.ticketCount > 1 ? `${data.ticketCount} tickets` : 'ticket'
+  const status = data.early
+    ? 'Thanks for letting us know early. Your spot can now go to someone on the waiting list.'
+    : 'Because this was close to the event, it is recorded as a no-show. The ticket value is the same either way.'
   return [
     greeting(data.name),
-    `Your ${what} for ${data.eventTitle} has been cancelled.`,
-    `Cancellations aren't refunded. Instead, ${kes(data.credited)} has been added to your TRFC wallet, and you can use it on any upcoming event. Your wallet balance is now ${kes(data.balance)}.`,
-    `View your wallet: ${dashboardWalletUrl()}`,
+    `We've released your ${what} for ${data.eventTitle}. ${status}`,
+    cancelledCreditLine(data, false),
+    CREDIT_RULES_NOTE,
+    `Your ticket value: ${dashboardWalletUrl()}`,
     footerText(),
   ].join('\n\n')
 }
 
-export interface InstallmentReminderEmailData {
-  name: string | null
-  eventTitle: string
-  amountDue: number
-  dueAt: Date
-  overdue: boolean
-  remaining: number
+export const CREDIT_REASON_LABELS: Record<string, string> = {
+  no_show: 'No-show',
+  cancelled_early: 'Cancelled early',
+  missed_deadline: 'Missed deadline',
+  event_cancelled: 'Event cancelled',
+  late_payment: 'Late payment',
+  moved: 'Moved to another event',
+  legacy: 'Moved from your earlier TRFC wallet',
+  admin: 'Added by TRFC',
 }
 
-const formatDueDate = (date: Date) =>
-  date.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Africa/Nairobi' })
+export interface CreditCreatedEmailData {
+  name: string | null
+  amount: number
+  reason: string
+  eventTitle: string | null
+  availableFrom: Date
+  expiresAt: Date
+}
 
-export function buildInstallmentReminderEmailHTML(data: InstallmentReminderEmailData): string {
-  const when = data.overdue
-    ? `was due on <strong>${formatDueDate(data.dueAt)}</strong>`
-    : `is due on <strong>${formatDueDate(data.dueAt)}</strong>`
+export function buildCreditCreatedEmailHTML(data: CreditCreatedEmailData): string {
+  const from = data.eventTitle ? ` from <strong>${escapeHtml(data.eventTitle)}</strong>` : ''
   return accountEmailShell(
-    'Installment reminder',
-    'Installment reminder',
+    'You have ticket value',
+    'Ticket value added',
     `
       ${paragraph(escapeHtml(greeting(data.name)))}
       ${paragraph(
-        `Your next installment of <strong>${kes(data.amountDue)}</strong> for <strong>${escapeHtml(data.eventTitle)}</strong> ${when}.
-        You have ${kes(data.remaining)} left to pay in total.`
+        `<strong>${kes(data.amount)}</strong> ticket value${from} (${escapeHtml(CREDIT_REASON_LABELS[data.reason] ?? data.reason)}) has been added to your TRFC account.`
       )}
-      ${paragraph(
-        'Your tickets stay reserved until event day. They are issued as soon as the plan is fully paid. If it is not finished by then, what you have paid moves to your wallet.'
-      )}
-      ${walletButton('PAY NOW')}`
+      ${paragraph(`Use it on any TRFC event ticket until <strong>${longDate(data.expiresAt)}</strong> (11:59 pm Nairobi time). After that date it expires.`)}
+      ${paragraph(`<span style="color:#6b7280;font-size:13px;">${CREDIT_RULES_NOTE}</span>`)}
+      ${actionButton('USE ON AN EVENT', siteUrl('/events'))}`
   )
 }
 
-export function buildInstallmentReminderEmailText(data: InstallmentReminderEmailData): string {
-  const when = data.overdue ? `was due on ${formatDueDate(data.dueAt)}` : `is due on ${formatDueDate(data.dueAt)}`
+export function buildCreditCreatedEmailText(data: CreditCreatedEmailData): string {
+  const from = data.eventTitle ? ` from ${data.eventTitle}` : ''
   return [
     greeting(data.name),
-    `Your next installment of ${kes(data.amountDue)} for ${data.eventTitle} ${when}. You have ${kes(data.remaining)} left to pay in total.`,
-    'Your tickets stay reserved until event day. They are issued as soon as the plan is fully paid. If it is not finished by then, what you have paid moves to your wallet.',
-    `Pay now: ${dashboardWalletUrl()}`,
+    `${kes(data.amount)} ticket value${from} (${CREDIT_REASON_LABELS[data.reason] ?? data.reason}) has been added to your TRFC account.`,
+    `Use it on any TRFC event ticket until ${longDate(data.expiresAt)} (11:59 pm Nairobi time). After that date it expires.`,
+    CREDIT_RULES_NOTE,
+    `Use on an event: ${siteUrl('/events')}`,
+    footerText(),
+  ].join('\n\n')
+}
+
+export interface CreditExpiringEmailData {
+  name: string | null
+  amount: number
+  expiresAt: Date
+  daysLeft: number
+}
+
+export function buildCreditExpiringEmailHTML(data: CreditExpiringEmailData): string {
+  return accountEmailShell(
+    'Your ticket value is ending soon',
+    `${data.daysLeft} day${data.daysLeft === 1 ? '' : 's'} left`,
+    `
+      ${paragraph(escapeHtml(greeting(data.name)))}
+      ${paragraph(
+        `You have <strong>${kes(data.amount)}</strong> ticket value that ends on <strong>${longDate(data.expiresAt)}</strong> (11:59 pm Nairobi time).
+        Use it on an event ticket before then. It cannot be extended.`
+      )}
+      ${actionButton('USE ON AN EVENT', siteUrl('/events'))}`
+  )
+}
+
+export function buildCreditExpiringEmailText(data: CreditExpiringEmailData): string {
+  return [
+    greeting(data.name),
+    `You have ${kes(data.amount)} ticket value that ends on ${longDate(data.expiresAt)} (11:59 pm Nairobi time). Use it on an event ticket before then. It cannot be extended.`,
+    `Use on an event: ${siteUrl('/events')}`,
+    footerText(),
+  ].join('\n\n')
+}
+
+export interface PaymentReminderEmailData {
+  name: string | null
+  eventTitle: string
+  leftToPay: number
+  deadline: Date
+  stage: '7d' | '3d' | '0d'
+}
+
+const reminderLead = (data: PaymentReminderEmailData) =>
+  data.stage === '0d' ? 'Today is the last day to finish paying' : `Finish paying by ${longDate(data.deadline)}`
+
+export function buildPaymentReminderEmailHTML(data: PaymentReminderEmailData): string {
+  return accountEmailShell(
+    'Ticket payment reminder',
+    reminderLead(data),
+    `
+      ${paragraph(escapeHtml(greeting(data.name)))}
+      ${paragraph(
+        `You have <strong>${kes(data.leftToPay)}</strong> left to pay for <strong>${escapeHtml(data.eventTitle)}</strong>.
+        The deadline is <strong>${longDate(data.deadline)}</strong> at 11:59 pm Nairobi time.`
+      )}
+      ${paragraph(
+        'Your QR ticket is sent as soon as it is fully paid. If it is not paid by the deadline, the spot is released and what you paid becomes ticket value for a future event.'
+      )}
+      ${walletButton('PAY WITH M-PESA')}`
+  )
+}
+
+export function buildPaymentReminderEmailText(data: PaymentReminderEmailData): string {
+  return [
+    greeting(data.name),
+    `${reminderLead(data)}. You have ${kes(data.leftToPay)} left to pay for ${data.eventTitle}. The deadline is ${longDate(data.deadline)} at 11:59 pm Nairobi time.`,
+    'Your QR ticket is sent as soon as it is fully paid. If it is not paid by the deadline, the spot is released and what you paid becomes ticket value for a future event.',
+    `Pay with M-Pesa: ${dashboardWalletUrl()}`,
     footerText(),
   ].join('\n\n')
 }
@@ -1073,37 +1191,184 @@ export interface PlanExpiredEmailData {
   name: string | null
   eventTitle: string
   credited: number
-  balance: number
+  expiresAt: Date | null
+}
+
+function planCreditLine(data: PlanExpiredEmailData, html: boolean) {
+  if (data.credited <= 0) return 'No payments had been made, so there is no ticket value to add.'
+  const amount = html ? `<strong>${kes(data.credited)}</strong>` : kes(data.credited)
+  const until = data.expiresAt ? ` You can use it on any TRFC event ticket until ${longDate(data.expiresAt)}.` : ''
+  return `The ${amount} you paid is now ticket value you can use straight away, with no penalty.${until}`
 }
 
 export function buildPlanExpiredEmailHTML(data: PlanExpiredEmailData): string {
-  const credit =
-    data.credited > 0
-      ? `The <strong>${kes(data.credited)}</strong> you paid has been added to your TRFC wallet for future events. Your balance is now <strong>${kes(data.balance)}</strong>.`
-      : 'No payments had been made on the plan.'
   return accountEmailShell(
-    'Your installment plan has ended',
-    'Installment plan ended',
+    'Your ticket was not fully paid in time',
+    'Payment deadline passed',
     `
       ${paragraph(escapeHtml(greeting(data.name)))}
       ${paragraph(
-        `Your installment plan for <strong>${escapeHtml(data.eventTitle)}</strong> wasn't completed in time, so the reserved tickets have been released.`
+        `Your ticket for <strong>${escapeHtml(data.eventTitle)}</strong> wasn't fully paid by the deadline, so the spot has been released.`
       )}
-      ${paragraph(credit)}
-      ${walletButton('VIEW MY WALLET')}`
+      ${paragraph(planCreditLine(data, true))}
+      ${actionButton('USE ON AN EVENT', siteUrl('/events'))}`
   )
 }
 
 export function buildPlanExpiredEmailText(data: PlanExpiredEmailData): string {
-  const credit =
-    data.credited > 0
-      ? `The ${kes(data.credited)} you paid has been added to your TRFC wallet for future events. Your balance is now ${kes(data.balance)}.`
-      : 'No payments had been made on the plan.'
   return [
     greeting(data.name),
-    `Your installment plan for ${data.eventTitle} wasn't completed in time, so the reserved tickets have been released.`,
-    credit,
-    `View your wallet: ${dashboardWalletUrl()}`,
+    `Your ticket for ${data.eventTitle} wasn't fully paid by the deadline, so the spot has been released.`,
+    planCreditLine(data, false),
+    `Use on an event: ${siteUrl('/events')}`,
+    footerText(),
+  ].join('\n\n')
+}
+
+export interface WaitlistSpotEmailData {
+  name: string | null
+  eventTitle: string
+  eventId: string
+}
+
+export function buildWaitlistSpotEmailHTML(data: WaitlistSpotEmailData): string {
+  return accountEmailShell(
+    'A spot just opened',
+    'A spot just opened',
+    `
+      ${paragraph(escapeHtml(greeting(data.name)))}
+      ${paragraph(
+        `A spot has opened for <strong>${escapeHtml(data.eventTitle)}</strong>. Spots go to whoever books first, so book now if you'd like it.`
+      )}
+      ${actionButton('BOOK NOW', siteUrl(`/events/${data.eventId}`))}`
+  )
+}
+
+export function buildWaitlistSpotEmailText(data: WaitlistSpotEmailData): string {
+  return [
+    greeting(data.name),
+    `A spot has opened for ${data.eventTitle}. Spots go to whoever books first, so book now if you'd like it.`,
+    `Book now: ${siteUrl(`/events/${data.eventId}`)}`,
+    footerText(),
+  ].join('\n\n')
+}
+
+export interface CaptainStatementEmailData {
+  name: string | null
+  zoneName: string
+  eventTitle: string
+  usedTickets: number
+  perTicketValue: number
+  amount: number
+}
+
+export function buildCaptainStatementEmailHTML(data: CaptainStatementEmailData): string {
+  return accountEmailShell(
+    'Your event profit share',
+    'Event profit share',
+    `
+      ${paragraph(escapeHtml(greeting(data.name)))}
+      ${paragraph(
+        `<strong>${escapeHtml(data.eventTitle)}</strong>: ${data.usedTickets} of the ${escapeHtml(data.zoneName)} zone's referral tickets were used at the event.
+        Each used ticket is worth ${kes(data.perTicketValue)} from the captains' share of the event's gross profit.`
+      )}
+      ${paragraph(
+        `The ${escapeHtml(data.zoneName)} zone's share is <strong>${kes(data.amount)}</strong>. It will be paid by M-Pesa to you, as the zone's lead captain, within 7 days after the event.`
+      )}`
+  )
+}
+
+export function buildCaptainStatementEmailText(data: CaptainStatementEmailData): string {
+  return [
+    greeting(data.name),
+    `${data.eventTitle}: ${data.usedTickets} of the ${data.zoneName} zone's referral tickets were used at the event. Each used ticket is worth ${kes(data.perTicketValue)} from the captains' share of the event's gross profit.`,
+    `The ${data.zoneName} zone's share is ${kes(data.amount)}. It will be paid by M-Pesa to you, as the zone's lead captain, within 7 days after the event.`,
+    footerText(),
+  ].join('\n\n')
+}
+
+export interface CaptainMemberChangeEmailData {
+  name: string | null
+  memberName: string
+}
+
+const captainDashboardUrl = () => siteUrl('/dashboard/captain')
+
+export function buildCaptainMemberJoinedEmailHTML(data: CaptainMemberChangeEmailData): string {
+  return accountEmailShell(
+    'A new member chose you',
+    'A new member chose you',
+    `
+      ${paragraph(escapeHtml(greeting(data.name)))}
+      ${paragraph(
+        `<strong>${escapeHtml(data.memberName)}</strong> chose you as their captain. Say hello this week and help them get started.`
+      )}
+      ${actionButton('SEE MY TEAM', captainDashboardUrl())}`
+  )
+}
+
+export function buildCaptainMemberJoinedEmailText(data: CaptainMemberChangeEmailData): string {
+  return [
+    greeting(data.name),
+    `${data.memberName} chose you as their captain. Say hello this week and help them get started.`,
+    `See your team: ${captainDashboardUrl()}`,
+    footerText(),
+  ].join('\n\n')
+}
+
+export function buildCaptainMemberLeftEmailHTML(data: CaptainMemberChangeEmailData): string {
+  return accountEmailShell(
+    'A member moved to another captain',
+    'A member moved on',
+    `
+      ${paragraph(escapeHtml(greeting(data.name)))}
+      ${paragraph(
+        `<strong>${escapeHtml(data.memberName)}</strong> has chosen another captain, so they are no longer on your team. Thank you for looking after them.`
+      )}
+      ${actionButton('SEE MY TEAM', captainDashboardUrl())}`
+  )
+}
+
+export function buildCaptainMemberLeftEmailText(data: CaptainMemberChangeEmailData): string {
+  return [
+    greeting(data.name),
+    `${data.memberName} has chosen another captain, so they are no longer on your team. Thank you for looking after them.`,
+    `See your team: ${captainDashboardUrl()}`,
+    footerText(),
+  ].join('\n\n')
+}
+
+export interface SettlementPayoutReminderData {
+  eventTitle: string
+  dueDate: Date
+  unpaid: { zoneName: string; leadCaptainName: string | null; amount: number }[]
+}
+
+const unpaidLabel = (line: SettlementPayoutReminderData['unpaid'][number]) =>
+  `${line.zoneName} (${line.leadCaptainName ? `lead captain ${line.leadCaptainName}` : 'no lead captain set'})`
+
+export function buildSettlementPayoutReminderEmailHTML(data: SettlementPayoutReminderData): string {
+  const rows = data.unpaid
+    .map((line) => `<li>${escapeHtml(unpaidLabel(line))}: <strong>${kes(line.amount)}</strong></li>`)
+    .join('')
+  return accountEmailShell(
+    'Captain profit share to pay',
+    'Captain payouts due',
+    `
+      ${paragraph(
+        `The captains' profit share for <strong>${escapeHtml(data.eventTitle)}</strong> must be paid by M-Pesa by
+        <strong>${longDate(data.dueDate)}</strong>. Still unpaid:`
+      )}
+      <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.6;color:#374151;">${rows}</ul>
+      ${actionButton('OPEN CAPTAIN PAYOUTS', siteUrl('/admin/captains'))}`
+  )
+}
+
+export function buildSettlementPayoutReminderEmailText(data: SettlementPayoutReminderData): string {
+  return [
+    `The captains' profit share for ${data.eventTitle} must be paid by M-Pesa by ${longDate(data.dueDate)}. Still unpaid:`,
+    data.unpaid.map((line) => `- ${unpaidLabel(line)}: ${kes(line.amount)}`).join('\n'),
+    `Captain payouts: ${siteUrl('/admin/captains')}`,
     footerText(),
   ].join('\n\n')
 }

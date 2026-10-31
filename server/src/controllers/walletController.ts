@@ -1,41 +1,31 @@
 import { Request, Response } from 'express'
 import { query } from '../config/db.js'
 import { toKenyanMsisdn } from '../utils/phone.js'
-import { WalletCheckoutError, getPayableBatches, payBatchesFromWallet } from '../utils/walletCheckout.js'
-import { MpesaStartError, startMpesaForTx } from '../utils/walletMpesa.js'
-import {
-  InsufficientFundsError,
-  MAX_TOPUP,
-  MIN_TOPUP,
-  getWalletBalance,
-  getWalletTransactions,
-} from '../utils/wallet.js'
-import { WalletLimitError, getTopUpHeadroom, reserveTopup } from '../utils/walletLimit.js'
+import { WalletCheckoutError, getPayableBatches, payBatchesWithCredit } from '../utils/walletCheckout.js'
+import { MpesaStartError } from '../utils/walletMpesa.js'
+import { CreditError, getTicketValue, getWalletTransactions } from '../utils/wallet.js'
 import { captureMetaContext, saveMetaContext } from '../utils/metaConversions.js'
 import {
   InstallmentError,
+  MAX_LATER_PAYMENTS,
   buildSchedule,
   createPlan,
+  getEventPlanSettings,
   getPlansForUser,
+  movePlanToEvent,
   payPlanInstallments,
+  releasePlanToCredit,
 } from '../utils/installments.js'
-
-function insufficientFunds(res: Response, error: InsufficientFundsError) {
-  return res.status(402).json({
-    error: `Your wallet balance is KES ${error.balance.toLocaleString()}. Top up KES ${error.shortfall.toLocaleString()} to continue.`,
-    balance: error.balance,
-    required: error.required,
-    shortfall: error.shortfall,
-  })
-}
+import { getTicketRules } from '../utils/ticketRules.js'
 
 export function sendWalletError(res: Response, error: unknown, fallback: string) {
-  if (error instanceof InsufficientFundsError) return insufficientFunds(res, error)
-  if (error instanceof WalletLimitError) {
-    return res.status(error.status).json({ error: error.message, cap: error.cap, headroom: error.headroom })
-  }
-  if (error instanceof MpesaStartError || error instanceof WalletCheckoutError || error instanceof InstallmentError) {
-    return res.status(error.status).json({ error: error.message })
+  if (
+    error instanceof MpesaStartError ||
+    error instanceof WalletCheckoutError ||
+    error instanceof InstallmentError ||
+    error instanceof CreditError
+  ) {
+    return res.status(error.status ?? 400).json({ error: error.message })
   }
   console.error(error)
   return res.status(500).json({ error: fallback })
@@ -44,15 +34,21 @@ export function sendWalletError(res: Response, error: unknown, fallback: string)
 export async function getWallet(req: Request, res: Response) {
   try {
     const userId = req.user!.id
-    const [balance, recent] = await Promise.all([
-      getWalletBalance(userId),
+    const [value, recent, rules] = await Promise.all([
+      getTicketValue(userId),
       getWalletTransactions(userId, { limit: 10 }),
+      getTicketRules(),
     ])
-    const { cap, headroom } = await getTopUpHeadroom(userId, balance)
-    res.json({ balance, cap, headroom, transactions: recent.transactions })
+    res.json({
+      ticketValue: value.ticketValue,
+      upcoming: value.upcoming,
+      credits: value.credits,
+      creditDays: rules.creditDays,
+      transactions: recent.transactions,
+    })
   } catch (error) {
     console.error(error)
-    res.status(500).json({ error: 'Failed to load your wallet' })
+    res.status(500).json({ error: 'Failed to load your ticket value' })
   }
 }
 
@@ -64,17 +60,27 @@ export async function listWalletTransactions(req: Request, res: Response) {
     res.json({ ...result, page, limit })
   } catch (error) {
     console.error(error)
-    res.status(500).json({ error: 'Failed to load wallet transactions' })
+    res.status(500).json({ error: 'Failed to load your history' })
   }
 }
 
+/** Pays pending bookings with ticket value first and M-Pesa for any difference. */
 export async function walletCheckout(req: Request, res: Response) {
   try {
     const batchIds = Array.isArray(req.body?.purchaseBatchIds) ? req.body.purchaseBatchIds : []
-    const result = await payBatchesFromWallet(req.user!.id, batchIds, captureMetaContext(req))
+    const phone = req.body?.phone ? toKenyanMsisdn(req.body.phone) : null
+    if (req.body?.phone && !phone) {
+      return res.status(400).json({ error: 'Enter a valid M-Pesa number, e.g. 07XX XXX XXX' })
+    }
+    const result = await payBatchesWithCredit(req.user!.id, {
+      batchIds,
+      useCredit: req.body?.useCredit !== false,
+      phone,
+      context: captureMetaContext(req),
+    })
     res.json(result)
   } catch (error) {
-    sendWalletError(res, error, 'Failed to pay from your wallet')
+    sendWalletError(res, error, 'Failed to pay for your tickets')
   }
 }
 
@@ -87,60 +93,48 @@ export async function listPayableBatches(req: Request, res: Response) {
   }
 }
 
-export async function topUpWallet(req: Request, res: Response) {
-  try {
-    const amount = Number(req.body?.amount)
-    const phone = toKenyanMsisdn(req.body?.phone)
-    if (!Number.isFinite(amount) || amount < MIN_TOPUP || amount > MAX_TOPUP) {
-      return res
-        .status(400)
-        .json({ error: `Top-up amount must be between KES ${MIN_TOPUP} and KES ${MAX_TOPUP.toLocaleString()}` })
-    }
-    if (!phone) {
-      return res.status(400).json({ error: 'Enter a valid M-Pesa number, e.g. 07XX XXX XXX' })
-    }
-
-    const roundedAmount = Math.round(amount)
-    const { txId, cap, headroom } = await reserveTopup(req.user!.id, {
-      amount: roundedAmount,
-      phone,
-      note: 'M-Pesa top-up',
-    })
-    const result = await startMpesaForTx(txId, phone, roundedAmount, `WALLET-${txId}`)
-    res.json({ ...result, transactionId: txId, amount: roundedAmount, cap, headroom })
-  } catch (error) {
-    sendWalletError(res, error, 'Failed to start your top-up')
-  }
+function parseDates(value: unknown): Date[] | null {
+  const raw = Array.isArray(value) ? value : typeof value === 'string' && value ? value.split(',') : []
+  if (raw.length > MAX_LATER_PAYMENTS) return null
+  const dates = raw.map((d) => new Date(String(d)))
+  return dates.some((d) => !Number.isFinite(d.getTime())) ? null : dates
 }
 
 export async function previewPlan(req: Request, res: Response) {
   try {
     const eventId = String(req.query.eventId ?? '')
     const total = Number(req.query.total)
-    const installments = Number(req.query.installments)
-    const event = await query('SELECT event_date, installments_allowed FROM events WHERE id = $1 AND is_active = true', [
-      eventId,
-    ])
-    if (event.rows.length === 0) return res.status(404).json({ error: 'Event not found' })
-    if (Number(event.rows[0].installments_allowed ?? 0) < installments) {
-      return res.status(400).json({ error: 'Installments are not available for this event' })
-    }
-    res.json({ schedule: buildSchedule(total, installments, new Date(event.rows[0].event_date)) })
+    const dates = parseDates(req.query.dates)
+    if (!dates) return res.status(400).json({ error: 'Payment dates are not valid' })
+    const settings = eventId ? await getEventPlanSettings({ query } as any, eventId) : null
+    if (!settings) return res.status(404).json({ error: 'Event not found' })
+    if (!settings.enabled) return res.status(400).json({ error: 'Paying in parts is not available for this event' })
+    const terms = buildSchedule(total, { ...settings, dates })
+    res.json({
+      deposit: terms.deposit,
+      deadline: terms.deadline,
+      remaining: total - terms.deposit,
+      depositPct: settings.depositPct,
+      deadlineDays: settings.deadlineDays,
+      schedule: terms.schedule,
+    })
   } catch (error) {
-    sendWalletError(res, error, 'Failed to build the installment schedule')
+    sendWalletError(res, error, 'Failed to build the payment schedule')
   }
 }
 
 export async function createPaymentPlan(req: Request, res: Response) {
   try {
-    const { purchaseBatchId, installments } = req.body ?? {}
+    const { purchaseBatchId } = req.body ?? {}
     if (typeof purchaseBatchId !== 'string' || !purchaseBatchId) {
       return res.status(400).json({ error: 'purchaseBatchId is required' })
     }
-    const plan = await createPlan(req.user!.id, purchaseBatchId, Number(installments))
+    const dates = parseDates(req.body?.dates)
+    if (!dates) return res.status(400).json({ error: 'Payment dates are not valid' })
+    const plan = await createPlan(req.user!.id, purchaseBatchId, dates)
     res.status(201).json(plan)
   } catch (error) {
-    sendWalletError(res, error, 'Failed to create the installment plan')
+    sendWalletError(res, error, 'Failed to reserve your ticket')
   }
 }
 
@@ -148,14 +142,14 @@ export async function listPaymentPlans(req: Request, res: Response) {
   try {
     res.json(await getPlansForUser(req.user!.id))
   } catch (error) {
-    sendWalletError(res, error, 'Failed to load installment plans')
+    sendWalletError(res, error, 'Failed to load payments in progress')
   }
 }
 
 export async function payPaymentPlan(req: Request, res: Response) {
   try {
     const mode = req.body?.mode === 'all' ? 'all' : 'next'
-    const source = req.body?.source === 'wallet' ? 'wallet' : 'mpesa'
+    const source = req.body?.source === 'credit' ? 'credit' : 'mpesa'
     const phone = source === 'mpesa' ? toKenyanMsisdn(req.body?.phone) : null
     if (source === 'mpesa' && !phone) {
       return res.status(400).json({ error: 'Enter a valid M-Pesa number, e.g. 07XX XXX XXX' })
@@ -164,6 +158,37 @@ export async function payPaymentPlan(req: Request, res: Response) {
     const result = await payPlanInstallments(String(req.params.id), req.user!.id, { mode, source, phone })
     res.json(result)
   } catch (error) {
-    sendWalletError(res, error, 'Failed to pay the installment')
+    sendWalletError(res, error, 'Failed to make the payment')
+  }
+}
+
+/** "I can't make it" / "use what I paid on another event": what was paid becomes ticket credit now. */
+export async function releasePaymentPlan(req: Request, res: Response) {
+  try {
+    const closed = await releasePlanToCredit(String(req.params.id), req.user!.id)
+    res.json({ credited: closed.credited, expiresAt: closed.expiresAt, eventTitle: closed.eventTitle })
+  } catch (error) {
+    sendWalletError(res, error, 'Failed to move your payments to ticket value')
+  }
+}
+
+/** Moves what was paid towards one event onto a new booking for another event. */
+export async function movePaymentPlan(req: Request, res: Response) {
+  try {
+    const purchaseBatchId = req.body?.purchaseBatchId
+    if (typeof purchaseBatchId !== 'string' || !purchaseBatchId) {
+      return res.status(400).json({ error: 'purchaseBatchId is required' })
+    }
+    const phone = req.body?.phone ? toKenyanMsisdn(req.body.phone) : null
+    if (req.body?.phone && !phone) {
+      return res.status(400).json({ error: 'Enter a valid M-Pesa number, e.g. 07XX XXX XXX' })
+    }
+    res.json(await movePlanToEvent(String(req.params.id), req.user!.id, { purchaseBatchId, phone }))
+  } catch (error) {
+    sendWalletError(
+      res,
+      error,
+      'Your earlier payments are now ticket value, but the new booking could not be paid. Finish paying from your dashboard.'
+    )
   }
 }

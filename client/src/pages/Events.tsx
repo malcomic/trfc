@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getEvents } from '../api/events'
+import { getPendingMove, setPendingMove } from '../api/wallet'
+import { formatKes } from '../utils/captainDisplay'
 import { AlertCircle, ChevronRight, Search, X, MapPin } from 'lucide-react'
 import { Event } from '../types'
 import { pageRoot, inputField } from '../utils/themeClasses'
@@ -23,6 +25,7 @@ export default function Events() {
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [activeFilter, setActiveFilter] = useState('All')
+  const [pendingMove, setPendingMoveState] = useState(() => getPendingMove())
 
   useEffect(() => { fetchEvents() }, [])
 
@@ -88,6 +91,27 @@ export default function Events() {
           </div>
         </div>
       </section>
+
+      {pendingMove && (
+        <div className="bg-accent/10 light:bg-accent-light/10 border-b border-accent/30 light:border-accent-light/30 px-[6%] py-3">
+          <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-3 text-sm">
+            <p>
+              Pick the event to move the <strong>{formatKes(pendingMove.amountPaid)}</strong> you paid for{' '}
+              <strong>{pendingMove.eventTitle}</strong> to.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setPendingMove(null)
+                setPendingMoveState(null)
+              }}
+              className="text-xs text-accent light:text-accent-light hover:underline"
+            >
+              Don't move
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Toolbar ── */}
       <div className="bg-ash light:bg-ash-light border-b border-white/5 light:border-black/8 px-[6%] py-5">

@@ -30,7 +30,7 @@ vi.mock('../../utils/paymentLogger.js', () => ({
   logDuplicateCallback: vi.fn(),
 }))
 
-import { query } from '../../config/db.js'
+import { query, getClient } from '../../config/db.js'
 
 describe('guest commerce', () => {
   beforeEach(() => {
@@ -62,6 +62,7 @@ describe('guest commerce', () => {
   })
 
   it('buyTicket works without authenticated user', async () => {
+    vi.mocked(getClient).mockResolvedValue({ query, release: vi.fn() } as any)
     vi.mocked(query).mockImplementation(async (sql: string) => {
       if (sql.includes('FROM events WHERE')) {
         return {
@@ -109,6 +110,7 @@ describe('guest commerce', () => {
         phone: '254712345678',
         attendeeName: 'Guest Runner',
         zoneId: ZONE_ID,
+        termsAccepted: true,
       },
     } as any
     const res = { json: vi.fn(), status: vi.fn().mockReturnThis() } as any
@@ -126,9 +128,10 @@ describe('guest commerce', () => {
         '254712345678',
         'guest@example.com',
         'Guest Runner',
-        'mpesa',
-        'pending',
         ZONE_ID,
+        'open',
+        null,
+        '2026-10',
       ]
     )
     expect(res.status).toHaveBeenCalledWith(201)

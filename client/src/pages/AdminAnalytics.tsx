@@ -557,7 +557,7 @@ export default function AdminAnalytics() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartPanel
-          title="Referral Revenue by Region"
+          title="Referral Revenue by Zone"
           loading={captainStats.loading}
           error={captainStats.error}
           empty={!captainStats.data.regions.some((r) => r.referredSales > 0)}
@@ -576,20 +576,21 @@ export default function AdminAnalytics() {
               <thead className="border-b dark:border-gray-600">
                 <tr>
                   <th className="text-left py-2 text-gray-900 dark:text-gray-100">Captain</th>
-                  <th className="text-left py-2 text-gray-900 dark:text-gray-100">Region</th>
-                  <th className="text-right py-2 text-gray-900 dark:text-gray-100">Purchases</th>
-                  <th className="text-right py-2 text-gray-900 dark:text-gray-100">Sales</th>
-                  <th className="text-right py-2 text-gray-900 dark:text-gray-100">Commission</th>
+                  <th className="text-left py-2 text-gray-900 dark:text-gray-100">Zone</th>
+                  <th className="text-right py-2 text-gray-900 dark:text-gray-100">New members</th>
+                  <th className="text-right py-2 text-gray-900 dark:text-gray-100">Team size</th>
                 </tr>
               </thead>
               <tbody>
                 {captainStats.data.topCaptains.map((c) => (
-                  <tr key={c.referralCode} className="border-b dark:border-gray-700">
-                    <td className="py-2 text-gray-900 dark:text-gray-100">{c.name}</td>
+                  <tr key={c.id} className="border-b dark:border-gray-700">
+                    <td className="py-2 text-gray-900 dark:text-gray-100">
+                      {c.name}
+                      {c.isLead && <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">Lead</span>}
+                    </td>
                     <td className="py-2 text-gray-600 dark:text-gray-300">{c.region}</td>
-                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">{c.purchases}</td>
-                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">KES {c.referredSales.toLocaleString()}</td>
-                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">KES {c.commission.toLocaleString()}</td>
+                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">{c.newMembers}</td>
+                    <td className="py-2 text-right text-gray-600 dark:text-gray-300">{c.teamMembers}</td>
                   </tr>
                 ))}
               </tbody>

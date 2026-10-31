@@ -7,6 +7,7 @@ import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 import { getSafeImageUrl } from '../utils/imageUrl'
 import { formatEventDate, formatEventTime } from '../utils/eventDate'
 import { trackViewContent } from '../utils/tiktokPixel'
+import WaitlistForm from '../components/WaitlistForm'
 
 const EVENT_IMAGE_FALLBACK =
   'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=800&q=80'
@@ -86,12 +87,14 @@ export default function EventDetail() {
   const formattedTime = event.event_date ? formatEventTime(event.event_date) : ''
   const unitPrice = selectedType ? Number(selectedType.price) : 0
   const isFree = unitPrice === 0
-  const maxQty =
-    selectedType?.remaining != null
-      ? Math.min(10, selectedType.remaining)
-      : 10
+  const seatLimit = event.seats_available ?? null
+  const maxQty = Math.min(
+    10,
+    selectedType?.remaining != null ? selectedType.remaining : 10,
+    seatLimit != null ? seatLimit : 10
+  )
   const canBuy =
-    selectedType && !selectedType.is_sold_out && maxQty >= 1 && ticketTypes.length > 0
+    selectedType && !selectedType.is_sold_out && maxQty >= 1 && ticketTypes.length > 0 && !event.sold_out_for_you
 
   const selectType = (type: EventTicketType) => {
     if (type.is_sold_out) return
@@ -143,6 +146,7 @@ export default function EventDetail() {
           <label className="block font-barlow-condensed font-bold text-sm tracking-widest uppercase text-accent light:text-accent-light mb-4">
             Ticket type
           </label>
+          {event.priority_note && <p className="text-sm text-fog light:text-fog-light mb-4">{event.priority_note}</p>}
 
           {ticketTypes.length === 0 ? (
             <p className="text-fog light:text-fog-light mb-4">
@@ -237,11 +241,7 @@ export default function EventDetail() {
             </>
           )}
 
-          {ticketTypes.length > 0 && !canBuy && (
-            <p className="text-fog light:text-fog-light">
-              All ticket types are sold out for this event.
-            </p>
-          )}
+          {ticketTypes.length > 0 && !canBuy && <WaitlistForm eventId={event.id} />}
         </div>
       </div>
     </div>

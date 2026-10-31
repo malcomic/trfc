@@ -9,7 +9,7 @@ export const termsMeta: LegalPageMeta = {
   intro:
     'These Terms of Service govern your use of the TRFC website, account, and related services. Please read them carefully before registering or making a purchase.',
   watermark: 'TERMS',
-  lastUpdated: 'October 22, 2026',
+  lastUpdated: 'October 30, 2026',
 }
 
 export const termsSections: LegalSection[] = [
@@ -78,25 +78,27 @@ export const termsSections: LegalSection[] = [
   },
   {
     id: 'wallet',
-    title: 'TRFC Wallet',
+    title: 'Ticket Credit',
     paragraphs: [
-      'Members can add money to their TRFC wallet by M-Pesa. Wallet funds can only be used to pay for TRFC event tickets, in full or in installments. They cannot be used for shop orders, medals or equipment hire.',
-      'Wallet funds, including credits from cancelled tickets or unfinished installment plans, are non-refundable, cannot be withdrawn or transferred to another account, and do not earn interest.',
+      'When you miss a paid event, its value becomes ticket credit on your TRFC account. Ticket credit is valid for 60 days. Day 1 is the day after the event, and the credit ends at 11:59 pm Nairobi time on day 60.',
+      'Ticket credit is for TRFC event tickets only. It cannot be used for shop orders, medals or equipment hire, and it cannot be transferred, cashed out or extended. When you use it, the credit that ends soonest is used first, and any difference is paid by M-Pesa.',
+      'We remind you by WhatsApp and on your dashboard 14, 7 and 2 days before your credit ends.',
     ],
   },
   {
     id: 'installments',
-    title: 'Installment Plans',
+    title: 'Paying in Parts',
     paragraphs: [
-      'Where an event allows it, tickets can be paid in 2 or 3 equal installments on a fixed schedule ending on the day of the event. The first installment is paid at booking. Tickets are reserved while the plan is in progress and issued once it is fully paid.',
-      'If the first installment is not paid within 24 hours, the reservation is released. If a plan is not fully paid by the day of the event, the reserved tickets are released and the amount already paid is credited to your wallet. It is not refunded.',
+      'Where an event allows it, you can pay in parts. The first payment is 30% of the ticket price, rounded up to the next KSh 10, and you choose the dates for the rest. Everything must be paid 3 days before the event (or the deadline shown for that event). Your seat is held while you pay, and the QR ticket is issued once the ticket is fully paid.',
+      'We remind you by WhatsApp and on your dashboard 7 days and 3 days before the deadline, and on the deadline day. If the deadline passes before the ticket is fully paid, the seat is released and the amount paid becomes ticket credit you can use straight away.',
     ],
   },
   {
     id: 'refunds-and-cancellations',
-    title: 'Refunds and Cancellations',
+    title: "Missed Events and Cancellations",
     paragraphs: [
-      'Paid event tickets can be cancelled from your dashboard at least 7 days before the event. You can cancel one ticket per calendar month (Nairobi time). Cancelled tickets are not refunded: the ticket price is credited to your TRFC wallet for future events. Cancelling a ticket on an installment plan cancels the whole plan, and the amount paid so far is credited to your wallet. Tickets that have been used for entry cannot be cancelled.',
+      "If you can't make an event, tell us from your dashboard. Notice given 24 hours or more before the start is recorded as \"Cancelled early\"; later notice, or not turning up, is recorded as a \"No-show\". Both receive the same ticket credit. Event tickets are not refunded to M-Pesa.",
+      'Attendance is taken from the scan list at the event. If you attended but were not scanned, a captain or admin can mark you present within 48 hours. If TRFC cancels an event, it is never counted as a no-show and your ticket value becomes ticket credit straight away.',
       'Refund and cancellation policies for products and equipment hire may vary. Where refunds are offered, they will be processed to the original M-Pesa number used for payment where possible.',
       'Contact us at ' + siteContact.email + ' within a reasonable time if you believe a transaction was made in error or if you wish to request a refund. Each request will be reviewed on a case-by-case basis.',
     ],

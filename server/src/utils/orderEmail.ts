@@ -23,7 +23,8 @@ export async function sendOrderConfirmationEmail(orderId: string): Promise<void>
       `UPDATE orders SET confirmation_email_sent_at = NOW()
        WHERE id = $1 AND payment_status = 'paid' AND email IS NOT NULL
          AND confirmation_email_sent_at IS NULL
-       RETURNING id, email, phone, delivery_address, total_amount, mpesa_receipt, created_at`,
+       RETURNING id, email, phone, delivery_address, total_amount, mpesa_receipt, created_at,
+                 to_char(delivery_date, 'YYYY-MM-DD') AS delivery_date`,
       [orderId]
     )
     if (claim.rows.length === 0) return
@@ -62,6 +63,7 @@ export async function sendOrderConfirmationEmail(orderId: string): Promise<void>
       mpesaReceipt: order.mpesa_receipt as string | null,
       phone: order.phone as string | null,
       deliveryAddress: order.delivery_address as string | null,
+      deliveryDate: order.delivery_date as string | null,
       confirmationUrl: `${config.frontendUrl}/order-confirmation/${encodeURIComponent(order.id)}`,
     }
 

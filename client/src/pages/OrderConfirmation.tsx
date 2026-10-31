@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { getOrderById } from '../api/orders'
+import { getOrderById, formatDeliveryDate, CLOTHING_DELIVERY_RULE } from '../api/orders'
 import { pollPaymentStatus } from '../api/payments'
 import { AlertCircle, CheckCircle, Clock } from 'lucide-react'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
@@ -25,6 +25,7 @@ interface Order {
   phone?: string
   email?: string | null
   delivery_address?: string
+  delivery_date?: string | null
   checkout_request_id?: string
   created_at: string
 }
@@ -194,6 +195,13 @@ export default function OrderConfirmation() {
           <div className="flex justify-between"><span className="text-fog light:text-fog-light">Date</span><span>{new Date(order.created_at).toLocaleDateString()}</span></div>
           <div className="flex justify-between"><span className="text-fog light:text-fog-light">Status</span><span className="text-accent light:text-accent-light font-bold uppercase">{paymentStatus}</span></div>
           {order.mpesa_receipt && <div className="flex justify-between"><span className="text-fog light:text-fog-light">M-Pesa Receipt</span><span className="font-mono">{order.mpesa_receipt}</span></div>}
+          {order.delivery_date && (
+            <div className="flex justify-between gap-4">
+              <span className="text-fog light:text-fog-light">Clothing delivery</span>
+              <span className="text-right font-bold">{formatDeliveryDate(order.delivery_date)}</span>
+            </div>
+          )}
+          {order.delivery_date && <p className="text-xs text-fog light:text-fog-light">{CLOTHING_DELIVERY_RULE}</p>}
         </div>
 
         {order.delivery_address && (

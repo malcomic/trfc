@@ -11,7 +11,8 @@ export interface AdminUser {
   phone: string;
   role: UserRole;
   created_at: string;
-  referred_by_captain_id?: string | null;
+  referred_by_region_id?: string | null;
+  /** Captain behind a referral made before referrals moved to zones. */
   referred_by_captain_name?: string | null;
   referred_by_region?: string | null;
   referred_at?: string | null;
@@ -76,6 +77,35 @@ export interface MemberDashboard {
 
 export const getMyDashboard = async (): Promise<MemberDashboard> => {
   const response = await api.get('/users/me/dashboard');
+  return response.data;
+};
+
+export interface CaptainChoice {
+  id: string;
+  name: string;
+  region_id: string;
+  zone: string;
+}
+
+export interface CaptainOptions {
+  /** Members pick captains from this zone; null when they have no zone yet. */
+  zone: { id: string; name: string } | null;
+  current_captain_id: string | null;
+  /** When the member may change captain again; null when they can change now. */
+  next_change_at: string | null;
+  change_days: number;
+  captains: CaptainChoice[];
+}
+
+export const getMyCaptainOptions = async (): Promise<CaptainOptions> => {
+  const response = await api.get('/users/me/captain-options');
+  return response.data;
+};
+
+export const updateMyCaptain = async (
+  captainId: string
+): Promise<{ captain: MemberCaptainSummary | null; options: CaptainOptions }> => {
+  const response = await api.put('/users/me/captain', { captainId });
   return response.data;
 };
 

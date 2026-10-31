@@ -30,6 +30,7 @@ interface CategoryFormValues {
   image_url: string
   sort_order: number | string
   is_active: boolean
+  is_clothing: boolean
   file?: FileList
 }
 
@@ -129,6 +130,7 @@ export default function AdminProductCategories() {
       image_url: '',
       sort_order: categories.length + 1,
       is_active: true,
+      is_clothing: false,
     })
     setShowModal(true)
   }
@@ -144,6 +146,7 @@ export default function AdminProductCategories() {
       image_url: category.image_url || '',
       sort_order: category.sort_order,
       is_active: category.is_active,
+      is_clothing: Boolean(category.is_clothing),
     })
     setShowModal(true)
   }
@@ -169,6 +172,7 @@ export default function AdminProductCategories() {
         image_url: imageUrl,
         sort_order: parseInt(String(data.sort_order || '0'), 10) || 0,
         is_active: Boolean(data.is_active),
+        is_clothing: Boolean(data.is_clothing),
       }
 
       if (editingId) {
@@ -265,7 +269,12 @@ export default function AdminProductCategories() {
                     <td className="px-6 py-4 font-mono text-sm">{category.slug}</td>
                     <td className="px-6 py-4">{category.product_count ?? 0}</td>
                     <td className="px-6 py-4">{category.sort_order}</td>
-                    <td className="px-6 py-4"><StatusBadge active={category.is_active} /></td>
+                    <td className="px-6 py-4">
+                      <StatusBadge active={category.is_active} />
+                      {category.is_clothing && (
+                        <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">Clothing · Wed delivery</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2">
                         <button onClick={() => handleEdit(category)} className="flex items-center gap-1 text-blue-600 dark:text-blue-400 min-h-[44px]" aria-label={`Edit ${category.name}`}>
@@ -303,6 +312,7 @@ export default function AdminProductCategories() {
               <AdminMobileCardRow label="Products" value={category.product_count ?? 0} />
               <AdminMobileCardRow label="Order" value={category.sort_order} />
               <AdminMobileCardRow label="Status" value={<StatusBadge active={category.is_active} small />} />
+              {category.is_clothing && <AdminMobileCardRow label="Delivery" value="Clothing · Wednesdays" />}
             </AdminMobileCard>
           ))}
         />
@@ -404,6 +414,17 @@ export default function AdminProductCategories() {
                   <input type="checkbox" {...register('is_active')} className="w-4 h-4" />
                   <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Active (visible in the shop)</span>
                 </label>
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" {...register('is_clothing')} className="w-4 h-4" />
+                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Clothing</span>
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Clothing is delivered on Wednesdays only. Orders placed by 8 pm Tuesday arrive the next day; later
+                  orders arrive the following Wednesday.
+                </p>
               </div>
 
               <div className="flex gap-2 justify-end pt-4">

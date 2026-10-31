@@ -1,22 +1,27 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
-import { getEventById, buyEventTickets } from '../api/events'
+import { getEventById, buyEventTickets, joinEventWaitlist } from '../api/events'
 import { initiateTicketPayment } from '../api/payments'
 import { getZones, type Zone } from '../api/zones'
 import {
+  TICKET_VALUE_NOTE,
   createPlan,
-  getShortfall,
+  formatCreditDate,
+  getPendingMove,
+  getPlans,
   getWallet,
-  payFromWallet,
+  movePlan,
   payPlan,
+  setPendingMove,
+  payWithCredit,
   previewPlanSchedule,
-  type ScheduleItem,
+  type PlanPreview,
 } from '../api/wallet'
 import PaymentStatusModal from '../components/PaymentStatusModal'
-import TopUpModal from '../components/wallet/TopUpModal'
+import TicketRulesBox from '../components/wallet/TicketRulesBox'
 import { formatDate, formatKes } from '../utils/captainDisplay'
-import { AlertCircle, Loader, ArrowLeft } from 'lucide-react'
+import { AlertCircle, Loader, ArrowLeft, Plus, X } from 'lucide-react'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 import { useAuth } from '../context/AuthContext'
 import { trackInitiateCheckout } from '../utils/tiktokPixel'
@@ -30,12 +35,13 @@ type CheckoutForm = {
   zoneId: string
 }
 
-type PaymentMethod = 'mpesa' | 'wallet' | 'installments'
+type PaymentMethod = 'full' | 'installments'
 
 /** A booking created on this page that still needs paying, reused on retry instead of booking again. */
 type PendingBooking = { batchId: string; ticketTypeId: string; quantity: number; totalPrice: number; eventTitle: string }
 
 const ZONE_STORAGE_KEY = 'trfc_zone'
+const MAX_LATER_PAYMENTS = 4
 
 function readStoredZone(): string {
   try {
@@ -53,6 +59,11 @@ function storeZone(zoneId: string) {
   }
 }
 
+/** 'YYYY-MM-DD' for a date in Nairobi. */
+function nairobiDay(date: Date): string {
+  return new Date(date.getTime() + 3 * 3600_000).toISOString().slice(0, 10)
+}
+
 export default function EventCheckout() {
   const { eventId } = useParams()
   const navigate = useNavigate()
@@ -62,7 +73,7 @@ export default function EventCheckout() {
   const initialQty = locationState?.quantity || 1
   const initialTypeId = locationState?.ticketTypeId
 
-  const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<CheckoutForm>({
+  const { register, handleSubmit, formState: { errors }, watch, setValue, getValues } = useForm<CheckoutForm>({
     defaultValues: {
       quantity: initialQty,
       attendeeName: '',
@@ -78,6 +89,8 @@ export default function EventCheckout() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [canWaitlist, setCanWaitlist] = useState(false)
+  const [waitlistMessage, setWaitlistMessage] = useState('')
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [checkoutRequestId, setCheckoutRequestId] = useState('')
   const [phone, setPhone] = useState('')
@@ -90,70 +103,73 @@ export default function EventCheckout() {
     zoneName?: string
   } | null>(null)
 
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('mpesa')
-  const [walletBalance, setWalletBalance] = useState<number | null>(null)
-  const [walletLimit, setWalletLimit] = useState<{ cap: number; headroom: number } | null>(null)
-  const [installmentCount, setInstallmentCount] = useState(2)
-  const [schedule, setSchedule] = useState<ScheduleItem[] | null>(null)
-  const [scheduleError, setScheduleError] = useState('')
-  const [depositSource, setDepositSource] = useState<'wallet' | 'mpesa'>('mpesa')
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('full')
+  const [ticketValue, setTicketValue] = useState(0)
+  const [useCredit, setUseCredit] = useState(true)
+  const [planDates, setPlanDates] = useState<string[]>([])
+  const [preview, setPreview] = useState<PlanPreview | null>(null)
+  const [previewError, setPreviewError] = useState('')
+  const [depositSource, setDepositSource] = useState<'credit' | 'mpesa'>('mpesa')
   const [pendingBooking, setPendingBooking] = useState<PendingBooking | null>(null)
-  const [topUpShortfall, setTopUpShortfall] = useState<number | null>(null)
   const [afterPaymentPath, setAfterPaymentPath] = useState<string | null>(null)
+  const [pendingMove, setPendingMoveState] = useState(() => getPendingMove())
 
   const quantity = watch('quantity')
   const unitPrice = selectedType ? Number(selectedType.price) : 0
   const totalPrice = unitPrice * Number(quantity || 0)
-  const maxInstallments = event?.installments_allowed ?? 0
-  const installmentOptions = [2, 3].filter((n) => n <= maxInstallments)
+  const moving = Boolean(user && pendingMove && pendingMove.eventId !== eventId && totalPrice > 0)
+  const plansAllowed = Number(event?.installments_allowed ?? 0) > 0 && !moving
+  const creditApplied = moving
+    ? Math.min(ticketValue + (pendingMove?.amountPaid ?? 0), totalPrice)
+    : user && paymentMethod === 'full' && useCredit
+      ? Math.min(ticketValue, totalPrice)
+      : 0
+  const mpesaDue = Math.max(0, totalPrice - creditApplied)
 
   const refreshWallet = useCallback(() => {
     if (!user) return
     getWallet()
       .then((w) => {
-        setWalletBalance(w.balance)
-        setWalletLimit({ cap: w.cap, headroom: w.headroom })
+        setTicketValue(w.ticketValue)
+        if (w.ticketValue > 0) setDepositSource('credit')
       })
-      .catch(() => {
-        setWalletBalance(null)
-        setWalletLimit(null)
-      })
+      .catch(() => setTicketValue(0))
   }, [user])
 
   useEffect(() => {
     refreshWallet()
   }, [refreshWallet])
 
-  useEffect(() => {
-    if (maxInstallments >= 2 && installmentCount > maxInstallments) setInstallmentCount(2)
-  }, [maxInstallments, installmentCount])
-
+  const datesKey = planDates.filter(Boolean).join(',')
   useEffect(() => {
     if (paymentMethod !== 'installments' || !eventId || totalPrice <= 0) {
-      setSchedule(null)
-      setScheduleError('')
+      setPreview(null)
+      setPreviewError('')
       return
     }
     let cancelled = false
-    previewPlanSchedule({ eventId, total: totalPrice, installments: installmentCount })
+    previewPlanSchedule({ eventId, total: totalPrice, dates: datesKey ? datesKey.split(',') : [] })
       .then((data) => {
         if (cancelled) return
-        setSchedule(data.schedule)
-        setScheduleError('')
+        setPreview(data)
+        setPreviewError('')
       })
       .catch((err: any) => {
         if (cancelled) return
-        setSchedule(null)
-        setScheduleError(err.response?.data?.error || 'Installments are not available for this event')
+        setPreview(null)
+        setPreviewError(err.response?.data?.error || 'Paying in parts is not available for this event')
       })
     return () => {
       cancelled = true
     }
-  }, [paymentMethod, eventId, totalPrice, installmentCount])
-  const maxQty =
-    selectedType?.remaining != null
-      ? Math.min(10, selectedType.remaining)
-      : 10
+  }, [paymentMethod, eventId, totalPrice, datesKey])
+
+  const seatLimit = event?.seats_available ?? null
+  const maxQty = Math.max(
+    0,
+    Math.min(10, selectedType?.remaining != null ? selectedType.remaining : 10, seatLimit != null ? seatLimit : 10)
+  )
 
   useEffect(() => {
     if (user?.name) setValue('attendeeName', user.name)
@@ -179,7 +195,7 @@ export default function EventCheckout() {
           setError('Event ID not found')
           return
         }
-        const data = await getEventById(eventId)
+        const data: Event = await getEventById(eventId)
         setEvent(data)
         const types = (data.ticket_types || []).filter((t: EventTicketType) => t.is_active)
         const fromState = types.find((t: EventTicketType) => t.id === initialTypeId)
@@ -188,7 +204,10 @@ export default function EventCheckout() {
           types.find((t: EventTicketType) => !t.is_sold_out) ||
           null
         setSelectedType(firstAvailable)
-        if (!firstAvailable) {
+        if (data.sold_out_for_you) {
+          setError('No seats are open to you right now. Join the waiting list and we will tell you when one opens.')
+          setCanWaitlist(true)
+        } else if (!firstAvailable) {
           setError('No available ticket types for this event')
         }
       } catch (err: any) {
@@ -229,6 +248,7 @@ export default function EventCheckout() {
       phone: data.phone,
       attendeeName: data.attendeeName.trim(),
       zoneId: data.zoneId,
+      termsAccepted: true,
     })
     storeZone(data.zoneId)
     const booking: PendingBooking = {
@@ -242,13 +262,12 @@ export default function EventCheckout() {
     return booking
   }
 
-  const payWithWallet = async (booking: PendingBooking, contact: { phone: string; email: string }) => {
-    try {
-      const result = await payFromWallet([booking.batchId])
-      setPendingBooking(null)
-      const reference = result.references[0]
+  const payInFull = async (booking: PendingBooking, contact: { phone: string; email: string }) => {
+    const result = await payWithCredit({ purchaseBatchIds: [booking.batchId], useCredit, phone: contact.phone })
+    setPendingBooking(null)
+    if (result.status === 'paid') {
       const params = new URLSearchParams(contact)
-      navigate(`/ticket-confirmation/${reference}?${params.toString()}`, {
+      navigate(`/ticket-confirmation/${result.references[0]}?${params.toString()}`, {
         state: {
           eventTitle: booking.eventTitle,
           quantity: booking.quantity,
@@ -256,33 +275,60 @@ export default function EventCheckout() {
           ...contact,
         },
       })
-    } catch (err: any) {
-      const shortfall = getShortfall(err)
-      if (shortfall != null) {
-        setTopUpShortfall(shortfall)
+      return
+    }
+    setTicketMeta({ eventTitle: booking.eventTitle, quantity: booking.quantity, totalPrice: booking.totalPrice })
+    setCheckoutRequestId(result.checkoutRequestId)
+    setShowPaymentModal(true)
+  }
+
+  const cancelMove = () => {
+    setPendingMove(null)
+    setPendingMoveState(null)
+  }
+
+  const moveInto = async (booking: PendingBooking, contact: { phone: string; email: string }) => {
+    try {
+      const result = await movePlan(pendingMove!.planId, { purchaseBatchId: booking.batchId, phone: contact.phone })
+      cancelMove()
+      setPendingBooking(null)
+      if (result.status === 'paid') {
+        const params = new URLSearchParams(contact)
+        navigate(`/ticket-confirmation/${result.references[0]}?${params.toString()}`, {
+          state: { eventTitle: booking.eventTitle, quantity: booking.quantity, totalPrice: booking.totalPrice, ...contact },
+        })
         return
+      }
+      setTicketMeta({ eventTitle: booking.eventTitle, quantity: booking.quantity, totalPrice: booking.totalPrice })
+      setCheckoutRequestId(result.checkoutRequestId)
+      setShowPaymentModal(true)
+    } catch (err) {
+      const plans = await getPlans().catch(() => [])
+      if (!plans.some((p) => p.id === pendingMove!.planId && p.status === 'active')) {
+        cancelMove()
+        refreshWallet()
       }
       throw err
     }
   }
 
-  const startInstallments = async (booking: PendingBooking, contactPhone: string) => {
-    const plan = await createPlan({ purchaseBatchId: booking.batchId, installments: installmentCount })
+  const startPlan = async (booking: PendingBooking, contactPhone: string) => {
+    const plan = await createPlan({ purchaseBatchId: booking.batchId, dates: planDates.filter(Boolean) })
     setPendingBooking(null)
-    const plans = '/dashboard/wallet'
-    // The plan exists even if the deposit doesn't go through; it can be paid from the dashboard.
+    const plansPath = '/dashboard/wallet'
+    // The ticket is reserved even if the first payment doesn't go through; it can be paid from the dashboard.
     try {
       const result = await payPlan(plan.id, { mode: 'next', source: depositSource, phone: contactPhone })
       if (result.source === 'mpesa' && result.checkoutRequestId) {
-        setAfterPaymentPath(plans)
+        setAfterPaymentPath(plansPath)
         setCheckoutRequestId(result.checkoutRequestId)
         setShowPaymentModal(true)
         return
       }
-      navigate(plans)
+      navigate(plansPath)
     } catch (err: any) {
-      navigate(plans, {
-        state: { notice: err.response?.data?.error || 'Your plan was created, but the deposit was not paid yet.' },
+      navigate(plansPath, {
+        state: { notice: err.response?.data?.error || 'Your seat is reserved, but the first payment was not made yet.' },
       })
     }
   }
@@ -292,28 +338,37 @@ export default function EventCheckout() {
       setError('Please select a ticket type')
       return
     }
+    if (!termsAccepted) {
+      setError('Please read and accept the ticket rules to continue')
+      return
+    }
     try {
       setSubmitting(true)
       setError('')
+      setCanWaitlist(false)
       const normalizedEmail = data.email.trim().toLowerCase()
       setPhone(data.phone)
       setEmail(normalizedEmail)
 
-      const chosen: PaymentMethod = user && totalPrice > 0 ? paymentMethod : 'mpesa'
-
-      if (chosen === 'wallet') {
+      if (moving) {
         const booking = await bookTickets(data, normalizedEmail)
-        await payWithWallet(booking, { phone: data.phone, email: normalizedEmail })
+        await moveInto(booking, { phone: data.phone, email: normalizedEmail })
         return
       }
 
-      if (chosen === 'installments') {
-        if (!schedule) {
-          setError(scheduleError || 'Installments are not available for this booking')
+      if (user && totalPrice > 0 && paymentMethod === 'installments') {
+        if (!preview) {
+          setError(previewError || 'Paying in parts is not available for this booking')
           return
         }
         const booking = await bookTickets(data, normalizedEmail)
-        await startInstallments(booking, data.phone)
+        await startPlan(booking, data.phone)
+        return
+      }
+
+      if (user && totalPrice > 0) {
+        const booking = await bookTickets(data, normalizedEmail)
+        await payInFull(booking, { phone: data.phone, email: normalizedEmail })
         return
       }
 
@@ -324,6 +379,7 @@ export default function EventCheckout() {
         phone: data.phone,
         attendeeName: data.attendeeName.trim(),
         zoneId: data.zoneId,
+        termsAccepted: true,
       })
       storeZone(data.zoneId)
 
@@ -347,6 +403,7 @@ export default function EventCheckout() {
         setError('Failed to initiate payment. Please try again.')
       }
     } catch (err: any) {
+      setCanWaitlist(Boolean(err.response?.data?.waitlist))
       setError(
         err.response?.data?.error ||
           err.response?.data?.customerMessage ||
@@ -354,6 +411,20 @@ export default function EventCheckout() {
       )
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const joinWaitlist = async () => {
+    const { attendeeName, email: formEmail, phone: formPhone } = getValues()
+    if (!formEmail) {
+      setWaitlistMessage('Enter your email above so we can tell you when a seat opens.')
+      return
+    }
+    try {
+      const result = await joinEventWaitlist(eventId!, { name: attendeeName, email: formEmail, phone: formPhone })
+      setWaitlistMessage(`You're on the waiting list (number ${result.position}). We'll message you when a seat opens.`)
+    } catch (err: any) {
+      setWaitlistMessage(err.response?.data?.error || 'Could not join the waiting list. Please try again.')
     }
   }
 
@@ -382,7 +453,7 @@ export default function EventCheckout() {
     )
   }
 
-  if ((error && !event) || !event) {
+  if (!event) {
     return (
       <div className={`${pageRoot} py-16 px-6`}>
         <div className="max-w-2xl mx-auto bg-red-500/10 border border-red-500/20 p-6 flex gap-4">
@@ -397,19 +468,26 @@ export default function EventCheckout() {
   }
 
   const qtyOptions = Array.from({ length: Math.max(0, maxQty) }, (_, i) => i + 1)
-
-  const method: PaymentMethod = user && totalPrice > 0 ? paymentMethod : 'mpesa'
-  const submitLabel =
-    method === 'wallet'
-      ? 'Pay from Wallet'
-      : method === 'installments'
-        ? `Reserve & pay ${schedule ? formatKes(schedule[0].amount) : 'deposit'}`
-        : 'Pay with M-Pesa'
-  const summaryNote =
-    method === 'wallet'
-      ? 'The total is deducted from your TRFC wallet and your tickets are issued immediately.'
-      : method === 'installments'
-        ? `Paid in ${installmentCount} installments. Tickets are issued once the final payment is made.`
+  const method: PaymentMethod = user && totalPrice > 0 && !moving ? paymentMethod : 'full'
+  const deadlineDay = preview ? nairobiDay(new Date(preview.deadline)) : undefined
+  const tomorrow = nairobiDay(new Date(Date.now() + 86_400_000))
+  const submitLabel = moving
+    ? mpesaDue > 0
+      ? `Move & pay ${formatKes(mpesaDue)} with M-Pesa`
+      : 'Move my payments here'
+    : method === 'installments'
+      ? `Reserve & pay ${preview ? formatKes(preview.deposit) : 'first part'}`
+      : user && totalPrice > 0 && mpesaDue === 0
+        ? `Use ${formatKes(creditApplied)} ticket value`
+        : `Pay ${formatKes(mpesaDue)} with M-Pesa`
+  const summaryNote = moving
+    ? `The ${formatKes(pendingMove!.amountPaid)} you paid for ${pendingMove!.eventTitle} is released from that event and used here, with any other ticket value (oldest first).`
+    : method === 'installments'
+      ? 'Your seat is reserved while you pay. The QR ticket is issued once everything is paid.'
+      : creditApplied > 0
+        ? mpesaDue > 0
+          ? `${formatKes(creditApplied)} comes from your ticket value (oldest first). Pay the rest by M-Pesa.`
+          : 'Paid from your ticket value (oldest first). Your tickets are issued immediately.'
         : 'An M-Pesa prompt will appear on your phone after checkout. Enter your PIN to complete payment.'
 
   return (
@@ -421,6 +499,7 @@ export default function EventCheckout() {
           </button>
           <h1 className="font-bebas text-4xl text-chalk light:text-chalk-light">BUY <span className="text-accent light:text-accent-light">TICKETS</span></h1>
           <p className="text-fog light:text-fog-light mt-1">{event.title}</p>
+          {event.priority_note && <p className="text-sm text-fog light:text-fog-light mt-1">{event.priority_note}</p>}
         </div>
       </section>
 
@@ -516,19 +595,25 @@ export default function EventCheckout() {
             {errors.zoneId && <p className="text-red-400 text-sm mt-1">{errors.zoneId.message}</p>}
             <p className="text-xs text-fog light:text-fog-light mt-1">We use this to show flash deals available in your area.</p>
           </div>
-          {user && totalPrice > 0 && (
+          {moving && pendingMove && (
+            <div className="border border-accent/40 light:border-accent-light/40 bg-accent/10 light:bg-accent-light/10 p-3 text-sm space-y-1">
+              <p>
+                Moving the <strong>{formatKes(pendingMove.amountPaid)}</strong> you paid for{' '}
+                <strong>{pendingMove.eventTitle}</strong> to this event. Your seat there is released.
+              </p>
+              <button type="button" onClick={cancelMove} className="text-xs text-accent light:text-accent-light hover:underline">
+                Don't move, keep my ticket for {pendingMove.eventTitle}
+              </button>
+            </div>
+          )}
+          {user && totalPrice > 0 && !moving && (
             <div>
-              <label className="block text-sm font-semibold mb-2">Payment method</label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <label className="block text-sm font-semibold mb-2">How do you want to pay?</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {([
-                  { id: 'mpesa', label: 'M-Pesa', hint: 'Pay in full now' },
-                  {
-                    id: 'wallet',
-                    label: 'Wallet',
-                    hint: walletBalance == null ? 'Balance unavailable' : `Balance ${formatKes(walletBalance)}`,
-                  },
-                  ...(installmentOptions.length
-                    ? [{ id: 'installments', label: 'Installments', hint: `Up to ${maxInstallments} payments` }]
+                  { id: 'full', label: 'Pay in full', hint: ticketValue > 0 ? `Ticket value ${formatKes(ticketValue)} + M-Pesa` : 'M-Pesa' },
+                  ...(plansAllowed
+                    ? [{ id: 'installments', label: 'Pay in parts', hint: `${event.payment_rules?.deposit_pct ?? 30}% now, the rest later` }]
                     : []),
                 ] as { id: PaymentMethod; label: string; hint: string }[]).map((opt) => (
                   <button
@@ -547,83 +632,127 @@ export default function EventCheckout() {
                 ))}
               </div>
 
-              {paymentMethod === 'wallet' && walletBalance != null && walletBalance < totalPrice && (
-                <p className="text-xs text-amber-400 mt-2">
-                  Your wallet is {formatKes(totalPrice - walletBalance)} short. You'll be asked to top up via M-Pesa
-                  first.
-                </p>
+              {paymentMethod === 'full' && ticketValue > 0 && (
+                <label className="flex items-start gap-2 text-sm mt-3">
+                  <input type="checkbox" className="mt-1" checked={useCredit} onChange={(e) => setUseCredit(e.target.checked)} />
+                  <span>
+                    Use my ticket value ({formatKes(ticketValue)})
+                    <span className="block text-xs text-fog light:text-fog-light">
+                      The oldest value is used first. {TICKET_VALUE_NOTE}
+                    </span>
+                  </span>
+                </label>
               )}
 
               {paymentMethod === 'installments' && (
                 <div className="mt-3 space-y-3">
-                  {installmentOptions.length > 1 && (
-                    <div className="flex gap-2">
-                      {installmentOptions.map((n) => (
-                        <button
-                          key={n}
-                          type="button"
-                          onClick={() => setInstallmentCount(n)}
-                          className={`px-3 py-1 text-sm border ${
-                            installmentCount === n
-                              ? 'border-accent light:border-accent-light text-accent light:text-accent-light'
-                              : 'border-white/10 light:border-black/10'
-                          }`}
-                        >
-                          {n} payments
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {scheduleError && <p className="text-sm text-red-300">{scheduleError}</p>}
-                  {schedule && (
-                    <ul className="text-sm divide-y divide-white/5 light:divide-black/5 border border-white/10 light:border-black/10">
-                      {schedule.map((s) => (
-                        <li key={s.seq} className="flex justify-between px-3 py-2">
-                          <span>
-                            {s.seq === 1 ? 'Today' : `Payment ${s.seq} · due ${formatDate(s.due_at)}`}
-                          </span>
-                          <span className="font-semibold">{formatKes(s.amount)}</span>
-                        </li>
-                      ))}
-                    </ul>
+                  {previewError && <p className="text-sm text-red-300">{previewError}</p>}
+                  {preview && (
+                    <>
+                      <p className="text-xs text-fog light:text-fog-light">
+                        Everything must be paid by <strong>{formatCreditDate(preview.deadline)}, 11:59 pm</strong> (
+                        {preview.deadlineDays} day{preview.deadlineDays === 1 ? '' : 's'} before the event).
+                      </p>
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold">When will you pay the rest?</p>
+                        {planDates.map((day, i) => (
+                          <div key={i} className="flex gap-2 items-center">
+                            <input
+                              type="date"
+                              value={day}
+                              min={tomorrow}
+                              max={deadlineDay}
+                              onChange={(e) =>
+                                setPlanDates((list) => list.map((d, j) => (j === i ? e.target.value : d)))
+                              }
+                              className={`px-3 py-1.5 text-sm ${inputField}`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setPlanDates((list) => list.filter((_, j) => j !== i))}
+                              className="text-fog light:text-fog-light hover:text-red-400"
+                              aria-label="Remove date"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ))}
+                        {planDates.length < MAX_LATER_PAYMENTS && (
+                          <button
+                            type="button"
+                            onClick={() => setPlanDates((list) => [...list, ''])}
+                            className="inline-flex items-center gap-1 text-xs text-accent light:text-accent-light hover:underline"
+                          >
+                            <Plus size={12} /> Add a payment date
+                          </button>
+                        )}
+                        {planDates.length === 0 && (
+                          <p className="text-xs text-fog light:text-fog-light">
+                            No dates picked: the rest is due by the deadline. You can always pay early.
+                          </p>
+                        )}
+                      </div>
+                      <ul className="text-sm divide-y divide-white/5 light:divide-black/5 border border-white/10 light:border-black/10">
+                        {preview.schedule.map((s) => (
+                          <li key={s.seq} className="flex justify-between px-3 py-2">
+                            <span>{s.seq === 1 ? 'Today' : `Payment ${s.seq} · by ${formatDate(s.due_at)}`}</span>
+                            <span className="font-semibold">{formatKes(s.amount)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
                   )}
                   <div>
-                    <p className="text-xs font-semibold mb-1">Pay the first installment from</p>
+                    <p className="text-xs font-semibold mb-1">Pay today's part with</p>
                     <div className="flex gap-4 text-sm">
                       <label className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          checked={depositSource === 'mpesa'}
-                          onChange={() => setDepositSource('mpesa')}
-                        />
+                        <input type="radio" checked={depositSource === 'mpesa'} onChange={() => setDepositSource('mpesa')} />
                         M-Pesa
                       </label>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          checked={depositSource === 'wallet'}
-                          onChange={() => setDepositSource('wallet')}
-                        />
-                        Wallet{walletBalance != null && ` (${formatKes(walletBalance)})`}
-                      </label>
+                      {ticketValue > 0 && (
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            checked={depositSource === 'credit'}
+                            onChange={() => setDepositSource('credit')}
+                          />
+                          Ticket value ({formatKes(ticketValue)})
+                        </label>
+                      )}
                     </div>
                   </div>
-                  <p className="text-xs text-fog light:text-fog-light">
-                    Your tickets are reserved while you pay. They're issued once the last installment is paid. If the
-                    plan isn't finished by event day, what you paid moves to your wallet.
-                  </p>
                 </div>
               )}
             </div>
           )}
+
+          <TicketRulesBox
+            rules={event.payment_rules}
+            accepted={termsAccepted}
+            onChange={setTermsAccepted}
+            showPlanRules={method === 'installments'}
+          />
+
           {error && (
             <div className="bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-300 flex gap-2">
               <AlertCircle size={16} className="flex-shrink-0" /> {error}
             </div>
           )}
+          {canWaitlist && (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={joinWaitlist}
+                className="w-full border border-accent light:border-accent-light text-accent light:text-accent-light py-2 font-barlow-condensed font-bold text-sm tracking-widest uppercase"
+              >
+                Join the waiting list
+              </button>
+              {waitlistMessage && <p className="text-xs text-fog light:text-fog-light">{waitlistMessage}</p>}
+            </div>
+          )}
           <button
             type="submit"
-            disabled={submitting || !selectedType || qtyOptions.length === 0}
+            disabled={submitting || !selectedType || qtyOptions.length === 0 || !termsAccepted}
             className="w-full bg-cta text-cta-ink py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-cta/90 disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {submitting ? <><Loader className="w-4 h-4 animate-spin" /> Processing…</> : submitLabel}
@@ -637,7 +766,18 @@ export default function EventCheckout() {
           <p className="font-bebas text-3xl text-accent light:text-accent-light">
             {totalPrice === 0 ? 'FREE' : `KES ${totalPrice.toLocaleString()}`}
           </p>
+          {creditApplied > 0 && method === 'full' && (moving || useCredit) && (
+            <div className="text-xs mt-2 space-y-1">
+              <p className="flex justify-between"><span>Ticket value</span><span>−{formatKes(creditApplied)}</span></p>
+              <p className="flex justify-between font-semibold"><span>M-Pesa</span><span>{formatKes(mpesaDue)}</span></p>
+            </div>
+          )}
           <p className="text-xs text-fog light:text-fog-light mt-4">{summaryNote}</p>
+          {!user && (
+            <p className="text-xs text-fog light:text-fog-light mt-2">
+              <Link to="/login" className="text-accent light:text-accent-light">Log in</Link> to use ticket value or pay in parts.
+            </p>
+          )}
         </div>
       </div>
 
@@ -646,29 +786,6 @@ export default function EventCheckout() {
         checkoutRequestId={checkoutRequestId}
         phone={phone}
         onClose={handleModalClose}
-      />
-
-      <TopUpModal
-        isOpen={topUpShortfall != null}
-        defaultAmount={topUpShortfall ?? undefined}
-        title="Top up to finish paying"
-        cap={walletLimit?.cap}
-        headroom={walletLimit?.headroom}
-        onClose={() => setTopUpShortfall(null)}
-        onSuccess={async () => {
-          setTopUpShortfall(null)
-          refreshWallet()
-          if (!pendingBooking) return
-          try {
-            setSubmitting(true)
-            setError('')
-            await payWithWallet(pendingBooking, { phone, email })
-          } catch (err: any) {
-            setError(err.response?.data?.error || 'Wallet payment failed. Please try again.')
-          } finally {
-            setSubmitting(false)
-          }
-        }}
       />
     </div>
   )

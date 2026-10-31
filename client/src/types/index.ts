@@ -35,8 +35,44 @@ export interface Event {
   ticket_types?: EventTicketType[];
   min_price?: number | null;
   all_types_sold_out?: boolean;
-  /** 0 = installments off, otherwise the number of equal payments (2 or 3). */
+  /** 0 = paying in parts is off; anything above 0 allows it. */
   installments_allowed?: number;
+  /** Days before the event that a part-paid ticket must be fully paid; null uses the TRFC default. */
+  payment_deadline_days?: number | null;
+  /** Share of seats held for members until 7 days before the event. */
+  member_priority_pct?: number | null;
+  cancelled_at?: string | null;
+  /** Public: the one-line member priority statement, if the event has one. */
+  priority_note?: string | null;
+  /** Public: seats this viewer can book right now (null = no limit). */
+  seats_available?: number | null;
+  sold_out_for_you?: boolean;
+  payment_rules?: PaymentRules;
+  /** Admin only */
+  zones?: { id: string; name: string }[];
+  seat_breakdown?: SeatBreakdown | null;
+  scan_list_confirmed_at?: string | null;
+}
+
+export interface PaymentRules {
+  credit_days: number;
+  deposit_pct: number;
+  deadline_days: number;
+  early_notice_hours: number;
+  terms_version: string;
+}
+
+export interface SeatBreakdown {
+  total: number | null;
+  priorityPct: number | null;
+  memberSeats: number;
+  memberTaken: number;
+  openTaken: number;
+  releaseAt: string | null;
+  released: boolean;
+  openAvailable: number | null;
+  memberPoolAvailable: number | null;
+  openedToAll: number;
 }
 
 export interface Product {
@@ -78,6 +114,8 @@ export interface ProductCategory {
   image_url?: string | null;
   sort_order: number;
   is_active: boolean;
+  /** Clothing is delivered on Wednesdays only. */
+  is_clothing?: boolean;
   created_at?: string;
   product_count?: number;
 }

@@ -6,35 +6,41 @@ vi.mock('../../config/db.js', () => ({
 }))
 vi.mock('../../utils/captainCommissions.js', () => ({
   reverseCaptainCommission: vi.fn().mockResolvedValue(true),
+  recordCaptainCommissionsForCheckout: vi.fn().mockResolvedValue(0),
 }))
 vi.mock('../../utils/emailService.js', () => ({
   sendEmail: vi.fn().mockResolvedValue({ success: true }),
 }))
+vi.mock('../../utils/waitlist.js', () => ({
+  notifyWaitlist: vi.fn().mockResolvedValue(0),
+}))
 
 import { getClient, query } from '../../config/db.js'
 import { reverseCaptainCommission } from '../../utils/captainCommissions.js'
-import {
-  CancellationError,
-  cancelTicket,
-  evaluateCancellation,
-  startOfNextNairobiMonth,
-  type CancellableTicket,
-} from '../../utils/ticketCancellation.js'
+import { notifyWaitlist } from '../../utils/waitlist.js'
+import { CancellationError, cancelTicket, evaluateCancellation, type CancellableTicket } from '../../utils/ticketCancellation.js'
+import { clearTicketRulesCache } from '../../utils/ticketRules.js'
 
 const USER_ID = '22222222-2222-4222-8222-222222222222'
-const OTHER_ID = '44444444-4444-4444-8444-444444444444'
-const NOW = new Date('2026-10-22T10:00:00Z')
-const DAY = 24 * 60 * 60 * 1000
+const TICKET_ID = '11111111-1111-4111-8111-111111111111'
+const rules = { earlyNoticeHours: 24 }
 
-const paidTicket = (overrides: Partial<CancellableTicket> = {}): CancellableTicket => ({
-  id: 'ticket-1',
+// Hike on Sat 12 Dec 2026, 6:00 am Nairobi.
+const STARTS_AT = '2026-12-12T03:00:00.000Z'
+
+const ticket = (overrides: Partial<CancellableTicket> = {}): CancellableTicket => ({
+  id: TICKET_ID,
   user_id: USER_ID,
+  event_id: 'ev-1',
   purchase_batch_id: 'batch-1',
   payment_status: 'paid',
   checked_in_at: null,
-  price: 1500,
-  event_title: 'Thika Road 10K',
-  event_date: new Date(NOW.getTime() + 20 * DAY),
+  price: 1497,
+  event_title: 'Ngong Hills Hike',
+  event_starts_at: STARTS_AT,
+  event_day: '2026-12-12',
+  event_cancelled_at: null,
+  referral_region_id: 'zone-1',
   plan_id: null,
   plan_status: null,
   plan_amount_paid: null,
@@ -43,127 +49,105 @@ const paidTicket = (overrides: Partial<CancellableTicket> = {}): CancellableTick
 
 beforeEach(() => {
   vi.clearAllMocks()
+  clearTicketRulesCache()
 })
 
 describe('evaluateCancellation', () => {
-  it('allows a paid ticket well before the event and credits its price', () => {
-    expect(evaluateCancellation(paidTicket(), USER_ID, 0, NOW)).toEqual({
-      allowed: true,
-      creditAmount: 1500,
-      cancelsPlan: false,
-    })
+  it('is "cancelled early" with 24 hours or more notice', () => {
+    const result = evaluateCancellation(ticket(), USER_ID, rules, new Date('2026-12-11T03:00:00.000Z'))
+    expect(result).toEqual({ allowed: true, creditAmount: 1497, cancelsPlan: false, noticeStatus: 'cancelled_early' })
   })
 
-  it('rejects cancelling within 7 days of the event', () => {
+  it('is a no-show with less notice, but still gives the same credit', () => {
+    const result = evaluateCancellation(ticket(), USER_ID, rules, new Date('2026-12-11T03:00:01.000Z'))
+    expect(result).toMatchObject({ allowed: true, creditAmount: 1497, noticeStatus: 'no_show' })
+  })
+
+  it('cannot be done once the event starts, after check-in, or for an event TRFC cancelled', () => {
+    const start = new Date(STARTS_AT)
+    expect(evaluateCancellation(ticket(), USER_ID, rules, start)).toMatchObject({ allowed: false })
+    expect(
+      evaluateCancellation(ticket({ checked_in_at: '2026-12-12T03:10:00Z' }), USER_ID, rules, new Date('2026-12-01'))
+    ).toMatchObject({ allowed: false, reason: 'This ticket has already been used' })
+    expect(
+      evaluateCancellation(ticket({ event_cancelled_at: '2026-12-01' }), USER_ID, rules, new Date('2026-12-02'))
+    ).toMatchObject({ allowed: false, reason: 'This event was cancelled by TRFC' })
+  })
+
+  it("cancels the whole plan for a reserved ticket, credits what was paid, and is always early", () => {
     const result = evaluateCancellation(
-      paidTicket({ event_date: new Date(NOW.getTime() + 6 * DAY) }),
+      ticket({ payment_status: 'reserved', plan_id: 'plan-1', plan_status: 'active', plan_amount_paid: 450 }),
       USER_ID,
-      0,
-      NOW
+      rules,
+      new Date('2026-12-08T00:00:00Z')
     )
-    expect(result.allowed).toBe(false)
-    expect(result.reason).toMatch(/7 days/)
+    expect(result).toEqual({ allowed: true, creditAmount: 450, cancelsPlan: true, noticeStatus: 'cancelled_early' })
   })
 
-  it('allows exactly 7 days before the event', () => {
-    const result = evaluateCancellation(paidTicket({ event_date: new Date(NOW.getTime() + 7 * DAY) }), USER_ID, 0, NOW)
-    expect(result.allowed).toBe(true)
-  })
-
-  it('rejects a second cancellation in the same calendar month and says when the next is allowed', () => {
-    const result = evaluateCancellation(paidTicket(), USER_ID, 1, NOW)
-    expect(result.allowed).toBe(false)
-    expect(result.reason).toMatch(/one ticket per month/)
-    // 1 Nov 00:00 in Nairobi (UTC+3)
-    expect(result.nextAllowedAt?.toISOString()).toBe('2026-10-31T21:00:00.000Z')
-  })
-
-  it('rejects checked-in tickets', () => {
-    const result = evaluateCancellation(paidTicket({ checked_in_at: new Date() }), USER_ID, 0, NOW)
-    expect(result).toMatchObject({ allowed: false, reason: expect.stringMatching(/used/) })
-  })
-
-  it("rejects someone else's ticket", () => {
-    expect(evaluateCancellation(paidTicket({ user_id: OTHER_ID }), USER_ID, 0, NOW)).toMatchObject({
+  it("refuses someone else's ticket", () => {
+    expect(evaluateCancellation(ticket(), 'someone-else', rules, new Date('2026-12-01'))).toMatchObject({
       allowed: false,
       reason: 'Ticket not found',
     })
   })
-
-  it('rejects pending and already-cancelled tickets', () => {
-    expect(evaluateCancellation(paidTicket({ payment_status: 'pending' }), USER_ID, 0, NOW).allowed).toBe(false)
-    expect(evaluateCancellation(paidTicket({ payment_status: 'cancelled' }), USER_ID, 0, NOW).allowed).toBe(false)
-  })
-
-  it('cancels the whole plan for a reserved ticket and credits what was paid on it', () => {
-    const result = evaluateCancellation(
-      paidTicket({ payment_status: 'reserved', plan_id: 'plan-1', plan_status: 'active', plan_amount_paid: 1000 }),
-      USER_ID,
-      0,
-      NOW
-    )
-    expect(result).toEqual({ allowed: true, creditAmount: 1000, cancelsPlan: true })
-  })
 })
 
-describe('startOfNextNairobiMonth', () => {
-  it('uses the Nairobi calendar month, not UTC', () => {
-    // 31 Oct 22:00 UTC is already 1 Nov 01:00 in Nairobi.
-    expect(startOfNextNairobiMonth(new Date('2026-10-31T22:00:00Z')).toISOString()).toBe('2026-11-30T21:00:00.000Z')
-    expect(startOfNextNairobiMonth(new Date('2026-12-15T12:00:00Z')).toISOString()).toBe('2026-12-31T21:00:00.000Z')
-  })
-})
+function setupDb(row: CancellableTicket) {
+  const calls: [string, any[]][] = []
+  const run = async (sql: string, params: any[] = []) => {
+    calls.push([sql, params])
+    if (sql.includes('FOR UPDATE OF t')) return { rows: [row] }
+    if (sql.includes('INSERT INTO ticket_credits')) return { rows: [{ id: 'credit-1' }] }
+    if (sql.includes('UPDATE wallets SET balance')) return { rows: [{ balance: 1497 }] }
+    if (sql.includes('INSERT INTO wallet_transactions')) return { rows: [{ id: 'tx-1' }] }
+    return { rows: [] }
+  }
+  vi.mocked(query).mockImplementation(run as any)
+  vi.mocked(getClient).mockImplementation((async () => ({ query: vi.fn(run), release: vi.fn() })) as any)
+  return calls
+}
 
 describe('cancelTicket', () => {
-  function setup(ticket: CancellableTicket, cancellationsThisMonth = 0) {
-    const state = { balance: 200, statements: [] as { sql: string; params: any[] }[] }
-    const run = (async (sql: string, params: any[] = []) => {
-      state.statements.push({ sql, params })
-      if (sql.includes('SELECT balance::float AS balance FROM wallets')) return { rows: [{ balance: state.balance }] }
-      if (sql.includes('UPDATE wallets SET balance = balance + $2')) {
-        state.balance += Number(params[1])
-        return { rows: [{ balance: state.balance }] }
-      }
-      if (sql.includes('WHERE t.id = $1 FOR UPDATE OF t')) return { rows: [ticket] }
-      if (sql.includes('FROM ticket_cancellations')) return { rows: [{ count: cancellationsThisMonth }] }
-      if (sql.includes('INSERT INTO wallet_transactions')) {
-        return { rows: [{ id: 'credit-tx', type: params[1], amount: params[2], balance_after: params[3] }] }
-      }
-      if (sql.includes('FROM users')) return { rows: [{ email: 'jane@example.com', name: 'Jane' }] }
-      return { rows: [] }
-    }) as any
-    vi.mocked(query).mockImplementation(run)
-    vi.mocked(getClient).mockImplementation((async () => ({ query: vi.fn(run), release: vi.fn() })) as any)
-    return state
-  }
+  it('early notice: credit usable now, valid 60 days after the event; commission reversed and waitlist told', async () => {
+    vi.useFakeTimers({ now: new Date('2026-12-01T09:00:00Z'), toFake: ['Date'] })
+    try {
+      const calls = setupDb(ticket())
+      const result = await cancelTicket(TICKET_ID, USER_ID)
 
-  it('credits the unit price to the wallet, records the cancellation and reverses commission', async () => {
-    const ticket = paidTicket({ event_date: new Date(Date.now() + 30 * DAY) })
-    const state = setup(ticket)
-
-    const result = await cancelTicket('ticket-1', USER_ID)
-
-    expect(result).toMatchObject({ credited: 1500, balance: 1700, cancelledTicketIds: ['ticket-1'] })
-    const credit = state.statements.find((s) => s.sql.includes('INSERT INTO wallet_transactions'))
-    expect(credit?.params[1]).toBe('cancellation_credit')
-    expect(state.statements.some((s) => s.sql.includes('INSERT INTO ticket_cancellations'))).toBe(true)
-    expect(
-      state.statements.some((s) => s.sql.includes("SET payment_status = 'cancelled'") && s.params[0] === 'ticket-1')
-    ).toBe(true)
-    expect(reverseCaptainCommission).toHaveBeenCalledWith('ticket', 'ticket-1')
+      expect(result).toMatchObject({ credited: 1497, noticeStatus: 'cancelled_early', cancelledTicketIds: [TICKET_ID] })
+      expect(result.availableFrom?.toISOString()).toBe('2026-12-01T09:00:00.000Z')
+      expect(result.expiresAt?.toISOString()).toBe('2027-02-10T20:59:59.000Z')
+      const update = calls.find(([sql]) => sql.includes("SET payment_status = 'cancelled'"))!
+      expect(update[1]).toEqual([TICKET_ID, 'cancelled_early'])
+      const credit = calls.find(([sql]) => sql.includes('INSERT INTO ticket_credits'))!
+      expect(credit[1][4]).toBe('cancelled_early')
+      expect(credit[1][5]).toBe('zone-1')
+      expect(reverseCaptainCommission).toHaveBeenCalledWith('ticket', TICKET_ID)
+      expect(notifyWaitlist).toHaveBeenCalledWith('ev-1')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
-  it('refuses when the monthly limit has been used and changes nothing', async () => {
-    const state = setup(paidTicket({ event_date: new Date(Date.now() + 30 * DAY) }), 1)
+  it('late notice: recorded as a no-show, credit appears the morning after the event', async () => {
+    vi.useFakeTimers({ now: new Date('2026-12-11T20:00:00Z'), toFake: ['Date'] })
+    try {
+      const calls = setupDb(ticket())
+      const result = await cancelTicket(TICKET_ID, USER_ID)
 
-    await expect(cancelTicket('ticket-1', USER_ID)).rejects.toBeInstanceOf(CancellationError)
-    expect(state.balance).toBe(200)
-    expect(state.statements.some((s) => s.sql.includes('INSERT INTO ticket_cancellations'))).toBe(false)
-    expect(reverseCaptainCommission).not.toHaveBeenCalled()
+      expect(result.noticeStatus).toBe('no_show')
+      expect(result.availableFrom?.toISOString()).toBe('2026-12-13T03:00:00.000Z')
+      const credit = calls.find(([sql]) => sql.includes('INSERT INTO ticket_credits'))!
+      expect(credit[1][4]).toBe('no_show')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
-  it("returns 404 for someone else's ticket", async () => {
-    setup(paidTicket({ user_id: OTHER_ID, event_date: new Date(Date.now() + 30 * DAY) }))
-    await expect(cancelTicket('ticket-1', USER_ID)).rejects.toMatchObject({ status: 404 })
+  it('changes nothing when the ticket cannot be given up', async () => {
+    const calls = setupDb(ticket({ payment_status: 'cancelled' }))
+    await expect(cancelTicket(TICKET_ID, USER_ID)).rejects.toBeInstanceOf(CancellationError)
+    expect(calls.some(([sql]) => sql.includes('INSERT INTO ticket_credits'))).toBe(false)
+    expect(calls.some(([sql]) => sql === 'ROLLBACK')).toBe(true)
   })
 })
