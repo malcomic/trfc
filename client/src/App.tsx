@@ -57,6 +57,7 @@ import AdminProductCategories from './pages/admin/AdminProductCategories'
 import AdminFlashSales from './pages/admin/AdminFlashSales'
 import AdminGallery from './pages/admin/AdminGallery'
 import AdminPageVideos from './pages/admin/AdminPageVideos'
+import AdminSiteImages from './pages/admin/AdminSiteImages'
 import AdminOrders from './pages/admin/AdminOrders'
 import AdminUsers from './pages/admin/AdminUsers'
 import AdminTestimonials from './pages/admin/AdminTestimonials'
@@ -154,6 +155,7 @@ const router = createBrowserRouter(
           <Route path="products/flash-sales" element={<AdminFlashSales />} />
           <Route path="gallery" element={<AdminGallery />} />
           <Route path="page-videos" element={<AdminPageVideos />} />
+          <Route path="site-images" element={<AdminSiteImages />} />
           <Route path="orders" element={<AdminOrders />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="testimonials" element={<AdminTestimonials />} />

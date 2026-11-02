@@ -2,7 +2,15 @@ import { EXPLORE_COPY } from '../../content/explore'
 import { formatKsh, programPath, type Program } from '../../content/programs'
 import CtaButton from '../programs/CtaButton'
 
-export default function ProgramCard({ program, photoUrl }: { program: Program; photoUrl?: string }) {
+export default function ProgramCard({
+  program,
+  photoUrl,
+  photoAlt,
+}: {
+  program: Program
+  photoUrl?: string
+  photoAlt?: string
+}) {
   const copy = EXPLORE_COPY.programs
   const isFree = program.price === 0
 
@@ -12,7 +20,7 @@ export default function ProgramCard({ program, photoUrl }: { program: Program; p
         {photoUrl ? (
           <img
             src={photoUrl}
-            alt={program.name}
+            alt={photoAlt || program.name}
             loading="lazy"
             className="absolute inset-0 w-full h-full object-cover"
           />

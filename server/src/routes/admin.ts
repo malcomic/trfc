@@ -62,6 +62,7 @@ import {
   voidAdminCredit,
 } from '../controllers/adminWalletsController.js'
 import { deletePageVideo, upsertPageVideo } from '../controllers/pageVideosController.js'
+import { deleteSiteImage, upsertSiteImage } from '../controllers/siteImagesController.js'
 import { cancelEvent } from '../controllers/attendanceController.js'
 import { getEventWaitlist } from '../controllers/eventsController.js'
 import {
@@ -131,5 +132,7 @@ router.put('/ticket-rules', updateTicketRulesHandler)
 router.get('/wallets/:userId', getAdminWalletLedger)
 router.put('/page-videos/:slot', upsertPageVideo)
 router.delete('/page-videos/:slot', deletePageVideo)
+router.put('/site-images/:slot', upsertSiteImage)
+router.delete('/site-images/:slot', deleteSiteImage)
 
 export default router

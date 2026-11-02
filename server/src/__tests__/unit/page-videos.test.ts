@@ -47,6 +47,7 @@ describe('isPageVideoSlot', () => {
   it('only allows the known slots', () => {
     expect(isPageVideoSlot('find_hero')).toBe(true)
     expect(isPageVideoSlot('find_results')).toBe(true)
+    expect(isPageVideoSlot('register_hero')).toBe(true)
     expect(isPageVideoSlot('home_hero')).toBe(false)
   })
 })

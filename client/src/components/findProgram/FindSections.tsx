@@ -2,8 +2,12 @@ import { CheckCircle2 } from 'lucide-react'
 import { FIND_COPY } from '../../content/quiz'
 import { cardSurface } from '../../utils/themeClasses'
 import type { PageVideo } from '../../api/pageVideos'
+import type { SiteImageSlot } from '../../api/siteImages'
+import { useSiteImages } from '../../hooks/useSiteImages'
 import SectionHeading from '../programs/SectionHeading'
-import VideoBlock from './VideoBlock'
+import VideoBlock from '../media/VideoBlock'
+
+const COVER_SLOTS: SiteImageSlot[] = ['find_results_cover']
 
 export function WhatYouGet() {
   const copy = FIND_COPY.whatYouGet
@@ -64,16 +68,18 @@ export function MyStory() {
 
 export function RealResults({ video, loading }: { video?: PageVideo; loading?: boolean }) {
   const copy = FIND_COPY.results
+  const { images, loading: coverLoading } = useSiteImages(COVER_SLOTS)
+  const cover = images.find_results_cover
   return (
     <section className="px-4 md:px-6 py-12 md:py-20">
       <div className="max-w-[860px] mx-auto flex flex-col gap-3">
         <VideoBlock
           video={video}
-          loading={loading}
+          loading={loading || coverLoading}
           placeholder={copy.video}
           hearLabel={FIND_COPY.hero.hear}
-          poster={video?.poster_url || copy.cover}
-          posterAlt={copy.coverAlt}
+          poster={cover?.image_url || copy.cover}
+          posterAlt={cover?.alt_text || copy.coverAlt}
           playLabel={copy.play}
         />
         <div className="text-fog light:text-fog-light">{copy.caption}</div>

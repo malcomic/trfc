@@ -1,37 +1,20 @@
-import { useEffect, useState } from 'react'
-import { getHeroSlides } from '../../api/gallery'
-import { getSafeImageUrl } from '../../utils/imageUrl'
+import { Play } from 'lucide-react'
+import { usePageVideos } from '../../hooks/usePageVideos'
+import VideoBlock from '../media/VideoBlock'
 import SignupCta from './SignupCta'
 
-export default function RegisterHero() {
-  const [photo, setPhoto] = useState<{ url: string; caption?: string } | null>(null)
+const PLACEHOLDER = 'Video coming soon'
 
-  useEffect(() => {
-    let cancelled = false
-    getHeroSlides()
-      .then((slides) => {
-        const image = (Array.isArray(slides) ? slides : []).find(
-          (slide) => slide.media_url && slide.media_type !== 'video'
-        )
-        if (!cancelled && image) {
-          const url = getSafeImageUrl(image.media_url, '')
-          if (url) setPhoto({ url, caption: image.caption })
-        }
-      })
-      .catch(() => {
-        /* the styled placeholder stays */
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
+export default function RegisterHero() {
+  const { videos, loading } = usePageVideos('register')
+  const video = videos.register_hero
 
   return (
     <section className="relative overflow-hidden border-b border-white/5 light:border-black/8">
       <div className="absolute inset-0 register-grid pointer-events-none" />
       <div className="absolute top-0 right-0 w-96 h-96 bg-accent/15 light:bg-accent-light/15 rounded-full blur-3xl pointer-events-none" style={{ transform: 'translate(120px, -140px)' }} />
 
-      <div className="relative max-w-6xl mx-auto px-6 md:px-10 pt-16 pb-20 md:pt-24 md:pb-28 flex flex-wrap items-center gap-12">
+      <div className="relative max-w-6xl mx-auto px-6 md:px-10 pt-16 pb-20 md:pt-24 md:pb-28 max-sm:px-4 max-sm:pt-6 max-sm:pb-12 flex flex-wrap items-center gap-12 max-sm:gap-7">
         <div className="flex-[1_1_460px] min-w-0 flex flex-col gap-6">
           <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light flex items-center gap-2 before:w-5 before:h-0.5 before:bg-accent light:before:bg-accent-light before:inline-block">
             Free Account
@@ -43,24 +26,29 @@ export default function RegisterHero() {
             In July 2025, 7 people came to our first bootcamp. Today about 1,000 of us run, jog and walk together. Make a free account and you are one of us.
           </p>
           <div className="flex flex-wrap items-center gap-4">
-            <SignupCta />
-            <span className="font-barlow-condensed font-bold text-sm tracking-widest uppercase text-fog light:text-fog-light">It is free.</span>
+            <SignupCta className="max-sm:w-full" />
+            <span className="text-[17px] text-fog light:text-fog-light">It is free. It takes 2 minutes.</span>
           </div>
         </div>
 
-        <div className="flex-[1_1_360px] min-w-0">
-          {photo ? (
-            <img
-              src={photo.url}
-              alt={photo.caption || 'TRFC community run on Thika Road'}
-              className="w-full h-[380px] object-cover clip-angled border border-white/10 light:border-black/10"
-              loading="eager"
+        <div className="flex-[1_1_360px] min-w-0 flex flex-col gap-3">
+          {loading || video ? (
+            <VideoBlock
+              video={video}
+              loading={loading}
+              placeholder={PLACEHOLDER}
+              hearLabel="Tap to hear"
+              className="!max-w-none border border-white/10 light:border-black/10"
             />
           ) : (
-            <div className="w-full h-[380px] clip-angled bg-ash light:bg-ash-light border-2 border-dashed border-accent/30 light:border-accent-light/30 flex items-center justify-center text-center p-6 text-fog light:text-fog-light">
-              Saturday community run on Thika Road
+            <div className="relative w-full aspect-video rounded-2xl bg-black border-2 border-dashed border-[#8A8A8A] flex items-center justify-center overflow-hidden">
+              <span className="w-[84px] h-[84px] rounded-full bg-cta flex items-center justify-center" aria-hidden="true">
+                <Play size={34} className="ml-1 text-cta-ink" fill="currentColor" />
+              </span>
+              <span className="absolute inset-x-0 bottom-3.5 text-center text-[15px] text-[#E6E6E6]">{PLACEHOLDER}</span>
             </div>
           )}
+          <div className="text-[17px] text-fog light:text-fog-light">Watch this first. It takes a few minutes.</div>
         </div>
       </div>
 

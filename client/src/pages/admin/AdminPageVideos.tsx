@@ -1,8 +1,9 @@
 import { ChangeEvent, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { AlertCircle, Film, Link as LinkIcon, Loader, Upload } from 'lucide-react'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import AdminConfirmDialog from '../../components/AdminConfirmDialog'
-import VideoBlock from '../../components/findProgram/VideoBlock'
+import VideoBlock from '../../components/media/VideoBlock'
 import {
   deletePageVideo,
   getPageVideos,
@@ -11,6 +12,7 @@ import {
   type PageVideo,
   type PageVideoSlot,
 } from '../../api/pageVideos'
+import { getSiteImages } from '../../api/siteImages'
 import { FIND_COPY } from '../../content/quiz'
 import { parseVideoLink } from '../../utils/videoLink'
 
@@ -23,18 +25,34 @@ interface SlotConfig {
   withCover: boolean
 }
 
-const SLOTS: SlotConfig[] = [
+const GROUPS: { heading: string; slots: SlotConfig[] }[] = [
   {
-    slot: 'find_hero',
-    title: 'Hero video',
-    description: 'Top of Find My Program. Starts on its own, muted, with a "Tap to hear" button.',
-    withCover: false,
+    heading: 'Find My Program',
+    slots: [
+      {
+        slot: 'find_hero',
+        title: 'Hero video',
+        description: 'Top of Find My Program. Starts on its own, muted, with a "Tap to hear" button.',
+        withCover: false,
+      },
+      {
+        slot: 'find_results',
+        title: 'Member results video',
+        description: 'Shown with a cover image. The video starts with sound when the visitor presses play.',
+        withCover: true,
+      },
+    ],
   },
   {
-    slot: 'find_results',
-    title: 'Member results video',
-    description: 'Shown with a cover image. The video starts with sound when the visitor presses play.',
-    withCover: true,
+    heading: 'Registration',
+    slots: [
+      {
+        slot: 'register_hero',
+        title: 'Registration video',
+        description: 'Top of the Register page, next to the sign-up button. Starts on its own, muted, with a "Tap to hear" button.',
+        withCover: false,
+      },
+    ],
   },
 ]
 
@@ -45,13 +63,21 @@ const primaryButton =
 const secondaryButton =
   'px-4 py-2 min-h-[44px] rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-semibold disabled:opacity-50'
 
-function SlotEditor({ config, initial, onChanged }: { config: SlotConfig; initial?: PageVideo; onChanged: () => void }) {
+function SlotEditor({
+  config,
+  initial,
+  cover,
+  onChanged,
+}: {
+  config: SlotConfig
+  initial?: PageVideo
+  cover: string
+  onChanged: () => void
+}) {
   const [source, setSource] = useState<'upload' | 'link'>(initial?.source ?? 'upload')
   const [uploadedUrl, setUploadedUrl] = useState(initial?.source === 'upload' ? initial.video_url : '')
   const [link, setLink] = useState(initial?.source === 'link' ? initial.video_url : '')
-  const [posterUrl, setPosterUrl] = useState(initial?.poster_url ?? '')
   const [progress, setProgress] = useState<number | null>(null)
-  const [posterUploading, setPosterUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -59,8 +85,7 @@ function SlotEditor({ config, initial, onChanged }: { config: SlotConfig; initia
 
   const videoUrl = source === 'upload' ? uploadedUrl : link.trim()
   const linkInvalid = source === 'link' && link.trim() !== '' && !parseVideoLink(link)
-  const defaultCover = config.withCover ? FIND_COPY.results.cover : null
-  const previewPoster = config.withCover ? posterUrl || defaultCover : null
+  const previewPoster = config.withCover ? cover : null
 
   const chooseVideo = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -82,32 +107,12 @@ function SlotEditor({ config, initial, onChanged }: { config: SlotConfig; initia
     }
   }
 
-  const chooseCover = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    setError('')
-    if (!file.type.startsWith('image/')) return setError('Choose an image file for the cover.')
-    try {
-      setPosterUploading(true)
-      setPosterUrl(await uploadPageMedia(file, 'image'))
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Cover upload failed. Please try again.')
-    } finally {
-      setPosterUploading(false)
-    }
-  }
-
   const save = async () => {
     setError('')
     setNotice('')
     setSaving(true)
     try {
-      await savePageVideo(config.slot, {
-        source,
-        video_url: videoUrl,
-        poster_url: config.withCover ? posterUrl || null : null,
-      })
+      await savePageVideo(config.slot, { source, video_url: videoUrl })
       setNotice('Saved. The page now shows this video.')
       onChanged()
     } catch (err: any) {
@@ -124,7 +129,6 @@ function SlotEditor({ config, initial, onChanged }: { config: SlotConfig; initia
       await deletePageVideo(config.slot)
       setUploadedUrl('')
       setLink('')
-      setPosterUrl('')
       setNotice('Removed. The page shows the placeholder again.')
       onChanged()
     } catch (err: any) {
@@ -191,24 +195,13 @@ function SlotEditor({ config, initial, onChanged }: { config: SlotConfig; initia
       )}
 
       {config.withCover && (
-        <div className="space-y-2">
-          <h3 className="font-semibold text-sm">Cover image</h3>
-          <div className="flex flex-wrap items-center gap-3">
-            <label className={`${secondaryButton} inline-flex items-center gap-2 cursor-pointer`}>
-              {posterUploading ? <Loader size={16} className="animate-spin" /> : <Upload size={16} />}
-              {posterUrl ? 'Replace cover' : 'Upload cover'}
-              <input type="file" accept="image/*" className="hidden" onChange={chooseCover} disabled={posterUploading} />
-            </label>
-            {posterUrl && (
-              <button type="button" onClick={() => setPosterUrl('')} className="text-sm text-gray-600 dark:text-gray-300 underline">
-                Use the default cover
-              </button>
-            )}
-          </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {posterUrl ? 'Custom cover selected.' : 'Using the default before/after cover.'}
-          </p>
-        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          The cover photo is managed in{' '}
+          <Link to="/admin/site-images" className="text-primary dark:text-primary-dark underline font-semibold">
+            Site Images
+          </Link>
+          .
+        </p>
       )}
 
       <div>
@@ -258,22 +251,26 @@ function SlotEditor({ config, initial, onChanged }: { config: SlotConfig; initia
 
 export default function AdminPageVideos() {
   const [videos, setVideos] = useState<Partial<Record<PageVideoSlot, PageVideo>> | null>(null)
+  const [cover, setCover] = useState(FIND_COPY.results.cover)
   const [error, setError] = useState('')
 
   const load = () =>
-    getPageVideos('find')
+    getPageVideos('')
       .then(setVideos)
       .catch(() => setError('Failed to load page videos'))
 
   useEffect(() => {
     load()
+    getSiteImages(['find_results_cover'])
+      .then((images) => images.find_results_cover && setCover(images.find_results_cover.image_url))
+      .catch(() => undefined)
   }, [])
 
   return (
     <div>
       <AdminPageHeader
-        title="Find My Program videos"
-        subtitle="Upload a video file or paste a YouTube/Vimeo link for each spot on the page."
+        title="Page Videos"
+        subtitle="Upload a video file or paste a YouTube/Vimeo link for each spot on the site."
       />
       {error && <p className="text-red-600 mb-4">{error}</p>}
       {!videos ? (
@@ -281,9 +278,14 @@ export default function AdminPageVideos() {
           <Loader className="w-8 h-8 text-gray-400 animate-spin" />
         </div>
       ) : (
-        <div className="space-y-6">
-          {SLOTS.map((config) => (
-            <SlotEditor key={config.slot} config={config} initial={videos[config.slot]} onChanged={load} />
+        <div className="space-y-10">
+          {GROUPS.map((group) => (
+            <div key={group.heading} className="space-y-6">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{group.heading}</h2>
+              {group.slots.map((config) => (
+                <SlotEditor key={config.slot} config={config} initial={videos[config.slot]} cover={cover} onChanged={load} />
+              ))}
+            </div>
           ))}
         </div>
       )}

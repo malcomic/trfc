@@ -1,5 +1,6 @@
 import RegisterHero from '../components/register/RegisterHero'
 import RegisterBenefits from '../components/register/RegisterBenefits'
+import DashboardPreview from '../components/register/DashboardPreview'
 import MembershipTeaser from '../components/register/MembershipTeaser'
 import RegisterForm from '../components/register/RegisterForm'
 import { pageRoot } from '../utils/themeClasses'
@@ -9,6 +10,7 @@ export default function Register() {
     <div className={pageRoot}>
       <RegisterHero />
       <RegisterBenefits />
+      <DashboardPreview />
       <MembershipTeaser />
       <RegisterForm />
       <div className="border-t border-white/5 light:border-black/8 py-9 text-center">

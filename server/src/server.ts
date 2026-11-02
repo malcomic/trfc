@@ -36,6 +36,7 @@ import captainsRoutes from './routes/captains.js';
 import zonesRoutes from './routes/zones.js';
 import walletRoutes from './routes/wallet.js';
 import pageVideosRoutes from './routes/pageVideos.js';
+import siteImagesRoutes from './routes/siteImages.js';
 import programsRoutes from './routes/programs.js';
 import attendanceRoutes from './routes/attendance.js';
 
@@ -79,6 +80,7 @@ app.use('/api/captains', captainsRoutes);
 app.use('/api/zones', zonesRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/page-videos', pageVideosRoutes);
+app.use('/api/site-images', siteImagesRoutes);
 app.use('/api/programs', programsRoutes);
 app.use('/api/attendance', attendanceRoutes);
 

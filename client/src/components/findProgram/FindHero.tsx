@@ -3,7 +3,7 @@ import { FIND_COPY } from '../../content/quiz'
 import type { PageVideo } from '../../api/pageVideos'
 import CtaButton from '../programs/CtaButton'
 import { Eyebrow } from '../programs/SectionHeading'
-import VideoBlock from './VideoBlock'
+import VideoBlock from '../media/VideoBlock'
 
 interface FindHeroProps {
   onFind: () => void

@@ -1035,6 +1035,43 @@ const MIGRATIONS: { name: string; sql: string }[] = [
         ON event_settlement_lines(event_id, region_id) WHERE captain_id IS NULL;
     `,
   },
+  {
+    name: '044_site_images',
+    sql: `
+      -- Program card photos move out of the gallery. The copy runs once, when the table is created,
+      -- so a photo an admin later removes is not restored on the next start.
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.tables WHERE table_name = 'site_images'
+        ) THEN
+          CREATE TABLE site_images (
+            slot VARCHAR(50) PRIMARY KEY,
+            image_url TEXT NOT NULL,
+            alt_text VARCHAR(255),
+            updated_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_by UUID REFERENCES users(id) ON DELETE SET NULL
+          );
+          INSERT INTO site_images (slot, image_url, alt_text)
+          SELECT 'program_' || program_photo, media_url, LEFT(caption, 255) FROM gallery
+          WHERE program_photo IS NOT NULL AND media_type = 'image'
+          ON CONFLICT (slot) DO NOTHING;
+        END IF;
+      END $$;
+    `,
+  },
+  {
+    name: '045_results_cover_site_image',
+    sql: `
+      -- The results video cover moves from Page Videos to Site Images. Clearing poster_url after
+      -- the copy keeps this a one-time move, so a cover removed in Site Images stays removed.
+      INSERT INTO site_images (slot, image_url)
+      SELECT 'find_results_cover', poster_url FROM page_videos
+      WHERE slot = 'find_results' AND poster_url IS NOT NULL
+      ON CONFLICT (slot) DO NOTHING;
+      UPDATE page_videos SET poster_url = NULL WHERE slot = 'find_results' AND poster_url IS NOT NULL;
+    `,
+  },
 ]
 
 export async function runMigrations() {

@@ -1,4 +1,5 @@
-import { COACH_INTRO, COACH_PHOTO } from '../../content/programs'
+import { COACH_INTRO } from '../../content/programs'
+import { useCoachPhoto } from '../../hooks/useSiteImages'
 import SectionHeading from './SectionHeading'
 
 interface CoachSectionProps {
@@ -8,12 +9,13 @@ interface CoachSectionProps {
 }
 
 export default function CoachSection({ line, story, className = '' }: CoachSectionProps) {
+  const photo = useCoachPhoto()
   return (
     <section className={`px-4 md:px-6 py-12 md:py-20 ${className}`}>
       <div className="max-w-[1120px] mx-auto grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-7 md:gap-12 items-center">
         <img
-          src={COACH_PHOTO}
-          alt="Coach Maurice"
+          src={photo.src}
+          alt={photo.alt}
           loading="lazy"
           width={818}
           height={1024}

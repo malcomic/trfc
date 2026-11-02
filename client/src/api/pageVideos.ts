@@ -1,6 +1,6 @@
 import api from './index'
 
-export type PageVideoSlot = 'find_hero' | 'find_results'
+export type PageVideoSlot = 'find_hero' | 'find_results' | 'register_hero'
 
 export interface PageVideo {
   slot: PageVideoSlot
@@ -25,11 +25,13 @@ export const savePageVideo = async (
 export const uploadPageMedia = async (
   file: File,
   mediaType: 'video' | 'image',
-  onProgress?: (percent: number) => void
+  onProgress?: (percent: number) => void,
+  folder: 'trfc_gallery' | 'trfc_site' = 'trfc_gallery'
 ): Promise<string> => {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('media_type', mediaType)
+  formData.append('folder', folder)
   const response = await api.post('/gallery/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
     onUploadProgress: (event) => {

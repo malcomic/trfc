@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { getProgramPhotos, type ProgramPhotos } from '../api/gallery'
+import type { SiteImageSlot } from '../api/siteImages'
+import { useSiteImages } from '../hooks/useSiteImages'
+import { PROGRAM_ORDER } from '../content/programs'
 import { EXPLORE_COPY, filterPrograms, isExploreFilter, type ExploreFilter } from '../content/explore'
 import { pageRoot } from '../utils/themeClasses'
 import ExploreHero from '../components/explore/ExploreHero'
@@ -11,25 +12,15 @@ import HowItWorksSteps from '../components/explore/HowItWorksSteps'
 import ValuesStrip from '../components/explore/ValuesStrip'
 import Disclaimer from '../components/programs/Disclaimer'
 
+const PHOTO_SLOTS = PROGRAM_ORDER.map((id) => `program_${id}` as SiteImageSlot)
+
 export default function Programs() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const [photos, setPhotos] = useState<ProgramPhotos>({})
+  const { images } = useSiteImages(PHOTO_SLOTS)
 
   const rawFilter = searchParams.get('filter')
   const filter: ExploreFilter = isExploreFilter(rawFilter) ? rawFilter : 'all'
   const programs = filterPrograms(filter)
-
-  useEffect(() => {
-    let active = true
-    getProgramPhotos()
-      .then((data) => {
-        if (active) setPhotos(data)
-      })
-      .catch(() => {})
-    return () => {
-      active = false
-    }
-  }, [])
 
   const changeFilter = (next: ExploreFilter) => {
     const params = new URLSearchParams(searchParams)
@@ -52,9 +43,17 @@ export default function Programs() {
           <ProgramFilter value={filter} onChange={changeFilter} />
           {programs.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {programs.map((program) => (
-                <ProgramCard key={program.id} program={program} photoUrl={photos[program.id]} />
-              ))}
+              {programs.map((program) => {
+                const photo = images[`program_${program.id}`]
+                return (
+                  <ProgramCard
+                    key={program.id}
+                    program={program}
+                    photoUrl={photo?.image_url}
+                    photoAlt={photo?.alt_text ?? undefined}
+                  />
+                )
+              })}
             </div>
           ) : (
             <p className="m-0 text-fog light:text-fog-light">{EXPLORE_COPY.programs.empty}</p>

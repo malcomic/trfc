@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useRef, useState } from 'react'
+import { forwardRef, useRef, useState } from 'react'
 import { ArrowRight } from 'lucide-react'
 import {
   DAYS_QUESTION,
@@ -67,15 +67,9 @@ function QuestionFieldset<T extends string>({
 const ProgramQuiz = forwardRef<HTMLElement>(function ProgramQuiz(_props, ref) {
   const [{ answers, done }, setState] = useState(initialAnswers)
   const contentRef = useRef<HTMLDivElement>(null)
-  const hasMounted = useRef(false)
 
-  useEffect(() => {
-    if (!hasMounted.current) {
-      hasMounted.current = true
-      return
-    }
-    contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [done])
+  const scrollToContent = () =>
+    requestAnimationFrame(() => contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
 
   const ready = Boolean(answers.goal && answers.experience && answers.days)
 
@@ -93,11 +87,13 @@ const ProgramQuiz = forwardRef<HTMLElement>(function ProgramQuiz(_props, ref) {
       completedAt: new Date().toISOString(),
     })
     setState((prev) => ({ ...prev, done: true }))
+    scrollToContent()
   }
 
   const retake = () => {
     clearQuizResult()
     setState({ answers: EMPTY, done: false })
+    scrollToContent()
   }
 
   const match = done && answers.goal && answers.experience ? matchProgram(answers.goal, answers.experience) : null

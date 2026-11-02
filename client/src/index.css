@@ -55,6 +55,23 @@ html {
   .clip-angled-lg {
     clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
   }
+  .programs-ticker-track {
+    display: flex;
+    width: max-content;
+    animation: programs-ticker-scroll 38s linear infinite;
+  }
+  .programs-ticker:hover .programs-ticker-track,
+  .programs-ticker:focus-within .programs-ticker-track {
+    animation-play-state: paused;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .programs-ticker-track {
+      animation: none;
+    }
+    .programs-ticker {
+      overflow-x: auto;
+    }
+  }
   .noise-bg::after {
     content: '';
     position: absolute;
@@ -69,7 +86,20 @@ html {
   }
 }
 
+@keyframes programs-ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 @media print {
+  .programs-ticker {
+    display: none !important;
+  }
+
   body {
     background: white !important;
     color: black !important;

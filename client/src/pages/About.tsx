@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Users, Target, Heart, Trophy, ArrowRight } from 'lucide-react'
 import { pageRoot, cardSurface } from '../utils/themeClasses'
-import { COACH_PHOTO } from '../content/programs'
+import { useCoachPhoto } from '../hooks/useSiteImages'
 
 const VALUES = [
   {
@@ -27,6 +27,7 @@ const VALUES = [
 ]
 
 export default function About() {
+  const coachPhoto = useCoachPhoto()
   return (
     <div className={pageRoot}>
       <section className="bg-ink light:bg-ink-light border-b border-white/5 light:border-black/8 px-[6%] pt-14 pb-11 relative overflow-hidden">
@@ -74,8 +75,8 @@ export default function About() {
           <div className={`${cardSurface} p-8 md:p-10 flex flex-col md:flex-row gap-8 items-start`}>
             <div className="w-32 h-32 md:w-40 md:h-40 flex-shrink-0 bg-ash light:bg-ash-light border border-accent/20 light:border-accent-light/20 overflow-hidden">
               <img
-                src={COACH_PHOTO}
-                alt="Coach Maurice"
+                src={coachPhoto.src}
+                alt={coachPhoto.alt}
                 className="w-full h-full object-cover object-top"
               />
             </div>
