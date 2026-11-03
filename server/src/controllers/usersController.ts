@@ -122,10 +122,16 @@ export const getMyDashboard = async (req: Request, res: Response) => {
          )::float AS total_spent,
          COALESCE((SELECT balance FROM wallets WHERE user_id = $1), 0)::float AS wallet_balance,
          (SELECT COUNT(*) FROM ticket_payment_plans WHERE user_id = $1 AND status = 'active')::int AS active_plans,
-         (SELECT COUNT(DISTINCT e.id)::int
-            FROM tickets t JOIN events e ON e.id = t.event_id
-            WHERE t.user_id = $1 AND t.checked_in_at IS NOT NULL
-              AND EXTRACT(DOW FROM e.event_date) = 6) AS saturdays_attended`,
+         -- event_date is Kenya wall-clock time, so its date and weekday are already Nairobi's.
+         (SELECT COUNT(DISTINCT e.event_date::date)::int
+            FROM events e
+            WHERE EXTRACT(DOW FROM e.event_date) = 6
+              AND e.cancelled_at IS NULL
+              AND e.id IN (
+                SELECT event_id FROM event_checkins WHERE user_id = $1
+                UNION
+                SELECT event_id FROM tickets WHERE user_id = $1 AND checked_in_at IS NOT NULL
+              )) AS saturdays_attended`,
       [userId]
     );
 

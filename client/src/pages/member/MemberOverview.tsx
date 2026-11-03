@@ -15,6 +15,7 @@ import TicketsSummaryCard from '../../components/member/dashboard/TicketsSummary
 import ComingUpList, { upcomingEvents } from '../../components/member/dashboard/ComingUpList'
 import ExploreBanner from '../../components/member/dashboard/ExploreBanner'
 import AnswersPromptCard from '../../components/member/dashboard/AnswersPromptCard'
+import MemberPassCard from '../../components/member/dashboard/MemberPassCard'
 import {
   BecomeMemberCard,
   MemberPerksCard,
@@ -144,6 +145,7 @@ export default function MemberOverview() {
             <ComingUpList events={events} bookedEventIds={bookedEventIds} />
           </div>
           <div className="space-y-6">
+            <MemberPassCard userId={data.profile.id} />
             <WalletCard
               ticketValue={ticketValue}
               upcoming={wallet?.upcoming ?? 0}

@@ -118,6 +118,7 @@ export function shortMedalCode(purchaseId: string): string {
 export type ParsedScanPayload =
   | { kind: 'ticket'; ticketId: string; eventId?: string }
   | { kind: 'medal'; purchaseId: string }
+  | { kind: 'member'; code: string }
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -136,6 +137,12 @@ export function parseScanPayload(raw: string): ParsedScanPayload | null {
     const parts = trimmed.split(':')
     if (parts.length < 2 || !UUID_RE.test(parts[1])) return null
     return { kind: 'medal', purchaseId: parts[1] }
+  }
+
+  if (trimmed.toLowerCase().startsWith('member:')) {
+    const code = trimmed.slice('member:'.length).trim().toUpperCase()
+    if (!/^[A-Z0-9]{6,12}$/.test(code)) return null
+    return { kind: 'member', code }
   }
 
   const parts = trimmed.split(':')

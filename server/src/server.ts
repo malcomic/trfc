@@ -39,6 +39,7 @@ import pageVideosRoutes from './routes/pageVideos.js';
 import siteImagesRoutes from './routes/siteImages.js';
 import programsRoutes from './routes/programs.js';
 import attendanceRoutes from './routes/attendance.js';
+import checkinsRoutes from './routes/checkins.js';
 
 dotenv.config();
 
@@ -83,6 +84,7 @@ app.use('/api/page-videos', pageVideosRoutes);
 app.use('/api/site-images', siteImagesRoutes);
 app.use('/api/programs', programsRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/checkins', checkinsRoutes);
 
 // Start server
 const startServer = async () => {

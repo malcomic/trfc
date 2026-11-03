@@ -7,6 +7,7 @@ import {
   buildCreditExpiringEmailText,
 } from '../utils/emailTemplates.js'
 import { autoConfirmScanLists } from '../utils/attendance.js'
+import { ensureUpcomingCommunityRuns } from '../utils/communityRuns.js'
 import { daysLeft } from '../utils/ticketRules.js'
 import { expireCredits } from '../utils/wallet.js'
 import { notifyWaitlist } from '../utils/waitlist.js'
@@ -167,9 +168,14 @@ export interface CreditTickResult {
   scanListsConfirmed: number
   prioritySeatsOpened: number
   payoutReminders: number
+  communityRunsCreated: number
 }
 
 export async function runCreditTick(now = new Date()): Promise<CreditTickResult> {
+  const communityRunsCreated = await ensureUpcomingCommunityRuns(now).catch((error) => {
+    console.error('Creating the Saturday community runs failed:', error)
+    return 0
+  })
   const holdsReleased = await releaseStaleHolds(now)
   const scanListsConfirmed = await autoConfirmScanLists(now)
   const expired = await expireCredits(now)
@@ -177,7 +183,16 @@ export async function runCreditTick(now = new Date()): Promise<CreditTickResult>
   const reminded = await sendExpiryReminders(now)
   const prioritySeatsOpened = await announcePriorityReleases(now)
   const payoutReminders = await remindUnpaidSettlements(now)
-  return { expired, holdsReleased, notified, reminded, scanListsConfirmed, prioritySeatsOpened, payoutReminders }
+  return {
+    expired,
+    holdsReleased,
+    notified,
+    reminded,
+    scanListsConfirmed,
+    prioritySeatsOpened,
+    payoutReminders,
+    communityRunsCreated,
+  }
 }
 
 let timer: NodeJS.Timeout | null = null
@@ -192,7 +207,8 @@ async function tick() {
       console.log(
         `🎟️  Ticket value: ${result.expired} expired, ${result.notified} added notices, ${result.reminded} expiry reminders, ` +
           `${result.holdsReleased} holds released, ${result.scanListsConfirmed} scan lists confirmed, ` +
-          `${result.prioritySeatsOpened} member seat releases, ${result.payoutReminders} captain payout reminders`
+          `${result.prioritySeatsOpened} member seat releases, ${result.payoutReminders} captain payout reminders, ` +
+          `${result.communityRunsCreated} Saturday runs created`
       )
     }
   } catch (error: any) {

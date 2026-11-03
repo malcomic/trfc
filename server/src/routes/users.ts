@@ -15,12 +15,15 @@ import {
   deleteUser,
 } from '../controllers/usersController.js';
 import { markWelcomeVideoWatched, recordWelcomeVideoShown } from '../controllers/welcomeVideoController.js';
+import { getMyPass, regenerateMyPass } from '../controllers/memberPassController.js';
 import { authMiddleware, adminMiddleware } from '../middleware/auth.js';
 
 const router = Router();
 
 router.get('/me/dashboard', authMiddleware, getMyDashboard);
 router.get('/me/calendar', authMiddleware, getMyCalendar);
+router.get('/me/pass', authMiddleware, getMyPass);
+router.post('/me/pass/regenerate', authMiddleware, regenerateMyPass);
 router.get('/me/captain-options', authMiddleware, getMyCaptainOptions);
 router.put('/me/captain', authMiddleware, updateMyCaptain);
 router.get('/me/answers', authMiddleware, getMyAnswers);

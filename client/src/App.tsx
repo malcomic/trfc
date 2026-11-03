@@ -82,6 +82,7 @@ import MemberMedals from './pages/member/MemberMedals'
 import MemberPayments from './pages/member/MemberPayments'
 import MemberProfilePage from './pages/member/MemberProfilePage'
 import MemberCaptain from './pages/member/MemberCaptain'
+import MemberCaptainScan from './pages/member/MemberCaptainScan'
 import MemberPrograms from './pages/member/MemberPrograms'
 import MemberZone from './pages/member/MemberZone'
 import MemberPoints from './pages/member/MemberPoints'
@@ -190,6 +191,7 @@ const router = createBrowserRouter(
           <Route path="payments" element={<MemberPayments />} />
           <Route path="profile" element={<MemberProfilePage />} />
           <Route path="captain" element={<MemberCaptain />} />
+          <Route path="captain/scan" element={<MemberCaptainScan />} />
           <Route path="programs" element={<MemberPrograms />} />
           <Route path="zone" element={<MemberZone />} />
           <Route path="points" element={<MemberPoints />} />

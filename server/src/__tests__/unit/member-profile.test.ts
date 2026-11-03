@@ -169,6 +169,22 @@ describe('getMyDashboard', () => {
     })
   })
 
+  it('counts each Saturday once from member pass scans and checked-in tickets', async () => {
+    routeQueries((sql) => {
+      if (sql.includes('FROM users WHERE id = $1')) return { rows: [{ ...UPDATED, member_until: null }] }
+      if (sql.includes('AS total_spent')) return { rows: [{ saturdays_attended: 2 }] }
+      return undefined
+    })
+    const res = makeRes()
+    await getMyDashboard(makeReq({}), res)
+    const statsSql = vi.mocked(query).mock.calls.map(([sql]) => String(sql)).find((sql) => sql.includes('AS total_spent'))!
+    expect(statsSql).toMatch(/COUNT\(DISTINCT e\.event_date::date\)/)
+    expect(statsSql).toMatch(/FROM event_checkins WHERE user_id = \$1/)
+    expect(statsSql).toMatch(/UNION/)
+    expect(statsSql).toMatch(/cancelled_at IS NULL/)
+    expect(res.json.mock.calls[0][0].stats.saturdays_attended).toBe(2)
+  })
+
   it('returns the active enrolment and counts only checked-in Saturday events', async () => {
     const enrolledAt = '2026-10-27T10:00:00.000Z'
     routeQueries((sql) => {

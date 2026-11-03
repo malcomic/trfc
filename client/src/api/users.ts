@@ -80,6 +80,23 @@ export const getMyDashboard = async (): Promise<MemberDashboard> => {
   return response.data;
 };
 
+export interface MemberPass {
+  name: string | null;
+  code: string;
+  /** PNG data URL of the `member:<code>` QR code. */
+  qrDataUrl: string;
+}
+
+export const getMyPass = async (): Promise<MemberPass> => {
+  const response = await api.get('/users/me/pass');
+  return response.data;
+};
+
+export const regenerateMyPass = async (): Promise<MemberPass> => {
+  const response = await api.post('/users/me/pass/regenerate');
+  return response.data;
+};
+
 export interface CaptainChoice {
   id: string;
   name: string;

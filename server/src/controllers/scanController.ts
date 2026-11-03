@@ -179,6 +179,9 @@ export async function lookupScan(req: Request, res: Response) {
         } else {
           return res.json({ kind: null, status: 'not_found' })
         }
+      } else if (parsed.kind === 'member') {
+        // Member passes are checked in through /checkins, which needs an event.
+        return res.json({ kind: null, status: 'not_found' })
       } else {
         kind = parsed.kind
         entityId = parsed.kind === 'ticket' ? parsed.ticketId : parsed.purchaseId

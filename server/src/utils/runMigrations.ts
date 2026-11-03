@@ -1167,6 +1167,44 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       CREATE INDEX IF NOT EXISTS idx_reach_out_access_log_created ON reach_out_access_log(created_at DESC);
     `,
   },
+  {
+    name: '050_member_checkins',
+    sql: `
+      -- Same alphabet as memberPass.ts: no 0/O or 1/I, so codes can be read out and typed.
+      CREATE OR REPLACE FUNCTION gen_member_code() RETURNS VARCHAR AS $$
+        SELECT string_agg(substr('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 1 + floor(random() * 32)::int, 1), '')
+        FROM generate_series(1, 10)
+      $$ LANGUAGE sql VOLATILE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS member_code VARCHAR(12);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_users_member_code ON users(member_code);
+      DO $$
+      DECLARE r RECORD;
+      BEGIN
+        FOR r IN SELECT id FROM users WHERE member_code IS NULL LOOP
+          UPDATE users SET member_code = gen_member_code() WHERE id = r.id;
+        END LOOP;
+      END $$;
+      ALTER TABLE users ALTER COLUMN member_code SET DEFAULT gen_member_code();
+
+      ALTER TABLE events ADD COLUMN IF NOT EXISTS is_community_run BOOLEAN NOT NULL DEFAULT false;
+      CREATE INDEX IF NOT EXISTS idx_events_community_run ON events(event_date) WHERE is_community_run;
+
+      CREATE TABLE IF NOT EXISTS event_checkins (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        scanned_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        scanned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        method VARCHAR(10) NOT NULL DEFAULT 'qr' CHECK (method IN ('qr', 'code', 'ticket')),
+        UNIQUE (event_id, user_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_event_checkins_user ON event_checkins(user_id);
+
+      ALTER TABLE ticket_rules_settings
+        ADD COLUMN IF NOT EXISTS community_run_time TIME NOT NULL DEFAULT '06:30',
+        ADD COLUMN IF NOT EXISTS community_run_location VARCHAR(200) NOT NULL DEFAULT 'TBA';
+    `,
+  },
 ]
 
 export async function runMigrations() {

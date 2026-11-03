@@ -99,3 +99,9 @@ export const staffMiddleware = (req: Request, res: Response, next: NextFunction)
   }
   next();
 };
+
+/** Admins, gate scanners, or active captains (per-event zone checks happen in the handler). */
+export const staffOrCaptainMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+  if (req.user?.role === 'admin' || req.user?.role === 'scanner') return next();
+  return captainMiddleware(req, res, next);
+};

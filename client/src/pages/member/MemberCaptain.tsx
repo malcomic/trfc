@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import {
   AlertCircle,
   Check,
@@ -16,6 +16,7 @@ import {
   BadgeCheck,
   ClipboardCheck,
   Crown,
+  ScanLine,
 } from 'lucide-react'
 import { cardSurface } from '../../utils/themeClasses'
 import { useAuth } from '../../context/AuthContext'
@@ -159,6 +160,14 @@ function CaptainContent() {
       <MemberPageHeader
         title="CAPTAIN"
         highlight="DASHBOARD"
+        actions={
+          <Link
+            to="/dashboard/captain/scan"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-cta text-cta-ink font-barlow-condensed font-bold text-sm tracking-widest uppercase no-underline"
+          >
+            <ScanLine size={14} /> Scan members
+          </Link>
+        }
         subtitle={
           profile && (
             <div className="flex flex-wrap items-center gap-3">
