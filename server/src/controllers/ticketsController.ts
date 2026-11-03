@@ -7,7 +7,7 @@ import {
   shortTicketCode,
 } from '../utils/qrCodeGenerator.js'
 import { generateTicketPDF } from '../utils/ticketPDFGenerator.js'
-import { phonesMatch } from '../utils/phone.js'
+import { MPESA_PHONE_ERROR, phonesMatch, toKenyanMsisdn } from '../utils/phone.js'
 import { findActiveZone } from '../utils/zones.js'
 import { recordCaptainCommission, reverseCaptainCommission } from '../utils/captainCommissions.js'
 import {
@@ -111,10 +111,9 @@ export async function buyTicket(req: Request, res: Response) {
       return res.status(400).json({ error: 'A valid email is required' })
     }
 
-    if (!/^254\d{9}$/.test(String(phone))) {
-      return res.status(400).json({
-        error: 'Invalid phone number format. Expected format: 254XXXXXXXXX',
-      })
+    const msisdn = toKenyanMsisdn(phone)
+    if (!msisdn) {
+      return res.status(400).json({ error: MPESA_PHONE_ERROR })
     }
 
     if (quantity <= 0 || quantity > 100) {
@@ -192,7 +191,7 @@ export async function buyTicket(req: Request, res: Response) {
             ticketTypeId,
             Number(ticketType.price),
             purchaseBatchId,
-            phone,
+            msisdn,
             normalizedEmail,
             normalizedName,
             zone.id,
@@ -580,11 +579,11 @@ export async function downloadTicketPDF(req: Request, res: Response) {
 export async function findTickets(req: Request, res: Response) {
   try {
     const { phone, mpesaReceipt } = (req.body || {}) as { phone?: unknown; mpesaReceipt?: unknown }
-    const phoneValue = typeof phone === 'string' ? phone.replace(/\s+/g, '') : ''
+    const phoneValue = typeof phone === 'string' ? toKenyanMsisdn(phone) : null
     const receiptValue = typeof mpesaReceipt === 'string' ? mpesaReceipt.trim() : ''
 
-    if (!/^254\d{9}$/.test(phoneValue)) {
-      return res.status(400).json({ error: 'Enter a valid phone number (254XXXXXXXXX)' })
+    if (!phoneValue) {
+      return res.status(400).json({ error: 'Enter a valid phone number, e.g. 0712 345 678' })
     }
     if (!receiptValue) {
       return res.status(400).json({ error: 'Enter the M-Pesa code from your payment SMS' })

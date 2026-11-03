@@ -14,6 +14,7 @@ import { formatKes, formatRate } from '../../utils/captainDisplay'
 interface RegionFormValues {
   name: string
   code: string
+  stretch: string
   referral_code: string
   rate_percent: string
   lead_captain_id: string
@@ -68,7 +69,7 @@ export default function AdminRegions({ standalone = false }: { standalone?: bool
   const openCreate = () => {
     setEditingId(null)
     setZoneCaptains([])
-    reset({ name: '', code: '', referral_code: '', rate_percent: '10', lead_captain_id: '', is_active: true })
+    reset({ name: '', code: '', stretch: '', referral_code: '', rate_percent: '10', lead_captain_id: '', is_active: true })
     setShowModal(true)
   }
 
@@ -85,6 +86,7 @@ export default function AdminRegions({ standalone = false }: { standalone?: bool
     reset({
       name: region.name,
       code: region.code,
+      stretch: region.stretch ?? '',
       referral_code: region.referral_code,
       rate_percent: String(Math.round(region.commission_rate * 1000) / 10),
       lead_captain_id: region.lead_captain_id ?? '',
@@ -105,6 +107,7 @@ export default function AdminRegions({ standalone = false }: { standalone?: bool
       const payload = {
         name: data.name.trim(),
         code: data.code.trim().toUpperCase(),
+        stretch: data.stretch.trim(),
         is_active: Boolean(data.is_active),
         referral_code: data.referral_code.trim().toUpperCase() || undefined,
         commission_rate: rate / 100,
@@ -287,6 +290,19 @@ export default function AdminRegions({ standalone = false }: { standalone?: bool
                   className={`${inputClass} font-mono uppercase`}
                 />
                 {errors.code && <span className="text-red-600 dark:text-red-400 text-sm">{errors.code.message}</span>}
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Stretch</label>
+                <input
+                  type="text"
+                  maxLength={150}
+                  {...register('stretch')}
+                  placeholder="e.g. Thika town and surrounds, up to Njomoko"
+                  className={inputClass}
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Shown in the sign-up zone question as "Team {'{name}'} ({'{stretch}'})".
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Referral code</label>

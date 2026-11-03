@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { createEquipmentHireRequest, initiateEquipmentPayment } from '../api/equipment'
 import PaymentStatusModal from '../components/PaymentStatusModal'
 import { AlertCircle, Loader, Calendar } from 'lucide-react'
+import { MPESA_PHONE_PLACEHOLDER, mpesaPhoneRules, toKenyanMsisdn } from '../utils/phone'
 
 export default function EquipmentCheckout() {
   const location = useLocation()
@@ -46,7 +47,8 @@ export default function EquipmentCheckout() {
   const days = calculateDays()
   const totalPrice = days > 0 ? days * pricePerDay : 0
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (form: any) => {
+    const data = { ...form, phone: toKenyanMsisdn(form.phone) ?? form.phone }
     try {
       setLoading(true)
       setError('')
@@ -190,18 +192,14 @@ export default function EquipmentCheckout() {
 
               <div>
                 <label className="block text-sm font-semibold mb-2 text-gray-900 dark:text-white">
-                  Phone Number (254XXXXXXXXX)
+                  M-Pesa Phone Number
                 </label>
                 <input
-                  {...register('phone', {
-                    required: 'Phone number is required',
-                    pattern: {
-                      value: /^254\d{9}$/,
-                      message: 'Phone must be in format 254XXXXXXXXX',
-                    },
-                  })}
-                  type="text"
-                  placeholder="254712345678"
+                  {...register('phone', mpesaPhoneRules)}
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder={MPESA_PHONE_PLACEHOLDER}
                   className="w-full border border-gray-300 dark:border-gray-700 rounded px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-primary"
                 />
                 {errors.phone && (

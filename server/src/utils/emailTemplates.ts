@@ -995,6 +995,59 @@ export function buildPasswordChangedEmailText(data: { name: string | null }): st
   ].join('\n\n')
 }
 
+export const FREE_ACCOUNT_WELCOME_SUBJECT = 'Welcome to TRFC, your free account is ready'
+
+const FREE_ACCOUNT_PERKS = [
+  'Every TRFC event for the whole year, in one place, so you can plan ahead',
+  'Your event tickets, saved in your dashboard',
+  'Lipa pole pole, so you can pay for an event in parts',
+  'First access to updates before anyone else',
+  'Couch to 5K, a free 8-week program, as our thank-you',
+]
+
+const COUCH_TO_5K_NOTE =
+  'Couch to 5K opens in January 2027. Once it opens, you get one week at a time, and every workout can be done at home with no equipment.'
+
+export interface FreeAccountWelcomeEmailData {
+  name: string | null
+}
+
+function welcomeFirstName(name: string | null): string {
+  return name?.trim().split(/\s+/)[0] || 'there'
+}
+
+export function buildFreeAccountWelcomeEmailHTML(data: FreeAccountWelcomeEmailData): string {
+  const perks = FREE_ACCOUNT_PERKS.map((perk) => `<li style="margin:0 0 8px;">${escapeHtml(perk)}</li>`).join('')
+  return accountEmailShell(
+    FREE_ACCOUNT_WELCOME_SUBJECT,
+    'Your free account is ready',
+    `
+      ${paragraph(`Hello ${escapeHtml(welcomeFirstName(data.name))},`)}
+      ${paragraph('Welcome to Thika Road Fitness Community. Your free account is ready, and we are glad you are here.')}
+      ${paragraph('Here is what you get right now:')}
+      <ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.5;color:#374151;">${perks}</ul>
+      ${paragraph(escapeHtml(COUCH_TO_5K_NOTE))}
+      ${paragraph('Your account stays free. You never have to upgrade to keep it.')}
+      ${actionButton('GO TO MY DASHBOARD', siteUrl('/dashboard'))}
+      <div style="height:16px;"></div>
+      ${paragraph('If you need help with anything, reply to this email and we will get back to you.')}
+      <p style="margin:0;font-size:15px;line-height:1.5;color:#374151;">See you on Thika Road,<br>TRFC</p>`
+  )
+}
+
+export function buildFreeAccountWelcomeEmailText(data: FreeAccountWelcomeEmailData): string {
+  return [
+    `Hello ${welcomeFirstName(data.name)},`,
+    'Welcome to Thika Road Fitness Community. Your free account is ready, and we are glad you are here.',
+    ['Here is what you get right now:', ...FREE_ACCOUNT_PERKS.map((perk) => `•  ${perk}`)].join('\n'),
+    COUCH_TO_5K_NOTE,
+    'Your account stays free. You never have to upgrade to keep it.',
+    `Go to my dashboard: ${siteUrl('/dashboard')}`,
+    'If you need help with anything, reply to this email and we will get back to you.',
+    'See you on Thika Road,\nTRFC',
+  ].join('\n\n')
+}
+
 const kes = (value: number) => `KSh ${Number(value).toLocaleString('en-KE', { maximumFractionDigits: 2 })}`
 export const siteUrl = (path: string) => `${config.frontendUrl.replace(/\/$/, '')}${path}`
 const dashboardWalletUrl = () => siteUrl('/dashboard/wallet')

@@ -1,5 +1,6 @@
 import api from './index';
 import type { User } from '../types';
+import type { SignupAnswers } from '../content/signupQuestions';
 
 export const registerUser = async (data: {
   name: string;
@@ -10,7 +11,8 @@ export const registerUser = async (data: {
   referralCode?: string;
   captainId?: string;
   marketingOptIn?: boolean;
-}) => {
+  answers?: Partial<SignupAnswers>;
+}): Promise<AuthTokens & { user: User; answersSaved?: boolean }> => {
   const response = await api.post('/auth/register', data);
   return response.data;
 };

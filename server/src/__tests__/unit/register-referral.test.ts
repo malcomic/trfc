@@ -15,6 +15,9 @@ vi.mock('../../utils/tokenUtils.js', () => ({
 vi.mock('../../utils/accountWelcome.js', () => ({
   sendAccountWelcomeOnce: vi.fn(async () => false),
 }))
+vi.mock('../../utils/welcomeEmail.js', () => ({
+  sendWelcomeEmailOnce: vi.fn(async () => false),
+}))
 
 import { query } from '../../config/db.js'
 import { register } from '../../controllers/authController.js'

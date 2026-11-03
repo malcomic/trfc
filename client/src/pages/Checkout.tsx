@@ -14,6 +14,7 @@ import { Button, FormInput, Card } from '../components/ui'
 import { pageRoot, inputField } from '../utils/themeClasses'
 import { trackInitiateCheckout } from '../utils/tiktokPixel'
 import { useAuth } from '../context/AuthContext'
+import { MPESA_PHONE_PLACEHOLDER, mpesaPhoneRules, toKenyanMsisdn } from '../utils/phone'
 
 export default function Checkout() {
   const { user } = useAuth()
@@ -126,7 +127,8 @@ export default function Checkout() {
     )
   }
 
-  const onSubmit = async (data: Record<string, string>) => {
+  const onSubmit = async (form: Record<string, string>) => {
+    const data: Record<string, string> = { ...form, phone: toKenyanMsisdn(form.phone) ?? form.phone }
     try {
       setLoading(true)
       setError('')
@@ -269,15 +271,11 @@ export default function Checkout() {
                       label="Phone Number"
                       id="checkout-phone"
                       type="tel"
-                      placeholder="254712345678"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      placeholder={MPESA_PHONE_PLACEHOLDER}
                       error={errors.phone ? (errors.phone.message as string) : undefined}
-                      {...register('phone', {
-                        required: 'Phone number is required',
-                        pattern: {
-                          value: /^254\d{9}$/,
-                          message: 'Format: 254XXXXXXXXX (Kenya)',
-                        },
-                      })}
+                      {...register('phone', mpesaPhoneRules)}
                     />
 
                     <div>

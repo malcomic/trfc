@@ -54,6 +54,18 @@ const GROUPS: { heading: string; slots: SlotConfig[] }[] = [
       },
     ],
   },
+  {
+    heading: 'Dashboard',
+    slots: [
+      {
+        slot: 'dashboard_welcome',
+        title: 'Welcome video',
+        description:
+          "Pops up on a new member's dashboard up to 3 times in their first 14 days. Uploads and YouTube links stop showing once watched to the end.",
+        withCover: false,
+      },
+    ],
+  },
 ]
 
 const inputClass =

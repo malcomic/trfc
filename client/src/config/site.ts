@@ -15,7 +15,10 @@ export interface SocialLink {
 }
 
 export const siteSocial: SocialLink[] = [
-  { label: 'Instagram', href: (env.VITE_INSTAGRAM_URL as string) || 'https://instagram.com/thikaroadfitnesscommunity' },
-  { label: 'Facebook', href: (env.VITE_FACEBOOK_URL as string) || 'https://facebook.com' },
-  { label: 'YouTube', href: (env.VITE_YOUTUBE_URL as string) || 'https://youtube.com' },
+  { label: 'Instagram', href: (env.VITE_INSTAGRAM_URL as string) || 'https://www.instagram.com/thika_road_fitness_community_/' },
+  { label: 'Facebook', href: (env.VITE_FACEBOOK_URL as string) || 'https://www.facebook.com/p/Thika-Road-Fitness-Community-61586327542745/' },
+  { label: 'TikTok', href: (env.VITE_TIKTOK_URL as string) || 'https://www.tiktok.com/@thika_road_fitness_community_' },
+  { label: 'Threads', href: (env.VITE_THREADS_URL as string) || 'https://www.threads.net/@thika_road_fitness_community_' },
+  { label: 'YouTube', href: (env.VITE_YOUTUBE_URL as string) || 'https://www.youtube.com/@thika_road_fitness_community_' },
+  { label: 'WhatsApp', href: (env.VITE_WHATSAPP_URL as string) || 'https://wa.me/254762550214' },
 ].filter((s) => s.href)

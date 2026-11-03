@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { JWTPayload } from '../types/index.js';
 import { query } from '../config/db.js';
 import { isTokenStale } from '../utils/tokenUtils.js';
+import { touchLastActive } from '../utils/lastActive.js';
 
 type DecodedToken = JWTPayload & { iat?: number };
 
@@ -54,6 +55,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
   }
 
   req.user = decoded;
+  void touchLastActive(decoded.id);
   next();
 };
 

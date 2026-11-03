@@ -7,6 +7,7 @@ import PaymentStatusModal from '../components/PaymentStatusModal'
 import { AlertCircle, Loader, ArrowLeft } from 'lucide-react'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 import { useAuth } from '../context/AuthContext'
+import { MPESA_PHONE_PLACEHOLDER, localPhoneOrEmpty, mpesaPhoneRules, toKenyanMsisdn } from '../utils/phone'
 
 type CheckoutForm = {
   quantity: number
@@ -55,7 +56,8 @@ export default function MedalCheckout() {
   useEffect(() => {
     if (user?.name) setValue('buyerName', user.name)
     if (user?.email) setValue('email', user.email)
-    if (user?.phone && /^254\d{9}$/.test(user.phone)) setValue('phone', user.phone)
+    const savedPhone = localPhoneOrEmpty(user?.phone)
+    if (savedPhone) setValue('phone', savedPhone)
   }, [user, setValue])
 
   useEffect(() => {
@@ -83,7 +85,8 @@ export default function MedalCheckout() {
     fetchTier()
   }, [slug, initialOptionId])
 
-  const onSubmit = async (data: CheckoutForm) => {
+  const onSubmit = async (form: CheckoutForm) => {
+    const data = { ...form, phone: toKenyanMsisdn(form.phone) ?? form.phone }
     if (!option || !slug) return
     try {
       setSubmitting(true)
@@ -246,14 +249,10 @@ export default function MedalCheckout() {
             <label className="block text-sm font-semibold mb-2">M-Pesa Phone</label>
             <input
               type="tel"
-              placeholder="2547XXXXXXXX"
-              {...register('phone', {
-                required: 'Phone is required',
-                pattern: {
-                  value: /^254\d{9}$/,
-                  message: 'Format: 254XXXXXXXXX',
-                },
-              })}
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder={MPESA_PHONE_PLACEHOLDER}
+              {...register('phone', mpesaPhoneRules)}
               className={`w-full px-4 py-2 ${inputField}`}
             />
             {errors.phone && (

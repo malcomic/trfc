@@ -4,12 +4,21 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { AlertCircle, ArrowRight, Check, ChevronDown, Lock, Mail, MapPin, MessageCircle, Phone, User, Users } from 'lucide-react'
 import { registerUser } from '../../api/auth'
 import { getCaptainDirectory, getReferrer, type CaptainDirectoryEntry, type Referrer } from '../../api/captains'
+import { getZones, type Zone } from '../../api/zones'
+import {
+  ANSWERS_PENDING_KEY,
+  EMPTY_ANSWERS,
+  SIGNUP_QUESTIONS_COPY,
+  compactAnswers,
+  type SignupAnswers,
+} from '../../content/signupQuestions'
 import { useAuth } from '../../context/AuthContext'
 import { clearReferral, getStoredReferral } from '../../utils/referral'
 import { getPasswordStrength } from '../../utils/passwordStrength'
 import { safeRedirect } from '../../utils/safeRedirect'
 import { PasswordToggle } from '../ui'
 import { SIGNUP_ANCHOR } from './SignupCta'
+import SignupQuestions from './SignupQuestions'
 
 interface RegisterFormValues {
   name: string
@@ -123,6 +132,8 @@ export default function RegisterForm() {
   const [agreed, setAgreed] = useState(false)
   const [referrer, setReferrer] = useState<Referrer | null>(null)
   const [captains, setCaptains] = useState<CaptainDirectoryEntry[] | null>(null)
+  const [zones, setZones] = useState<Zone[]>([])
+  const [answers, setAnswers] = useState<SignupAnswers>(EMPTY_ANSWERS)
 
   useEffect(() => {
     let cancelled = false
@@ -143,6 +154,11 @@ export default function RegisterForm() {
       .catch(() => {
         if (!cancelled) setCaptains([])
       })
+    getZones()
+      .then((list) => {
+        if (!cancelled) setZones(Array.isArray(list) ? list : [])
+      })
+      .catch(() => {})
     return () => {
       cancelled = true
     }
@@ -169,7 +185,9 @@ export default function RegisterForm() {
         referralCode,
         captainId,
         marketingOptIn,
+        answers: compactAnswers(referrer ? { ...answers, zone: '' } : answers),
       })
+      if (response.answersSaved === false) localStorage.setItem(ANSWERS_PENDING_KEY, '1')
       clearReferral()
       login(response.token, response.user, response.refreshToken)
       navigate(redirectTo)
@@ -180,6 +198,14 @@ export default function RegisterForm() {
     }
   }
 
+  const setAnswer = (field: keyof SignupAnswers, value: string) => setAnswers((prev) => ({ ...prev, [field]: value }))
+
+  const skipQuestions = () => {
+    const terms = document.getElementById('reg-terms')
+    terms?.closest('label')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    terms?.focus({ preventScroll: true })
+  }
+
   const captainChoices = referrer ? (captains ?? []).filter((c) => c.region_id === referrer.region_id) : captains ?? []
   const showCaptainSelect = captainChoices.length > 0
 
@@ -188,7 +214,7 @@ export default function RegisterForm() {
       <div className="max-w-xl mx-auto flex flex-col gap-6">
         <div className="flex flex-col gap-2">
           <h2 className="font-bebas text-4xl md:text-5xl tracking-tight text-accent light:text-accent-light m-0">Make your free account</h2>
-          <p className="m-0 text-fog light:text-fog-light">We message you on WhatsApp as soon as you sign up.</p>
+          <p className="m-0 text-fog light:text-fog-light">{SIGNUP_QUESTIONS_COPY.subtitle}</p>
         </div>
 
         {errorMessage && (
@@ -328,6 +354,8 @@ export default function RegisterForm() {
             {toggle}
           </Field>
 
+          <SignupQuestions values={answers} onChange={setAnswer} zones={zones} hideZone={!!referrer} onSkip={skipQuestions} />
+
           {referrer && (
             <div>
               <span className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-chalk/60 light:text-chalk-light/60 mb-2 block">Your zone</span>
@@ -361,16 +389,18 @@ export default function RegisterForm() {
 
           <CheckRow id="reg-terms" checked={agreed} onChange={setAgreed}>
             I agree to the{' '}
-            <Link to="/terms" className="text-accent light:text-accent-light no-underline hover:underline">Terms of Service</Link> and{' '}
-            <Link to="/privacy" className="text-accent light:text-accent-light no-underline hover:underline">Privacy Policy</Link>
+            <Link to="/terms" className="text-accent light:text-accent-light no-underline hover:underline">Terms</Link> and{' '}
+            <Link to="/privacy" className="text-accent light:text-accent-light no-underline hover:underline">Privacy Notice</Link>.
           </CheckRow>
+
+          <p className="m-0 text-sm text-fog light:text-fog-light">{SIGNUP_QUESTIONS_COPY.beforeButton}</p>
 
           <button
             type="submit"
             disabled={loading || !agreed}
             className="w-full min-h-14 bg-cta border-0 text-cta-ink font-barlow-condensed font-black text-lg tracking-widest uppercase px-8 cursor-pointer clip-angled transition-all duration-200 flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-cta/90"
           >
-            {loading ? 'Creating your account…' : <><span>Make my free account</span> <ArrowRight size={18} /></>}
+            {loading ? 'Creating your account…' : <><span>{SIGNUP_QUESTIONS_COPY.button}</span> <ArrowRight size={18} /></>}
           </button>
         </form>
 

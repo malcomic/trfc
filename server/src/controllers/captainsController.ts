@@ -302,7 +302,7 @@ export async function getMyPayouts(req: Request, res: Response) {
 export async function getRegions(_req: Request, res: Response) {
   try {
     const result = await query(
-      `SELECT r.id, r.name, r.slug, r.code, r.is_active, r.created_at, r.referral_code,
+      `SELECT r.id, r.name, r.slug, r.code, r.stretch, r.is_active, r.created_at, r.referral_code,
               r.commission_rate::float AS commission_rate, r.lead_captain_id,
               lu.name AS lead_captain_name, COALESCE(lc.payout_phone, lu.phone) AS lead_captain_phone,
               (SELECT COUNT(*)::int FROM captains c WHERE c.region_id = r.id AND c.status = 'active') AS captain_count,
@@ -326,6 +326,7 @@ interface RegionInput {
   name: string
   code: string
   slug: string
+  stretch: string | null
   referralCode: string | null
   commissionRate: number | null
   leadCaptainId: string | null | undefined
@@ -336,6 +337,8 @@ function parseRegionBody(body: Record<string, unknown>): RegionInput | { error: 
   const code = typeof body.code === 'string' ? body.code.trim().toUpperCase() : ''
   if (!name || name.length > 100) return { error: 'Region name is required (max 100 characters)' }
   if (!/^[A-Z]{2,5}$/.test(code)) return { error: 'Region code must be 2-5 letters, e.g. NRB' }
+  const stretch = typeof body.stretch === 'string' ? body.stretch.trim() || null : null
+  if (stretch && stretch.length > 150) return { error: 'Stretch must be 150 characters or less' }
 
   let referralCode: string | null = null
   if (body.referral_code !== undefined && body.referral_code !== null && body.referral_code !== '') {
@@ -359,7 +362,7 @@ function parseRegionBody(body: Record<string, unknown>): RegionInput | { error: 
     leadCaptainId = body.lead_captain_id
   }
 
-  return { name, code, slug: slugify(name), referralCode, commissionRate, leadCaptainId }
+  return { name, code, slug: slugify(name), stretch, referralCode, commissionRate, leadCaptainId }
 }
 
 class RegionInputError extends Error {}
@@ -399,10 +402,10 @@ export async function createRegion(req: Request, res: Response) {
     const referralCode = parsed.referralCode ?? normalizeReferralCode(parsed.code) ?? `${parsed.code}-ZONE`
     await validateRegionReferralCode(referralCode)
     const result = await query(
-      `INSERT INTO regions (name, slug, code, referral_code, commission_rate)
-       VALUES ($1, $2, $3, $4, COALESCE($5::numeric, 0.10))
+      `INSERT INTO regions (name, slug, code, referral_code, commission_rate, stretch)
+       VALUES ($1, $2, $3, $4, COALESCE($5::numeric, 0.10), $6)
        RETURNING id`,
-      [parsed.name, parsed.slug, parsed.code, referralCode, parsed.commissionRate]
+      [parsed.name, parsed.slug, parsed.code, referralCode, parsed.commissionRate, parsed.stretch]
     )
     res.status(201).json(result.rows[0])
   } catch (error) {
@@ -425,7 +428,8 @@ export async function updateRegion(req: Request, res: Response) {
        SET name = $1, slug = $2, code = $3, is_active = $4,
            referral_code = COALESCE($5, referral_code),
            commission_rate = COALESCE($6::numeric, commission_rate),
-           lead_captain_id = CASE WHEN $7::boolean THEN $8::uuid ELSE lead_captain_id END
+           lead_captain_id = CASE WHEN $7::boolean THEN $8::uuid ELSE lead_captain_id END,
+           stretch = CASE WHEN $10::boolean THEN $11 ELSE stretch END
        WHERE id = $9
        RETURNING id`,
       [
@@ -438,6 +442,8 @@ export async function updateRegion(req: Request, res: Response) {
         parsed.leadCaptainId !== undefined,
         parsed.leadCaptainId ?? null,
         regionId,
+        req.body?.stretch !== undefined,
+        parsed.stretch,
       ]
     )
     if (result.rows.length === 0) return res.status(404).json({ error: 'Region not found' })

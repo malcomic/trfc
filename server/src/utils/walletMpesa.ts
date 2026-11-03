@@ -1,5 +1,5 @@
 import { query } from '../config/db.js'
-import { sendStkPush, stkErrorMessage } from '../controllers/paymentsController.js'
+import { InvalidMpesaPhoneError, sendStkPush, stkErrorMessage } from '../controllers/paymentsController.js'
 import { describeMpesaError } from './mpesa.js'
 import { logError } from './paymentLogger.js'
 import { attachCheckoutToTx } from './wallet.js'
@@ -18,7 +18,7 @@ export async function startMpesaForTx(txId: string, phone: string, amount: numbe
   } catch (error) {
     await query(`UPDATE wallet_transactions SET status = 'failed' WHERE id = $1`, [txId])
     logError('WALLET_STK_EXCEPTION', describeMpesaError(error), { accountReference })
-    throw new MpesaStartError(stkErrorMessage(error), 500)
+    throw new MpesaStartError(stkErrorMessage(error), error instanceof InvalidMpesaPhoneError ? 400 : 500)
   }
   if (stk.ResponseCode !== '0') {
     await query(`UPDATE wallet_transactions SET status = 'failed' WHERE id = $1`, [txId])

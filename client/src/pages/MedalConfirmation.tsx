@@ -7,6 +7,7 @@ import {
 } from '../api/medals'
 import { AlertCircle, CheckCircle, Clock, Award } from 'lucide-react'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
+import { MPESA_PHONE_ERROR, MPESA_PHONE_PLACEHOLDER, toKenyanMsisdn } from '../utils/phone'
 import MedalDownloadButton from '../components/MedalDownloadButton'
 import MedalResendButton from '../components/MedalResendButton'
 import { trackMetaPurchase } from '../utils/metaPixel'
@@ -102,9 +103,10 @@ export default function MedalConfirmation() {
   const handleGateVerify = async (e: React.FormEvent) => {
     e.preventDefault()
     const normalizedEmail = email.trim().toLowerCase()
-    const normalizedPhone = phone.replace(/\s+/g, '')
+    const rawPhone = phone.trim()
+    const normalizedPhone = rawPhone ? toKenyanMsisdn(rawPhone) ?? '' : ''
 
-    if (!normalizedEmail && !normalizedPhone) {
+    if (!normalizedEmail && !rawPhone) {
       setError('Enter the email or phone used at checkout')
       return
     }
@@ -112,8 +114,8 @@ export default function MedalConfirmation() {
       setError('Enter a valid email address')
       return
     }
-    if (normalizedPhone && !/^254\d{9}$/.test(normalizedPhone)) {
-      setError('Enter a valid phone number (254XXXXXXXXX)')
+    if (rawPhone && !normalizedPhone) {
+      setError(MPESA_PHONE_ERROR)
       return
     }
 
@@ -173,7 +175,7 @@ export default function MedalConfirmation() {
           />
           <input
             type="tel"
-            placeholder="2547XXXXXXXX"
+            placeholder={MPESA_PHONE_PLACEHOLDER}
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             className={`w-full px-4 py-2 ${inputField}`}

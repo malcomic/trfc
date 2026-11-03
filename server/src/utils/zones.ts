@@ -39,8 +39,13 @@ export function zonesJsonSql(productAlias: string): string {
   ), '[]'::json)`
 }
 
-export async function getActiveZones(): Promise<Zone[]> {
-  const result = await query('SELECT id, name, code FROM regions WHERE is_active = true ORDER BY name ASC')
+export interface ActiveZone extends Zone {
+  slug: string
+  stretch: string | null
+}
+
+export async function getActiveZones(): Promise<ActiveZone[]> {
+  const result = await query('SELECT id, name, code, slug, stretch FROM regions WHERE is_active = true ORDER BY name ASC')
   return result.rows
 }
 

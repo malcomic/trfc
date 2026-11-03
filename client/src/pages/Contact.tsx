@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { AlertCircle, CheckCircle, Mail, MapPin, Phone, MessageCircle } from 'lucide-react'
 import { Button, FormInput } from '../components/ui'
 import { siteContact, siteSocial } from '../config/site'
+import { SocialIcon } from '../components/SocialIcon'
 import { pageRoot, inputField } from '../utils/themeClasses'
 
 export default function Contact() {
@@ -222,9 +223,10 @@ export default function Contact() {
                           href={s.href}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="w-10 h-10 bg-accent/10 light:bg-accent-light/10 hover:bg-accent light:hover:bg-accent-light hover:text-night light:hover:text-night-light transition-all duration-300 flex items-center justify-center text-sm font-bold"
+                          aria-label={s.label}
+                          className="w-10 h-10 bg-accent/10 light:bg-accent-light/10 hover:bg-accent light:hover:bg-accent-light hover:text-night light:hover:text-night-light transition-all duration-300 flex items-center justify-center"
                         >
-                          {s.label.charAt(0)}
+                          <SocialIcon name={s.label} />
                         </a>
                       ))}
                     </div>

@@ -25,6 +25,7 @@ import { AlertCircle, Loader, ArrowLeft, Plus, X } from 'lucide-react'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 import { useAuth } from '../context/AuthContext'
 import { trackInitiateCheckout } from '../utils/tiktokPixel'
+import { MPESA_PHONE_PLACEHOLDER, localPhoneOrEmpty, mpesaPhoneRules, toKenyanMsisdn } from '../utils/phone'
 import type { Event, EventTicketType } from '../types'
 
 type CheckoutForm = {
@@ -174,7 +175,8 @@ export default function EventCheckout() {
   useEffect(() => {
     if (user?.name) setValue('attendeeName', user.name)
     if (user?.email) setValue('email', user.email)
-    if (user?.phone && /^254\d{9}$/.test(user.phone)) setValue('phone', user.phone)
+    const savedPhone = localPhoneOrEmpty(user?.phone)
+    if (savedPhone) setValue('phone', savedPhone)
   }, [user, setValue])
 
   useEffect(() => {
@@ -333,7 +335,8 @@ export default function EventCheckout() {
     }
   }
 
-  const onSubmit = async (data: CheckoutForm) => {
+  const onSubmit = async (form: CheckoutForm) => {
+    const data = { ...form, phone: toKenyanMsisdn(form.phone) ?? form.phone }
     if (!selectedType) {
       setError('Please select a ticket type')
       return
@@ -421,7 +424,11 @@ export default function EventCheckout() {
       return
     }
     try {
-      const result = await joinEventWaitlist(eventId!, { name: attendeeName, email: formEmail, phone: formPhone })
+      const result = await joinEventWaitlist(eventId!, {
+        name: attendeeName,
+        email: formEmail,
+        phone: toKenyanMsisdn(formPhone) ?? formPhone,
+      })
       setWaitlistMessage(`You're on the waiting list (number ${result.position}). We'll message you when a seat opens.`)
     } catch (err: any) {
       setWaitlistMessage(err.response?.data?.error || 'Could not join the waiting list. Please try again.')
@@ -570,13 +577,13 @@ export default function EventCheckout() {
             </p>
           </div>
           <div>
-            <label className="block text-sm font-semibold mb-2">M-Pesa Phone (254XXXXXXXXX)</label>
+            <label className="block text-sm font-semibold mb-2">M-Pesa Phone Number</label>
             <input
-              {...register('phone', {
-                required: 'Phone is required',
-                pattern: { value: /^254\d{9}$/, message: 'Format: 254XXXXXXXXX' },
-              })}
-              placeholder="254712345678"
+              {...register('phone', mpesaPhoneRules)}
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder={MPESA_PHONE_PLACEHOLDER}
               className={`w-full px-4 py-2 ${inputField}`}
             />
             {errors.phone && <p className="text-red-400 text-sm mt-1">{errors.phone.message}</p>}

@@ -44,6 +44,13 @@ export const DASHBOARD_COPY = {
     memberPill: (until: string) => `Member until ${until}`,
     reminders: 'Reminders',
   },
+  welcomeVideo: {
+    heading: 'Welcome to TRFC',
+    subtitle: 'A quick tour of your dashboard',
+    sound: 'Tap for sound',
+    close: 'Close the welcome video',
+    replay: 'Watch the welcome video',
+  },
   stats: {
     saturdays: { label: 'Saturdays attended', note: 'Goes up each time you run with us.' },
     program: { label: (name: string) => `Your ${name} program`, none: 'Pick a program', noneNote: 'Explore programs' },

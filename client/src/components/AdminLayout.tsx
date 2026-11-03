@@ -1,95 +1,144 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
-import {
-  LayoutDashboard,
-  Calendar,
-  Package,
-  Image,
-  ImagePlus,
-  Film,
-  ShoppingCart,
-  Users,
-  BarChart3,
-  FileText,
-  MessageSquare,
-  Wrench,
-  Ticket,
-  Award,
-  Handshake,
-  Layers,
-  Type,
-  QrCode,
-  UserPlus,
-  Flag,
-  MapPin,
-  Wallet,
-  LogOut,
-  ArrowLeft,
-  Menu,
-  X,
-} from 'lucide-react'
+import { LogOut, ArrowLeft, Menu, X, ChevronDown } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import {
+  adminNavEntries,
+  findActiveGroupId,
+  isAdminNavActive,
+  isNavGroup,
+  type AdminNavGroup,
+  type AdminNavLink,
+} from './admin/adminNav'
 
-export function isAdminNavActive(pathname: string, path: string) {
-  if (path === '/admin') {
-    return pathname === '/admin'
-  }
-  return pathname === path || pathname.startsWith(path + '/')
-}
+export { isAdminNavActive }
 
-const navItems = [
-  { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/admin/scan', label: 'Scanner', icon: QrCode },
-  { path: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
-  { path: '/admin/reports', label: 'Reports', icon: FileText },
-  { path: '/admin/events', label: 'Events', icon: Calendar },
-  { path: '/admin/medals', label: 'Medals', icon: Award },
-  { path: '/admin/products', label: 'Products', icon: Package },
-  { path: '/admin/gallery', label: 'Gallery', icon: Image },
-  { path: '/admin/site-images', label: 'Site Images', icon: ImagePlus },
-  { path: '/admin/page-videos', label: 'Page Videos', icon: Film },
-  { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
-  { path: '/admin/signups', label: 'Signups', icon: UserPlus },
-  { path: '/admin/users', label: 'Users', icon: Users },
-  { path: '/admin/captains', label: 'Captains', icon: Flag },
-  { path: '/admin/zones', label: 'Zones', icon: MapPin },
-  { path: '/admin/testimonials', label: 'Testimonials', icon: MessageSquare },
-  { path: '/admin/equipment', label: 'Equipment', icon: Wrench },
-  { path: '/admin/tickets', label: 'Tickets', icon: Ticket },
-  { path: '/admin/wallets', label: 'Ticket value', icon: Wallet },
-  { path: '/admin/partnerships', label: 'Partnerships', icon: Handshake },
-  { path: '/admin/sponsorship-tiers', label: 'Sponsorship Tiers', icon: Layers },
-  { path: '/admin/appearance', label: 'Appearance', icon: Type },
-]
-
-function AdminNavLinks({
+function AdminNavItemLink({
+  item,
   pathname,
   onNavigate,
 }: {
+  item: AdminNavLink
   pathname: string
+  onNavigate?: () => void
+}) {
+  const Icon = item.icon
+  const active = isAdminNavActive(pathname, item.path)
+  return (
+    <Link
+      to={item.path}
+      onClick={onNavigate}
+      aria-current={active ? 'page' : undefined}
+      className={`flex items-center gap-3 px-4 py-3 min-h-[44px] rounded-lg transition ${
+        active
+          ? 'bg-primary dark:bg-primary-dark text-white dark:text-black'
+          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+      }`}
+    >
+      <Icon size={20} />
+      <span>{item.label}</span>
+    </Link>
+  )
+}
+
+function AdminNavGroupItem({
+  group,
+  idPrefix,
+  pathname,
+  open,
+  onToggle,
+  onNavigate,
+}: {
+  group: AdminNavGroup
+  idPrefix: string
+  pathname: string
+  open: boolean
+  onToggle: (id: string) => void
+  onNavigate?: () => void
+}) {
+  const Icon = group.icon
+  const containsActive = group.children.some((c) => isAdminNavActive(pathname, c.path))
+  const listId = `admin-nav-${idPrefix}-${group.id}`
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => onToggle(group.id)}
+        aria-expanded={open}
+        aria-controls={listId}
+        className={`w-full flex items-center gap-3 px-4 py-3 min-h-[44px] rounded-lg transition text-left ${
+          containsActive
+            ? 'bg-gray-100 dark:bg-gray-700/60 font-medium text-gray-900 dark:text-white'
+            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+        }`}
+      >
+        <Icon size={20} />
+        <span className="flex-1">{group.label}</span>
+        <ChevronDown
+          size={18}
+          aria-hidden="true"
+          className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+      <div
+        id={listId}
+        className={`grid transition-[grid-template-rows] duration-200 ${
+          open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+        }`}
+        {...(!open ? { inert: '' } : {})}
+      >
+        <div className="overflow-hidden">
+          <div className="ml-4 pl-3 mt-1 border-l border-gray-200 dark:border-gray-700 space-y-1">
+            {group.children.map((item) => (
+              <AdminNavItemLink
+                key={item.path}
+                item={item}
+                pathname={pathname}
+                onNavigate={onNavigate}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AdminNavLinks({
+  idPrefix,
+  pathname,
+  openGroups,
+  onToggleGroup,
+  onNavigate,
+}: {
+  idPrefix: string
+  pathname: string
+  openGroups: Set<string>
+  onToggleGroup: (id: string) => void
   onNavigate?: () => void
 }) {
   return (
     <>
-      {navItems.map((item) => {
-        const Icon = item.icon
-        const active = isAdminNavActive(pathname, item.path)
-        return (
-          <Link
-            key={item.path}
-            to={item.path}
-            onClick={onNavigate}
-            className={`flex items-center gap-3 px-4 py-3 min-h-[44px] rounded-lg transition ${
-              active
-                ? 'bg-primary dark:bg-primary-dark text-white dark:text-black'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-          >
-            <Icon size={20} />
-            <span>{item.label}</span>
-          </Link>
+      {adminNavEntries.map((entry) =>
+        isNavGroup(entry) ? (
+          <AdminNavGroupItem
+            key={entry.id}
+            group={entry}
+            idPrefix={idPrefix}
+            pathname={pathname}
+            open={openGroups.has(entry.id)}
+            onToggle={onToggleGroup}
+            onNavigate={onNavigate}
+          />
+        ) : (
+          <AdminNavItemLink
+            key={entry.path}
+            item={entry}
+            pathname={pathname}
+            onNavigate={onNavigate}
+          />
         )
-      })}
+      )}
     </>
   )
 }
@@ -132,11 +181,28 @@ export default function AdminLayout() {
   const { logout } = useAuth()
   const navigationType = useNavigationType()
   const [navOpen, setNavOpen] = useState(false)
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
+    const active = findActiveGroupId(location.pathname)
+    return new Set(active ? [active] : [])
+  })
   const mainRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     setNavOpen(false)
+    const active = findActiveGroupId(location.pathname)
+    if (active) {
+      setOpenGroups((prev) => (prev.has(active) ? prev : new Set(prev).add(active)))
+    }
   }, [location.pathname])
+
+  const toggleGroup = (id: string) => {
+    setOpenGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   useEffect(() => {
     if (navigationType !== 'POP') mainRef.current?.scrollTo({ top: 0 })
@@ -162,7 +228,13 @@ export default function AdminLayout() {
         <h1 className="text-2xl font-bold text-primary dark:text-primary-dark">TRFC Admin</h1>
       </div>
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-        <AdminNavLinks pathname={location.pathname} onNavigate={closeNav} />
+        <AdminNavLinks
+          idPrefix="desktop"
+          pathname={location.pathname}
+          openGroups={openGroups}
+          onToggleGroup={toggleGroup}
+          onNavigate={closeNav}
+        />
       </nav>
       <AdminSidebarFooter onNavigate={closeNav} onLogout={handleLogout} />
     </>
@@ -203,7 +275,13 @@ export default function AdminLayout() {
             </button>
           </div>
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-            <AdminNavLinks pathname={location.pathname} onNavigate={closeNav} />
+            <AdminNavLinks
+              idPrefix="mobile"
+              pathname={location.pathname}
+              openGroups={openGroups}
+              onToggleGroup={toggleGroup}
+              onNavigate={closeNav}
+            />
           </nav>
           <AdminSidebarFooter onNavigate={closeNav} onLogout={handleLogout} />
         </aside>

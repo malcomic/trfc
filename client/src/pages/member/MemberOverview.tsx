@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { AlertCircle, Loader } from 'lucide-react'
 import type { Event } from '../../types'
@@ -14,13 +14,17 @@ import ProgramProgressCard from '../../components/member/dashboard/ProgramProgre
 import TicketsSummaryCard from '../../components/member/dashboard/TicketsSummaryCard'
 import ComingUpList, { upcomingEvents } from '../../components/member/dashboard/ComingUpList'
 import ExploreBanner from '../../components/member/dashboard/ExploreBanner'
+import AnswersPromptCard from '../../components/member/dashboard/AnswersPromptCard'
 import {
   BecomeMemberCard,
   MemberPerksCard,
   MemberPriceCard,
   PointsCard,
 } from '../../components/member/dashboard/MembershipCards'
+import WelcomeVideoModal from '../../components/member/dashboard/WelcomeVideoModal'
 import { legacyTabPath } from '../../utils/legacyTabs'
+import { getPageVideos, type PageVideo } from '../../api/pageVideos'
+import { markWelcomeVideoWatched, recordWelcomeVideoShown } from '../../api/welcomeVideo'
 
 export default function MemberOverview() {
   const [searchParams] = useSearchParams()
@@ -28,6 +32,38 @@ export default function MemberOverview() {
   const navigate = useNavigate()
   const { data, loading, error, tickets, wallet, ticketValue, payable, openPayEvents, isMember } = useMemberDashboard()
   const [events, setEvents] = useState<Event[] | null>(null)
+  const [welcomeVideo, setWelcomeVideo] = useState<PageVideo | null>(null)
+  const [openVideo, setOpenVideo] = useState<PageVideo | null>(null)
+  const welcomeRequested = useRef(false)
+  // The dashboard provider clears location.state right after mount, so read it on the first render.
+  const arrivedWithNotice = useRef(
+    Boolean(
+      (location.state as { notice?: string; joined?: string } | null)?.notice ||
+        (location.state as { notice?: string; joined?: string } | null)?.joined ||
+        searchParams.get('tab')
+    )
+  )
+
+  useEffect(() => {
+    getPageVideos('dashboard')
+      .then((videos) => setWelcomeVideo(videos.dashboard_welcome ?? null))
+      .catch(() => undefined)
+  }, [])
+
+  useEffect(() => {
+    if (!data || welcomeRequested.current || arrivedWithNotice.current) return
+    welcomeRequested.current = true
+    recordWelcomeVideoShown()
+      .then((result) => {
+        if (result.show) setOpenVideo(result.video)
+      })
+      .catch(() => undefined)
+  }, [data])
+
+  const closeWelcomeVideo = useCallback(() => setOpenVideo(null), [])
+  const welcomeWatched = useCallback(() => {
+    markWelcomeVideoWatched().catch(() => undefined)
+  }, [])
 
   useEffect(() => {
     const tab = searchParams.get('tab')
@@ -80,9 +116,15 @@ export default function MemberOverview() {
 
   return (
     <>
-      <DashboardGreeting name={data.profile.name} membership={data.membership} />
+      <DashboardGreeting
+        name={data.profile.name}
+        membership={data.membership}
+        onWatchWelcome={welcomeVideo ? () => setOpenVideo(welcomeVideo) : undefined}
+      />
+      <WelcomeVideoModal video={openVideo} onClose={closeWelcomeVideo} onWatched={welcomeWatched} />
 
       <div className="space-y-6">
+        <AnswersPromptCard />
         <div>
           <DashboardStats data={data} nextTicket={nextTicket} nextEvent={events?.[0]} isMember={isMember} />
           {data.stats.pending_payments > 0 && (

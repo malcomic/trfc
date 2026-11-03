@@ -28,6 +28,7 @@ import {
 } from '../utils/paymentValidation.js'
 import { getLocalPaymentStatus, toStatusResponse } from '../utils/paymentStatus.js'
 import { activateSignup, notifyPaidSignupsByCheckoutId } from '../utils/signupActivation.js'
+import { MPESA_PHONE_ERROR, toKenyanMsisdn } from '../utils/phone.js'
 import { recordCaptainCommissionsForCheckout } from '../utils/captainCommissions.js'
 import { settleWalletCheckout } from '../utils/walletPayments.js'
 import { captureMetaContext, reportMetaPurchase, saveMetaContext } from '../utils/metaConversions.js'
@@ -314,12 +315,14 @@ export async function initiateSTKPush(req: Request, res: Response) {
 
 /** Sends an STK push, retrying up to twice when Safaricom times out. */
 export async function sendStkPush(phone: string, amount: number, accountReference: string): Promise<STKPushResponse> {
+  const msisdn = toKenyanMsisdn(phone)
+  if (!msisdn) throw new InvalidMpesaPhoneError()
   const token = await getMPesaToken()
   const maxRetries = 2
   for (let attempt = 0; ; attempt++) {
     try {
       return await Promise.race([
-        mpesaInitiateStkPush(phone, amount, accountReference, `TRFC Payment for ${accountReference}`, token),
+        mpesaInitiateStkPush(msisdn, amount, accountReference, `TRFC Payment for ${accountReference}`, token),
         new Promise<STKPushResponse>((_, reject) =>
           setTimeout(() => reject(new Error('STK Push request timeout')), 30000)
         ),
@@ -331,7 +334,14 @@ export async function sendStkPush(phone: string, amount: number, accountReferenc
   }
 }
 
+export class InvalidMpesaPhoneError extends Error {
+  constructor() {
+    super(MPESA_PHONE_ERROR)
+  }
+}
+
 export function stkErrorMessage(error: any): string {
+  if (error instanceof InvalidMpesaPhoneError) return error.message
   if (error?.message === 'STK Push request timeout') {
     return 'Payment request timeout. M-Pesa service is currently busy. Please try again.'
   }

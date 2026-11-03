@@ -36,6 +36,7 @@ import {
   resetTypography,
 } from '../controllers/siteSettingsController.js'
 import { getAdminSignups } from '../controllers/signupsController.js'
+import * as reachOut from '../controllers/reachOutController.js'
 import {
   getRegions,
   createRegion,
@@ -106,6 +107,14 @@ router.get('/partnerships', getAdminPartnerships)
 router.patch('/partnerships/:id', updatePartnershipStatus)
 router.get('/sponsorship-tiers', getAdminSponsorshipTiers)
 router.get('/signups', getAdminSignups)
+router.get('/reach-out/stats', reachOut.getStats)
+router.get('/reach-out/members', reachOut.getMembers)
+router.get('/reach-out/members/:id/log', reachOut.getMemberLog)
+router.post('/reach-out/members/:id/log', reachOut.createMemberLog)
+router.get('/reach-out/export', reachOut.exportMembers)
+router.get('/reach-out/saved-filters', reachOut.getSavedFilters)
+router.post('/reach-out/saved-filters', reachOut.createSavedFilter)
+router.delete('/reach-out/saved-filters/:id', reachOut.deleteSavedFilter)
 router.get('/settings/typography', getTypography)
 router.put('/settings/typography', updateTypography)
 router.post('/settings/typography/reset', resetTypography)

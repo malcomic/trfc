@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { query } from '../config/db.js';
 import { findCaptainSummary } from '../utils/captainSummary.js';
 import { CaptainChangeError, changeMyCaptain, getCaptainOptions } from '../utils/memberCaptain.js';
+import { deleteMemberAnswers, getMemberAnswers, parseAnswers, saveMemberAnswers } from '../utils/memberAnswers.js';
 
 const USER_FIELDS = 'id, name, email, phone, role, created_at';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -169,6 +170,35 @@ export const updateMyCaptain = async (req: Request, res: Response) => {
     if (error instanceof CaptainChangeError) return res.status(error.status).json({ error: error.message });
     console.error(error);
     res.status(500).json({ error: 'Failed to change your captain' });
+  }
+};
+
+export const getMyAnswers = async (req: Request, res: Response) => {
+  try {
+    res.json(await getMemberAnswers(req.user!.id));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to load your answers' });
+  }
+};
+
+export const updateMyAnswers = async (req: Request, res: Response) => {
+  try {
+    await saveMemberAnswers(req.user!.id, parseAnswers(req.body));
+    res.json(await getMemberAnswers(req.user!.id));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to save your answers' });
+  }
+};
+
+export const deleteMyAnswers = async (req: Request, res: Response) => {
+  try {
+    await deleteMemberAnswers(req.user!.id);
+    res.json({ message: 'Your answers were deleted' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to delete your answers' });
   }
 };
 

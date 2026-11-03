@@ -1,6 +1,6 @@
 import { Request, Response } from 'express'
 import { query } from '../config/db.js'
-import { phonesMatch } from '../utils/phone.js'
+import { MPESA_PHONE_ERROR, phonesMatch, toKenyanMsisdn } from '../utils/phone.js'
 import { randomUUID } from 'crypto'
 import { config } from '../config/env.js'
 import {
@@ -127,10 +127,9 @@ export async function createMedalPurchases(req: Request, res: Response) {
       return res.status(400).json({ error: 'A valid email is required' })
     }
 
-    if (!/^254\d{9}$/.test(String(phone))) {
-      return res.status(400).json({
-        error: 'Invalid phone number format. Expected format: 254XXXXXXXXX',
-      })
+    const msisdn = toKenyanMsisdn(phone)
+    if (!msisdn) {
+      return res.status(400).json({ error: MPESA_PHONE_ERROR })
     }
 
     const qty = Number(quantity)
@@ -184,7 +183,7 @@ export async function createMedalPurchases(req: Request, res: Response) {
           userId,
           optionId,
           purchaseBatchId,
-          phone,
+          msisdn,
           normalizedEmail,
           normalizedName,
           'mpesa',

@@ -1,6 +1,6 @@
 import api from './index'
 
-export type PageVideoSlot = 'find_hero' | 'find_results' | 'register_hero'
+export type PageVideoSlot = 'find_hero' | 'find_results' | 'register_hero' | 'dashboard_welcome'
 
 export interface PageVideo {
   slot: PageVideoSlot

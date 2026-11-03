@@ -5,6 +5,7 @@ export interface Region {
   name: string
   slug: string
   code: string
+  stretch: string | null
   is_active: boolean
   created_at: string
   captain_count: number
@@ -25,6 +26,7 @@ export interface Region {
 export interface RegionPayload {
   name: string
   code: string
+  stretch?: string
   is_active?: boolean
   referral_code?: string
   commission_rate?: number

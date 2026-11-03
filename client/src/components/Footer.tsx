@@ -1,10 +1,35 @@
-import { Mail, Phone, MapPin, ArrowUpRight, Heart, Users, Play } from 'lucide-react'
+import { Mail, Phone, MapPin, ChevronDown } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useState } from 'react'
 import { ToastStack, ToastMessage } from './Toast'
 import { siteContact, siteSocial } from '../config/site'
 import { Logo } from './Logo'
+import { SocialIcon } from './SocialIcon'
+import { adminNavEntries, isNavGroup } from './admin/adminNav'
+
+type FooterLink = { to: string; label: string }
+
+const headingClass =
+  'font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light mb-3 flex items-center gap-2 before:w-4 before:h-0.5 before:bg-accent light:before:bg-accent-light before:inline-block before:flex-shrink-0'
+
+const linkClass =
+  'block py-1 font-barlow-condensed font-bold text-base tracking-tight text-chalk/60 light:text-chalk-light/60 no-underline transition-all duration-200 hover:text-chalk light:hover:text-chalk-light hover:translate-x-1'
+
+const adminLinkClass =
+  'block py-0.5 text-xs text-chalk/50 light:text-chalk-light/50 no-underline font-barlow-condensed font-bold tracking-widest uppercase transition-colors duration-200 hover:text-accent light:hover:text-accent-light'
+
+const adminGroups = (() => {
+  const general = adminNavEntries.flatMap((e) =>
+    isNavGroup(e) ? [] : [{ to: e.path, label: e.label }]
+  )
+  const grouped = adminNavEntries.filter(isNavGroup).map((g) => ({
+    label: g.label,
+    links: g.children.map((c) => ({ to: c.path, label: c.label })),
+  }))
+  return [{ label: 'General', links: general }, ...grouped]
+})()
+
 export default function Footer() {
   const { user } = useAuth()
   const isAdmin = user && user.role === 'admin'
@@ -17,49 +42,46 @@ export default function Footer() {
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3000)
   }
 
-  const staffQuickLinks =
+  const staffLink: FooterLink =
     isAdmin || isScanner
-      ? [{ to: '/admin/scan', label: 'Open Scanner' }]
-      : [{ to: '/admin/login', label: 'Staff Login' }]
+      ? { to: '/admin/scan', label: 'Open Scanner' }
+      : { to: '/admin/login', label: 'Staff Login' }
 
-  const quickLinks = [
-    { to: '/about', label: 'About' },
-    { to: '/events', label: 'Events' },
-    { to: '/find-tickets', label: 'Find My Tickets' },
-    { to: '/medals', label: 'Medals' },
-    { to: '/programs', label: 'Programs' },
-    { to: '/partnerships', label: 'Partnerships' },
-    { to: '/equipment', label: 'Equipment' },
-    { to: '/gallery', label: 'Gallery' },
-    { to: '/shop', label: 'Shop Merch' },
-    { to: '/testimonials', label: 'Testimonials' },
-    { to: '/contact', label: 'Contact' },
-    { to: '/register', label: 'Join the Community' },
-    ...staffQuickLinks,
+  const linkGroups: { title: string; links: FooterLink[] }[] = [
+    {
+      title: 'Explore',
+      links: [
+        { to: '/about', label: 'About' },
+        { to: '/programs', label: 'Programs' },
+        { to: '/gallery', label: 'Gallery' },
+        { to: '/testimonials', label: 'Testimonials' },
+      ],
+    },
+    {
+      title: 'Events',
+      links: [
+        { to: '/events', label: 'Events' },
+        { to: '/find-tickets', label: 'Find My Tickets' },
+        { to: '/medals', label: 'Medals' },
+      ],
+    },
+    {
+      title: 'Shop & Partners',
+      links: [
+        { to: '/shop', label: 'Shop Merch' },
+        { to: '/equipment', label: 'Equipment' },
+        { to: '/partnerships', label: 'Partnerships' },
+      ],
+    },
+    {
+      title: 'Community',
+      links: [
+        { to: '/register', label: 'Join the Community' },
+        { to: '/contact', label: 'Contact' },
+        staffLink,
+      ],
+    },
   ]
-
-  const adminLinks = [
-    { to: '/admin/scan', label: 'Scanner' },
-    { to: '/admin', label: 'Dashboard' },
-    { to: '/admin/analytics', label: 'Analytics' },
-    { to: '/admin/reports', label: 'Reports' },
-    { to: '/admin/events', label: 'Events' },
-    { to: '/admin/medals', label: 'Medals' },
-    { to: '/admin/products', label: 'Products' },
-    { to: '/admin/gallery', label: 'Gallery' },
-    { to: '/admin/orders', label: 'Orders' },
-    { to: '/admin/tickets', label: 'Tickets' },
-    { to: '/admin/users', label: 'Users' },
-    { to: '/admin/testimonials', label: 'Testimonials' },
-    { to: '/admin/partnerships', label: 'Partnerships' },
-    { to: '/admin/equipment', label: 'Equipment' },
-  ]
-
-  const socialIcons: Record<string, JSX.Element> = {
-    Instagram: <Heart size={16} />,
-    Facebook: <Users size={16} />,
-    YouTube: <Play size={16} />,
-  }
 
   const contacts = [
     { icon: <Mail size={15} />, label: 'Email', value: siteContact.email, href: `mailto:${siteContact.email}` },
@@ -67,10 +89,6 @@ export default function Footer() {
     { icon: <MapPin size={15} />, label: 'Location', value: siteContact.location, href: siteContact.mapsUrl },
   ]
 
-  const socials = siteSocial.map((s) => ({
-    ...s,
-    icon: socialIcons[s.label] ?? <Heart size={16} />,
-  }))
   return (
     <footer className="bg-night light:bg-ink-light text-chalk light:text-chalk-light relative overflow-hidden font-barlow">
       {/* Top fire-line divider */}
@@ -81,135 +99,105 @@ export default function Footer() {
         MOVE TOGETHER · GROW TOGETHER
       </div>
 
-      <div className="max-w-5xl mx-auto px-[6%] pt-16 relative z-10">
-
+      <div className="max-w-6xl mx-auto px-[6%] pt-10 relative z-10">
         {/* Main grid */}
-        <div
-          className={`grid gap-x-10 pb-14 ${
-            isAdmin || isScanner ? 'md:grid-cols-7' : 'md:grid-cols-5'
-          } grid-cols-1 md:grid-cols-2`}
-        >
-
-          {/* ── Brand ── */}
-          <div className="col-span-1">
-            <Logo size="lg" className="mb-3" />
-            <p className="font-barlow-condensed font-medium text-xs tracking-widest uppercase text-fog light:text-fog-light mb-5">Nairobi · Est. July 2025</p>
-            <p className="text-sm leading-loose text-fog light:text-fog-light max-w-56">
-              Move Together. Grow Together.
-            </p>
-            <div className="flex gap-2.5 mt-7">
-              {socials.map((s) => (
+        <div className="grid grid-cols-2 gap-x-6 gap-y-8 pb-8 lg:grid-cols-[1.5fr_repeat(4,minmax(0,1fr))_1.6fr] lg:gap-x-8">
+          {/* Brand */}
+          <div className="col-span-2 lg:col-span-1">
+            <Logo size="md" className="mb-2" />
+            <p className="font-barlow-condensed font-medium text-xs tracking-widest uppercase text-fog light:text-fog-light mb-2">Nairobi · Est. July 2025</p>
+            <p className="text-sm text-fog light:text-fog-light">Move Together. Grow Together.</p>
+            <div className="flex gap-2.5 mt-4">
+              {siteSocial.map((s) => (
                 <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label} className="w-10 h-10 border border-mist light:border-mist-light flex items-center justify-center text-fog light:text-fog-light transition-all duration-200 hover:border-accent light:hover:border-accent-light hover:text-accent light:hover:text-accent-light hover:bg-accent/10 light:hover:bg-accent-light/10 clip-angled-sm">
-                  {s.icon}
+                  <SocialIcon name={s.label} size={17} />
                 </a>
-              ))}            </div>
+              ))}
+            </div>
           </div>
 
-          {/* Vertical divider */}
-          <div className="hidden lg:block w-px bg-gradient-to-b from-transparent via-white/10 light:via-black/10 to-transparent" />
-
-          {/* ── Quick Links ── */}
-          <div className="col-span-1">
-            <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light mb-5 flex items-center gap-2 before:w-4 before:h-0.5 before:bg-accent light:before:bg-accent-light before:inline-block before:flex-shrink-0">
-              Navigation
-            </div>
-            <nav className="flex flex-col">
-              {quickLinks.map((l) => (
-                <Link to={l.to} key={l.to} className="flex items-center justify-between py-2 border-b border-white/5 light:border-black/8 font-barlow-condensed font-bold text-lg tracking-tighter text-chalk/55 light:text-chalk-light/55 no-underline transition-all duration-200 hover:text-chalk light:hover:text-chalk-light hover:pl-1.5 last:border-b-0 group">
+          {/* Link groups */}
+          {linkGroups.map((group) => (
+            <nav key={group.title} aria-label={group.title} className="col-span-1">
+              <div className={headingClass}>{group.title}</div>
+              {group.links.map((l) => (
+                <Link key={l.to} to={l.to} className={linkClass}>
                   {l.label}
-                  <ArrowUpRight size={14} className="text-accent light:text-accent-light opacity-0 group-hover:opacity-100 flex-shrink-0" />
                 </Link>
               ))}
             </nav>
-          </div>
+          ))}
 
-          {/* Vertical divider */}
-          <div className="hidden lg:block w-px bg-gradient-to-b from-transparent via-white/10 light:via-black/10 to-transparent" />
-
-          {/* ── Contact ── */}
-          <div className="col-span-1">
-            <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light mb-5 flex items-center gap-2 before:w-4 before:h-0.5 before:bg-accent light:before:bg-accent-light before:inline-block before:flex-shrink-0">
-              Get In Touch
-            </div>
-            {contacts.map((c) => (
-              <a key={c.label} href={c.href} className="no-underline block">
-                <div className="flex items-start gap-3.5 py-2.5 border-b border-white/5 light:border-black/8 last:border-b-0">
-                  <div className="w-8.5 h-8.5 bg-accent/10 light:bg-accent-light/10 border border-accent/20 light:border-accent-light/20 flex items-center justify-center text-accent light:text-accent-light flex-shrink-0 mt-0.25">
-                    {c.icon}
-                  </div>
-                  <div>
-                    <div className="font-barlow-condensed text-xs tracking-widest uppercase text-fog light:text-fog-light mb-0.5">
-                      {c.label}
-                    </div>
-                    <div className="text-sm text-chalk/70 light:text-chalk-light/70 font-semibold">
+          {/* Contact */}
+          <div className="col-span-2 lg:col-span-1">
+            <div className={headingClass}>Get In Touch</div>
+            <ul className="space-y-2">
+              {contacts.map((c) => (
+                <li key={c.label}>
+                  <a href={c.href} className="no-underline flex items-center gap-2.5 group">
+                    <span className="w-7 h-7 bg-accent/10 light:bg-accent-light/10 border border-accent/20 light:border-accent-light/20 flex items-center justify-center text-accent light:text-accent-light flex-shrink-0" aria-hidden="true">
+                      {c.icon}
+                    </span>
+                    <span className="sr-only">{c.label}: </span>
+                    <span className="text-sm text-chalk/70 light:text-chalk-light/70 font-semibold break-words min-w-0 transition-colors duration-200 group-hover:text-chalk light:group-hover:text-chalk-light">
                       {c.value}
-                    </div>
-                  </div>
-                </div>
-              </a>
-            ))}
-
-            {/* Newsletter mini CTA */}
-            <div className="mt-7 p-4.5 bg-accent/10 light:bg-accent-light/10 border border-accent/15 light:border-accent-light/15">
-              <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-chalk light:text-chalk-light mb-3">
-                Stay in the loop
-              </p>
-              <div className="flex gap-0">
-                <input
-                  type="email"
-                  placeholder="your@email.com"
-                  className="flex-1 min-w-0 bg-black/40 light:bg-smoke-light border border-white/10 light:border-black/10 border-r-0 px-3 py-2 text-chalk light:text-chalk-light text-xs font-barlow outline-none transition-all duration-200 focus:border-accent/35 light:focus:border-accent-light/35"
-                />
-                <button type="button" onClick={showNewsletterToast} className="bg-cta border border-cta text-cta-ink px-3.5 py-2 cursor-pointer font-barlow-condensed font-bold text-xs tracking-widest uppercase transition-all duration-200 hover:bg-cta/90 flex-shrink-0">
-                  Join
-                </button>
-              </div>
-            </div>
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
           </div>
-
-          {/* ── Admin Panel (conditional) ── */}
-          {isAdmin && (
-            <>
-              <div className="hidden lg:block w-px bg-gradient-to-b from-transparent via-white/10 light:via-black/10 to-transparent" />
-              <div className="col-span-1">
-                <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light mb-5 flex items-center gap-2">
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
-                    <polygon points="5,0 10,10 0,10" />
-                  </svg>
-                  Admin Panel
-                </div>
-                {adminLinks.map((l) => (
-                  <Link to={l.to} key={l.to} className="flex items-center gap-2 py-1.75 text-xs text-chalk/40 light:text-chalk-light/40 no-underline font-barlow-condensed font-bold tracking-widest uppercase border-b border-white/5 light:border-black/8 transition-all duration-200 hover:text-accent light:hover:text-accent-light hover:gap-3 last:border-b-0 before:w-1 before:h-1 before:rounded-full before:bg-mist light:before:bg-mist-light before:flex-shrink-0 before:transition-all before:duration-200 hover:before:bg-accent light:before:bg-accent-light">
-                    {l.label}
-                  </Link>
-                ))}
-              </div>
-            </>
-          )}
-
-          {isScanner && (
-            <>
-              <div className="hidden lg:block w-px bg-gradient-to-b from-transparent via-white/10 light:via-black/10 to-transparent" />
-              <div className="col-span-1">
-                <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light mb-5 flex items-center gap-2">
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
-                    <polygon points="5,0 10,10 0,10" />
-                  </svg>
-                  Staff Tools
-                </div>
-                <Link
-                  to="/admin/scan"
-                  className="flex items-center gap-2 py-1.75 text-xs text-chalk/40 light:text-chalk-light/40 no-underline font-barlow-condensed font-bold tracking-widest uppercase border-b border-white/5 light:border-black/8 transition-all duration-200 hover:text-accent light:hover:text-accent-light hover:gap-3 before:w-1 before:h-1 before:rounded-full before:bg-mist light:before:bg-mist-light before:flex-shrink-0 before:transition-all before:duration-200 hover:before:bg-accent light:before:bg-accent-light"
-                >
-                  Open Scanner
-                </Link>
-              </div>
-            </>
-          )}
         </div>
 
+        {/* Newsletter strip */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5 py-4 px-4 mb-6 bg-accent/10 light:bg-accent-light/10 border border-accent/15 light:border-accent-light/15">
+          <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-chalk light:text-chalk-light sm:flex-1">
+            Stay in the loop
+          </p>
+          <div className="flex w-full sm:max-w-sm">
+            <input
+              type="email"
+              placeholder="your@email.com"
+              aria-label="Email address"
+              className="flex-1 min-w-0 bg-black/40 light:bg-smoke-light border border-white/10 light:border-black/10 border-r-0 px-3 py-2 text-chalk light:text-chalk-light text-xs font-barlow outline-none transition-all duration-200 focus:border-accent/35 light:focus:border-accent-light/35"
+            />
+            <button type="button" onClick={showNewsletterToast} className="bg-cta border border-cta text-cta-ink px-3.5 py-2 cursor-pointer font-barlow-condensed font-bold text-xs tracking-widest uppercase transition-all duration-200 hover:bg-cta/90 flex-shrink-0">
+              Join
+            </button>
+          </div>
+        </div>
+
+        {/* Admin shortcuts (collapsed) */}
+        {isAdmin && (
+          <details className="group mb-6 border border-white/5 light:border-black/8">
+            <summary className="flex items-center justify-between gap-2 px-4 py-3 cursor-pointer list-none [&::-webkit-details-marker]:hidden font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light hover:text-accent light:hover:text-accent-light transition-colors">
+              <span className="flex items-center gap-2">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true">
+                  <polygon points="5,0 10,10 0,10" />
+                </svg>
+                Admin shortcuts
+              </span>
+              <ChevronDown size={16} aria-hidden="true" className="transition-transform duration-200 group-open:rotate-180" />
+            </summary>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-x-6 gap-y-4 px-4 pb-4">
+              {adminGroups.map((g) => (
+                <div key={g.label}>
+                  <div className="font-barlow-condensed font-bold text-[0.65rem] tracking-widest uppercase text-fog light:text-fog-light mb-1.5">
+                    {g.label}
+                  </div>
+                  {g.links.map((l) => (
+                    <Link key={l.to} to={l.to} className={adminLinkClass}>
+                      {l.label}
+                    </Link>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
+
         {/* Bottom bar */}
-        <div className="border-t border-white/5 light:border-black/8 flex items-center justify-between pt-5 pb-5 flex-wrap gap-3">
+        <div className="border-t border-white/5 light:border-black/8 flex items-center justify-between py-4 flex-wrap gap-3">
           <p className="text-xs text-fog light:text-fog-light tracking-tighter">
             © {new Date().getFullYear()} Thika Road Fitness Community. All Rights Reserved.
           </p>

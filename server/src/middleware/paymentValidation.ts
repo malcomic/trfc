@@ -1,24 +1,32 @@
 import { Request, Response, NextFunction } from 'express'
 import { validateCallback } from '../utils/mpesa.js'
+import { MPESA_PHONE_ERROR, toKenyanMsisdn } from '../utils/phone.js'
+
+/** Accepts 07XX / 01XX / +254 / 254 forms and rewrites req.body.phone to 2547XXXXXXXX. */
+function normalizeBodyPhone(req: Request, res: Response): boolean {
+  const { phone } = req.body
+
+  if (!phone) {
+    res.status(400).json({ error: 'Phone number is required' })
+    return false
+  }
+
+  const msisdn = toKenyanMsisdn(phone)
+  if (!msisdn) {
+    res.status(400).json({ error: MPESA_PHONE_ERROR })
+    return false
+  }
+
+  req.body.phone = msisdn
+  return true
+}
 
 export function validatePhoneNumber(
   req: Request,
   res: Response,
   next: NextFunction
 ) {
-  const { phone } = req.body
-
-  if (!phone) {
-    return res.status(400).json({ error: 'Phone number is required' })
-  }
-
-  const phoneRegex = /^254\d{9}$/
-  if (!phoneRegex.test(phone)) {
-    return res.status(400).json({
-      error: 'Invalid phone number format. Expected format: 254XXXXXXXXX',
-    })
-  }
-
+  if (!normalizeBodyPhone(req, res)) return
   next()
 }
 
@@ -64,19 +72,9 @@ export function validatePaymentRequest(
   res: Response,
   next: NextFunction
 ) {
-  const { phone, amount, orderId, ticketId, ticketBatchId, equipmentHireId, medalBatchId, signupId } =
-    req.body
+  if (!normalizeBodyPhone(req, res)) return
 
-  if (!phone) {
-    return res.status(400).json({ error: 'Phone number is required' })
-  }
-
-  const phoneRegex = /^254\d{9}$/
-  if (!phoneRegex.test(phone)) {
-    return res.status(400).json({
-      error: 'Invalid phone number format. Expected format: 254XXXXXXXXX',
-    })
-  }
+  const { amount, orderId, ticketId, ticketBatchId, equipmentHireId, medalBatchId, signupId } = req.body
 
   if (!amount) {
     return res.status(400).json({ error: 'Amount is required' })

@@ -4,6 +4,7 @@ import { getEquipmentHireById } from '../api/equipment'
 import { pollPaymentStatus } from '../api/payments'
 import { AlertCircle, CheckCircle, Clock, Package } from 'lucide-react'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
+import { MPESA_PHONE_ERROR, MPESA_PHONE_PLACEHOLDER, toKenyanMsisdn } from '../utils/phone'
 import { trackMetaPurchase } from '../utils/metaPixel'
 
 export default function HireConfirmation() {
@@ -78,9 +79,9 @@ export default function HireConfirmation() {
 
   const handlePhoneVerify = async (e: React.FormEvent) => {
     e.preventDefault()
-    const normalized = phone.replace(/\s+/g, '')
-    if (!/^254\d{9}$/.test(normalized)) {
-      setError('Enter a valid phone number (254XXXXXXXXX)')
+    const normalized = toKenyanMsisdn(phone)
+    if (!normalized) {
+      setError(MPESA_PHONE_ERROR)
       return
     }
     try {
@@ -111,7 +112,7 @@ export default function HireConfirmation() {
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value.replace(/\s+/g, ''))}
-              placeholder="254712345678"
+              placeholder={MPESA_PHONE_PLACEHOLDER}
               className={`w-full px-4 py-3 ${inputField}`}
             />
             <button type="submit" className="w-full bg-cta text-cta-ink py-3 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-cta/90">

@@ -4,6 +4,7 @@ import { AlertCircle, CheckCircle } from 'lucide-react'
 import { findTickets, updateTicketEmail, FoundTickets } from '../api/events'
 import { formatEventDateTime } from '../utils/eventDate'
 import { pageRoot } from '../utils/themeClasses'
+import { MPESA_PHONE_ERROR, MPESA_PHONE_PLACEHOLDER, toKenyanMsisdn } from '../utils/phone'
 
 const inputClass =
   'w-full bg-smoke light:bg-smoke-light border border-white/10 light:border-black/10 px-4 py-3 text-chalk light:text-chalk-light focus:outline-none focus:border-accent light:focus:border-accent-light'
@@ -26,11 +27,11 @@ export default function FindTickets() {
 
   const handleFind = async (e: React.FormEvent) => {
     e.preventDefault()
-    const normalizedPhone = phone.replace(/\s+/g, '')
+    const normalizedPhone = toKenyanMsisdn(phone)
     const normalizedReceipt = receipt.replace(/\s+/g, '').toUpperCase()
 
-    if (!/^254\d{9}$/.test(normalizedPhone)) {
-      setError('Enter a valid phone number (254XXXXXXXXX)')
+    if (!normalizedPhone) {
+      setError(MPESA_PHONE_ERROR)
       return
     }
     if (!normalizedReceipt) {
@@ -117,7 +118,7 @@ export default function FindTickets() {
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="254712345678"
+                  placeholder={MPESA_PHONE_PLACEHOLDER}
                   className={inputClass}
                 />
               </div>

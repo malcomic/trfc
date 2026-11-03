@@ -9,6 +9,8 @@ export function phonesMatch(a: string, b: string): boolean {
   return normalizePhone(a) === normalizePhone(b)
 }
 
+export const MPESA_PHONE_ERROR = 'Enter a valid M-Pesa number, e.g. 0712 345 678'
+
 /** Converts 07XX / 01XX / +2547XX / 2547XX / 7XX forms to 2547XXXXXXXX (or 2541...). */
 export function toKenyanMsisdn(phone: string | null | undefined): string | null {
   if (!phone) return null

@@ -12,7 +12,10 @@ import {
 import { toKenyanMsisdn } from '../utils/phone.js';
 import { applyReferral, assignChosenCaptain } from '../utils/referrals.js';
 import { sendAccountWelcomeOnce } from '../utils/accountWelcome.js';
+import { sendWelcomeEmailOnce } from '../utils/welcomeEmail.js';
 import { findCaptainSummary } from '../utils/captainSummary.js';
+import { hasAnyAnswer, parseAnswers, saveMemberAnswers } from '../utils/memberAnswers.js';
+import { touchLastActive } from '../utils/lastActive.js';
 import {
   consumePasswordResetToken,
   createPasswordResetToken,
@@ -130,12 +133,25 @@ export const register = async (req: Request, res: Response) => {
     }
     const captain = await findCaptainSummary(user.id);
 
+    // Optional answers must never block sign-up; the app asks again when this fails.
+    let answersSaved = true;
+    try {
+      const answers = parseAnswers(req.body?.answers);
+      if (hasAnyAnswer(answers) || zone) {
+        await saveMemberAnswers(user.id, answers, { fallbackRegionId: zone?.region_id });
+      }
+    } catch (error) {
+      console.error(`Failed to save signup answers for user ${user.id}:`, error);
+      answersSaved = false;
+    }
+
     void sendAccountWelcomeOnce(user.id);
+    void sendWelcomeEmailOnce(user.id);
 
     const token = generateAccessToken({ id: user.id, email: user.email, role: user.role });
     const refreshToken = generateRefreshToken({ id: user.id, email: user.email, role: user.role });
 
-    res.status(201).json({ token, refreshToken, user: { ...user, captain } });
+    res.status(201).json({ token, refreshToken, user: { ...user, captain }, answersSaved });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Registration failed' });
@@ -166,6 +182,7 @@ export const login = async (req: Request, res: Response) => {
 
     const token = generateAccessToken({ id: user.id, email: user.email, role: user.role });
     const refreshToken = generateRefreshToken({ id: user.id, email: user.email, role: user.role });
+    void touchLastActive(user.id);
 
     res.json({ token, refreshToken, user: { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role } });
   } catch (error) {
@@ -206,6 +223,7 @@ export const refresh = async (req: Request, res: Response) => {
 
     const newAccessToken = generateAccessToken({ id: user.id, email: user.email, role: user.role });
     const newRefreshToken = generateRefreshToken({ id: user.id, email: user.email, role: user.role });
+    void touchLastActive(user.id);
 
     res.json({ token: newAccessToken, refreshToken: newRefreshToken, user });
   } catch (error) {

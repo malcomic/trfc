@@ -1,12 +1,19 @@
 import { Link } from 'react-router-dom'
-import { Bell } from 'lucide-react'
+import { Bell, PlayCircle } from 'lucide-react'
 import type { MemberMembership } from '../../../api/users'
 import { DASHBOARD_COPY, firstName, greetingFor } from '../../../content/dashboard'
 import { formatDate } from '../../../utils/captainDisplay'
 
 const copy = DASHBOARD_COPY.header
 
-export default function DashboardGreeting({ name, membership }: { name: string; membership: MemberMembership }) {
+interface DashboardGreetingProps {
+  name: string
+  membership: MemberMembership
+  /** Shown as a "Watch the welcome video" button when a welcome video is set. */
+  onWatchWelcome?: () => void
+}
+
+export default function DashboardGreeting({ name, membership, onWatchWelcome }: DashboardGreetingProps) {
   const first = firstName(name)
   return (
     <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
@@ -16,6 +23,16 @@ export default function DashboardGreeting({ name, membership }: { name: string; 
           {first ? `, ${first}` : ''}
         </h1>
         <p className="mt-2 text-fog light:text-fog-light">{copy.subtitle}</p>
+        {onWatchWelcome && (
+          <button
+            type="button"
+            onClick={onWatchWelcome}
+            className="mt-2 inline-flex items-center gap-2 min-h-[44px] font-barlow font-semibold text-sm text-chalk light:text-chalk-light underline underline-offset-4 hover:text-cta"
+          >
+            <PlayCircle size={18} aria-hidden="true" />
+            {DASHBOARD_COPY.welcomeVideo.replay}
+          </button>
+        )}
       </div>
       <div className="flex items-center gap-3">
         {membership.active ? (

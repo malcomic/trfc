@@ -1072,6 +1072,101 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       UPDATE page_videos SET poster_url = NULL WHERE slot = 'find_results' AND poster_url IS NOT NULL;
     `,
   },
+  {
+    name: '046_welcome_email',
+    sql: `
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS welcome_email_sent_at TIMESTAMPTZ;
+    `,
+  },
+  {
+    name: '047_welcome_video',
+    sql: `
+      -- Migrations re-run on every boot, so existing users are only marked done when the columns are first added.
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'users' AND column_name = 'welcome_video_done_at'
+        ) THEN
+          ALTER TABLE users
+            ADD COLUMN welcome_video_shows INT NOT NULL DEFAULT 0,
+            ADD COLUMN welcome_video_done_at TIMESTAMPTZ;
+          UPDATE users SET welcome_video_done_at = NOW();
+        END IF;
+      END $$;
+    `,
+  },
+  {
+    name: '048_signup_answers',
+    sql: `
+      ALTER TABLE regions ADD COLUMN IF NOT EXISTS stretch VARCHAR(150);
+
+      -- Kept apart from users so login details and survey answers stay separate.
+      CREATE TABLE IF NOT EXISTS member_answers (
+        user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        hardest_now VARCHAR(40),
+        hardest_now_other VARCHAR(120),
+        goal_3m VARCHAR(40),
+        time_with_trfc VARCHAR(40),
+        want_more VARCHAR(40),
+        exercise_frequency VARCHAR(40),
+        zone VARCHAR(100),
+        zone_region_id UUID REFERENCES regions(id) ON DELETE SET NULL,
+        contact_consent BOOLEAN NOT NULL DEFAULT false,
+        contact_consent_at TIMESTAMPTZ,
+        contact_consent_text TEXT,
+        answers_saved_at TIMESTAMPTZ,
+        answers_updated_at TIMESTAMPTZ
+      );
+      CREATE INDEX IF NOT EXISTS idx_member_answers_zone_region ON member_answers(zone_region_id);
+    `,
+  },
+  {
+    name: '049_reach_out',
+    sql: `
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ;
+      CREATE INDEX IF NOT EXISTS idx_users_last_active ON users(last_active_at);
+
+      ALTER TABLE member_answers
+        ADD COLUMN IF NOT EXISTS outreach_status VARCHAR(20) NOT NULL DEFAULT 'not_contacted';
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'member_answers_outreach_status_check') THEN
+          ALTER TABLE member_answers ADD CONSTRAINT member_answers_outreach_status_check
+            CHECK (outreach_status IN ('not_contacted', 'contacted', 'replied', 'not_interested'));
+        END IF;
+      END $$;
+
+      -- History is append-only: entries are never updated or deleted by the app.
+      CREATE TABLE IF NOT EXISTS outreach_log (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status VARCHAR(20) NOT NULL,
+        note TEXT,
+        contacted_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_outreach_log_user ON outreach_log(user_id, created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS reach_out_saved_filters (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(100) NOT NULL,
+        filters JSONB NOT NULL,
+        created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS reach_out_access_log (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        action VARCHAR(10) NOT NULL,
+        filters JSONB,
+        row_count INT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_reach_out_access_log_created ON reach_out_access_log(created_at DESC);
+    `,
+  },
 ]
 
 export async function runMigrations() {
