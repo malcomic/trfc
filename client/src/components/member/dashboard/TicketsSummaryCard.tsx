@@ -4,12 +4,18 @@ import type { MemberTicket } from '../../../context/MemberDashboardContext'
 import { DASHBOARD_COPY } from '../../../content/dashboard'
 import { formatEventDate } from '../../../utils/eventDate'
 import StatusBadge from '../StatusBadge'
+import { formatCancelDeadline } from '../TicketRow'
 import { dashCard, dashHeading, dashLink, dashMuted } from './ui'
 
 const copy = DASHBOARD_COPY.tickets
 
-/** `tickets` is null while loading; otherwise the upcoming tickets, soonest first. */
-export default function TicketsSummaryCard({ tickets }: { tickets: MemberTicket[] | null }) {
+interface TicketsSummaryCardProps {
+  /** null while loading; otherwise the upcoming tickets, soonest first. */
+  tickets: MemberTicket[] | null
+  onCancel: (ticket: MemberTicket) => void
+}
+
+export default function TicketsSummaryCard({ tickets, onCancel }: TicketsSummaryCardProps) {
   return (
     <div className={dashCard}>
       <div className="flex items-center justify-between gap-3 mb-4">
@@ -42,8 +48,20 @@ export default function TicketsSummaryCard({ tickets }: { tickets: MemberTicket[
                   {t.event_date ? formatEventDate(t.event_date, { weekday: 'short', month: 'short', day: 'numeric' }) : '—'}
                   {t.ticket_type_name ? ` · ${t.ticket_type_name}` : ''}
                 </p>
+                {t.can_cancel && t.cancel_deadline && (
+                  <p className="text-xs text-fog light:text-fog-light mt-0.5">
+                    {copy.cancelUntil(formatCancelDeadline(t.cancel_deadline))}
+                  </p>
+                )}
               </div>
-              <StatusBadge status={t.payment_status} />
+              <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                <StatusBadge status={t.payment_status} />
+                {t.can_cancel && (
+                  <button type="button" onClick={() => onCancel(t)} className="text-xs text-red-400 hover:underline">
+                    {copy.cancel}
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>

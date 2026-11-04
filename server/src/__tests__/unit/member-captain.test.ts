@@ -95,7 +95,11 @@ describe('getCaptainOptions', () => {
   it("lists only active captains in the member's zone", async () => {
     mockDb(
       { captain_id: OLD_CAPTAIN, captain_chosen_at: new Date(Date.now() - 40 * DAY_MS), captain_active: true, zone_id: 'zone-thika', zone_name: 'Thika' },
-      { captains: [{ id: NEW_CAPTAIN, name: 'Irene Achieng', region_id: 'zone-thika', zone: 'Thika' }] }
+      {
+        captains: [
+          { id: NEW_CAPTAIN, name: 'Irene Achieng', region_id: 'zone-thika', zone: 'Thika', photo_url: 'https://img/irene.jpg' },
+        ],
+      }
     )
     const options = await getCaptainOptions(USER_ID)
 
@@ -108,8 +112,9 @@ describe('getCaptainOptions', () => {
       current_captain_id: OLD_CAPTAIN,
       next_change_at: null,
       change_days: 30,
-      captains: [{ id: NEW_CAPTAIN, name: 'Irene', region_id: 'zone-thika', zone: 'Thika' }],
+      captains: [{ id: NEW_CAPTAIN, name: 'Irene', region_id: 'zone-thika', zone: 'Thika', photo_url: 'https://img/irene.jpg' }],
     })
+    expect(String(listCall[0])).toContain('c.photo_url')
   })
 
   it('uses the referral zone first, then the current captain zone', async () => {

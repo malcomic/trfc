@@ -51,8 +51,10 @@ import {
   reverseCommission,
   syncCommissions,
   getAdminPayouts,
+  previewPayout,
   createPayout,
 } from '../controllers/captainsController.js'
+import { adminRemoveCaptainPhoto } from '../controllers/captainPhotoController.js'
 import {
   createAdminCredit,
   getAdminPaymentPlans,
@@ -126,11 +128,13 @@ router.get('/captains', getAdminCaptains)
 router.post('/captains', createCaptain)
 router.put('/captains/:id', updateCaptain)
 router.delete('/captains/:id', removeCaptain)
+router.delete('/captains/:id/photo', adminRemoveCaptainPhoto)
 router.get('/captain-commissions', getAdminCommissions)
 router.post('/captain-commissions/approve', approveCommissions)
 router.post('/captain-commissions/sync', syncCommissions)
 router.post('/captain-commissions/:id/reverse', reverseCommission)
 router.get('/captain-payouts', getAdminPayouts)
+router.get('/captain-payouts/preview', previewPayout)
 router.post('/captain-payouts', createPayout)
 router.get('/wallets', getAdminWallets)
 router.get('/wallets/plans', getAdminPaymentPlans)

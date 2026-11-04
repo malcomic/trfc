@@ -137,25 +137,10 @@ export const getOrderById = async (req: Request, res: Response) => {
   }
 };
 
-/** Delivery date clothing in the cart would get if ordered now (Wednesdays only, Tuesday 8 pm cutoff). */
-export const getDeliveryDatePreview = async (req: Request, res: Response) => {
+/** Delivery date an order placed now would get (Wednesdays only, Tuesday 8 pm cutoff). */
+export const getDeliveryDatePreview = async (_req: Request, res: Response) => {
   try {
-    const ids = String(req.query.productIds ?? '')
-      .split(',')
-      .map((id) => id.trim())
-      .filter(Boolean)
-      .slice(0, 100);
-    const clothing = ids.length
-      ? await query(
-          `SELECT 1 FROM products p JOIN product_categories pc ON pc.id = p.category_id
-           WHERE p.id::text = ANY($1::text[]) AND pc.is_clothing LIMIT 1`,
-          [ids]
-        )
-      : { rows: [] };
-    res.json({
-      has_clothing: clothing.rows.length > 0,
-      delivery_date: nextDeliveryWednesday(new Date()),
-    });
+    res.json({ delivery_date: nextDeliveryWednesday(new Date()) });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to work out the delivery date' });
@@ -221,7 +206,6 @@ export const createOrder = async (req: Request, res: Response) => {
     }
 
     let subtotal = 0;
-    let hasClothing = false;
     const lines: {
       product_id: string;
       quantity: number;
@@ -240,9 +224,8 @@ export const createOrder = async (req: Request, res: Response) => {
         throw new OrderValidationError(400, 'Invalid item quantity');
       }
       const productResult = await client.query(
-        `SELECT p.id, p.price, p.stock, p.is_active, p.name, p.distance_options,
-                COALESCE(pc.is_clothing, false) AS is_clothing
-         FROM products p LEFT JOIN product_categories pc ON pc.id = p.category_id
+        `SELECT p.id, p.price, p.stock, p.is_active, p.name, p.distance_options
+         FROM products p
          WHERE p.id = $1`,
         [item.product_id]
       );
@@ -300,7 +283,6 @@ export const createOrder = async (req: Request, res: Response) => {
         throw new OrderValidationError(400, `Price mismatch for ${product.name}`);
       }
       subtotal += unitPrice * quantity;
-      if (product.is_clothing) hasClothing = true;
       lines.push({
         product_id: product.id,
         quantity,
@@ -320,7 +302,7 @@ export const createOrder = async (req: Request, res: Response) => {
     const orderResult = await client.query(
       `INSERT INTO orders (user_id, total_amount, phone, delivery_address, email, flash_share_redemption_id, delivery_date)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *, to_char(delivery_date, 'YYYY-MM-DD') AS delivery_date`,
-      [userId, expectedTotal, phone, delivery_address, email, flashRedemptionId, hasClothing ? nextDeliveryWednesday(new Date()) : null]
+      [userId, expectedTotal, phone, delivery_address, email, flashRedemptionId, nextDeliveryWednesday(new Date())]
     );
 
     const orderId = orderResult.rows[0].id;

@@ -57,6 +57,7 @@ export const termsSections: LegalSection[] = [
     title: 'Shop and Merchandise',
     paragraphs: [
       'Product prices are displayed in Kenyan Shillings (KES) and are subject to change without notice. Availability is subject to stock levels at the time of order.',
+      'Shop orders are delivered free of charge on Wednesdays. Orders paid by 8:00 pm on Tuesday (Nairobi time) are delivered that Wednesday; orders paid after that are delivered the following Wednesday. Your delivery date is shown at checkout and in your order confirmation.',
       'You must provide accurate delivery details at checkout. TRFC is not responsible for delays or failed deliveries caused by incorrect information provided by you.',
     ],
   },
@@ -97,7 +98,7 @@ export const termsSections: LegalSection[] = [
     id: 'refunds-and-cancellations',
     title: "Missed Events and Cancellations",
     paragraphs: [
-      "If you can't make an event, tell us from your dashboard. Notice given 24 hours or more before the start is recorded as \"Cancelled early\"; later notice, or not turning up, is recorded as a \"No-show\". Both receive the same ticket credit. Event tickets are not refunded to M-Pesa.",
+      "If you can't make an event, give up your ticket from your dashboard by 11:59 pm (Nairobi time), 3 days before the event day. It is recorded as \"Cancelled early\" and the ticket price becomes ticket credit straight away. After that deadline a ticket can't be cancelled, and not turning up is recorded as a \"No-show\" with no ticket credit. Event tickets are not refunded to M-Pesa.",
       'Attendance is taken from the scan list at the event. If you attended but were not scanned, a captain or admin can mark you present within 48 hours. If TRFC cancels an event, it is never counted as a no-show and your ticket value becomes ticket credit straight away.',
       'Refund and cancellation policies for products and equipment hire may vary. Where refunds are offered, they will be processed to the original M-Pesa number used for payment where possible.',
       'Contact us at ' + siteContact.email + ' within a reasonable time if you believe a transaction was made in error or if you wish to request a refund. Each request will be reviewed on a case-by-case basis.',

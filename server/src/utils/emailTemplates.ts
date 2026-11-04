@@ -412,23 +412,23 @@ export interface OrderEmailData {
   mpesaReceipt?: string | null
   phone?: string | null
   deliveryAddress?: string | null
-  /** 'YYYY-MM-DD' Wednesday delivery for clothing orders. */
+  /** 'YYYY-MM-DD' Wednesday the order is delivered. */
   deliveryDate?: string | null
   confirmationUrl: string
 }
 
-const CLOTHING_DELIVERY_RULE =
-  'Orders placed before 8:00 pm on Tuesday are delivered on Wednesday. Orders placed after that are delivered the next Wednesday.'
+const DELIVERY_RULE =
+  'We deliver on Wednesdays. Orders placed before 8:00 pm on Tuesday are delivered that Wednesday; orders placed after that are delivered the next Wednesday.'
 
 function deliveryLine(data: OrderEmailData): string {
-  if (!data.deliveryDate) return 'It will be delivered within 2-3 business days after payment confirmation.'
+  if (!data.deliveryDate) return `It will be delivered on a Wednesday. ${DELIVERY_RULE}`
   const date = new Date(`${data.deliveryDate}T12:00:00+03:00`).toLocaleDateString('en-KE', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     timeZone: 'Africa/Nairobi',
   })
-  return `It will be delivered on ${date}. ${CLOTHING_DELIVERY_RULE}`
+  return `It will be delivered on ${date}. ${DELIVERY_RULE}`
 }
 
 function formatKes(value: number): string {
@@ -1076,10 +1076,11 @@ export interface TicketCancelledEmailData {
   eventTitle: string
   ticketCount: number
   credited: number
-  early: boolean
   availableFrom: Date | null
   expiresAt: Date | null
 }
+
+const CANCELLED_STATUS = 'Thanks for letting us know early. Your spot can now go to someone on the waiting list.'
 
 function cancelledCreditLine(data: TicketCancelledEmailData, html: boolean): string {
   if (data.credited <= 0) return 'Nothing had been paid yet, so there is no ticket value to add.'
@@ -1094,15 +1095,12 @@ function cancelledCreditLine(data: TicketCancelledEmailData, html: boolean): str
 
 export function buildTicketCancelledEmailHTML(data: TicketCancelledEmailData): string {
   const what = data.ticketCount > 1 ? `${data.ticketCount} tickets` : 'ticket'
-  const status = data.early
-    ? 'Thanks for letting us know early. Your spot can now go to someone on the waiting list.'
-    : 'Because this was close to the event, it is recorded as a no-show. The ticket value is the same either way.'
   return accountEmailShell(
     "We've noted you can't make it",
     "You can't make it",
     `
       ${paragraph(escapeHtml(greeting(data.name)))}
-      ${paragraph(`We've released your ${what} for <strong>${escapeHtml(data.eventTitle)}</strong>. ${status}`)}
+      ${paragraph(`We've released your ${what} for <strong>${escapeHtml(data.eventTitle)}</strong>. ${CANCELLED_STATUS}`)}
       ${paragraph(cancelledCreditLine(data, true))}
       ${paragraph(`<span style="color:#6b7280;font-size:13px;">${CREDIT_RULES_NOTE}</span>`)}
       ${walletButton('VIEW MY TICKET VALUE')}`
@@ -1111,12 +1109,9 @@ export function buildTicketCancelledEmailHTML(data: TicketCancelledEmailData): s
 
 export function buildTicketCancelledEmailText(data: TicketCancelledEmailData): string {
   const what = data.ticketCount > 1 ? `${data.ticketCount} tickets` : 'ticket'
-  const status = data.early
-    ? 'Thanks for letting us know early. Your spot can now go to someone on the waiting list.'
-    : 'Because this was close to the event, it is recorded as a no-show. The ticket value is the same either way.'
   return [
     greeting(data.name),
-    `We've released your ${what} for ${data.eventTitle}. ${status}`,
+    `We've released your ${what} for ${data.eventTitle}. ${CANCELLED_STATUS}`,
     cancelledCreditLine(data, false),
     CREDIT_RULES_NOTE,
     `Your ticket value: ${dashboardWalletUrl()}`,
@@ -1313,7 +1308,16 @@ export interface CaptainStatementEmailData {
   usedTickets: number
   perTicketValue: number
   amount: number
+  /** Active captains sharing the zone's amount equally. */
+  captainCount: number
+  /** This captain's equal share of `amount`. */
+  yourShare: number
 }
+
+const statementPayLine = (data: CaptainStatementEmailData) =>
+  data.captainCount > 1
+    ? `It is shared equally by the zone's ${data.captainCount} captains, so your share is about ${kes(data.yourShare)}. It will be paid to your M-Pesa within 7 days after the event.`
+    : `It will be paid to your M-Pesa within 7 days after the event.`
 
 export function buildCaptainStatementEmailHTML(data: CaptainStatementEmailData): string {
   return accountEmailShell(
@@ -1326,7 +1330,7 @@ export function buildCaptainStatementEmailHTML(data: CaptainStatementEmailData):
         Each used ticket is worth ${kes(data.perTicketValue)} from the captains' share of the event's gross profit.`
       )}
       ${paragraph(
-        `The ${escapeHtml(data.zoneName)} zone's share is <strong>${kes(data.amount)}</strong>. It will be paid by M-Pesa to you, as the zone's lead captain, within 7 days after the event.`
+        `The ${escapeHtml(data.zoneName)} zone's share is <strong>${kes(data.amount)}</strong>. ${statementPayLine(data)}`
       )}`
   )
 }
@@ -1335,7 +1339,7 @@ export function buildCaptainStatementEmailText(data: CaptainStatementEmailData):
   return [
     greeting(data.name),
     `${data.eventTitle}: ${data.usedTickets} of the ${data.zoneName} zone's referral tickets were used at the event. Each used ticket is worth ${kes(data.perTicketValue)} from the captains' share of the event's gross profit.`,
-    `The ${data.zoneName} zone's share is ${kes(data.amount)}. It will be paid by M-Pesa to you, as the zone's lead captain, within 7 days after the event.`,
+    `The ${data.zoneName} zone's share is ${kes(data.amount)}. ${statementPayLine(data)}`,
     footerText(),
   ].join('\n\n')
 }
@@ -1394,11 +1398,15 @@ export function buildCaptainMemberLeftEmailText(data: CaptainMemberChangeEmailDa
 export interface SettlementPayoutReminderData {
   eventTitle: string
   dueDate: Date
-  unpaid: { zoneName: string; leadCaptainName: string | null; amount: number }[]
+  unpaid: { zoneName: string; captainCount: number; amount: number }[]
 }
 
 const unpaidLabel = (line: SettlementPayoutReminderData['unpaid'][number]) =>
-  `${line.zoneName} (${line.leadCaptainName ? `lead captain ${line.leadCaptainName}` : 'no lead captain set'})`
+  `${line.zoneName} (${
+    line.captainCount > 0
+      ? `split equally by ${line.captainCount} captain${line.captainCount === 1 ? '' : 's'}`
+      : 'no active captains'
+  })`
 
 export function buildSettlementPayoutReminderEmailHTML(data: SettlementPayoutReminderData): string {
   const rows = data.unpaid

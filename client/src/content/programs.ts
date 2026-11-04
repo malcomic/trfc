@@ -112,7 +112,7 @@ export const PROGRAMS: Record<ProgramId, Program> = {
     coachLine:
       'I have also picked plans that were too big for me, and I have also quit. That is why this program starts small.',
     storyPlaceholder:
-      '[MEMBER NAME] could barely jog for one minute when [he/she] first came to a Saturday run. [X] weeks later, [he/she] finished a first 5K.',
+      'She could barely jog for one minute when she first came to a Saturday run. X weeks later, she finished a first 5K.',
     faqs: [
       { q: 'Is this really free?', a: 'Yes. The Couch to 5K program is free, and so is your account.' },
       { q: 'I have never run. Is it for me?', a: 'Yes. That is exactly who it is for. Nobody is judging you here.' },
@@ -176,7 +176,7 @@ export const PROGRAMS: Record<ProgramId, Program> = {
     outlinePlaceholder: 'Week by week outline: Coach Maurice to add what happens in Weeks 1 to 12',
     coachLine:
       'I have picked plans that were too big for me, and I have quit. That is why I match this program to where you are today.',
-    storyPlaceholder: '[MEMBER NAME], [result, e.g. clothes fit again after X weeks]',
+    storyPlaceholder: 'clothes fit again after X weeks',
     faqs: [
       {
         q: 'How much does it cost?',
@@ -219,8 +219,8 @@ export const PROGRAMS: Record<ProgramId, Program> = {
     tagline:
       'You can already run 5K. Now you go further, one step at a time, with a captain and the whole community beside you.',
     lengthWeeks: 10,
-    price: 1500,
-    memberPrice: 1275,
+    price: 1697,
+    memberPrice: 1445,
     starts: 'January 2027',
     startsOn: null,
     chips: ['10 weeks', 'First 10K', 'Endurance and race prep'],
@@ -247,7 +247,7 @@ export const PROGRAMS: Record<ProgramId, Program> = {
     outlinePlaceholder: 'Week by week outline: Coach Maurice to add what happens in Weeks 1 to 10',
     coachLine:
       'I have picked plans that were too big for me, and I have quit. That is why this program adds distance slowly.',
-    storyPlaceholder: '[MEMBER NAME], [result, e.g. first 10K after X weeks]',
+    storyPlaceholder: 'first 10K after X weeks',
     faqs: [
       {
         q: 'How much does it cost?',
@@ -318,7 +318,7 @@ export const PROGRAMS: Record<ProgramId, Program> = {
     outlinePlaceholder: 'Week by week outline and which hikes are in this program: Coach Maurice to add',
     coachLine:
       'I have picked plans that were too big for me, and I have quit. That is why this program starts where you are.',
-    storyPlaceholder: '[MEMBER NAME], [result, e.g. first peak climbed after X weeks]',
+    storyPlaceholder: 'first peak climbed after X weeks',
     faqs: [
       {
         q: 'How much does it cost?',

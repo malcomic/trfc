@@ -5,6 +5,7 @@ import { CONTACT_PATH, DASHBOARD_COPY, supportLink } from '../../content/dashboa
 import type { MemberCaptainSummary } from '../../api/users'
 import MemberPageHeader from '../../components/member/MemberPageHeader'
 import CaptainPicker from '../../components/member/CaptainPicker'
+import CaptainAvatar from '../../components/captain/CaptainAvatar'
 import { ctaButton } from '../../utils/themeClasses'
 import { dashCard, dashHeading, dashLink, dashMuted } from '../../components/member/dashboard/ui'
 
@@ -31,11 +32,14 @@ export default function MemberZone() {
       ) : captain ? (
         <div className={`${dashCard} max-w-xl`}>
           <div className="grid sm:grid-cols-2 gap-5">
-            <div>
-              <p className={`${dashMuted} flex items-center gap-2`}>
-                <User size={14} aria-hidden="true" /> {copy.captainLabel}
-              </p>
-              <p className="font-bebas text-3xl tracking-wide mt-1 text-chalk light:text-chalk-light">{captain.name}</p>
+            <div className="flex items-center gap-4">
+              <CaptainAvatar name={captain.name} photoUrl={captain.photo_url} size="lg" />
+              <div className="min-w-0">
+                <p className={`${dashMuted} flex items-center gap-2`}>
+                  <User size={14} aria-hidden="true" /> {copy.captainLabel}
+                </p>
+                <p className="font-bebas text-3xl tracking-wide mt-1 text-chalk light:text-chalk-light">{captain.name}</p>
+              </div>
             </div>
             <div>
               <p className={`${dashMuted} flex items-center gap-2`}>

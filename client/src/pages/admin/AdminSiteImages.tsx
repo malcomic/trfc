@@ -98,6 +98,8 @@ function SlotEditor({ config, initial, onChanged }: { config: SlotConfig; initia
     }
   }
 
+  const isProgram = config.slot.startsWith('program_')
+
   const save = async () => {
     setError('')
     setNotice('')
@@ -134,9 +136,15 @@ function SlotEditor({ config, initial, onChanged }: { config: SlotConfig; initia
         <p className="text-sm text-gray-500 dark:text-gray-400">{config.description}</p>
       </div>
 
-      <div className="relative w-full max-w-[360px] aspect-[4/3] rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 flex items-center justify-center">
+      <div
+        className={`relative w-full max-w-[360px] ${isProgram ? 'aspect-video' : 'aspect-[4/3]'} rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 flex items-center justify-center`}
+      >
         {previewUrl ? (
-          <img src={previewUrl} alt={altText || config.defaultAlt} className="absolute inset-0 w-full h-full object-cover" />
+          <img
+            src={previewUrl}
+            alt={altText || config.defaultAlt}
+            className={`absolute inset-0 w-full h-full ${isProgram ? 'object-contain' : 'object-cover'}`}
+          />
         ) : (
           <span className="text-sm text-gray-500 dark:text-gray-400">No image yet. The site shows a text placeholder.</span>
         )}

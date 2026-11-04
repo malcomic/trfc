@@ -41,6 +41,7 @@ import StatTile from '../../components/dashboard/StatTile'
 import DashboardTabs from '../../components/dashboard/DashboardTabs'
 import MemberPageHeader from '../../components/member/MemberPageHeader'
 import ScanListPanel from '../../components/attendance/ScanListPanel'
+import CaptainPhotoCard from '../../components/captain/CaptainPhotoCard'
 import { getAttendanceEvents, type AttendanceEvent } from '../../api/attendance'
 
 type Tab = 'commissions' | 'referrals' | 'team' | 'payouts' | 'attendance'
@@ -154,6 +155,8 @@ function CaptainContent() {
   )}`
 
   const totalPages = commissions ? Math.max(1, Math.ceil(commissions.total / PAGE_SIZE)) : 1
+  const activeCaptains = Math.max(1, profile?.stats.active_captains ?? 1)
+  const shareOf = (amount: number) => (activeCaptains === 1 ? amount : Math.floor(amount / activeCaptains))
 
   return (
     <>
@@ -201,14 +204,20 @@ function CaptainContent() {
 
         {profile && (
           <>
+            <CaptainPhotoCard
+              name={profile.name.trim().split(/\s+/)[0] || 'Captain'}
+              photoUrl={profile.photo_url}
+              onChanged={(photoUrl) => setProfile((p) => (p ? { ...p, photo_url: photoUrl } : p))}
+            />
+
             <div className={`${cardSurface} p-6 grid gap-6 md:grid-cols-[1fr_auto] items-center`}>
               <div className="min-w-0">
                 <h2 className="font-barlow-condensed font-bold text-xl tracking-tighter mb-1">Your zone&apos;s referral link</h2>
                 <p className="text-sm text-fog light:text-fog-light mb-4">
                   Every captain in {profile.zone.name} shares this link. Everyone who signs up with it joins the zone,
-                  and the zone earns on every product, event ticket, medal and equipment hire they buy. Earnings go to
-                  the {profile.zone.name} zone and are paid to{' '}
-                  {profile.zone.is_lead ? 'you as the lead captain' : profile.zone.lead_captain_name ?? 'the zone’s lead captain'}.
+                  and the zone earns on every product, medal and equipment hire they buy. Event tickets earn through
+                  each event&apos;s profit share. Earnings go to the {profile.zone.name} zone and are shared equally by
+                  its {activeCaptains === 1 ? 'captain' : `${activeCaptains} active captains`}.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input
@@ -252,14 +261,26 @@ function CaptainContent() {
               )}
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <StatTile label="Your team" value={profile.stats.team_members ?? 0} icon={UsersRound} />
               <StatTile label="Zone referrals" value={profile.stats.referred_customers} icon={Users} />
               <StatTile label="Zone sales" value={formatKes(profile.stats.referred_sales)} icon={TrendingUp} />
               <StatTile label="Zone pending" value={formatKes(profile.stats.pending_amount)} icon={Clock} />
               <StatTile label="Zone approved" value={formatKes(profile.stats.approved_amount)} icon={BadgeCheck} />
+              <StatTile
+                label="Your share of approved"
+                value={formatKes(shareOf(profile.stats.approved_amount))}
+                icon={BadgeCheck}
+              />
               <StatTile label="Zone paid out" value={formatKes(profile.stats.paid_amount)} icon={Wallet} />
+              <StatTile label="Paid to you" value={formatKes(profile.stats.my_paid_amount ?? 0)} icon={Wallet} />
             </div>
+            {activeCaptains > 1 && (
+              <p className="-mt-4 text-xs text-fog light:text-fog-light">
+                Your share is an estimate: the zone&apos;s money is split equally between its {activeCaptains} active
+                captains when it is paid, in whole shillings.
+              </p>
+            )}
 
             <div>
               <DashboardTabs tabs={TAB_LABELS} active={tab} onChange={setTab} />
@@ -308,6 +329,9 @@ function CaptainContent() {
                         </div>
                         <div className="text-right">
                           <p className="font-bebas text-2xl text-accent light:text-accent-light">{formatKes(c.amount)}</p>
+                          {activeCaptains > 1 && (c.status === 'pending' || c.status === 'approved') && (
+                            <p className="text-xs text-fog light:text-fog-light">Your share about {formatKes(shareOf(c.amount))}</p>
+                          )}
                           <span className={`inline-block px-2.5 py-0.5 text-xs font-bold uppercase ${COMMISSION_STATUS_STYLES[c.status]}`}>
                             {c.status}
                           </span>
@@ -397,21 +421,25 @@ function CaptainContent() {
                 <div className="space-y-3">
                   {payouts.length === 0 ? (
                     <p className="text-center py-10 text-fog light:text-fog-light">
-                      No zone payouts yet. Approved commissions are paid to the lead captain&apos;s M-Pesa
-                      {profile.zone.is_lead && profile.payout_phone ? ` (${profile.payout_phone})` : ''}.
+                      No zone payouts yet. Approved money is shared equally by the zone&apos;s active captains and sent to
+                      each captain&apos;s M-Pesa{profile.payout_phone ? ` (yours: ${profile.payout_phone})` : ''}.
                     </p>
                   ) : (
                     payouts.map((p) => (
                       <div key={p.id} className={`${cardSurface} p-4 flex flex-wrap justify-between gap-3 items-center`}>
                         <div>
-                          <p className="font-barlow-condensed font-bold text-lg">{formatKes(p.amount)}</p>
+                          <p className="font-barlow-condensed font-bold text-lg">
+                            {p.my_amount !== null ? `You got ${formatKes(p.my_amount)}` : 'Not shared with you'}
+                          </p>
                           <p className="text-sm text-fog light:text-fog-light">
-                            {formatDate(p.paid_at)} · {p.commission_count} commission{p.commission_count === 1 ? '' : 's'}
-                            {p.paid_to_name ? ` · Paid to ${p.paid_to_name}` : ''}
+                            {formatDate(p.paid_at)} · Zone got {formatKes(p.amount)}
+                            {p.captain_count > 0 ? `, split by ${p.captain_count} captain${p.captain_count === 1 ? '' : 's'}` : ''}
+                            {' · '}
+                            {p.commission_count} commission{p.commission_count === 1 ? '' : 's'}
                             {p.note ? ` · ${p.note}` : ''}
                           </p>
                         </div>
-                        <span className="text-sm font-mono text-chalk light:text-chalk-light">{p.mpesa_receipt || '—'}</span>
+                        <span className="text-sm font-mono text-chalk light:text-chalk-light">{p.my_receipt || '—'}</span>
                       </div>
                     ))
                   )}

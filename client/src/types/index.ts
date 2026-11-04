@@ -58,7 +58,8 @@ export interface PaymentRules {
   credit_days: number;
   deposit_pct: number;
   deadline_days: number;
-  early_notice_hours: number;
+  /** Tickets can be given up until 11:59 pm Nairobi, this many days before the event day. */
+  cancel_deadline_days: number;
   terms_version: string;
 }
 
@@ -114,8 +115,6 @@ export interface ProductCategory {
   image_url?: string | null;
   sort_order: number;
   is_active: boolean;
-  /** Clothing is delivered on Wednesdays only. */
-  is_clothing?: boolean;
   created_at?: string;
   product_count?: number;
 }

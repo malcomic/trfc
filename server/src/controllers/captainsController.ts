@@ -5,6 +5,7 @@ import { toKenyanMsisdn } from '../utils/phone.js'
 import { slugify } from '../utils/slugify.js'
 import { syncCaptainCommissions } from '../utils/captainCommissions.js'
 import { generateTextQRCodeDataUrl } from '../utils/qrCodeGenerator.js'
+import { loadZoneCaptains, splitEqually } from '../utils/payoutSplit.js'
 
 const COMMISSION_STATUSES = ['pending', 'approved', 'paid', 'reversed'] as const
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -102,7 +103,7 @@ export async function getReferrer(req: Request, res: Response) {
 export async function getCaptainDirectory(_req: Request, res: Response) {
   try {
     const result = await query(
-      `SELECT c.user_id AS id, u.name, r.id AS region_id, r.name AS zone
+      `SELECT c.user_id AS id, u.name, r.id AS region_id, r.name AS zone, c.photo_url
        FROM captains c
        JOIN users u ON u.id = c.user_id
        JOIN regions r ON r.id = c.region_id
@@ -115,6 +116,7 @@ export async function getCaptainDirectory(_req: Request, res: Response) {
         name: (row.name ?? '').trim().split(/\s+/)[0] || 'Captain',
         region_id: row.region_id,
         zone: row.zone,
+        photo_url: row.photo_url ?? null,
       }))
     )
   } catch (error) {
@@ -150,7 +152,7 @@ export async function getMyCaptainProfile(req: Request, res: Response) {
   try {
     const captainId = req.user!.id
     const profile = await query(
-      `SELECT c.user_id, c.payout_phone, c.status, c.created_at, u.name, u.email, u.phone,
+      `SELECT c.user_id, c.payout_phone, c.photo_url, c.status, c.created_at, u.name, u.email, u.phone,
               r.id AS region_id, r.name AS region_name, r.code AS region_code
        FROM captains c
        JOIN users u ON u.id = c.user_id
@@ -167,6 +169,8 @@ export async function getMyCaptainProfile(req: Request, res: Response) {
       `SELECT
          (SELECT COUNT(*)::int FROM users WHERE referred_by_region_id = $1) AS referred_customers,
          (SELECT COUNT(*)::int FROM users WHERE captain_id = $2) AS team_members,
+         (SELECT COUNT(*)::int FROM captains WHERE region_id = $1 AND status = 'active') AS active_captains,
+         (SELECT COALESCE(SUM(s.amount), 0)::float FROM captain_payout_splits s WHERE s.captain_id = $2) AS my_paid_amount,
          ${COMMISSION_TOTALS_SQL}
        FROM captain_commissions cc
        WHERE cc.region_id = $1`,
@@ -277,18 +281,22 @@ export async function getMyReferralQr(req: Request, res: Response) {
   }
 }
 
+/** The zone's payouts, each with this captain's own share and receipt (none if they weren't a captain then). */
 export async function getMyPayouts(req: Request, res: Response) {
   try {
-    const zone = await getCaptainZone(req.user!.id)
+    const captainId = req.user!.id
+    const zone = await getCaptainZone(captainId)
     if (!zone) return res.status(404).json({ error: 'Captain profile not found' })
     const result = await query(
-      `SELECT p.id, p.amount::float AS amount, p.mpesa_receipt, p.note, p.paid_at, ru.name AS paid_to_name,
-              (SELECT COUNT(*)::int FROM captain_commissions cc WHERE cc.payout_id = p.id) AS commission_count
+      `SELECT p.id, p.amount::float AS amount, p.note, p.paid_at,
+              (SELECT COUNT(*)::int FROM captain_commissions cc WHERE cc.payout_id = p.id) AS commission_count,
+              (SELECT COUNT(*)::int FROM captain_payout_splits s WHERE s.payout_id = p.id) AS captain_count,
+              mine.amount::float AS my_amount, mine.mpesa_receipt AS my_receipt
        FROM captain_payouts p
-       LEFT JOIN users ru ON ru.id = p.captain_id
-       WHERE p.region_id = $1
+       LEFT JOIN captain_payout_splits mine ON mine.payout_id = p.id AND mine.captain_id = $2
+       WHERE p.region_id = $1 OR mine.id IS NOT NULL
        ORDER BY p.paid_at DESC`,
-      [zone.id]
+      [zone.id, captainId]
     )
     res.json(result.rows)
   } catch (error) {
@@ -481,7 +489,7 @@ export async function getAdminCaptains(req: Request, res: Response) {
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
 
     const result = await query(
-      `SELECT c.user_id, c.referral_code, c.payout_phone, c.status, c.created_at, u.name, u.email, u.phone,
+      `SELECT c.user_id, c.referral_code, c.payout_phone, c.photo_url, c.status, c.created_at, u.name, u.email, u.phone,
               r.id AS region_id, r.name AS region_name, r.code AS region_code,
               (r.lead_captain_id = c.user_id) AS is_lead,
               (SELECT COUNT(*)::int FROM users tu WHERE tu.captain_id = c.user_id) AS team_members
@@ -756,14 +764,19 @@ export async function getAdminPayouts(req: Request, res: Response) {
       where = 'WHERE p.region_id = $1'
     }
     const result = await query(
-      `SELECT p.id, p.region_id, p.captain_id, p.amount::float AS amount, p.mpesa_receipt, p.note, p.paid_at,
-              r.name AS region_name, r.code AS region_code, ru.name AS paid_to_name, c.payout_phone,
-              pb.name AS paid_by_name,
-              (SELECT COUNT(*)::int FROM captain_commissions cc WHERE cc.payout_id = p.id) AS commission_count
+      `SELECT p.id, p.region_id, p.amount::float AS amount, p.note, p.paid_at,
+              r.name AS region_name, r.code AS region_code, pb.name AS paid_by_name,
+              (SELECT COUNT(*)::int FROM captain_commissions cc WHERE cc.payout_id = p.id) AS commission_count,
+              COALESCE((
+                SELECT json_agg(json_build_object(
+                         'captain_id', s.captain_id, 'name', su.name, 'payout_phone', s.payout_phone,
+                         'amount', s.amount::float, 'mpesa_receipt', s.mpesa_receipt
+                       ) ORDER BY s.amount DESC, su.name)
+                FROM captain_payout_splits s LEFT JOIN users su ON su.id = s.captain_id
+                WHERE s.payout_id = p.id
+              ), '[]'::json) AS splits
        FROM captain_payouts p
        JOIN regions r ON r.id = p.region_id
-       LEFT JOIN captains c ON c.user_id = p.captain_id
-       LEFT JOIN users ru ON ru.id = p.captain_id
        LEFT JOIN users pb ON pb.id = p.paid_by
        ${where}
        ORDER BY p.paid_at DESC
@@ -777,33 +790,80 @@ export async function getAdminPayouts(req: Request, res: Response) {
   }
 }
 
-export async function createPayout(req: Request, res: Response) {
-  const { regionId, commissionIds, mpesaReceipt, note } = req.body ?? {}
+function parseCommissionIds(value: unknown): string[] {
+  const list = Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : []
+  return [...new Set(list.filter((id: unknown): id is string => typeof id === 'string' && UUID_PATTERN.test(id.trim())).map((id) => id.trim()))]
+}
+
+/** Shows how the selected approved commissions would be split between the zone's active captains. */
+export async function previewPayout(req: Request, res: Response) {
+  const regionId = req.query.regionId
   if (typeof regionId !== 'string' || !UUID_PATTERN.test(regionId)) {
     return res.status(400).json({ error: 'A valid regionId is required' })
   }
-  const ids: string[] = Array.isArray(commissionIds)
-    ? commissionIds.filter((id: unknown): id is string => typeof id === 'string' && UUID_PATTERN.test(id))
-    : []
+  const ids = parseCommissionIds(req.query.commissionIds)
+  try {
+    const total = ids.length
+      ? await query(
+          `SELECT COALESCE(SUM(amount), 0)::float AS total FROM captain_commissions
+           WHERE id = ANY($1::uuid[]) AND region_id = $2 AND status = 'approved' AND payout_id IS NULL`,
+          [ids, regionId]
+        )
+      : { rows: [{ total: 0 }] }
+    const amount = Math.round(Number(total.rows[0].total) * 100) / 100
+    const captains = await loadZoneCaptains(regionId)
+    res.json({
+      amount,
+      splits: splitEqually(amount, captains).map((s) => ({
+        captain_id: s.captainId,
+        name: s.name,
+        payout_phone: s.phone,
+        is_lead: s.isLead,
+        amount: s.amount,
+      })),
+    })
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: 'Failed to preview payout' })
+  }
+}
+
+export async function createPayout(req: Request, res: Response) {
+  const { regionId, commissionIds, splits, note } = req.body ?? {}
+  if (typeof regionId !== 'string' || !UUID_PATTERN.test(regionId)) {
+    return res.status(400).json({ error: 'A valid regionId is required' })
+  }
+  const ids = parseCommissionIds(commissionIds)
   if (ids.length === 0) return res.status(400).json({ error: 'Select at least one approved commission' })
-  const receipt = typeof mpesaReceipt === 'string' ? mpesaReceipt.trim().toUpperCase() : ''
-  if (!receipt) return res.status(400).json({ error: 'M-Pesa receipt is required' })
+
+  const receipts = new Map<string, string>()
+  for (const split of Array.isArray(splits) ? splits : []) {
+    const captainId = typeof split?.captainId === 'string' ? split.captainId : ''
+    const receipt = typeof split?.mpesaReceipt === 'string' ? split.mpesaReceipt.trim().toUpperCase() : ''
+    if (!UUID_PATTERN.test(captainId)) return res.status(400).json({ error: 'Each payment needs a valid captain' })
+    if (!receipt) return res.status(400).json({ error: 'Enter the M-Pesa receipt for every captain' })
+    if (receipts.has(captainId)) return res.status(400).json({ error: 'Each captain can only be paid once per payout' })
+    receipts.set(captainId, receipt)
+  }
+  if (receipts.size === 0) return res.status(400).json({ error: 'Enter the M-Pesa receipt for every captain' })
+  if (new Set(receipts.values()).size !== receipts.size) {
+    return res.status(400).json({ error: 'Each captain must have their own M-Pesa receipt' })
+  }
 
   const client = await getClient()
   try {
     await client.query('BEGIN')
-    const region = await client.query(
-      `SELECT r.lead_captain_id
-       FROM regions r
-       JOIN captains c ON c.user_id = r.lead_captain_id AND c.region_id = r.id AND c.status = 'active'
-       WHERE r.id = $1
-       FOR UPDATE OF r`,
-      [regionId]
-    )
-    const leadCaptainId: string | undefined = region.rows[0]?.lead_captain_id
-    if (!leadCaptainId) {
+    await client.query('SELECT id FROM regions WHERE id = $1 FOR UPDATE', [regionId])
+    const captains = await loadZoneCaptains(regionId, client)
+    if (captains.length === 0) {
       await client.query('ROLLBACK')
-      return res.status(400).json({ error: 'Choose a lead captain for this zone before recording a payout' })
+      return res.status(400).json({ error: 'This zone has no active captains to pay' })
+    }
+    if (captains.length !== receipts.size || captains.some((c) => !receipts.has(c.captainId))) {
+      await client.query('ROLLBACK')
+      return res
+        .status(409)
+        .json({ error: "The zone's captains have changed. Reload the payout and enter a receipt for each captain." })
     }
     const commissions = await client.query(
       `SELECT id, amount FROM captain_commissions
@@ -811,30 +871,34 @@ export async function createPayout(req: Request, res: Response) {
        FOR UPDATE`,
       [ids, regionId]
     )
-    if (commissions.rows.length !== new Set(ids).size) {
+    if (commissions.rows.length !== ids.length) {
       await client.query('ROLLBACK')
       return res.status(400).json({ error: 'All selected commissions must be approved, unpaid and belong to this zone' })
     }
-    const amount = commissions.rows.reduce((sum, row) => sum + Number(row.amount), 0)
+    const amount = Math.round(commissions.rows.reduce((sum, row) => sum + Number(row.amount), 0) * 100) / 100
     const payout = await client.query(
       `INSERT INTO captain_payouts (region_id, captain_id, amount, mpesa_receipt, note, paid_by)
-       VALUES ($1, $2, $3, $4, $5, $6)
+       VALUES ($1, NULL, $2, NULL, $3, $4)
        RETURNING id, amount::float AS amount, paid_at`,
-      [
-        regionId,
-        leadCaptainId,
-        Math.round(amount * 100) / 100,
-        receipt,
-        typeof note === 'string' ? note.trim() || null : null,
-        req.user?.id ?? null,
-      ]
+      [regionId, amount, typeof note === 'string' ? note.trim() || null : null, req.user?.id ?? null]
     )
+    const shares = splitEqually(amount, captains)
+    for (const share of shares) {
+      await client.query(
+        `INSERT INTO captain_payout_splits (payout_id, captain_id, amount, payout_phone, mpesa_receipt)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [payout.rows[0].id, share.captainId, share.amount, share.phone, receipts.get(share.captainId)]
+      )
+    }
     await client.query(
       `UPDATE captain_commissions SET status = 'paid', payout_id = $1 WHERE id = ANY($2::uuid[])`,
       [payout.rows[0].id, ids]
     )
     await client.query('COMMIT')
-    res.status(201).json(payout.rows[0])
+    res.status(201).json({
+      ...payout.rows[0],
+      splits: shares.map((s) => ({ captain_id: s.captainId, name: s.name, amount: s.amount })),
+    })
   } catch (error) {
     await client.query('ROLLBACK').catch(() => undefined)
     console.error(error)

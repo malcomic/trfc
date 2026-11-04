@@ -239,7 +239,7 @@ export interface CancelTicketResult {
   credited: number
   cancelledTicketIds: string[]
   eventTitle: string
-  noticeStatus: 'cancelled_early' | 'no_show'
+  noticeStatus: 'cancelled_early'
   availableFrom: string | null
   expiresAt: string | null
 }

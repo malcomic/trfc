@@ -2,7 +2,8 @@ import { query } from '../config/db.js'
 
 export interface TicketRules {
   creditDays: number
-  earlyNoticeHours: number
+  /** Members can give up a ticket until 11:59 pm Nairobi, this many calendar days before the event day. */
+  cancelDeadlineDays: number
   depositPct: number
   depositRoundTo: number
   defaultDeadlineDays: number
@@ -15,7 +16,7 @@ export interface TicketRules {
 
 export const DEFAULT_TICKET_RULES: TicketRules = {
   creditDays: 60,
-  earlyNoticeHours: 24,
+  cancelDeadlineDays: 3,
   depositPct: 30,
   depositRoundTo: 10,
   defaultDeadlineDays: 3,
@@ -23,7 +24,7 @@ export const DEFAULT_TICKET_RULES: TicketRules = {
   markPresentHours: 48,
   captainProfitShareEnabled: true,
   captainProfitSharePct: 20,
-  termsVersion: '2026-10',
+  termsVersion: '2026-11',
 }
 
 const CACHE_TTL_MS = 60_000
@@ -32,7 +33,7 @@ let cached: { value: TicketRules; expiresAt: number } | null = null
 export async function getTicketRules({ fresh = false }: { fresh?: boolean } = {}): Promise<TicketRules> {
   if (!fresh && cached && cached.expiresAt > Date.now()) return cached.value
   const result = await query(
-    `SELECT credit_days, early_notice_hours, deposit_pct::float AS deposit_pct, deposit_round_to,
+    `SELECT credit_days, cancel_deadline_days, deposit_pct::float AS deposit_pct, deposit_round_to,
             default_deadline_days, priority_release_days, mark_present_hours,
             captain_profit_share_enabled, captain_profit_share_pct::float AS captain_profit_share_pct, terms_version
      FROM ticket_rules_settings WHERE id = 1`
@@ -41,7 +42,7 @@ export async function getTicketRules({ fresh = false }: { fresh?: boolean } = {}
   const value: TicketRules = row
     ? {
         creditDays: Number(row.credit_days),
-        earlyNoticeHours: Number(row.early_notice_hours),
+        cancelDeadlineDays: Number(row.cancel_deadline_days),
         depositPct: Number(row.deposit_pct),
         depositRoundTo: Number(row.deposit_round_to),
         defaultDeadlineDays: Number(row.default_deadline_days),
@@ -62,7 +63,7 @@ export function clearTicketRulesCache() {
 
 const INT_RANGES: Partial<Record<keyof TicketRules, [number, number]>> = {
   creditDays: [1, 365],
-  earlyNoticeHours: [0, 720],
+  cancelDeadlineDays: [0, 30],
   depositRoundTo: [1, 1000],
   defaultDeadlineDays: [0, 30],
   priorityReleaseDays: [0, 60],
@@ -98,12 +99,12 @@ export function parseTicketRules(body: any, current: TicketRules): TicketRules |
 export async function updateTicketRules(rules: TicketRules, updatedBy: string): Promise<void> {
   await query(
     `INSERT INTO ticket_rules_settings
-       (id, credit_days, early_notice_hours, deposit_pct, deposit_round_to, default_deadline_days,
+       (id, credit_days, cancel_deadline_days, deposit_pct, deposit_round_to, default_deadline_days,
         priority_release_days, mark_present_hours, captain_profit_share_enabled, captain_profit_share_pct,
         terms_version, updated_at, updated_by)
      VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), $11)
      ON CONFLICT (id) DO UPDATE SET
-       credit_days = EXCLUDED.credit_days, early_notice_hours = EXCLUDED.early_notice_hours,
+       credit_days = EXCLUDED.credit_days, cancel_deadline_days = EXCLUDED.cancel_deadline_days,
        deposit_pct = EXCLUDED.deposit_pct, deposit_round_to = EXCLUDED.deposit_round_to,
        default_deadline_days = EXCLUDED.default_deadline_days, priority_release_days = EXCLUDED.priority_release_days,
        mark_present_hours = EXCLUDED.mark_present_hours,
@@ -112,7 +113,7 @@ export async function updateTicketRules(rules: TicketRules, updatedBy: string): 
        updated_at = NOW(), updated_by = EXCLUDED.updated_by`,
     [
       rules.creditDays,
-      rules.earlyNoticeHours,
+      rules.cancelDeadlineDays,
       rules.depositPct,
       rules.depositRoundTo,
       rules.defaultDeadlineDays,
@@ -177,6 +178,11 @@ export function planDeadline(eventDay: string, deadlineDays: number): Date {
   return endOfNairobiDay(addDays(eventDay, -deadlineDays))
 }
 
+/** Members can give up a ticket until 23:59:59 Nairobi, `days` calendar days before the event day. */
+export function cancelDeadline(eventDay: string, days: number): Date {
+  return endOfNairobiDay(addDays(eventDay, -days))
+}
+
 /** First payment: `pct`% of the total, rounded up to the next `roundTo` shillings, never more than the total. */
 export function depositFor(total: number, pct: number, roundTo: number): number {
   if (!(total > 0)) return 0
@@ -198,7 +204,7 @@ const TUESDAY = 2
 const DELIVERY_CUTOFF_HOUR = 20
 
 /**
- * Clothing is delivered on Wednesdays. Orders placed before 8:00 pm Nairobi on Tuesday arrive that
+ * Shop orders are delivered on Wednesdays. Orders placed before 8:00 pm Nairobi on Tuesday arrive that
  * Wednesday; from Tuesday 8:00 pm onward (including Wednesday) they arrive the following Wednesday.
  */
 export function nextDeliveryWednesday(at: Date): string {

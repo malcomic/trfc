@@ -38,7 +38,9 @@ export interface MemberTicket {
   can_cancel?: boolean
   cancel_blocked_reason?: string | null
   cancel_credit_amount?: number
-  cancel_notice_status?: 'cancelled_early' | 'no_show' | null
+  cancel_notice_status?: 'cancelled_early' | null
+  /** Last moment the ticket can be given up (11:59 pm Nairobi, the set number of days before the event). */
+  cancel_deadline?: string | null
   attendance_status?: string | null
 }
 
@@ -226,12 +228,8 @@ export function MemberDashboardProvider({ children }: { children: ReactNode }) {
           setCancelTarget(null)
           notify(
             'success',
-            result.noticeStatus === 'cancelled_early' ? 'Cancelled early' : 'Recorded as a no-show',
-            result.credited > 0
-              ? result.noticeStatus === 'cancelled_early'
-                ? `${formatKes(result.credited)} is now ticket value you can use on another event.`
-                : `${formatKes(result.credited)} of ticket value appears the morning after the event.`
-              : undefined
+            'Cancelled early',
+            result.credited > 0 ? `${formatKes(result.credited)} is now ticket value you can use on another event.` : undefined
           )
           refreshAll()
         }}

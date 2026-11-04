@@ -497,7 +497,9 @@ export const deleteUser = async (req: Request, res: Response) => {
     }
 
     const captainHistory = await query(
-      'SELECT 1 FROM captain_commissions WHERE captain_id = $1 UNION ALL SELECT 1 FROM captain_payouts WHERE captain_id = $1 LIMIT 1',
+      `SELECT 1 FROM captain_commissions WHERE captain_id = $1
+       UNION ALL SELECT 1 FROM captain_payouts WHERE captain_id = $1
+       UNION ALL SELECT 1 FROM captain_payout_splits WHERE captain_id = $1 LIMIT 1`,
       [id]
     );
     if (captainHistory.rows.length > 0) {

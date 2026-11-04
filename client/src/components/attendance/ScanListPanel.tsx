@@ -35,8 +35,8 @@ const TONES = {
 }
 
 /**
- * The scan list for one event. Confirming it marks unscanned paid tickets as no-shows (their value becomes
- * ticket credit the morning after); a member who came but wasn't scanned can be marked present for a while after.
+ * The scan list for one event. Confirming it marks unscanned paid tickets as no-shows (they get no ticket
+ * credit); a member who came but wasn't scanned can be marked present for a while after.
  */
 export default function ScanListPanel({ eventId, onClose, onChanged, tone = 'admin' }: ScanListPanelProps) {
   const t = TONES[tone]
@@ -54,7 +54,7 @@ export default function ScanListPanel({ eventId, onClose, onChanged, tone = 'adm
   useEffect(load, [load])
 
   const confirm = async () => {
-    if (!window.confirm('Confirm the scan list? Paid tickets that were not scanned are recorded as no-shows.')) return
+    if (!window.confirm('Confirm the scan list? Paid tickets that were not scanned are recorded as no-shows and get no ticket credit.')) return
     setBusy('confirm')
     setError('')
     try {

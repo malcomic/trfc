@@ -1205,6 +1205,51 @@ const MIGRATIONS: { name: string; sql: string }[] = [
         ADD COLUMN IF NOT EXISTS community_run_location VARCHAR(200) NOT NULL DEFAULT 'TBA';
     `,
   },
+  {
+    name: '051_captain_payout_splits',
+    sql: `
+      -- Tickets are paid to zones through the event profit share, not referral commission.
+      UPDATE captain_commissions SET status = 'reversed', approved_at = NULL
+      WHERE source_type = 'ticket' AND status IN ('pending', 'approved');
+
+      -- A zone payout is shared equally by the zone's active captains, each paid by their own M-Pesa transfer.
+      CREATE TABLE IF NOT EXISTS captain_payout_splits (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        payout_id UUID NOT NULL REFERENCES captain_payouts(id) ON DELETE CASCADE,
+        captain_id UUID NOT NULL REFERENCES captains(user_id),
+        amount NUMERIC(10,2) NOT NULL,
+        payout_phone VARCHAR(15),
+        mpesa_receipt VARCHAR(100) NOT NULL,
+        UNIQUE (payout_id, captain_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_captain_payout_splits_captain ON captain_payout_splits(captain_id);
+
+      -- Payouts made before splits went wholly to one captain.
+      INSERT INTO captain_payout_splits (payout_id, captain_id, amount, payout_phone, mpesa_receipt)
+      SELECT p.id, p.captain_id, p.amount, c.payout_phone, COALESCE(p.mpesa_receipt, '')
+      FROM captain_payouts p
+      LEFT JOIN captains c ON c.user_id = p.captain_id
+      WHERE p.captain_id IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM captain_payout_splits s WHERE s.payout_id = p.id);
+    `,
+  },
+  {
+    name: '052_cancel_deadline_days',
+    sql: `
+      -- Tickets can be given up until 11:59 pm Nairobi this many days before the event day; early_notice_hours is unused.
+      ALTER TABLE ticket_rules_settings ADD COLUMN IF NOT EXISTS cancel_deadline_days INT NOT NULL DEFAULT 3;
+      ALTER TABLE ticket_rules_settings ALTER COLUMN terms_version SET DEFAULT '2026-11';
+      -- Only moves the original version on, so a version an admin sets later is never overwritten.
+      UPDATE ticket_rules_settings SET terms_version = '2026-11' WHERE id = 1 AND terms_version = '2026-10';
+    `,
+  },
+  {
+    name: '053_captain_photos',
+    sql: `
+      -- Shown to members when they choose a captain.
+      ALTER TABLE captains ADD COLUMN IF NOT EXISTS photo_url TEXT;
+    `,
+  },
 ]
 
 export async function runMigrations() {

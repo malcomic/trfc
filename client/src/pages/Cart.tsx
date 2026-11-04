@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom'
 import { useCart, cartLineKey, cartLinePrice, cartLineMaxQuantity } from '../store/cartStore'
 import { cartItemNeedsOptions, formatSelectedOptions } from '../utils/productOptions'
-import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, Tag, Zap, AlertCircle } from 'lucide-react'
+import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, Tag, Zap, AlertCircle, Truck } from 'lucide-react'
 import { getGrandTotal } from '../utils/shipping'
+import { DELIVERY_RULE } from '../api/orders'
 import { loadFlashAccess, formatTimeLeft } from '../utils/flashAccess'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 
@@ -198,13 +199,18 @@ export default function Cart() {
                     Total ({totalQuantity} item{totalQuantity !== 1 ? 's' : ''})
                   </p>
                   <p className="font-barlow-condensed text-xs tracking-tighter text-fog light:text-fog-light">
-                    Taxes included
+                    Taxes and delivery included
                   </p>
                 </div>
                 <p className="font-bebas text-4xl text-accent light:text-accent-light leading-none tracking-wider">
                   KES {grandTotal.toLocaleString()}
                 </p>
               </div>
+            </div>
+
+            <div className="border-t border-white/5 light:border-black/8 px-6 py-4 flex items-start gap-2.5">
+              <Truck size={16} className="text-accent light:text-accent-light flex-shrink-0 mt-0.5" aria-hidden="true" />
+              <p className="m-0 text-xs text-fog light:text-fog-light leading-relaxed">{DELIVERY_RULE}</p>
             </div>
 
             {/* Promo code */}

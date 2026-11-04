@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
-import { createOrder, getDeliveryDatePreview, formatDeliveryDate, CLOTHING_DELIVERY_RULE } from '../api/orders'
+import {
+  createOrder,
+  getDeliveryDatePreview,
+  formatDeliveryDate,
+  formatDeliveryDateShort,
+  DELIVERY_RULE,
+} from '../api/orders'
 import { initiateSTKPush } from '../api/payments'
 import { useCart, cartLineKey, cartLinePrice } from '../store/cartStore'
 import type { CartItem } from '../types'
@@ -39,23 +45,21 @@ export default function Checkout() {
   const grandTotal = getGrandTotal(items.reduce((sum, item) => sum + cartLinePrice(item) * item.quantity, 0))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [clothingDelivery, setClothingDelivery] = useState<string | null>(null)
-  const productIdsKey = items.map((item) => String(item.product.id)).sort().join(',')
+  const [deliveryDate, setDeliveryDate] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!productIdsKey) return
     let cancelled = false
-    getDeliveryDatePreview(productIdsKey.split(','))
+    getDeliveryDatePreview()
       .then((preview) => {
-        if (!cancelled) setClothingDelivery(preview.has_clothing ? preview.delivery_date : null)
+        if (!cancelled) setDeliveryDate(preview.delivery_date)
       })
       .catch(() => {
-        if (!cancelled) setClothingDelivery(null)
+        if (!cancelled) setDeliveryDate(null)
       })
     return () => {
       cancelled = true
     }
-  }, [productIdsKey])
+  }, [])
   const [flashRejected, setFlashRejected] = useState(false)
   const hasFlashItems = items.some((item) => item.flashSaleId)
 
@@ -304,16 +308,12 @@ export default function Checkout() {
                   <p className="font-barlow-condensed font-bold letter-spacing-widest text-transform-uppercase text-info-blue mb-1">
                     Delivery
                   </p>
-                  {clothingDelivery ? (
-                    <>
-                      <p className="text-chalk light:text-chalk-light font-bold">
-                        Clothing arrives on {formatDeliveryDate(clothingDelivery)}.
-                      </p>
-                      <p className="text-chalk/70 light:text-chalk-light/70 mt-1">{CLOTHING_DELIVERY_RULE}</p>
-                    </>
-                  ) : (
-                    <p className="text-chalk/70 light:text-chalk-light/70">Delivered within 2-3 business days after payment confirmation.</p>
+                  {deliveryDate && (
+                    <p className="text-chalk light:text-chalk-light font-bold">
+                      Your order arrives on {formatDeliveryDate(deliveryDate)}.
+                    </p>
                   )}
+                  <p className={`text-chalk/70 light:text-chalk-light/70 ${deliveryDate ? 'mt-1' : ''}`}>{DELIVERY_RULE}</p>
                 </div>
               </div>
 
@@ -384,7 +384,7 @@ export default function Checkout() {
                   <div className="flex justify-between">
                     <span>⏱️ Delivery</span>
                     <span className="font-bold text-chalk light:text-chalk-light">
-                      {clothingDelivery ? formatDeliveryDate(clothingDelivery).split(',').slice(0, 2).join(',') : '2-3 days'}
+                      {deliveryDate ? formatDeliveryDateShort(deliveryDate) : 'Wednesday'}
                     </span>
                   </div>
                   <div className="flex justify-between">

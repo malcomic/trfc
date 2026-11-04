@@ -12,7 +12,7 @@ export interface Region {
   /** Zone referral code; every referral and commission belongs to the zone. */
   referral_code: string
   commission_rate: number
-  /** Captain who receives the zone's payouts. */
+  /** The zone's main contact; also receives any leftover shillings when a payout is split. */
   lead_captain_id: string | null
   lead_captain_name: string | null
   lead_captain_phone: string | null

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { getProductById } from '../api/products'
 import { useCart } from '../store/cartStore'
-import { AlertCircle, Loader, ShoppingCart, ArrowLeft } from 'lucide-react'
+import { AlertCircle, Loader, ShoppingCart, ArrowLeft, Truck } from 'lucide-react'
+import { DELIVERY_RULE } from '../api/orders'
 import { Product, ProductSelection } from '../types'
 import ProductOptionsPicker from '../components/ProductOptionsPicker'
 import {
@@ -140,6 +141,10 @@ export default function ProductDetail() {
                   <ShoppingCart size={18} />
                   {added ? 'Added to Cart!' : selectionComplete ? 'Add to Cart' : 'Choose your options'}
                 </button>
+                <p className="mt-4 flex items-start gap-2 text-xs text-fog light:text-fog-light leading-relaxed">
+                  <Truck size={14} className="text-accent light:text-accent-light flex-shrink-0 mt-0.5" aria-hidden="true" />
+                  {DELIVERY_RULE}
+                </p>
               </>
             )}
           </div>

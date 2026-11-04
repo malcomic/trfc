@@ -21,7 +21,8 @@ const lineUsed = (l: SettlementLine) => l.usedTickets ?? l.used_tickets ?? 0
 
 /**
  * Captains' share of an event's profit: pct% of (used-ticket revenue − costs), divided by every used ticket,
- * times each zone's used referral tickets. Approving adds the shares as approved zone commissions for payout.
+ * times each zone's used referral tickets. Approving adds the shares as approved zone commissions for payout,
+ * split equally between each zone's active captains.
  */
 export default function EventSettlementPanel({ eventId, onClose }: { eventId: string; onClose: () => void }) {
   const [view, setView] = useState<EventSettlementView | null>(null)
@@ -61,7 +62,22 @@ export default function EventSettlementPanel({ eventId, onClose }: { eventId: st
   }
 
   const approve = () => {
-    if (!window.confirm("Approve the captains' share? Each zone's share is added to its commissions and paid to its lead captain.")) return
+    if (
+      view &&
+      view.costs.length === 0 &&
+      !window.confirm(
+        `No costs recorded. Gross profit will equal all ticket earnings (${kes(view.preview?.revenue ?? 0)}) and captains will be paid on that. Approve anyway?`
+      )
+    ) {
+      return
+    }
+    if (
+      !window.confirm(
+        "Approve the captains' share? Each zone's share is added to its commissions and split equally between the zone's active captains."
+      )
+    ) {
+      return
+    }
     run(() => approveEventSettlement(eventId), 'Could not approve the settlement')
   }
 
@@ -132,6 +148,11 @@ export default function EventSettlementPanel({ eventId, onClose }: { eventId: st
               </ul>
             )}
             {!saved && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                Add each cost separately, for example venue, transport, medals, refreshments and photography.
+              </p>
+            )}
+            {!saved && (
               <form onSubmit={addCost} className="flex flex-wrap gap-2 mb-6">
                 <input
                   placeholder="Cost, e.g. Transport"
@@ -193,7 +214,9 @@ export default function EventSettlementPanel({ eventId, onClose }: { eventId: st
                             {lineName(line)}
                             {!saved && (
                               <span className="block text-xs text-gray-500">
-                                {line.leadCaptainName ? `Paid to ${line.leadCaptainName}` : 'No lead captain set'}
+                                {line.captainCount
+                                  ? `Split equally between ${line.captainCount} captain${line.captainCount === 1 ? '' : 's'}`
+                                  : 'No active captains in this zone'}
                               </span>
                             )}
                           </td>
@@ -223,8 +246,8 @@ export default function EventSettlementPanel({ eventId, onClose }: { eventId: st
             {saved ? (
               <p className="text-sm text-green-600 dark:text-green-400">
                 Approved {new Date(saved.approved_at).toLocaleString()}
-                {saved.approved_by_name ? ` by ${saved.approved_by_name}` : ''}. Statements were emailed to lead captains. Pay the zone shares by
-                M-Pesa from Captains → Payouts by {new Date(saved.payout_due).toLocaleDateString()}; admins get a reminder
+                {saved.approved_by_name ? ` by ${saved.approved_by_name}` : ''}. Statements were emailed to every captain in each zone. Pay
+                each captain their equal share by M-Pesa from Captains → Payouts by {new Date(saved.payout_due).toLocaleDateString()}; admins get a reminder
                 if any are still unpaid 5 days after the event.
               </p>
             ) : (

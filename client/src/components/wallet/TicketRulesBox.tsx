@@ -4,7 +4,7 @@ const DEFAULT_RULES: PaymentRules = {
   credit_days: 60,
   deposit_pct: 30,
   deadline_days: 3,
-  early_notice_hours: 24,
+  cancel_deadline_days: 3,
   terms_version: '',
 }
 
@@ -23,8 +23,9 @@ export default function TicketRulesBox({ rules = DEFAULT_RULES, accepted, onChan
       <p className="font-semibold text-chalk light:text-chalk-light text-sm">Ticket rules</p>
       <ul className="list-disc pl-4 space-y-1">
         <li>
-          Can't come? Tell us at least {rules.early_notice_hours} hours before the event and it's recorded as "cancelled
-          early". Later than that, or not showing up, is a "no-show". Either way the ticket price becomes ticket value.
+          Can't come? Give up your ticket from your dashboard by 11:59 pm, {rules.cancel_deadline_days} day
+          {rules.cancel_deadline_days === 1 ? '' : 's'} before the event, and the ticket price becomes ticket value. After that
+          the ticket can't be cancelled, and not showing up is a "no-show" with no ticket value.
         </li>
         <li>
           Ticket value lasts {rules.credit_days} days, counted from the day after the event, until 11:59 pm on the last day.

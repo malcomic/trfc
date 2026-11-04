@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { getOrderById, formatDeliveryDate, CLOTHING_DELIVERY_RULE } from '../api/orders'
+import { getOrderById, formatDeliveryDate, DELIVERY_RULE } from '../api/orders'
 import { pollPaymentStatus } from '../api/payments'
 import { AlertCircle, CheckCircle, Clock } from 'lucide-react'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
@@ -200,11 +200,11 @@ export default function OrderConfirmation() {
           {order.mpesa_receipt && <div className="flex justify-between"><span className="text-fog light:text-fog-light">M-Pesa Receipt</span><span className="font-mono">{order.mpesa_receipt}</span></div>}
           {order.delivery_date && (
             <div className="flex justify-between gap-4">
-              <span className="text-fog light:text-fog-light">Clothing delivery</span>
+              <span className="text-fog light:text-fog-light">Delivery</span>
               <span className="text-right font-bold">{formatDeliveryDate(order.delivery_date)}</span>
             </div>
           )}
-          {order.delivery_date && <p className="text-xs text-fog light:text-fog-light">{CLOTHING_DELIVERY_RULE}</p>}
+          <p className="text-xs text-fog light:text-fog-light">{DELIVERY_RULE}</p>
         </div>
 
         {order.delivery_address && (

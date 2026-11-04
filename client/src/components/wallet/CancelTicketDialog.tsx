@@ -9,7 +9,7 @@ export interface CancellableTicket {
   event_title: string
   payment_status: string
   cancel_credit_amount?: number
-  cancel_notice_status?: 'cancelled_early' | 'no_show' | null
+  cancel_notice_status?: 'cancelled_early' | null
 }
 
 interface CancelTicketDialogProps {
@@ -42,26 +42,17 @@ export default function CancelTicketDialog({ ticket, onClose, onCancelled }: Can
 
   const credit = Number(ticket?.cancel_credit_amount ?? 0)
   const isPlan = ticket?.payment_status === 'reserved'
-  const late = ticket?.cancel_notice_status === 'no_show'
 
   return (
     <Modal isOpen={!!ticket} onClose={submitting ? () => undefined : close} title="Can't make it?">
       {ticket && (
         <div className="space-y-4 text-sm">
           <p className="text-chalk light:text-chalk-light font-semibold">{ticket.event_title}</p>
-          {late ? (
-            <p className="text-fog light:text-fog-light">
-              The event is less than 24 hours away, so this is recorded as a <strong>no-show</strong>. You still get{' '}
-              <strong className="text-chalk light:text-chalk-light">{formatKes(credit)}</strong> of ticket value. It appears
-              the morning after the event and lasts 60 days.
-            </p>
-          ) : (
-            <p className="text-fog light:text-fog-light">
-              Thanks for telling us early. This is recorded as <strong>cancelled early</strong>, and{' '}
-              <strong className="text-chalk light:text-chalk-light">{formatKes(credit)}</strong> becomes ticket value you
-              can use straight away, for 60 days after the event.
-            </p>
-          )}
+          <p className="text-fog light:text-fog-light">
+            Thanks for telling us early. This is recorded as <strong>cancelled early</strong>, and{' '}
+            <strong className="text-chalk light:text-chalk-light">{formatKes(credit)}</strong> becomes ticket value you
+            can use straight away, for 60 days after the event.
+          </p>
           <p className="text-xs text-fog light:text-fog-light">{TICKET_VALUE_NOTE}</p>
           {isPlan && (
             <p className="text-amber-400">

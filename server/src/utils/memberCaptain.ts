@@ -23,6 +23,7 @@ export interface CaptainChoice {
   name: string
   region_id: string
   zone: string
+  photo_url: string | null
 }
 
 export interface CaptainOptions {
@@ -74,7 +75,7 @@ export async function getCaptainOptions(userId: string): Promise<CaptainOptions>
   const state = await loadState(userId)
   if (!state) throw new CaptainChangeError('User not found', 404)
   const captains = await query(
-    `SELECT c.user_id AS id, u.name, r.id AS region_id, r.name AS zone
+    `SELECT c.user_id AS id, u.name, r.id AS region_id, r.name AS zone, c.photo_url
      FROM captains c
      JOIN users u ON u.id = c.user_id
      JOIN regions r ON r.id = c.region_id
@@ -94,6 +95,7 @@ export async function getCaptainOptions(userId: string): Promise<CaptainOptions>
       name: (row.name ?? '').trim().split(/\s+/)[0] || 'Captain',
       region_id: row.region_id,
       zone: row.zone,
+      photo_url: row.photo_url ?? null,
     })),
   }
 }

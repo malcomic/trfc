@@ -156,7 +156,7 @@ export const FIND_COPY = {
     paragraphs: [
       'I picked plans that were too big for me at the time. I did too much, too soon, and I stopped within weeks.',
       'Then I matched what I did to where I really was. I stopped guessing and followed the next step.',
-      '[MEMBER NAME] could barely jog for one minute when [he/she] first came to a Saturday run. [X] weeks later, [he/she] finished a first 5K. It started with picking the right starting point.',
+      'She could barely jog for one minute when she first came to a Saturday run. X weeks later, she finished a first 5K. It started with picking the right starting point.',
     ],
     signoff: '— Coach Maurice',
   },
@@ -165,7 +165,7 @@ export const FIND_COPY = {
     cover: '/images/results-cover.jpg',
     coverAlt: 'Member before and after training with Coach Maurice',
     play: 'Watch her story',
-    caption: '[Member name], [result, e.g. First 5K in 8 weeks]',
+    caption: 'First 5K in 8 weeks',
   },
   quiz: {
     heading: 'Three questions. About 2 minutes.',

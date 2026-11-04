@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { AlertCircle, ArrowRight, Check, ChevronDown, Lock, Mail, MapPin, MessageCircle, Phone, User, Users } from 'lucide-react'
+import { AlertCircle, ArrowRight, Check, Lock, Mail, MapPin, MessageCircle, Phone, User, Users } from 'lucide-react'
 import { registerUser } from '../../api/auth'
 import { getCaptainDirectory, getReferrer, type CaptainDirectoryEntry, type Referrer } from '../../api/captains'
 import { getZones, type Zone } from '../../api/zones'
@@ -19,6 +19,7 @@ import { safeRedirect } from '../../utils/safeRedirect'
 import { PasswordToggle } from '../ui'
 import { SIGNUP_ANCHOR } from './SignupCta'
 import SignupQuestions from './SignupQuestions'
+import CaptainCardPicker from '../captain/CaptainCardPicker'
 
 interface RegisterFormValues {
   name: string
@@ -116,6 +117,7 @@ export default function RegisterForm() {
     handleSubmit,
     watch,
     getValues,
+    setValue,
     formState: { errors },
   } = useForm<RegisterFormValues>({ defaultValues: { captainId: '' } })
   const navigate = useNavigate()
@@ -166,6 +168,7 @@ export default function RegisterForm() {
 
   const phoneValue = watch('phone', '')
   const passwordValue = watch('password', '')
+  const captainIdValue = watch('captainId', '')
   const strength = getPasswordStrength(passwordValue)
   const strengthStyle = strength.cls ? STRENGTH_STYLES[strength.cls] : null
   const toggle = <PasswordToggle visible={showPassword} onToggle={() => setShowPassword((v) => !v)} />
@@ -206,7 +209,10 @@ export default function RegisterForm() {
     terms?.focus({ preventScroll: true })
   }
 
-  const captainChoices = referrer ? (captains ?? []).filter((c) => c.region_id === referrer.region_id) : captains ?? []
+  const answeredZoneId = zones.find((z) => z.slug === answers.zone)?.id
+  const captainChoices = referrer
+    ? (captains ?? []).filter((c) => c.region_id === referrer.region_id)
+    : [...(captains ?? [])].sort((a, b) => Number(b.region_id === answeredZoneId) - Number(a.region_id === answeredZoneId))
   const showCaptainSelect = captainChoices.length > 0
 
   return (
@@ -369,18 +375,23 @@ export default function RegisterForm() {
           )}
 
           {showCaptainSelect && (
-            <Field id="reg-captain" label="Your captain" icon={<Users size={14} />}>
-              <select id="reg-captain" className={`${inputClass} pr-11 appearance-none cursor-pointer`} {...register('captainId')}>
-                <option value="">{referrer ? `Choose your ${referrer.zone} captain` : 'Choose your captain'}</option>
-                {captainChoices.map((captain) => (
-                  <option key={captain.id} value={captain.id}>
-                    {captain.name}, Team {captain.zone}
-                  </option>
-                ))}
-                <option value={NO_CAPTAIN}>I don&apos;t have one yet</option>
-              </select>
-              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-fog light:text-fog-light pointer-events-none" />
-            </Field>
+            <div>
+              <span className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-chalk/60 light:text-chalk-light/60 mb-2 flex items-center gap-2">
+                <Users size={14} aria-hidden="true" /> Your captain
+              </span>
+              <p className="m-0 mb-3 text-sm text-fog light:text-fog-light">
+                {referrer ? `Choose your ${referrer.zone} captain.` : 'Choose your captain.'} You can change later from your
+                dashboard.
+              </p>
+              <CaptainCardPicker
+                captains={captainChoices}
+                value={captainIdValue}
+                onChange={(id) => setValue('captainId', id)}
+                label={referrer ? `Choose your ${referrer.zone} captain` : 'Choose your captain'}
+                showZone={!referrer}
+                noneOption={{ value: NO_CAPTAIN, label: "I don't have one yet" }}
+              />
+            </div>
           )}
 
           <CheckRow id="reg-marketing" checked={marketingOptIn} onChange={setMarketingOptIn}>

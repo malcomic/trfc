@@ -6,6 +6,7 @@ export interface AdminCaptain {
   /** Legacy personal code; links using it credit the captain's zone. */
   referral_code: string
   payout_phone: string | null
+  photo_url: string | null
   status: 'active' | 'suspended'
   created_at: string
   name: string
@@ -40,20 +41,30 @@ export interface AdminCommission {
   customer_phone: string | null
 }
 
+export interface AdminPayoutSplit {
+  captain_id: string
+  name: string | null
+  payout_phone: string | null
+  amount: number
+  mpesa_receipt: string
+}
+
 export interface AdminPayout {
   id: string
   region_id: string
-  captain_id: string | null
   amount: number
-  mpesa_receipt: string | null
   note: string | null
   paid_at: string
   region_name: string
   region_code: string
-  paid_to_name: string | null
-  payout_phone: string | null
   paid_by_name: string | null
   commission_count: number
+  splits: AdminPayoutSplit[]
+}
+
+export interface PayoutPreview {
+  amount: number
+  splits: { captain_id: string; name: string | null; payout_phone: string | null; is_lead: boolean; amount: number }[]
 }
 
 export interface CreateCaptainPayload {
@@ -100,6 +111,11 @@ export const removeCaptain = async (id: string) => {
   return response.data
 }
 
+export const removeCaptainPhoto = async (id: string) => {
+  const response = await api.delete(`/admin/captains/${id}/photo`)
+  return response.data as { photo_url: null }
+}
+
 export const getAdminCommissions = async (filters: CommissionFilters = {}): Promise<AdminCommission[]> => {
   const response = await api.get('/admin/captain-commissions', { params: compact(filters) })
   return response.data
@@ -125,12 +141,24 @@ export const getAdminPayouts = async (regionId?: string): Promise<AdminPayout[]>
   return response.data
 }
 
+export const previewPayout = async (regionId: string, commissionIds: string[]): Promise<PayoutPreview> => {
+  const response = await api.get('/admin/captain-payouts/preview', {
+    params: { regionId, commissionIds: commissionIds.join(',') },
+  })
+  return response.data
+}
+
 export const createPayout = async (data: {
   regionId: string
   commissionIds: string[]
-  mpesaReceipt: string
+  splits: { captainId: string; mpesaReceipt: string }[]
   note?: string
 }) => {
   const response = await api.post('/admin/captain-payouts', data)
-  return response.data as { id: string; amount: number; paid_at: string }
+  return response.data as {
+    id: string
+    amount: number
+    paid_at: string
+    splits: { captain_id: string; name: string | null; amount: number }[]
+  }
 }

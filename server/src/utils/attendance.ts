@@ -1,8 +1,7 @@
 import type { PoolClient } from 'pg'
 import { getClient, query } from '../config/db.js'
-import { recordCaptainCommission, reverseCaptainCommission } from './captainCommissions.js'
 import { closePlanToCredit } from './installments.js'
-import { creditAvailableFrom, getTicketRules } from './ticketRules.js'
+import { getTicketRules } from './ticketRules.js'
 import { addCredit, poolDb, voidCredit, withWallet } from './wallet.js'
 
 const HOUR_MS = 60 * 60 * 1000
@@ -98,8 +97,8 @@ export interface ConfirmResult {
 
 /**
  * Applies the scan list after the event: scanned tickets are "attended"; paid tickets that were not
- * scanned are no-shows and their value becomes ticket credit (shown the morning after the event).
- * Safe to run more than once; only tickets without an attendance status are processed.
+ * scanned are no-shows and get no ticket credit (members can only get credit by cancelling before the
+ * cancel deadline). Safe to run more than once; only tickets without an attendance status are processed.
  */
 export async function confirmScanList(eventId: string, actorId: string | null, now = new Date()): Promise<ConfirmResult> {
   const eventResult = await query(
@@ -125,44 +124,11 @@ export async function confirmScanList(eventId: string, actorId: string | null, n
     [eventId]
   )
 
-  const missing = await query(
-    `SELECT t.id, t.user_id, t.email, t.referral_region_id, COALESCE(t.unit_price, ett.price, 0)::float AS price
-     FROM tickets t LEFT JOIN event_ticket_types ett ON ett.id = t.ticket_type_id
-     WHERE t.event_id = $1 AND t.payment_status = 'paid' AND t.checked_in_at IS NULL AND t.attendance_status IS NULL`,
+  const noShows = await query(
+    `UPDATE tickets SET attendance_status = 'no_show'
+     WHERE event_id = $1 AND payment_status = 'paid' AND checked_in_at IS NULL AND attendance_status IS NULL`,
     [eventId]
   )
-  const availableFrom = new Date(Math.max(now.getTime(), creditAvailableFrom(event.event_day).getTime()))
-  let credited = 0
-  for (const ticket of missing.rows) {
-    const owner = await ticketOwner(poolDb, ticket)
-    const marked = async (db: Queryable) => {
-      const updated = await db.query(
-        `UPDATE tickets SET attendance_status = 'no_show' WHERE id = $1 AND attendance_status IS NULL RETURNING id`,
-        [ticket.id]
-      )
-      return (updated.rowCount ?? 0) > 0
-    }
-    if (owner && ticket.price > 0) {
-      const added = await withWallet(owner, async (client) => {
-        if (!(await marked(client))) return false
-        await addCredit(client, owner, {
-          amount: ticket.price,
-          reason: 'no_show',
-          eventDay: event.event_day,
-          availableFrom,
-          sourceTicketId: ticket.id,
-          sourceEventId: eventId,
-          regionId: ticket.referral_region_id,
-          note: `No-show: ${event.title}`,
-        })
-        return true
-      })
-      if (added) credited++
-    } else {
-      await marked(poolDb)
-    }
-    await reverseCaptainCommission('ticket', ticket.id)
-  }
 
   await query(
     `UPDATE events SET scan_list_confirmed_at = COALESCE(scan_list_confirmed_at, $2),
@@ -170,10 +136,10 @@ export async function confirmScanList(eventId: string, actorId: string | null, n
      WHERE id = $1`,
     [eventId, now, actorId]
   )
-  return { attended: attended.rowCount ?? 0, noShows: missing.rows.length, credited }
+  return { attended: attended.rowCount ?? 0, noShows: noShows.rowCount ?? 0, credited: 0 }
 }
 
-/** The member came but didn't scan: mark them present and take back the unused no-show credit. */
+/** The member came but didn't scan: mark them present and take back any unused no-show credit from before no-shows stopped earning credit. */
 export async function markPresent(ticketId: string, actor: Actor, now = new Date()) {
   const rules = await getTicketRules()
   const found = await query(
@@ -214,7 +180,6 @@ export async function markPresent(ticketId: string, actor: Actor, now = new Date
   }
   const ownerId: string | undefined = credit.rows[0]?.user_id
   const voided = ownerId ? await withWallet(ownerId, apply) : await apply(poolDb)
-  await recordCaptainCommission('ticket', ticketId, { reinstate: true })
   return { voided }
 }
 
@@ -299,12 +264,11 @@ export async function cancelEventByTrfc(eventId: string, reason: string, actorId
       await cancel(poolDb)
       withoutAccount++
     }
-    await reverseCaptainCommission('ticket', ticket.id)
   }
   return { plansClosed: plans.rows.length, ticketsCredited: credited, guestTickets: withoutAccount }
 }
 
-/** Confirms scan lists nobody confirmed, the morning after the event, so no-show credit appears on time. */
+/** Confirms scan lists nobody confirmed, the morning after the event, so attendance is recorded on time. */
 export async function autoConfirmScanLists(now = new Date()): Promise<number> {
   const due = await query(
     `SELECT e.id FROM events e CROSS JOIN ticket_rules_settings s

@@ -174,7 +174,7 @@ describe('createOrder flash zone check', () => {
   function mockOrderClient(inZone: boolean) {
     const client = {
       query: vi.fn(async (sql: string) => {
-        if (sql.includes('FROM products p LEFT JOIN product_categories')) {
+        if (sql.includes('SELECT p.id, p.price, p.stock')) {
           return { rows: [{ id: PRODUCT_ID, price: 2000, stock: 10, is_active: true, name: 'Jersey', distance_options: [] }] }
         }
         if (sql.includes('FROM product_variants')) return { rows: [] }

@@ -131,7 +131,7 @@ describe('guest commerce', () => {
         ZONE_ID,
         'open',
         null,
-        '2026-10',
+        '2026-11',
       ]
     )
     expect(res.status).toHaveBeenCalledWith(201)

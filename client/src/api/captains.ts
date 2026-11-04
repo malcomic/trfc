@@ -15,6 +15,7 @@ export interface CaptainDirectoryEntry {
   name: string
   region_id: string
   zone: string
+  photo_url: string | null
 }
 
 export interface CaptainTeamMember {
@@ -41,11 +42,17 @@ export interface CaptainStats {
   pending_amount: number
   approved_amount: number
   paid_amount: number
+  /** Active captains sharing the zone's payouts equally. */
+  active_captains: number
+  /** Total paid to this captain from zone payouts. */
+  my_paid_amount: number
 }
 
 export interface CaptainProfile {
   user_id: string
   payout_phone: string | null
+  /** Shown to members when they choose a captain. */
+  photo_url: string | null
   status: 'active' | 'suspended'
   created_at: string
   name: string
@@ -90,12 +97,15 @@ export interface CaptainCommissionPage {
 
 export interface CaptainPayout {
   id: string
+  /** The zone's total for this payout. */
   amount: number
-  mpesa_receipt: string | null
   note: string | null
   paid_at: string
-  paid_to_name: string | null
   commission_count: number
+  captain_count: number
+  /** This captain's share; null if they were not a captain of the zone when it was paid. */
+  my_amount: number | null
+  my_receipt: string | null
 }
 
 export const SOURCE_LABELS: Record<CommissionSourceType, string> = {
@@ -145,5 +155,19 @@ export const getMyReferralQr = async (origin: string): Promise<{ link: string; d
 
 export const getMyPayouts = async (): Promise<CaptainPayout[]> => {
   const response = await api.get('/captains/me/payouts')
+  return response.data
+}
+
+export const uploadMyCaptainPhoto = async (file: File): Promise<{ photo_url: string }> => {
+  const formData = new FormData()
+  formData.append('photo', file)
+  const response = await api.put('/captains/me/photo', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return response.data
+}
+
+export const removeMyCaptainPhoto = async (): Promise<{ photo_url: null }> => {
+  const response = await api.delete('/captains/me/photo')
   return response.data
 }

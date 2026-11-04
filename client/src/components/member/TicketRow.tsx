@@ -8,10 +8,18 @@ import StatusBadge from './StatusBadge'
 
 const ATTENDANCE_BADGES: Record<string, string> = {
   attended: 'Attended',
-  no_show: 'No-show · now ticket credit',
+  no_show: 'No-show',
   cancelled_early: 'Cancelled early · now ticket credit',
   excused: 'Cancelled by TRFC · now ticket credit',
 }
+
+export const formatCancelDeadline = (iso: string) =>
+  `${new Date(iso).toLocaleDateString('en-KE', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'Africa/Nairobi',
+  })}, 11:59 pm`
 
 export function isUpcoming(ticket: MemberTicket) {
   if (!ticket.event_date) return false
@@ -42,6 +50,11 @@ export default function TicketRow({ ticket, plan, onCancel, onViewPlan }: Ticket
           {ticket.location ? ` · ${ticket.location}` : ''}
           {ticket.zone_name ? ` · Zone: ${ticket.zone_name}` : ''}
         </p>
+        {showCancelInfo && ticket.can_cancel && ticket.cancel_deadline && (
+          <p className="text-xs text-fog light:text-fog-light mt-1">
+            You can give up this ticket until {formatCancelDeadline(ticket.cancel_deadline)}
+          </p>
+        )}
         {showCancelInfo && !ticket.can_cancel && ticket.cancel_blocked_reason && (
           <p className="text-xs text-fog light:text-fog-light mt-1">{ticket.cancel_blocked_reason}</p>
         )}

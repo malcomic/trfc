@@ -21,11 +21,20 @@ beforeEach(() => {
 })
 
 /**
- * Thika hike: 10 used tickets worth KSh 10,000, KSh 5,000 costs. The Thika zone (lead: Jane) referred 3 used
- * tickets, Juja (lead: Otieno) 2 and Ruiru, which has no lead captain, 1.
+ * Thika hike: 10 used tickets worth KSh 10,000, KSh 5,000 costs. The Thika zone (captains Jane, the lead, and
+ * Amina) referred 3 used tickets, Juja (captain Otieno) 2 and Ruiru, which has no active captains, 1.
  */
+const ZONE_CAPTAINS: Record<string, { user_id: string; name: string; email: string; phone: string; is_lead: boolean }[]> = {
+  'zone-thika': [
+    { user_id: 'cap-1', name: 'Jane', email: 'cap-1@example.com', phone: '254700000001', is_lead: true },
+    { user_id: 'cap-3', name: 'Amina', email: 'cap-3@example.com', phone: '254700000003', is_lead: false },
+  ],
+  'zone-juja': [{ user_id: 'cap-2', name: 'Otieno', email: 'cap-2@example.com', phone: '254700000002', is_lead: true }],
+  'zone-ruiru': [],
+}
+
 function settlementDb(opts: { alreadySettled?: boolean } = {}) {
-  vi.mocked(query).mockImplementation((async (sql: string) => {
+  vi.mocked(query).mockImplementation((async (sql: string, params: any[] = []) => {
     if (sql.includes('FROM events WHERE id = $1')) {
       return { rows: [{ id: 'ev-1', title: 'Thika Hike', cancelled_at: null, starts_at: EVENT_START }] }
     }
@@ -35,12 +44,13 @@ function settlementDb(opts: { alreadySettled?: boolean } = {}) {
       expect(sql).toContain('own.user_id = t.user_id AND own.region_id = r.id')
       return {
         rows: [
-          { region_id: 'zone-thika', region_name: 'Thika', lead_captain_id: 'cap-1', lead_captain_name: 'Jane', used_tickets: 3 },
-          { region_id: 'zone-juja', region_name: 'Juja', lead_captain_id: 'cap-2', lead_captain_name: 'Otieno', used_tickets: 2 },
-          { region_id: 'zone-ruiru', region_name: 'Ruiru', lead_captain_id: null, lead_captain_name: null, used_tickets: 1 },
+          { region_id: 'zone-thika', region_name: 'Thika', captain_count: 2, used_tickets: 3 },
+          { region_id: 'zone-juja', region_name: 'Juja', captain_count: 1, used_tickets: 2 },
+          { region_id: 'zone-ruiru', region_name: 'Ruiru', captain_count: 0, used_tickets: 1 },
         ],
       }
     }
+    if (sql.includes('ORDER BY is_lead DESC')) return { rows: ZONE_CAPTAINS[params[0]] ?? [] }
     return { rows: [] }
   }) as any)
 
@@ -50,9 +60,6 @@ function settlementDb(opts: { alreadySettled?: boolean } = {}) {
     calls.push([sql, params])
     if (sql.includes('INSERT INTO event_settlements')) return { rows: opts.alreadySettled ? [] : [{ event_id: 'ev-1' }] }
     if (sql.includes('INSERT INTO event_settlement_lines')) return { rows: [{ id: `line-${++line}` }] }
-    if (sql.includes('SELECT name, email FROM users')) {
-      return { rows: [{ name: params[0] === 'cap-1' ? 'Jane' : 'Otieno', email: `${params[0]}@example.com` }] }
-    }
     return { rows: [] }
   })
   vi.mocked(getClient).mockResolvedValue({ query: clientQuery, release: vi.fn() } as any)
@@ -60,7 +67,7 @@ function settlementDb(opts: { alreadySettled?: boolean } = {}) {
 }
 
 describe('approveSettlement', () => {
-  it("saves the split per zone, adds each zone's share as an approved commission and emails the lead captains", async () => {
+  it("saves the split per zone, adds each zone's share as an approved commission and emails every zone captain", async () => {
     const { calls } = settlementDb()
 
     const breakdown = await approveSettlement('ev-1', 'admin-1')
@@ -80,11 +87,12 @@ describe('approveSettlement', () => {
       ['zone-ruiru', 'line-3', 100],
     ])
     expect(calls.some(([sql]) => sql === 'COMMIT')).toBe(true)
-    // Ruiru has no lead captain, so only two statements go out.
-    expect(sendEmail).toHaveBeenCalledTimes(2)
-    const mail = vi.mocked(sendEmail).mock.calls[0][0] as { to: string; text: string }
-    expect(mail.to).toBe('cap-1@example.com')
-    expect(mail.text).toContain('Thika zone')
+    // Thika's two captains and Juja's one get statements; Ruiru has no active captains.
+    const mails = vi.mocked(sendEmail).mock.calls.map(([m]) => m as { to: string; text: string })
+    expect(mails.map((m) => m.to)).toEqual(['cap-1@example.com', 'cap-3@example.com', 'cap-2@example.com'])
+    expect(mails[0].text).toContain('Thika zone')
+    expect(mails[0].text).toContain("shared equally by the zone's 2 captains, so your share is about KSh 150")
+    expect(mails[2].text).not.toContain('shared equally')
   })
 
   it('refuses an event that is already settled and saves nothing', async () => {
@@ -114,8 +122,8 @@ describe('remindUnpaidSettlements', () => {
       if (sql.includes("cc.status = 'approved'") && sql.includes('zone_name')) {
         return {
           rows: [
-            { zone_name: 'Thika', lead_captain_name: 'Jane', amount: 300 },
-            { zone_name: 'Ruiru', lead_captain_name: null, amount: 100 },
+            { zone_name: 'Thika', captain_count: 2, amount: 300 },
+            { zone_name: 'Ruiru', captain_count: 0, amount: 100 },
           ],
         }
       }
@@ -130,8 +138,8 @@ describe('remindUnpaidSettlements', () => {
     expect(sendEmail).toHaveBeenCalledTimes(2)
     const mail = vi.mocked(sendEmail).mock.calls[0][0] as { subject: string; text: string }
     expect(mail.subject).toBe('Captain payouts due: Thika Hike')
-    expect(mail.text).toContain('Thika (lead captain Jane): KSh 300')
-    expect(mail.text).toContain('Ruiru (no lead captain set): KSh 100')
+    expect(mail.text).toContain('Thika (split equally by 2 captains): KSh 300')
+    expect(mail.text).toContain('Ruiru (no active captains): KSh 100')
     expect(mail.text).toContain('10 October 2026')
   })
 

@@ -31,7 +31,8 @@ export default function MemberOverview() {
   const [searchParams] = useSearchParams()
   const location = useLocation()
   const navigate = useNavigate()
-  const { data, loading, error, tickets, wallet, ticketValue, payable, openPayEvents, isMember } = useMemberDashboard()
+  const { data, loading, error, tickets, wallet, ticketValue, payable, openPayEvents, isMember, cancelTicket } =
+    useMemberDashboard()
   const [events, setEvents] = useState<Event[] | null>(null)
   const [welcomeVideo, setWelcomeVideo] = useState<PageVideo | null>(null)
   const [openVideo, setOpenVideo] = useState<PageVideo | null>(null)
@@ -141,7 +142,7 @@ export default function MemberOverview() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <ProgramProgressCard programId={data.program?.id ?? null} />
-            <TicketsSummaryCard tickets={upcomingTickets} />
+            <TicketsSummaryCard tickets={upcomingTickets} onCancel={cancelTicket} />
             <ComingUpList events={events} bookedEventIds={bookedEventIds} />
           </div>
           <div className="space-y-6">

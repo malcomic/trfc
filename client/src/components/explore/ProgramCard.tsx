@@ -16,13 +16,13 @@ export default function ProgramCard({
 
   return (
     <article className="flex flex-col min-w-0 rounded-2xl overflow-hidden border border-white/10 light:border-black/10 bg-ink light:bg-white">
-      <div className="relative min-h-[200px] bg-[#2A2A2A] flex items-center justify-center text-center p-5 text-base text-[#E6E6E6]">
+      <div className="relative aspect-video bg-smoke light:bg-smoke-light flex items-center justify-center text-center p-5 text-base text-[#E6E6E6] light:text-[#444444]">
         {photoUrl ? (
           <img
             src={photoUrl}
             alt={photoAlt || program.name}
             loading="lazy"
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-contain"
           />
         ) : (
           <div>[Photo: {program.card.photoLabel}]</div>

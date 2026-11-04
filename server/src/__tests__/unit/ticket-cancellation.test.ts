@@ -23,10 +23,11 @@ import { clearTicketRulesCache } from '../../utils/ticketRules.js'
 
 const USER_ID = '22222222-2222-4222-8222-222222222222'
 const TICKET_ID = '11111111-1111-4111-8111-111111111111'
-const rules = { earlyNoticeHours: 24 }
+const rules = { cancelDeadlineDays: 3 }
 
-// Hike on Sat 12 Dec 2026, 6:00 am Nairobi.
+// Hike on Sat 12 Dec 2026, 6:00 am Nairobi; it can be given up until Wed 9 Dec, 11:59:59 pm Nairobi.
 const STARTS_AT = '2026-12-12T03:00:00.000Z'
+const DEADLINE = '2026-12-09T20:59:59.000Z'
 
 const ticket = (overrides: Partial<CancellableTicket> = {}): CancellableTicket => ({
   id: TICKET_ID,
@@ -53,14 +54,34 @@ beforeEach(() => {
 })
 
 describe('evaluateCancellation', () => {
-  it('is "cancelled early" with 24 hours or more notice', () => {
-    const result = evaluateCancellation(ticket(), USER_ID, rules, new Date('2026-12-11T03:00:00.000Z'))
-    expect(result).toEqual({ allowed: true, creditAmount: 1497, cancelsPlan: false, noticeStatus: 'cancelled_early' })
+  it('is allowed until 11:59 pm Nairobi on the Wednesday, 3 days before a Saturday event', () => {
+    const result = evaluateCancellation(ticket(), USER_ID, rules, new Date('2026-12-09T20:59:00.000Z'))
+    expect(result).toEqual({
+      allowed: true,
+      creditAmount: 1497,
+      cancelsPlan: false,
+      noticeStatus: 'cancelled_early',
+      deadline: new Date(DEADLINE),
+    })
+    expect(evaluateCancellation(ticket(), USER_ID, rules, new Date(DEADLINE))).toMatchObject({ allowed: true })
   })
 
-  it('is a no-show with less notice, but still gives the same credit', () => {
-    const result = evaluateCancellation(ticket(), USER_ID, rules, new Date('2026-12-11T03:00:01.000Z'))
-    expect(result).toMatchObject({ allowed: true, creditAmount: 1497, noticeStatus: 'no_show' })
+  it('is blocked after the deadline, and says when the deadline was', () => {
+    const result = evaluateCancellation(ticket(), USER_ID, rules, new Date('2026-12-09T21:00:00.000Z'))
+    expect(result.allowed).toBe(false)
+    expect(result.reason).toMatch(/^You could give up this ticket until .*9 Dec.*, 11:59 pm$/)
+    expect(evaluateCancellation(ticket(), USER_ID, rules, new Date('2026-12-11T20:00:00Z'))).toMatchObject({
+      allowed: false,
+    })
+  })
+
+  it('uses the configured number of days', () => {
+    const now = new Date('2026-12-10T12:00:00Z')
+    expect(evaluateCancellation(ticket(), USER_ID, rules, now).allowed).toBe(false)
+    expect(evaluateCancellation(ticket(), USER_ID, { cancelDeadlineDays: 1 }, now)).toMatchObject({
+      allowed: true,
+      deadline: new Date('2026-12-11T20:59:59.000Z'),
+    })
   })
 
   it('cannot be done once the event starts, after check-in, or for an event TRFC cancelled', () => {
@@ -74,14 +95,17 @@ describe('evaluateCancellation', () => {
     ).toMatchObject({ allowed: false, reason: 'This event was cancelled by TRFC' })
   })
 
-  it("cancels the whole plan for a reserved ticket, credits what was paid, and is always early", () => {
-    const result = evaluateCancellation(
-      ticket({ payment_status: 'reserved', plan_id: 'plan-1', plan_status: 'active', plan_amount_paid: 450 }),
-      USER_ID,
-      rules,
-      new Date('2026-12-08T00:00:00Z')
-    )
-    expect(result).toEqual({ allowed: true, creditAmount: 450, cancelsPlan: true, noticeStatus: 'cancelled_early' })
+  it('cancels the whole plan for a reserved ticket, credits what was paid, and follows the same deadline', () => {
+    const reserved = ticket({ payment_status: 'reserved', plan_id: 'plan-1', plan_status: 'active', plan_amount_paid: 450 })
+    const result = evaluateCancellation(reserved, USER_ID, rules, new Date('2026-12-08T00:00:00Z'))
+    expect(result).toEqual({
+      allowed: true,
+      creditAmount: 450,
+      cancelsPlan: true,
+      noticeStatus: 'cancelled_early',
+      deadline: new Date(DEADLINE),
+    })
+    expect(evaluateCancellation(reserved, USER_ID, rules, new Date('2026-12-09T21:00:00Z')).allowed).toBe(false)
   })
 
   it("refuses someone else's ticket", () => {
@@ -108,7 +132,7 @@ function setupDb(row: CancellableTicket) {
 }
 
 describe('cancelTicket', () => {
-  it('early notice: credit usable now, valid 60 days after the event; commission reversed and waitlist told', async () => {
+  it('early notice: credit usable now, valid 60 days after the event; waitlist told, no ticket commission to reverse', async () => {
     vi.useFakeTimers({ now: new Date('2026-12-01T09:00:00Z'), toFake: ['Date'] })
     try {
       const calls = setupDb(ticket())
@@ -122,23 +146,19 @@ describe('cancelTicket', () => {
       const credit = calls.find(([sql]) => sql.includes('INSERT INTO ticket_credits'))!
       expect(credit[1][4]).toBe('cancelled_early')
       expect(credit[1][5]).toBe('zone-1')
-      expect(reverseCaptainCommission).toHaveBeenCalledWith('ticket', TICKET_ID)
+      expect(reverseCaptainCommission).not.toHaveBeenCalled()
       expect(notifyWaitlist).toHaveBeenCalledWith('ev-1')
     } finally {
       vi.useRealTimers()
     }
   })
 
-  it('late notice: recorded as a no-show, credit appears the morning after the event', async () => {
+  it('after the deadline: refused and no credit is created', async () => {
     vi.useFakeTimers({ now: new Date('2026-12-11T20:00:00Z'), toFake: ['Date'] })
     try {
       const calls = setupDb(ticket())
-      const result = await cancelTicket(TICKET_ID, USER_ID)
-
-      expect(result.noticeStatus).toBe('no_show')
-      expect(result.availableFrom?.toISOString()).toBe('2026-12-13T03:00:00.000Z')
-      const credit = calls.find(([sql]) => sql.includes('INSERT INTO ticket_credits'))!
-      expect(credit[1][4]).toBe('no_show')
+      await expect(cancelTicket(TICKET_ID, USER_ID)).rejects.toBeInstanceOf(CancellationError)
+      expect(calls.some(([sql]) => sql.includes('INSERT INTO ticket_credits'))).toBe(false)
     } finally {
       vi.useRealTimers()
     }

@@ -7,6 +7,7 @@ vi.mock('../../config/db.js', () => ({
 
 import {
   DEFAULT_TICKET_RULES,
+  cancelDeadline,
   creditAvailableFrom,
   creditExpiry,
   daysLeft,
@@ -75,6 +76,32 @@ describe('parseTicketRules', () => {
     expect(parseTicketRules({ creditDays: 90 }, DEFAULT_TICKET_RULES)).toMatchObject({ creditDays: 90 })
     expect(parseTicketRules({ creditDays: 0 }, DEFAULT_TICKET_RULES)).toEqual(expect.stringContaining('creditDays'))
     expect(parseTicketRules({ depositPct: 120 }, DEFAULT_TICKET_RULES)).toEqual(expect.stringContaining('depositPct'))
+  })
+
+  it('cancel deadline defaults to 3 days and accepts 0 to 30', () => {
+    expect(DEFAULT_TICKET_RULES.cancelDeadlineDays).toBe(3)
+    expect(parseTicketRules({ cancelDeadlineDays: 0 }, DEFAULT_TICKET_RULES)).toMatchObject({ cancelDeadlineDays: 0 })
+    expect(parseTicketRules({ cancelDeadlineDays: 30 }, DEFAULT_TICKET_RULES)).toMatchObject({ cancelDeadlineDays: 30 })
+    expect(parseTicketRules({ cancelDeadlineDays: 31 }, DEFAULT_TICKET_RULES)).toEqual(
+      expect.stringContaining('cancelDeadlineDays')
+    )
+    expect(parseTicketRules({ cancelDeadlineDays: 1.5 }, DEFAULT_TICKET_RULES)).toEqual(
+      expect.stringContaining('cancelDeadlineDays')
+    )
+  })
+})
+
+describe('cancel deadline', () => {
+  it('a Saturday event can be given up until Wednesday 11:59 pm Nairobi with 3 days', () => {
+    expect(cancelDeadline('2026-12-12', 3).toISOString()).toBe('2026-12-09T20:59:59.000Z')
+  })
+
+  it('0 days means until 11:59 pm on the event day', () => {
+    expect(cancelDeadline('2026-12-12', 0).toISOString()).toBe('2026-12-12T20:59:59.000Z')
+  })
+
+  it('crosses month boundaries', () => {
+    expect(cancelDeadline('2027-01-02', 3).toISOString()).toBe('2026-12-30T20:59:59.000Z')
   })
 })
 
@@ -167,8 +194,7 @@ describe("zones' share of event profit", () => {
   ].map(([name, used]) => ({
     regionId: String(name),
     regionName: String(name),
-    leadCaptainId: `lead-${name}`,
-    leadCaptainName: `Lead ${name}`,
+    captainCount: 2,
     usedTickets: Number(used),
   }))
 

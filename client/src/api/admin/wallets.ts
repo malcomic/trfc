@@ -46,7 +46,7 @@ export interface AdminPaymentPlan {
 
 export interface TicketRules {
   creditDays: number
-  earlyNoticeHours: number
+  cancelDeadlineDays: number
   depositPct: number
   depositRoundTo: number
   defaultDeadlineDays: number

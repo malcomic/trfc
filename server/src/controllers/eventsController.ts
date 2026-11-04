@@ -90,7 +90,7 @@ export const getEventById = async (req: Request, res: Response) => {
         credit_days: rules.creditDays,
         deposit_pct: rules.depositPct,
         deadline_days: event.payment_deadline_days ?? rules.defaultDeadlineDays,
-        early_notice_hours: rules.earlyNoticeHours,
+        cancel_deadline_days: rules.cancelDeadlineDays,
         terms_version: rules.termsVersion,
       },
     })

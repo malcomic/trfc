@@ -122,7 +122,7 @@ describe('createOrder size and distance validation', () => {
     inserted = []
     const client = {
       query: vi.fn(async (sql: string, params: any[] = []) => {
-        if (sql.includes('FROM products p LEFT JOIN product_categories')) return { rows: products[params[0]] ? [products[params[0]]] : [] }
+        if (sql.includes('SELECT p.id, p.price, p.stock')) return { rows: products[params[0]] ? [products[params[0]]] : [] }
         if (sql.includes('FROM product_variants')) return { rows: variants[params[0]] ?? [] }
         if (sql.includes('INSERT INTO orders')) return { rows: [{ id: 'order-1' }] }
         if (sql.includes('INSERT INTO order_items')) inserted.push(params)
@@ -181,5 +181,14 @@ describe('createOrder size and distance validation', () => {
       ['order-1', 'tee', 1, 1000, null, 'v-m', 'M', '10K'],
       ['order-1', 'bottle', 2, 500, null, null, null, null],
     ])
+  })
+
+  it('gives every order a Wednesday delivery date, whatever it contains', async () => {
+    const client = mockClient()
+    await run([{ product_id: 'bottle', quantity: 1, unit_price: 500 }], 500)
+    const orderInsert = client.query.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO orders'))!
+    const deliveryDate = orderInsert[1]![6] as string
+    expect(deliveryDate).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(new Date(`${deliveryDate}T12:00:00Z`).getUTCDay()).toBe(3)
   })
 })

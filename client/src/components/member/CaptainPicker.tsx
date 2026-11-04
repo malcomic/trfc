@@ -2,8 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { AlertCircle, Loader } from 'lucide-react'
 import { getMyCaptainOptions, updateMyCaptain, type CaptainOptions, type MemberCaptainSummary } from '../../api/users'
 import { DASHBOARD_COPY } from '../../content/dashboard'
-import { inputField } from '../../utils/themeClasses'
 import { formatDate } from '../../utils/captainDisplay'
+import CaptainCardPicker from '../captain/CaptainCardPicker'
 import CtaButton from '../programs/CtaButton'
 import { dashLink, dashMuted } from './dashboard/ui'
 
@@ -85,22 +85,14 @@ export default function CaptainPicker({ startOpen = false, onChanged }: CaptainP
         <p className={dashMuted}>{copy.noCaptains}</p>
       ) : (
         <div>
-          <label htmlFor="captain-picker" className={labelClass}>
-            {copy.pickerLabel}
-          </label>
-          <select
-            id="captain-picker"
+          <p className={labelClass}>{copy.pickerLabel}</p>
+          <CaptainCardPicker
+            captains={choices}
             value={selected}
-            onChange={(e) => setSelected(e.target.value)}
-            className={`w-full px-4 py-2.5 clip-angled-sm ${inputField}`}
-          >
-            <option value="">{copy.pickerPlaceholder}</option>
-            {choices.map((c) => (
-              <option key={c.id} value={c.id}>
-                {options.zone ? c.name : `${c.name} (${c.zone})`}
-              </option>
-            ))}
-          </select>
+            onChange={setSelected}
+            label={copy.pickerLabel}
+            showZone={!options.zone}
+          />
         </div>
       )}
       {error && (

@@ -1,14 +1,14 @@
 import { query } from '../config/db.js'
 import { toKenyanMsisdn } from './phone.js'
 
-export type CommissionSourceType = 'order' | 'medal' | 'equipment_hire' | 'ticket'
+/** Tickets earn no referral commission; zones are paid for tickets through the event profit share. */
+export type CommissionSourceType = 'order' | 'medal' | 'equipment_hire'
 export type CommissionMatchMethod = 'account' | 'email' | 'phone'
 
 const SOURCE_TABLES: Record<CommissionSourceType, string> = {
   order: 'orders',
   medal: 'medal_purchases',
   equipment_hire: 'equipment_hire',
-  ticket: 'tickets',
 }
 
 const PURCHASE_QUERIES: Record<CommissionSourceType, string> = {
@@ -26,13 +26,6 @@ const PURCHASE_QUERIES: Record<CommissionSourceType, string> = {
     SELECT h.user_id, NULL AS email, h.phone, COALESCE(h.total_cost, 0) AS base_amount
     FROM equipment_hire h
     WHERE h.id = $1 AND h.payment_status = 'paid'`,
-  ticket: `
-    SELECT t.user_id, t.email, t.phone, t.referral_region_id,
-           COALESCE(t.unit_price, ett.price, e.price, 0) AS base_amount
-    FROM tickets t
-    JOIN events e ON e.id = t.event_id
-    LEFT JOIN event_ticket_types ett ON ett.id = t.ticket_type_id
-    WHERE t.id = $1 AND t.payment_status = 'paid' AND t.commission_eligible`,
 }
 
 interface PurchaseRow {
@@ -40,7 +33,6 @@ interface PurchaseRow {
   email: string | null
   phone: string | null
   base_amount: string | number
-  referral_region_id?: string | null
 }
 
 export function isCommissionSourceType(value: unknown): value is CommissionSourceType {
@@ -108,17 +100,17 @@ export async function recordCaptainCommission(
        SELECT r.id, u.id, $2, s.id, $3, $4::numeric, r.commission_rate,
               ROUND($4::numeric * r.commission_rate, 2)
        FROM users u
-       JOIN regions r ON r.id = COALESCE($6::uuid, u.referred_by_region_id)
+       JOIN regions r ON r.id = u.referred_by_region_id
        JOIN ${table} s ON s.id = $5
        WHERE u.id = $1
          AND r.is_active = true
          AND NOT EXISTS (
            SELECT 1 FROM captains own WHERE own.user_id = u.id AND own.region_id = r.id AND own.status = 'active'
          )
-         AND ($6::uuid IS NOT NULL OR s.created_at >= COALESCE(u.referred_at, '-infinity'::timestamptz))
+         AND s.created_at >= COALESCE(u.referred_at, '-infinity'::timestamptz)
        ${onConflict}
        RETURNING id`,
-      [customer.userId, sourceType, customer.method, baseAmount, sourceId, purchase.referral_region_id ?? null]
+      [customer.userId, sourceType, customer.method, baseAmount, sourceId]
     )
     return inserted.rows.length > 0
   } catch (error) {

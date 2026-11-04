@@ -93,6 +93,8 @@ export const DASHBOARD_COPY = {
     empty: 'You have no tickets yet. Book an event from the calendar, and your ticket shows here with its QR code.',
     calendar: 'See the calendar',
     all: 'See all tickets',
+    cancel: "I can't make it",
+    cancelUntil: (deadline: string) => `Can be given up until ${deadline}`,
   },
   comingUp: {
     heading: 'Coming up',
@@ -148,8 +150,7 @@ export const DASHBOARD_COPY = {
     noneHeading: 'You do not have a captain yet',
     noneBody: 'Your captain is your guide in the community. Choose one below and they will say hello.',
     changeCaptain: 'Change captain',
-    pickerLabel: 'Captain',
-    pickerPlaceholder: 'Select a captain',
+    pickerLabel: 'Choose your captain',
     zoneOnly: (zone: string) => `You can pick any captain in the ${zone} zone.`,
     anyZone: 'Pick a captain near you. Their zone becomes your zone.',
     limitNote: (days: number) => `You can change your captain once every ${days} days.`,

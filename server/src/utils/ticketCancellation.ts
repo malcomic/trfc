@@ -1,13 +1,10 @@
 import { query } from '../config/db.js'
-import { reverseCaptainCommission } from './captainCommissions.js'
 import { sendEmail } from './emailService.js'
 import { buildTicketCancelledEmailHTML, buildTicketCancelledEmailText } from './emailTemplates.js'
 import { closePlanToCredit } from './installments.js'
-import { creditAvailableFrom, getTicketRules, type TicketRules } from './ticketRules.js'
+import { cancelDeadline, formatNairobiDate, getTicketRules, type TicketRules } from './ticketRules.js'
 import { addCredit, roundKes, withWallet } from './wallet.js'
 import { notifyWaitlist } from './waitlist.js'
-
-const HOUR_MS = 60 * 60 * 1000
 
 export class CancellationError extends Error {
   constructor(message: string, public status = 400) {
@@ -16,7 +13,8 @@ export class CancellationError extends Error {
   }
 }
 
-export type NoticeStatus = 'cancelled_early' | 'no_show'
+/** Giving up a ticket is only possible before the cancel deadline, so it is always "cancelled early". */
+export type NoticeStatus = 'cancelled_early'
 
 export interface CancellableTicket {
   id: string
@@ -43,27 +41,29 @@ export interface CancellationEligibility {
   creditAmount: number
   /** Cancelling a reserved ticket cancels every ticket on its payment plan. */
   cancelsPlan: boolean
-  /** At least `earlyNoticeHours` before the event is "Cancelled early"; later is recorded as a no-show. */
   noticeStatus: NoticeStatus
+  /** Last moment the ticket can be given up: 11:59 pm Nairobi, `cancelDeadlineDays` before the event day. */
+  deadline: Date
 }
 
 export function evaluateCancellation(
   ticket: CancellableTicket,
   userId: string,
-  rules: Pick<TicketRules, 'earlyNoticeHours'>,
+  rules: Pick<TicketRules, 'cancelDeadlineDays'>,
   now: Date = new Date()
 ): CancellationEligibility {
   const onActivePlan = ticket.payment_status === 'reserved' && ticket.plan_status === 'active'
   const creditAmount = roundKes(onActivePlan ? Number(ticket.plan_amount_paid ?? 0) : Number(ticket.price ?? 0))
   const startsAt = new Date(ticket.event_starts_at).getTime()
-  const noticeStatus: NoticeStatus =
-    onActivePlan || startsAt - now.getTime() >= rules.earlyNoticeHours * HOUR_MS ? 'cancelled_early' : 'no_show'
+  const deadline = cancelDeadline(ticket.event_day, rules.cancelDeadlineDays)
+  const noticeStatus: NoticeStatus = 'cancelled_early'
   const blocked = (reason: string): CancellationEligibility => ({
     allowed: false,
     reason,
     creditAmount,
     cancelsPlan: onActivePlan,
     noticeStatus,
+    deadline,
   })
 
   if (ticket.user_id !== userId) return blocked('Ticket not found')
@@ -75,8 +75,11 @@ export function evaluateCancellation(
   }
   if (ticket.checked_in_at) return blocked('This ticket has already been used')
   if (now.getTime() >= startsAt) return blocked('The event has already started')
+  if (now.getTime() > deadline.getTime()) {
+    return blocked(`You could give up this ticket until ${formatNairobiDate(deadline)}, 11:59 pm`)
+  }
 
-  return { allowed: true, creditAmount, cancelsPlan: onActivePlan, noticeStatus }
+  return { allowed: true, creditAmount, cancelsPlan: onActivePlan, noticeStatus, deadline }
 }
 
 const TICKET_SELECT = `
@@ -90,7 +93,10 @@ const TICKET_SELECT = `
   LEFT JOIN event_ticket_types ett ON ett.id = t.ticket_type_id
   LEFT JOIN ticket_payment_plans p ON p.purchase_batch_id = t.purchase_batch_id`
 
-/** Adds `can_cancel`, `cancel_blocked_reason`, `cancel_credit_amount` and `cancel_notice_status` to the member's tickets. */
+/**
+ * Adds `can_cancel`, `cancel_blocked_reason`, `cancel_credit_amount`, `cancel_notice_status` and
+ * `cancel_deadline` to the member's tickets.
+ */
 export async function annotateCancellation<T extends { id: string }>(userId: string, tickets: T[]) {
   if (tickets.length === 0) return []
   const [details, rules] = await Promise.all([query(`${TICKET_SELECT} WHERE t.user_id = $1`, [userId]), getTicketRules()])
@@ -99,7 +105,14 @@ export async function annotateCancellation<T extends { id: string }>(userId: str
   return tickets.map((ticket) => {
     const detail = byId.get(ticket.id)
     if (!detail) {
-      return { ...ticket, can_cancel: false, cancel_blocked_reason: null, cancel_credit_amount: 0, cancel_notice_status: null }
+      return {
+        ...ticket,
+        can_cancel: false,
+        cancel_blocked_reason: null,
+        cancel_credit_amount: 0,
+        cancel_notice_status: null,
+        cancel_deadline: null,
+      }
     }
     const result = evaluateCancellation(detail, userId, rules, now)
     return {
@@ -108,6 +121,7 @@ export async function annotateCancellation<T extends { id: string }>(userId: str
       cancel_blocked_reason: result.allowed ? null : result.reason ?? null,
       cancel_credit_amount: result.creditAmount,
       cancel_notice_status: result.noticeStatus,
+      cancel_deadline: result.deadline.toISOString(),
     }
   })
 }
@@ -123,9 +137,8 @@ export interface CancelTicketResult {
 }
 
 /**
- * The member tells us they can't come. The ticket value becomes ticket credit either way: with early
- * notice it is usable straight away; with late notice it is recorded as a no-show and the credit appears
- * the morning after the event. Runs under the wallet lock.
+ * The member tells us, before the cancel deadline, that they can't come. The ticket value becomes ticket
+ * credit usable straight away. Runs under the wallet lock.
  */
 export async function cancelTicket(ticketId: string, userId: string): Promise<CancelTicketResult> {
   const rules = await getTicketRules()
@@ -167,16 +180,15 @@ export async function cancelTicket(ticketId: string, userId: string): Promise<Ca
        WHERE id = $1`,
       [ticketId, eligibility.noticeStatus]
     )
-    const early = eligibility.noticeStatus === 'cancelled_early'
     const credit = await addCredit(client, userId, {
       amount: eligibility.creditAmount,
       reason: eligibility.noticeStatus,
       eventDay: ticket.event_day,
-      availableFrom: early ? now : creditAvailableFrom(ticket.event_day),
+      availableFrom: now,
       sourceTicketId: ticketId,
       sourceEventId: ticket.event_id,
       regionId: ticket.referral_region_id,
-      note: early ? `Cancelled early: ${ticket.event_title}` : `Late notice: ${ticket.event_title}`,
+      note: `Cancelled early: ${ticket.event_title}`,
     })
     await recordCancellation(client, userId, ticketId, credit?.amount ?? 0)
     return {
@@ -190,9 +202,6 @@ export async function cancelTicket(ticketId: string, userId: string): Promise<Ca
     }
   })
 
-  for (const id of result.cancelledTicketIds) {
-    await reverseCaptainCommission('ticket', id)
-  }
   void notifyWaitlist(result.eventId)
   void sendCancellationEmail(userId, result)
   return result
@@ -221,7 +230,6 @@ async function sendCancellationEmail(userId: string, result: CancelTicketResult)
       eventTitle: result.eventTitle,
       ticketCount: result.cancelledTicketIds.length,
       credited: result.credited,
-      early: result.noticeStatus === 'cancelled_early',
       availableFrom: result.availableFrom,
       expiresAt: result.expiresAt,
     }

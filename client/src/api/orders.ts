@@ -28,24 +28,26 @@ export const updateOrderStatus = async (id: string, data: { payment_status: stri
   return response.data;
 };
 
-/** Wednesday delivery date for clothing in the given products, or null when none of them is clothing. */
-export const getDeliveryDatePreview = async (
-  productIds: string[]
-): Promise<{ has_clothing: boolean; delivery_date: string | null }> => {
-  const response = await api.get('/orders/delivery-date', { params: { productIds: productIds.join(',') } });
+/** The Wednesday an order placed now would be delivered. */
+export const getDeliveryDatePreview = async (): Promise<{ delivery_date: string }> => {
+  const response = await api.get('/orders/delivery-date');
   return response.data;
 };
 
-export const CLOTHING_DELIVERY_RULE =
-  'Clothing is delivered on Wednesdays only. Orders placed by 8 pm on Tuesday (Nairobi time) arrive that Wednesday; later orders arrive the following Wednesday.';
+export const DELIVERY_RULE =
+  'We deliver on Wednesdays. Orders placed by 8 pm on Tuesday (Nairobi time) arrive that Wednesday; later orders arrive the following Wednesday. Delivery is free.';
+
+export const DELIVERY_RULE_SHORT = 'Free delivery every Wednesday. Order by 8 pm Tuesday to get it this week.';
+
+const dayToLocalDate = (day: string) => {
+  const [y, m, d] = day.slice(0, 10).split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
 
 /** "2026-11-04" → "Wednesday, 4 November 2026" without shifting the calendar day across time zones. */
-export const formatDeliveryDate = (day: string) => {
-  const [y, m, d] = day.slice(0, 10).split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString('en-KE', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-};
+export const formatDeliveryDate = (day: string) =>
+  dayToLocalDate(day).toLocaleDateString('en-KE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+/** "2026-11-04" → "Wed, 4 Nov". */
+export const formatDeliveryDateShort = (day: string) =>
+  dayToLocalDate(day).toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' });

@@ -3,7 +3,8 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { getProductCategories } from '../api/productCategories'
 import { getMedals, type MedalTier } from '../api/medals'
 import { ProductCategory } from '../types'
-import { AlertCircle, Award, ChevronRight } from 'lucide-react'
+import { AlertCircle, Award, ChevronRight, Truck } from 'lucide-react'
+import { DELIVERY_RULE_SHORT } from '../api/orders'
 import { pageRoot } from '../utils/themeClasses'
 import { getSafeImageUrl } from '../utils/imageUrl'
 
@@ -124,6 +125,9 @@ export default function Shop() {
             </h1>
             <p className="text-fog light:text-fog-light mt-4 max-w-md leading-relaxed">
               Represent the movement with official TRFC merchandise and challenge medals. Pick a category to start shopping.
+            </p>
+            <p className="mt-3 inline-flex items-center gap-2 font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light">
+              <Truck size={14} aria-hidden="true" /> {DELIVERY_RULE_SHORT}
             </p>
           </div>
           <div className="pb-2">

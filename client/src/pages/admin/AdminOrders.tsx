@@ -5,6 +5,7 @@ import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/AdminMobileCard'
 import AdminResponsiveData from '../../components/admin/AdminResponsiveData'
 import { formatSelectedOptions } from '../../utils/productOptions'
+import { formatDeliveryDate } from '../../api/orders'
 
 interface OrderItem {
   product_id: string
@@ -25,6 +26,8 @@ interface Order {
   phone?: string
   email?: string | null
   delivery_address?: string
+  /** 'YYYY-MM-DD' Wednesday the order is delivered. */
+  delivery_date?: string | null
   created_at: string
   items?: OrderItem[]
 }
@@ -261,6 +264,12 @@ export default function AdminOrders() {
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">Delivery Address</p>
                     <p className="font-semibold">{selectedOrder.delivery_address || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Delivery Date</p>
+                    <p className="font-semibold">
+                      {selectedOrder.delivery_date ? formatDeliveryDate(selectedOrder.delivery_date) : '—'}
+                    </p>
                   </div>
                 </div>
               </div>

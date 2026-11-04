@@ -225,7 +225,11 @@ function LedgerPanel({ userId, onClose, onChanged }: { userId: string; onClose: 
 
 const RULE_FIELDS: { key: keyof TicketRules; label: string; hint: string; step?: string }[] = [
   { key: 'creditDays', label: 'Ticket value lasts (days)', hint: 'Counted from the day after the event' },
-  { key: 'earlyNoticeHours', label: 'Early notice (hours)', hint: 'At least this long before = "Cancelled early"' },
+  {
+    key: 'cancelDeadlineDays',
+    label: 'Cancel deadline (days before event)',
+    hint: 'Members can give up a ticket until 11:59 pm this many days before the event day',
+  },
   { key: 'depositPct', label: 'First payment (%)', hint: 'When paying in parts', step: '0.01' },
   { key: 'depositRoundTo', label: 'Round first payment up to (KES)', hint: 'E.g. 10 → 449.10 becomes 450' },
   { key: 'defaultDeadlineDays', label: 'Payment deadline (days before)', hint: 'Events can override this' },

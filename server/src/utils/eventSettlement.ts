@@ -7,6 +7,7 @@ import {
   buildSettlementPayoutReminderEmailText,
 } from './emailTemplates.js'
 import { getTicketRules } from './ticketRules.js'
+import { loadZoneCaptains, splitEqually } from './payoutSplit.js'
 
 export class SettlementError extends Error {
   constructor(message: string, public status = 400) {
@@ -17,8 +18,8 @@ export class SettlementError extends Error {
 export interface ZoneUsage {
   regionId: string
   regionName: string
-  leadCaptainId: string | null
-  leadCaptainName: string | null
+  /** Active captains who will share the zone's amount equally. */
+  captainCount: number
   usedTickets: number
 }
 
@@ -93,7 +94,8 @@ export async function computeSettlement(eventId: string): Promise<SettlementBrea
     eventId,
   ])
   const zones = await query(
-    `SELECT r.id AS region_id, r.name AS region_name, r.lead_captain_id, lu.name AS lead_captain_name,
+    `SELECT r.id AS region_id, r.name AS region_name,
+            (SELECT COUNT(*)::int FROM captains zc WHERE zc.region_id = r.id AND zc.status = 'active') AS captain_count,
             COUNT(*)::int AS used_tickets
      FROM tickets t
      LEFT JOIN users u ON u.id = t.user_id
@@ -101,13 +103,12 @@ export async function computeSettlement(eventId: string): Promise<SettlementBrea
        t.referral_region_id,
        CASE WHEN t.created_at >= COALESCE(u.referred_at, '-infinity'::timestamptz) THEN u.referred_by_region_id END
      )
-     LEFT JOIN users lu ON lu.id = r.lead_captain_id
      WHERE t.event_id = $1 AND t.payment_status = 'paid' AND t.checked_in_at IS NOT NULL
        AND NOT EXISTS (
          SELECT 1 FROM captains own
          WHERE own.user_id = t.user_id AND own.region_id = r.id AND own.status = 'active'
        )
-     GROUP BY r.id, lu.id
+     GROUP BY r.id
      ORDER BY used_tickets DESC, r.name`,
     [eventId]
   )
@@ -119,8 +120,7 @@ export async function computeSettlement(eventId: string): Promise<SettlementBrea
     zones: zones.rows.map((row) => ({
       regionId: row.region_id,
       regionName: row.region_name,
-      leadCaptainId: row.lead_captain_id ?? null,
-      leadCaptainName: row.lead_captain_name ?? null,
+      captainCount: Number(row.captain_count ?? 0),
       usedTickets: row.used_tickets,
     })),
   })
@@ -204,7 +204,6 @@ export async function approveSettlement(eventId: string, userId: string) {
 
   const breakdown = await computeSettlement(eventId)
   const client = await getClient()
-  const statements: { name: string | null; email: string | null; line: SettlementLine }[] = []
   try {
     await client.query('BEGIN')
     const inserted = await client.query(
@@ -241,10 +240,6 @@ export async function approveSettlement(eventId: string, userId: string) {
           [line.regionId, saved.rows[0].id, line.amount]
         )
       }
-      if (line.leadCaptainId) {
-        const lead = await client.query('SELECT name, email FROM users WHERE id = $1', [line.leadCaptainId])
-        statements.push({ name: lead.rows[0]?.name ?? null, email: lead.rows[0]?.email ?? null, line })
-      }
     }
     await client.query('COMMIT')
   } catch (error) {
@@ -254,24 +249,36 @@ export async function approveSettlement(eventId: string, userId: string) {
     client.release()
   }
 
-  for (const statement of statements) {
-    if (!statement.email) continue
+  for (const line of breakdown.lines) {
+    await sendZoneStatements(line, event.title, breakdown.perTicketValue).catch((error) =>
+      console.error('Failed to send captain statements:', error)
+    )
+  }
+  return breakdown
+}
+
+/** Emails every active captain of the zone the zone's amount and their estimated equal share. */
+async function sendZoneStatements(line: SettlementLine, eventTitle: string, perTicketValue: number) {
+  const captains = await loadZoneCaptains(line.regionId)
+  for (const share of splitEqually(line.amount, captains)) {
+    if (!share.email) continue
     const data = {
-      name: statement.name,
-      zoneName: statement.line.regionName,
-      eventTitle: event.title,
-      usedTickets: statement.line.usedTickets,
-      perTicketValue: breakdown.perTicketValue,
-      amount: statement.line.amount,
+      name: share.name,
+      zoneName: line.regionName,
+      eventTitle,
+      usedTickets: line.usedTickets,
+      perTicketValue,
+      amount: line.amount,
+      captainCount: captains.length,
+      yourShare: share.amount,
     }
     sendEmail({
-      to: statement.email,
-      subject: `Your profit share: ${event.title}`,
+      to: share.email,
+      subject: `Your profit share: ${eventTitle}`,
       html: buildCaptainStatementEmailHTML(data),
       text: buildCaptainStatementEmailText(data),
     }).catch((error) => console.error('Failed to send captain statement:', error))
   }
-  return breakdown
 }
 
 /** Captains' shares are paid within this many days of the event. */
@@ -309,11 +316,11 @@ export async function remindUnpaidSettlements(now = new Date()): Promise<number>
     )
     if (claimed.rows.length === 0) continue
     const unpaid = await query(
-      `SELECT r.name AS zone_name, lu.name AS lead_captain_name, cc.amount::float AS amount
+      `SELECT r.name AS zone_name, cc.amount::float AS amount,
+              (SELECT COUNT(*)::int FROM captains zc WHERE zc.region_id = r.id AND zc.status = 'active') AS captain_count
        FROM event_settlement_lines l
        JOIN captain_commissions cc ON cc.source_type = 'event_share' AND cc.source_id = l.id
        JOIN regions r ON r.id = l.region_id
-       LEFT JOIN users lu ON lu.id = r.lead_captain_id
        WHERE l.event_id = $1 AND cc.status = 'approved'
        ORDER BY cc.amount DESC`,
       [row.event_id]
@@ -321,9 +328,9 @@ export async function remindUnpaidSettlements(now = new Date()): Promise<number>
     const data = {
       eventTitle: row.title,
       dueDate: new Date(new Date(row.starts_at).getTime() + PAYOUT_DAYS * DAY_MS),
-      unpaid: unpaid.rows.map((r: { zone_name: string; lead_captain_name: string | null; amount: number }) => ({
+      unpaid: unpaid.rows.map((r: { zone_name: string; captain_count: number; amount: number }) => ({
         zoneName: r.zone_name,
-        leadCaptainName: r.lead_captain_name,
+        captainCount: Number(r.captain_count ?? 0),
         amount: Number(r.amount),
       })),
     }

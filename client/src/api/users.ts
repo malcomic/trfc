@@ -60,6 +60,7 @@ export interface MemberCaptainSummary {
   name: string;
   zone: string;
   whatsapp: string | null;
+  photo_url: string | null;
 }
 
 export interface MemberMembership {
@@ -102,6 +103,7 @@ export interface CaptainChoice {
   name: string;
   region_id: string;
   zone: string;
+  photo_url: string | null;
 }
 
 export interface CaptainOptions {

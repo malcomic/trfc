@@ -370,6 +370,18 @@ CREATE TABLE IF NOT EXISTS captain_commissions (
   UNIQUE (source_type, source_id)
 );
 
+-- A zone payout is shared equally by the zone's active captains, each paid by their own M-Pesa transfer.
+CREATE TABLE IF NOT EXISTS captain_payout_splits (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  payout_id UUID NOT NULL REFERENCES captain_payouts(id) ON DELETE CASCADE,
+  captain_id UUID NOT NULL REFERENCES captains(user_id),
+  amount NUMERIC(10,2) NOT NULL,
+  payout_phone VARCHAR(15),
+  mpesa_receipt VARCHAR(100) NOT NULL,
+  UNIQUE (payout_id, captain_id)
+);
+CREATE INDEX IF NOT EXISTS idx_captain_payout_splits_captain ON captain_payout_splits(captain_id);
+
 CREATE INDEX IF NOT EXISTS idx_captains_region ON captains(region_id);
 CREATE INDEX IF NOT EXISTS idx_users_referred_by ON users(referred_by_captain_id);
 CREATE INDEX IF NOT EXISTS idx_captain_payouts_captain ON captain_payouts(captain_id);
