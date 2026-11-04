@@ -4,6 +4,7 @@ import { sendEmail } from './emailService.js'
 import {
   buildMedalBatchEmailHTML,
   buildMedalBatchEmailText,
+  buildGuestSignupUrl,
 } from './emailTemplates.js'
 import {
   generateMedalQRCodeBuffer,
@@ -119,6 +120,9 @@ export async function sendMedalBatchEmail(reference: string): Promise<void> {
       mpesaReceipt,
       purchases: purchasesMeta,
       confirmationUrl,
+      signupUrl: rows[0].user_id
+        ? null
+        : buildGuestSignupUrl({ name: rows[0].buyer_name, email, phone: rows[0].phone }),
     }
 
     const subject =

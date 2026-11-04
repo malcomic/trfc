@@ -4,6 +4,7 @@ import { sendEmail } from './emailService.js'
 import {
   buildOrderConfirmationEmailHTML,
   buildOrderConfirmationEmailText,
+  buildGuestSignupUrl,
 } from './emailTemplates.js'
 
 async function releaseClaim(orderId: string) {
@@ -23,7 +24,7 @@ export async function sendOrderConfirmationEmail(orderId: string): Promise<void>
       `UPDATE orders SET confirmation_email_sent_at = NOW()
        WHERE id = $1 AND payment_status = 'paid' AND email IS NOT NULL
          AND confirmation_email_sent_at IS NULL
-       RETURNING id, email, phone, delivery_address, total_amount, mpesa_receipt, created_at,
+       RETURNING id, user_id, email, phone, delivery_address, total_amount, mpesa_receipt, created_at,
                  to_char(delivery_date, 'YYYY-MM-DD') AS delivery_date`,
       [orderId]
     )
@@ -65,6 +66,7 @@ export async function sendOrderConfirmationEmail(orderId: string): Promise<void>
       deliveryAddress: order.delivery_address as string | null,
       deliveryDate: order.delivery_date as string | null,
       confirmationUrl: `${config.frontendUrl}/order-confirmation/${encodeURIComponent(order.id)}`,
+      signupUrl: order.user_id ? null : buildGuestSignupUrl({ email, phone: order.phone }),
     }
 
     const result = await sendEmail({

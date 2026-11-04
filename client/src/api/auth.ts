@@ -12,12 +12,15 @@ export const registerUser = async (data: {
   captainId?: string;
   marketingOptIn?: boolean;
   answers?: Partial<SignupAnswers>;
-}): Promise<AuthTokens & { user: User; answersSaved?: boolean }> => {
+}): Promise<AuthTokens & { user: User; answersSaved?: boolean; linked_purchases?: number }> => {
   const response = await api.post('/auth/register', data);
   return response.data;
 };
 
-export const loginUser = async (data: { email: string; password: string }) => {
+export const loginUser = async (data: {
+  email: string;
+  password: string;
+}): Promise<AuthTokens & { user: User; linked_purchases?: number }> => {
   const response = await api.post('/auth/login', data);
   return response.data;
 };

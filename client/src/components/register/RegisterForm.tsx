@@ -47,6 +47,20 @@ function isValidKenyanPhone(value: string): boolean {
   return PHONE_PATTERN.test(value.replace(/[\s-]/g, ''))
 }
 
+/** Guest buyers arrive with ?name=&email=&phone= from their confirmation page or email. */
+export function readPrefill(params: URLSearchParams): Partial<Pick<RegisterFormValues, 'name' | 'email' | 'phone'>> {
+  const prefill: Partial<Pick<RegisterFormValues, 'name' | 'email' | 'phone'>> = {}
+  for (const key of ['name', 'email', 'phone'] as const) {
+    const value = params.get(key)?.trim().slice(0, 150)
+    if (value) prefill[key] = value
+  }
+  return prefill
+}
+
+function hasPrefill(params: URLSearchParams): boolean {
+  return Object.keys(readPrefill(params)).length > 0
+}
+
 function Field({
   id,
   label,
@@ -112,6 +126,7 @@ function CheckRow({
 }
 
 export default function RegisterForm() {
+  const [searchParams] = useSearchParams()
   const {
     register,
     handleSubmit,
@@ -119,12 +134,17 @@ export default function RegisterForm() {
     getValues,
     setValue,
     formState: { errors },
-  } = useForm<RegisterFormValues>({ defaultValues: { captainId: '' } })
+  } = useForm<RegisterFormValues>({ defaultValues: { captainId: '', ...readPrefill(searchParams) } })
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const { login } = useAuth()
   const redirectTo = safeRedirect(searchParams.get('redirect'), '/dashboard')
-  const loginPath = searchParams.get('redirect') ? `/login?redirect=${encodeURIComponent(redirectTo)}` : '/login'
+  const prefillEmail = searchParams.get('email')?.trim() ?? ''
+  const loginParams = new URLSearchParams()
+  if (searchParams.get('redirect')) loginParams.set('redirect', redirectTo)
+  if (prefillEmail) loginParams.set('email', prefillEmail)
+  const loginQuery = loginParams.toString()
+  const loginPath = loginQuery ? `/login?${loginQuery}` : '/login'
+  const isPrefilled = hasPrefill(searchParams)
 
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
@@ -166,6 +186,11 @@ export default function RegisterForm() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!isPrefilled) return
+    document.getElementById(SIGNUP_ANCHOR)?.scrollIntoView({ block: 'start' })
+  }, [isPrefilled])
+
   const phoneValue = watch('phone', '')
   const passwordValue = watch('password', '')
   const captainIdValue = watch('captainId', '')
@@ -193,7 +218,8 @@ export default function RegisterForm() {
       if (response.answersSaved === false) localStorage.setItem(ANSWERS_PENDING_KEY, '1')
       clearReferral()
       login(response.token, response.user, response.refreshToken)
-      navigate(redirectTo)
+      const linked = response.linked_purchases ?? 0
+      navigate(redirectTo, linked > 0 ? { state: { linked } } : undefined)
     } catch (error: any) {
       setErrorMessage(error.response?.data?.error || 'Registration failed. Please try again.')
     } finally {

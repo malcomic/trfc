@@ -16,6 +16,7 @@ import { sendWelcomeEmailOnce } from '../utils/welcomeEmail.js';
 import { findCaptainSummary } from '../utils/captainSummary.js';
 import { hasAnyAnswer, parseAnswers, saveMemberAnswers } from '../utils/memberAnswers.js';
 import { touchLastActive } from '../utils/lastActive.js';
+import { claimGuestPurchasesSafely } from '../utils/claimGuestPurchases.js';
 import {
   consumePasswordResetToken,
   createPasswordResetToken,
@@ -145,13 +146,21 @@ export const register = async (req: Request, res: Response) => {
       answersSaved = false;
     }
 
+    const linkedPurchases = await claimGuestPurchasesSafely(user.id, normalizedEmail, phoneMsisdn);
+
     void sendAccountWelcomeOnce(user.id);
     void sendWelcomeEmailOnce(user.id);
 
     const token = generateAccessToken({ id: user.id, email: user.email, role: user.role });
     const refreshToken = generateRefreshToken({ id: user.id, email: user.email, role: user.role });
 
-    res.status(201).json({ token, refreshToken, user: { ...user, captain }, answersSaved });
+    res.status(201).json({
+      token,
+      refreshToken,
+      user: { ...user, captain },
+      answersSaved,
+      linked_purchases: linkedPurchases,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Registration failed' });
@@ -183,8 +192,14 @@ export const login = async (req: Request, res: Response) => {
     const token = generateAccessToken({ id: user.id, email: user.email, role: user.role });
     const refreshToken = generateRefreshToken({ id: user.id, email: user.email, role: user.role });
     void touchLastActive(user.id);
+    const linkedPurchases = await claimGuestPurchasesSafely(user.id, user.email, user.phone);
 
-    res.json({ token, refreshToken, user: { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role } });
+    res.json({
+      token,
+      refreshToken,
+      user: { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role },
+      linked_purchases: linkedPurchases,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Login failed' });

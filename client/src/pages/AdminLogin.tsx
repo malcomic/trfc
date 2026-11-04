@@ -47,7 +47,7 @@ export default function AdminLogin() {
       setErrorMessage('')
       const response = await loginUser(data)
 
-      if (!STAFF_ROLES.includes(response.user.role)) {
+      if (!STAFF_ROLES.includes(response.user.role as typeof STAFF_ROLES[number])) {
         setErrorMessage('Staff access required. Only admins and scanners can login here.')
         return
       }

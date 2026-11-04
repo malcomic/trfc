@@ -8,6 +8,7 @@ import {
   buildTicketEmailChangedText,
   buildTicketEmailHTML,
   buildTicketEmailText,
+  buildGuestSignupUrl,
 } from './emailTemplates.js'
 import {
   generateQRCodeBase64,
@@ -131,6 +132,9 @@ export async function sendTicketBatchEmail(reference: string): Promise<TicketEma
       tickets: rows.map((t) => ({ ticketId: t.id as string })),
       confirmationUrl,
       flashSalesUrl: await buildFlashSalesUrl(rows[0].id as string),
+      signupUrl: rows[0].user_id
+        ? null
+        : buildGuestSignupUrl({ name: rows[0].attendee_name, email, phone: rows[0].phone }),
     }
 
     const emailResult = await sendEmail({

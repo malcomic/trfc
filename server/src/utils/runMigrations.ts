@@ -1250,6 +1250,15 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       ALTER TABLE captains ADD COLUMN IF NOT EXISTS photo_url TEXT;
     `,
   },
+  {
+    name: '054_guest_claim_indexes',
+    sql: `
+      -- Registration links earlier guest purchases by email and phone.
+      CREATE INDEX IF NOT EXISTS idx_tickets_guest_email ON tickets (LOWER(TRIM(email))) WHERE user_id IS NULL;
+      CREATE INDEX IF NOT EXISTS idx_orders_guest_email ON orders (LOWER(TRIM(email))) WHERE user_id IS NULL;
+      CREATE INDEX IF NOT EXISTS idx_medal_purchases_guest_email ON medal_purchases (LOWER(TRIM(email))) WHERE user_id IS NULL;
+    `,
+  },
 ]
 
 export async function runMigrations() {

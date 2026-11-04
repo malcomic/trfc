@@ -6,6 +6,7 @@ import { AlertCircle, CheckCircle, Clock, Package } from 'lucide-react'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 import { MPESA_PHONE_ERROR, MPESA_PHONE_PLACEHOLDER, toKenyanMsisdn } from '../utils/phone'
 import { trackMetaPurchase } from '../utils/metaPixel'
+import GuestSignupCard from '../components/guest/GuestSignupCard'
 
 export default function HireConfirmation() {
   const { id } = useParams()
@@ -173,6 +174,8 @@ export default function HireConfirmation() {
           )}
           {phone && <p><span className="text-fog light:text-fog-light">Phone: </span>{phone}</p>}
         </div>
+
+        {paymentStatus === 'paid' && !loading && <GuestSignupCard kind="hire" phone={phone} />}
 
         <div className="flex gap-3">
           <button onClick={() => navigate('/equipment')} className="flex-1 bg-cta text-cta-ink py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-cta/90">

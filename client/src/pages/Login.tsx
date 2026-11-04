@@ -9,12 +9,14 @@ import { Logo } from '../components/Logo'
 import { safeRedirect } from '../utils/safeRedirect'
 
 export default function Login() {
-  const { register, handleSubmit, formState: { errors } } = useForm()
+  const [searchParams] = useSearchParams()
+  const { register, handleSubmit, formState: { errors } } = useForm({
+    defaultValues: { email: searchParams.get('email')?.trim() ?? '', password: '' },
+  })
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const { login } = useAuth()
   const passwordWasReset = searchParams.get('reset') === 'success'
 
@@ -37,7 +39,8 @@ export default function Login() {
       setErrorMessage('')
       const response = await loginUser(data)
       login(response.token, response.user, response.refreshToken)
-      navigate(getRedirectPath(response.user.role))
+      const linked = response.linked_purchases ?? 0
+      navigate(getRedirectPath(response.user.role), linked > 0 ? { state: { linked } } : undefined)
     } catch (error: any) {
       console.error('Login failed:', error)
       setErrorMessage(error.response?.data?.error || 'Login failed. Please try again.')

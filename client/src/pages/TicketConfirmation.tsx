@@ -11,6 +11,7 @@ import { saveFlashAccess } from '../utils/flashAccess'
 import { AlertCircle, CheckCircle, Clock, CalendarPlus, ArrowRight } from 'lucide-react'
 import TicketCard from '../components/TicketCard'
 import FlashSaleOffers from '../components/FlashSaleOffers'
+import GuestSignupCard from '../components/guest/GuestSignupCard'
 import { googleCalendarUrl, downloadIcs } from '../utils/calendar'
 import { formatEventDateTime } from '../utils/eventDate'
 import { pageRoot } from '../utils/themeClasses'
@@ -386,6 +387,15 @@ export default function TicketConfirmation() {
             <p className="text-xs text-fog light:text-fog-light font-mono break-all">Ref: {checkoutRequestId}</p>
           )}
         </div>
+
+        {paymentStatus === 'paid' && !loading && (
+          <GuestSignupCard
+            kind="ticket"
+            name={details?.attendee_name}
+            email={details?.email || email}
+            phone={details?.phone || phone}
+          />
+        )}
 
         {paymentStatus === 'paid' && details?.event_date && (
           <div className="flex flex-wrap gap-3 mb-6 print:hidden">

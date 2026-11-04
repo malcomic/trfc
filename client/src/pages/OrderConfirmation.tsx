@@ -8,6 +8,7 @@ import { MPESA_PHONE_ERROR, MPESA_PHONE_PLACEHOLDER, toKenyanMsisdn } from '../u
 import { trackCompletePayment } from '../utils/tiktokPixel'
 import { trackMetaPurchase } from '../utils/metaPixel'
 import { formatSelectedOptions } from '../utils/productOptions'
+import GuestSignupCard from '../components/guest/GuestSignupCard'
 
 interface Order {
   id: string
@@ -237,6 +238,10 @@ export default function OrderConfirmation() {
           <span>Total</span>
           <span>KES {Number(order.total_amount).toLocaleString()}</span>
         </div>
+
+        {paymentStatus === 'paid' && (
+          <GuestSignupCard kind="order" email={confirmationEmail} phone={order.phone || phone} />
+        )}
 
         <div className="flex gap-3">
           <button onClick={() => navigate('/shop')} className="flex-1 bg-cta text-cta-ink py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-cta/90">

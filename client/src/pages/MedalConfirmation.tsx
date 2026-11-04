@@ -10,6 +10,7 @@ import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 import { MPESA_PHONE_ERROR, MPESA_PHONE_PLACEHOLDER, toKenyanMsisdn } from '../utils/phone'
 import MedalDownloadButton from '../components/MedalDownloadButton'
 import MedalResendButton from '../components/MedalResendButton'
+import GuestSignupCard from '../components/guest/GuestSignupCard'
 import { trackMetaPurchase } from '../utils/metaPixel'
 
 interface NavState {
@@ -339,6 +340,15 @@ export default function MedalConfirmation() {
               verify={verify}
             />
           </div>
+        )}
+
+        {paid && (
+          <GuestSignupCard
+            kind="medal"
+            name={details?.buyer_name}
+            email={displayEmail}
+            phone={details?.phone || phone}
+          />
         )}
 
         <div className="flex flex-wrap gap-3">

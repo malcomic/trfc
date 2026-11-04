@@ -153,9 +153,18 @@ export function MemberDashboardProvider({ children }: { children: ReactNode }) {
   }, [loadTickets, loadWallet])
 
   useEffect(() => {
-    const state = location.state as { notice?: string; joined?: string } | null
-    if (!state?.notice && !state?.joined) return
+    const state = location.state as { notice?: string; joined?: string; linked?: number } | null
+    if (!state) return
+    const linked = typeof state.linked === 'number' && state.linked > 0 ? state.linked : 0
+    if (!state.notice && !state.joined && !linked) return
     if (state.notice) notify('error', 'Paying in parts', state.notice)
+    if (linked) {
+      notify(
+        'success',
+        'Purchases added',
+        `We added ${linked} earlier purchase${linked === 1 ? '' : 's'} to your account.`
+      )
+    }
     if (isProgramId(state.joined)) {
       notify('success', "You're in", `${PROGRAMS[state.joined].name} is now in your dashboard.`)
     }

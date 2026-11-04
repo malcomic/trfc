@@ -18,6 +18,8 @@ export interface TicketBatchEmailData {
   tickets: TicketEmailItem[]
   confirmationUrl: string
   flashSalesUrl?: string
+  /** Set only for guest purchases. */
+  signupUrl?: string | null
 }
 
 function escapeHtml(value: string): string {
@@ -26,6 +28,46 @@ function escapeHtml(value: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
+}
+
+/** Register link with the guest's checkout details filled in. */
+export function buildGuestSignupUrl(details: {
+  name?: string | null
+  email?: string | null
+  phone?: string | null
+}): string {
+  const params = new URLSearchParams()
+  for (const key of ['name', 'email', 'phone'] as const) {
+    const value = details[key]?.trim()
+    if (value && !(key === 'name' && value === 'Guest')) params.set(key, value)
+  }
+  params.set('redirect', '/dashboard')
+  return `${config.frontendUrl.replace(/\/$/, '')}/register?${params.toString()}`
+}
+
+function signupSectionHTML(url: string | null | undefined): string {
+  if (!url) return ''
+  return `
+      <div style="background:#0a0a0a;color:#ffffff;border-radius:6px;padding:18px;margin:16px 0 0;text-align:center;">
+        <p style="margin:0 0 4px;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#f59e0b;">Create your free account</p>
+        <p style="margin:0 0 14px;font-size:14px;line-height:1.5;color:#d1d5db;">
+          See all your tickets and orders in one place and check out faster next time.
+          Use the same email and phone and this purchase will appear in your account.
+        </p>
+        <a href="${escapeHtml(url)}"
+           style="display:inline-block;background:#f59e0b;color:#111827;padding:10px 22px;text-decoration:none;border-radius:6px;font-weight:700;font-size:14px;">
+          Create my account
+        </a>
+      </div>`
+}
+
+function signupSectionText(url: string | null | undefined): string {
+  if (!url) return ''
+  return `
+CREATE YOUR FREE ACCOUNT
+See all your tickets and orders in one place. Use the same email and phone and this purchase will appear in your account.
+${url}
+`
 }
 
 /**
@@ -167,6 +209,7 @@ export function buildTicketBatchEmailHTML(data: TicketBatchEmailData): string {
       <p style="text-align:center;font-size:12px;color:#6b7280;margin:0 0 16px;">
         Reopen this page anytime with your payment reference and the email used at checkout.
       </p>
+      ${signupSectionHTML(data.signupUrl)}
       ${data.flashSalesUrl ? `
       <div style="background:#0a0a0a;color:#ffffff;border-radius:6px;padding:18px;margin:8px 0 0;text-align:center;">
         <p style="margin:0 0 4px;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#f59e0b;">Ticket-holder exclusive</p>
@@ -236,7 +279,7 @@ SEE YOU THERE
 ${data.eventTitle} — ${formattedDate} at ${formattedTime}, ${data.eventLocation}
 
 View your tickets: ${data.confirmationUrl}
-${data.flashSalesUrl ? `
+${signupSectionText(data.signupUrl)}${data.flashSalesUrl ? `
 TICKET-HOLDER FLASH DEALS (available for 24 hours)
 ${data.flashSalesUrl}
 ` : ''}
@@ -260,6 +303,8 @@ export interface MedalBatchEmailData {
   mpesaReceipt?: string | null
   purchases: { purchaseId: string; shortCode: string }[]
   confirmationUrl: string
+  /** Set only for guest purchases. */
+  signupUrl?: string | null
 }
 
 export function buildMedalBatchEmailHTML(data: MedalBatchEmailData): string {
@@ -331,6 +376,7 @@ export function buildMedalBatchEmailHTML(data: MedalBatchEmailData): string {
       <p style="text-align:center;font-size:12px;color:#6b7280;margin:0 0 16px;">
         Reopen this page anytime with your payment reference and the email used at checkout.
       </p>
+      ${signupSectionHTML(data.signupUrl)}
     </div>
 
     <div style="background:#f9fafb;padding:20px 24px;text-align:center;font-size:12px;color:#6b7280;border-top:1px solid #e5e7eb;">
@@ -379,7 +425,7 @@ YOUR MEDALS
 ${purchaseLines}
 
 View your medals: ${data.confirmationUrl}
-
+${signupSectionText(data.signupUrl)}
 Support: ${config.contact.email} | ${config.contact.phone}
 Website: ${config.frontendUrl}
 
@@ -415,6 +461,8 @@ export interface OrderEmailData {
   /** 'YYYY-MM-DD' Wednesday the order is delivered. */
   deliveryDate?: string | null
   confirmationUrl: string
+  /** Set only for guest purchases. */
+  signupUrl?: string | null
 }
 
 const DELIVERY_RULE =
@@ -524,6 +572,7 @@ export function buildOrderConfirmationEmailHTML(data: OrderEmailData): string {
       <p style="text-align:center;font-size:12px;color:#6b7280;margin:0 0 16px;">
         You'll be asked for the phone number used at checkout.
       </p>
+      ${signupSectionHTML(data.signupUrl)}
     </div>
 
     <div style="background:#f9fafb;padding:20px 24px;text-align:center;font-size:12px;color:#6b7280;border-top:1px solid #e5e7eb;">
@@ -569,7 +618,7 @@ ${deliveryFee > 0 ? `Delivery: ${formatKes(deliveryFee)}\n` : ''}Total paid: ${f
 PAYMENT & DELIVERY
 ${data.mpesaReceipt ? `M-Pesa receipt: ${data.mpesaReceipt}\n` : ''}${data.phone ? `Phone: ${data.phone}\n` : ''}${data.deliveryAddress ? `Deliver to: ${data.deliveryAddress}\n` : ''}
 View your order: ${data.confirmationUrl}
-
+${signupSectionText(data.signupUrl)}
 Support: ${config.contact.email} | ${config.contact.phone}
 Website: ${config.frontendUrl}
 
