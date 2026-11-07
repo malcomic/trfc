@@ -1,21 +1,24 @@
 import { Request, Response } from 'express'
 import { query } from '../config/db.js'
-import { isHttpsUrl, parseVideoLink } from '../utils/videoLink.js'
+import { isHttpsUrl, isVerticalVideoLink, parseVideoLink } from '../utils/videoLink.js'
 
 export const PAGE_VIDEO_SLOTS = ['find_hero', 'find_results', 'register_hero', 'dashboard_welcome'] as const
 export type PageVideoSlot = (typeof PAGE_VIDEO_SLOTS)[number]
 
-const FIELDS = 'slot, source, provider, video_url, poster_url, updated_at'
+export const PAGE_VIDEO_FIELDS = 'slot, source, provider, video_url, poster_url, orientation, updated_at'
 
 export function isPageVideoSlot(value: unknown): value is PageVideoSlot {
   return typeof value === 'string' && (PAGE_VIDEO_SLOTS as readonly string[]).includes(value)
 }
+
+export type VideoOrientation = 'landscape' | 'portrait'
 
 export interface PageVideoInput {
   source: 'upload' | 'link'
   provider: 'file' | 'youtube' | 'vimeo'
   videoUrl: string
   posterUrl: string | null
+  orientation: VideoOrientation
 }
 
 export function parsePageVideoInput(body: any): PageVideoInput | string {
@@ -30,11 +33,14 @@ export function parsePageVideoInput(body: any): PageVideoInput | string {
   if (source === 'upload' && parsed.provider !== 'file') return 'Uploads must be video files'
   const poster = body?.poster_url
   if (poster != null && poster !== '' && !isHttpsUrl(poster)) return 'The cover image URL must start with https://'
+  const orientation = body?.orientation ?? (isVerticalVideoLink(body.video_url) ? 'portrait' : 'landscape')
+  if (orientation !== 'landscape' && orientation !== 'portrait') return 'Choose landscape or portrait for the video'
   return {
     source,
     provider: parsed.provider,
     videoUrl: String(body.video_url).trim(),
     posterUrl: poster ? String(poster).trim() : null,
+    orientation,
   }
 }
 
@@ -43,7 +49,7 @@ export async function getPageVideos(req: Request, res: Response) {
   try {
     const page = typeof req.query.page === 'string' ? req.query.page : ''
     const slots = PAGE_VIDEO_SLOTS.filter((slot) => !page || slot.startsWith(`${page}_`))
-    const result = await query(`SELECT ${FIELDS} FROM page_videos WHERE slot = ANY($1)`, [slots])
+    const result = await query(`SELECT ${PAGE_VIDEO_FIELDS} FROM page_videos WHERE slot = ANY($1)`, [slots])
     res.json(Object.fromEntries(result.rows.map((row) => [row.slot, row])))
   } catch (error) {
     console.error(error)
@@ -58,13 +64,14 @@ export async function upsertPageVideo(req: Request, res: Response) {
     const input = parsePageVideoInput(req.body)
     if (typeof input === 'string') return res.status(400).json({ error: input })
     const result = await query(
-      `INSERT INTO page_videos (slot, source, provider, video_url, poster_url, updated_at, updated_by)
-       VALUES ($1, $2, $3, $4, $5, NOW(), $6)
+      `INSERT INTO page_videos (slot, source, provider, video_url, poster_url, orientation, updated_at, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
        ON CONFLICT (slot) DO UPDATE SET
          source = EXCLUDED.source, provider = EXCLUDED.provider, video_url = EXCLUDED.video_url,
-         poster_url = EXCLUDED.poster_url, updated_at = NOW(), updated_by = EXCLUDED.updated_by
-       RETURNING ${FIELDS}`,
-      [slot, input.source, input.provider, input.videoUrl, input.posterUrl, req.user!.id]
+         poster_url = EXCLUDED.poster_url, orientation = EXCLUDED.orientation,
+         updated_at = NOW(), updated_by = EXCLUDED.updated_by
+       RETURNING ${PAGE_VIDEO_FIELDS}`,
+      [slot, input.source, input.provider, input.videoUrl, input.posterUrl, input.orientation, req.user!.id]
     )
     res.json(result.rows[0])
   } catch (error) {

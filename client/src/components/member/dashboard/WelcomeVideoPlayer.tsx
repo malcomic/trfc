@@ -7,7 +7,9 @@ import { loadYouTubeIframeApi, type YouTubePlayer } from '../../../utils/youtube
 import { DASHBOARD_COPY } from '../../../content/dashboard'
 
 const copy = DASHBOARD_COPY.welcomeVideo
-const frame = 'relative w-full aspect-video rounded-xl overflow-hidden bg-black'
+const frame = 'relative mx-auto rounded-xl overflow-hidden bg-black'
+/** Share of the viewport height the video may take, so tall videos still fit on screen. */
+const MAX_HEIGHT_DVH = 70
 const soundButton =
   'absolute left-4 bottom-16 z-10 inline-flex items-center gap-2 min-h-[44px] px-5 rounded-full bg-white text-cta-ink font-barlow font-semibold text-[17px] shadow-lg'
 const PROGRESS_POLL_MS = 1000
@@ -18,6 +20,10 @@ interface WelcomeVideoPlayerProps {
   video: Pick<PageVideo, 'video_url' | 'poster_url'>
   /** Called once, when the member has watched enough of an uploaded or YouTube video. */
   onWatched: () => void
+  /** Width divided by height of the frame. Defaults to 16:9. */
+  aspect?: number
+  /** Called with the real width / height ratio once an uploaded video's metadata loads. */
+  onAspect?: (ratio: number) => void
 }
 
 function SoundButton({ onClick }: { onClick: () => void }) {
@@ -33,7 +39,17 @@ function SoundButton({ onClick }: { onClick: () => void }) {
  * Browsers only allow sound without a tap when the member has already interacted with the site,
  * so playback starts with sound and falls back to muted with a "Tap for sound" button if refused.
  */
-function FileVideo({ url, poster, onWatched }: { url: string; poster: string | null; onWatched: () => void }) {
+function FileVideo({
+  url,
+  poster,
+  onWatched,
+  onAspect,
+}: {
+  url: string
+  poster: string | null
+  onWatched: () => void
+  onAspect?: (ratio: number) => void
+}) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [muted, setMuted] = useState(false)
 
@@ -64,6 +80,10 @@ function FileVideo({ url, poster, onWatched }: { url: string; poster: string | n
         controls
         playsInline
         poster={poster ?? undefined}
+        onLoadedMetadata={(e) => {
+          const { videoWidth, videoHeight } = e.currentTarget
+          if (videoWidth && videoHeight) onAspect?.(videoWidth / videoHeight)
+        }}
         onVolumeChange={(e) => setMuted(e.currentTarget.muted)}
         onTimeUpdate={(e) => {
           if (watchedEnough(e.currentTarget.currentTime, e.currentTarget.duration)) onWatched()
@@ -167,7 +187,7 @@ function YouTubeFrame({ videoId, onWatched }: { videoId: string; onWatched: () =
   )
 }
 
-export default function WelcomeVideoPlayer({ video, onWatched }: WelcomeVideoPlayerProps) {
+export default function WelcomeVideoPlayer({ video, onWatched, aspect = 16 / 9, onAspect }: WelcomeVideoPlayerProps) {
   const reported = useRef(false)
   const parsed = parseVideoLink(video.video_url) ?? { provider: 'file' as const, url: video.video_url }
 
@@ -178,7 +198,7 @@ export default function WelcomeVideoPlayer({ video, onWatched }: WelcomeVideoPla
   }, [onWatched])
 
   return (
-    <div className={frame}>
+    <div className={frame} style={{ aspectRatio: aspect, width: `min(100%, calc(${MAX_HEIGHT_DVH}dvh * ${aspect}))` }}>
       {parsed.provider === 'youtube' ? (
         <YouTubeFrame videoId={parsed.id} onWatched={reportWatched} />
       ) : parsed.provider === 'vimeo' ? (
@@ -190,7 +210,7 @@ export default function WelcomeVideoPlayer({ video, onWatched }: WelcomeVideoPla
           className="absolute inset-0 w-full h-full border-0"
         />
       ) : (
-        <FileVideo url={parsed.url} poster={video.poster_url} onWatched={reportWatched} />
+        <FileVideo url={parsed.url} poster={video.poster_url} onWatched={reportWatched} onAspect={onAspect} />
       )}
     </div>
   )

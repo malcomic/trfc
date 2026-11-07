@@ -25,7 +25,20 @@ describe('parsePageVideoInput', () => {
       provider: 'youtube',
       videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
       posterUrl: null,
+      orientation: 'landscape',
     })
+  })
+
+  it('treats YouTube Shorts as portrait unless the admin chose otherwise', () => {
+    const short = 'https://youtube.com/shorts/dQw4w9WgXcQ'
+    expect(parsePageVideoInput({ source: 'link', video_url: short })).toMatchObject({ orientation: 'portrait' })
+    expect(parsePageVideoInput({ source: 'link', video_url: short, orientation: 'landscape' })).toMatchObject({
+      orientation: 'landscape',
+    })
+    expect(parsePageVideoInput({ source: 'upload', video_url: UPLOAD_URL, orientation: 'portrait' })).toMatchObject({
+      orientation: 'portrait',
+    })
+    expect(parsePageVideoInput({ source: 'upload', video_url: UPLOAD_URL, orientation: 'sideways' })).toMatch(/landscape or portrait/)
   })
 
   it('keeps an https cover image', () => {

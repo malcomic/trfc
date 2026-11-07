@@ -11,10 +11,11 @@ import {
   uploadPageMedia,
   type PageVideo,
   type PageVideoSlot,
+  type VideoOrientation,
 } from '../../api/pageVideos'
 import { getSiteImages } from '../../api/siteImages'
 import { FIND_COPY } from '../../content/quiz'
-import { parseVideoLink } from '../../utils/videoLink'
+import { isVerticalVideoLink, parseVideoLink } from '../../utils/videoLink'
 
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 
@@ -23,6 +24,25 @@ interface SlotConfig {
   title: string
   description: string
   withCover: boolean
+  /** The popup sizes itself to the video, so the admin says whether it is portrait or landscape. */
+  withOrientation?: boolean
+}
+
+/** Resolves null when the browser cannot decode the file (e.g. some MOV codecs). */
+function readVideoOrientation(file: File): Promise<VideoOrientation | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file)
+    const el = document.createElement('video')
+    const done = (value: VideoOrientation | null) => {
+      URL.revokeObjectURL(url)
+      resolve(value)
+    }
+    el.preload = 'metadata'
+    el.onloadedmetadata = () =>
+      done(el.videoWidth && el.videoHeight ? (el.videoHeight > el.videoWidth ? 'portrait' : 'landscape') : null)
+    el.onerror = () => done(null)
+    el.src = url
+  })
 }
 
 const GROUPS: { heading: string; slots: SlotConfig[] }[] = [
@@ -63,6 +83,7 @@ const GROUPS: { heading: string; slots: SlotConfig[] }[] = [
         description:
           "Pops up on a new member's dashboard up to 3 times in their first 14 days. Uploads and YouTube links stop showing once watched to the end.",
         withCover: false,
+        withOrientation: true,
       },
     ],
   },
@@ -89,6 +110,7 @@ function SlotEditor({
   const [source, setSource] = useState<'upload' | 'link'>(initial?.source ?? 'upload')
   const [uploadedUrl, setUploadedUrl] = useState(initial?.source === 'upload' ? initial.video_url : '')
   const [link, setLink] = useState(initial?.source === 'link' ? initial.video_url : '')
+  const [orientation, setOrientation] = useState<VideoOrientation>(initial?.orientation ?? 'landscape')
   const [progress, setProgress] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -111,6 +133,8 @@ function SlotEditor({
     }
     try {
       setProgress(0)
+      const measured = await readVideoOrientation(file)
+      if (measured) setOrientation(measured)
       setUploadedUrl(await uploadPageMedia(file, 'video', setProgress))
     } catch (err: any) {
       setError(err.response?.data?.error || 'Upload failed. Please try again.')
@@ -124,7 +148,11 @@ function SlotEditor({
     setNotice('')
     setSaving(true)
     try {
-      await savePageVideo(config.slot, { source, video_url: videoUrl })
+      await savePageVideo(config.slot, {
+        source,
+        video_url: videoUrl,
+        ...(config.withOrientation ? { orientation } : {}),
+      })
       setNotice('Saved. The page now shows this video.')
       onChanged()
     } catch (err: any) {
@@ -195,13 +223,42 @@ function SlotEditor({
             type="url"
             placeholder="https://youtu.be/… or https://vimeo.com/…"
             value={link}
-            onChange={(e) => setLink(e.target.value)}
+            onChange={(e) => {
+              setLink(e.target.value)
+              if (isVerticalVideoLink(e.target.value)) setOrientation('portrait')
+            }}
             className={inputClass}
           />
           <p className={`text-xs ${linkInvalid ? 'text-red-600' : 'text-gray-500 dark:text-gray-400'}`}>
             {linkInvalid
               ? 'This link is not recognised. Use a YouTube, Vimeo or direct .mp4/.webm link.'
               : 'YouTube, Vimeo or a direct .mp4/.webm link.'}
+          </p>
+        </div>
+      )}
+
+      {config.withOrientation && (
+        <div className="space-y-2">
+          <h3 className="font-semibold text-sm">Video shape</h3>
+          <div className="flex gap-2">
+            {(['landscape', 'portrait'] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setOrientation(value)}
+                aria-pressed={orientation === value}
+                className={`px-4 py-2 min-h-[44px] rounded-lg text-sm font-semibold ${
+                  orientation === value
+                    ? 'bg-primary dark:bg-primary-dark text-white'
+                    : 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'
+                }`}
+              >
+                {value === 'landscape' ? 'Landscape (wide)' : 'Portrait (tall)'}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Set automatically for uploads and YouTube Shorts. Choose Portrait for any other vertical YouTube or Vimeo video.
           </p>
         </div>
       )}

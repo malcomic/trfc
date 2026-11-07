@@ -46,7 +46,7 @@ export const DASHBOARD_COPY = {
   },
   welcomeVideo: {
     heading: 'Welcome to TRFC',
-    subtitle: 'A quick tour of your dashboard',
+    subtitle: "We're glad to have you here. Let's take a look and get you started",
     sound: 'Tap for sound',
     close: 'Close the welcome video',
     replay: 'Watch the welcome video',

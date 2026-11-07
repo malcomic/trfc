@@ -43,6 +43,17 @@ export function parseVideoLink(raw: unknown): ParsedVideoLink | null {
   return null
 }
 
+/** YouTube Shorts are always vertical; other links give no hint of their shape. */
+export function isVerticalVideoLink(raw: unknown): boolean {
+  if (typeof raw !== 'string') return false
+  try {
+    const url = new URL(raw.trim())
+    return YOUTUBE_HOSTS.has(url.hostname.toLowerCase()) && url.pathname.split('/').filter(Boolean)[0] === 'shorts'
+  } catch {
+    return false
+  }
+}
+
 export function isHttpsUrl(raw: unknown): raw is string {
   if (typeof raw !== 'string') return false
   try {

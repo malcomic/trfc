@@ -1259,6 +1259,25 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       CREATE INDEX IF NOT EXISTS idx_medal_purchases_guest_email ON medal_purchases (LOWER(TRIM(email))) WHERE user_id IS NULL;
     `,
   },
+  {
+    name: '055_page_video_orientation',
+    sql: `
+      -- Shorts already saved are marked portrait only when the column is first added, so an admin's later choice is kept.
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'page_videos' AND column_name = 'orientation'
+        ) THEN
+          ALTER TABLE page_videos
+            ADD COLUMN orientation VARCHAR(10) NOT NULL DEFAULT 'landscape'
+            CHECK (orientation IN ('landscape', 'portrait'));
+          UPDATE page_videos SET orientation = 'portrait'
+          WHERE provider = 'youtube' AND video_url LIKE '%youtube.com/shorts/%';
+        END IF;
+      END $$;
+    `,
+  },
 ]
 
 export async function runMigrations() {

@@ -8,8 +8,11 @@ export interface PageVideo {
   provider: 'file' | 'youtube' | 'vimeo'
   video_url: string
   poster_url: string | null
+  orientation: VideoOrientation
   updated_at: string
 }
+
+export type VideoOrientation = 'landscape' | 'portrait'
 
 export type PageVideos = Partial<Record<PageVideoSlot, PageVideo>>
 
@@ -18,7 +21,7 @@ export const getPageVideos = async (page: string): Promise<PageVideos> =>
 
 export const savePageVideo = async (
   slot: PageVideoSlot,
-  data: { source: 'upload' | 'link'; video_url: string; poster_url?: string | null }
+  data: { source: 'upload' | 'link'; video_url: string; poster_url?: string | null; orientation?: VideoOrientation }
 ): Promise<PageVideo> => (await api.put(`/admin/page-videos/${slot}`, data)).data
 
 /** Uploads a video or cover image to Cloudinary through the admin gallery upload endpoint. */

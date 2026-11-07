@@ -41,6 +41,17 @@ export function parseVideoLink(raw: string | null | undefined): ParsedVideoLink 
   return null
 }
 
+/** YouTube Shorts are always vertical; other links give no hint of their shape. */
+export function isVerticalVideoLink(raw: string | null | undefined): boolean {
+  if (!raw) return false
+  try {
+    const url = new URL(raw.trim())
+    return YOUTUBE_HOSTS.has(url.hostname.toLowerCase()) && url.pathname.split('/').filter(Boolean)[0] === 'shorts'
+  } catch {
+    return false
+  }
+}
+
 /** Player URL for YouTube/Vimeo embeds. `muted` autoplay loops quietly; unmuted starts with sound and controls. */
 export function embedUrl(video: Exclude<ParsedVideoLink, { provider: 'file' }>, { muted }: { muted: boolean }): string {
   if (video.provider === 'youtube') {

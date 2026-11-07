@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import { query } from '../config/db.js'
+import { PAGE_VIDEO_FIELDS } from './pageVideosController.js'
 
 export const WELCOME_VIDEO_SLOT = 'dashboard_welcome'
 export const WELCOME_VIDEO_MAX_SHOWS = 3
@@ -13,7 +14,7 @@ export const WELCOME_VIDEO_DAYS = 14
 export async function recordWelcomeVideoShown(req: Request, res: Response) {
   try {
     const videoResult = await query(
-      'SELECT slot, source, provider, video_url, poster_url, updated_at FROM page_videos WHERE slot = $1',
+      `SELECT ${PAGE_VIDEO_FIELDS} FROM page_videos WHERE slot = $1`,
       [WELCOME_VIDEO_SLOT]
     )
     const video = videoResult.rows[0]
