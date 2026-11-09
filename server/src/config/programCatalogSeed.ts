@@ -358,8 +358,10 @@ export function buildCatalogSeedSql(programs: CatalogSeedProgram[] = CORE_PROGRA
         IF EXISTS (SELECT 1 FROM program_versions WHERE program_id = ${id}) THEN
           RETURN;
         END IF;
-        IF to_regclass('public.program_plans') IS NOT NULL
-           AND EXISTS (SELECT 1 FROM program_plans WHERE program = ${id}) THEN
+        -- Nested IFs: Postgres resolves every table in one expression up front, so the
+        -- existence check cannot share an expression with a query on program_plans.
+        IF to_regclass('public.program_plans') IS NOT NULL THEN
+        IF EXISTS (SELECT 1 FROM program_plans WHERE program = ${id}) THEN
           SELECT c || jsonb_build_object('plan', jsonb_build_object(
                    'howYourWeekWorks', how_your_week_works,
                    'howWeeksOpen', how_weeks_open,
@@ -376,6 +378,7 @@ export function buildCatalogSeedSql(programs: CatalogSeedProgram[] = CORE_PROGRA
                             WHERE d.program = w.program AND d.week_number = w.week_number)
                  ) ORDER BY w.week_number), c->'weeks'))
             INTO c FROM program_weeks w WHERE w.program = ${id};
+        END IF;
         END IF;
         INSERT INTO program_versions (program_id, state, content, published_at)
         VALUES (${id}, 'published', c, NOW());
