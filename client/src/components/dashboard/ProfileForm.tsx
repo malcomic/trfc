@@ -1,4 +1,5 @@
 import { FormEvent, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { AlertCircle, KeyRound, UserRound } from 'lucide-react'
 import { changeMyPassword, updateMyProfile } from '../../api/auth'
 import type { MemberProfile } from '../../api/users'
@@ -157,60 +158,72 @@ export default function ProfileForm({ profile, onSaved, notify }: ProfileFormPro
         </Button>
       </form>
 
-      <form onSubmit={savePassword} className={`${cardSurface} p-6 space-y-4`}>
-        <CardTitle icon={KeyRound} title="Change password" subtitle="Changing it signs you out on other devices." />
-        <FormInput
-          label="Current password"
-          type={passwordType}
-          required
-          value={passwords.current}
-          onChange={(e) => setPasswords((p) => ({ ...p, current: e.target.value }))}
-          autoComplete="current-password"
-          endAdornment={toggle}
-        />
-        <div>
+      {profile.has_password === false ? (
+        <div className={`${cardSurface} p-6 space-y-4`}>
+          <CardTitle icon={KeyRound} title="Set a password" subtitle="You sign in with Google. Add a password to sign in with your email too." />
+          <Link
+            to={`/forgot-password?email=${encodeURIComponent(profile.email ?? '')}`}
+            className="font-barlow-condensed font-bold text-sm tracking-widest uppercase text-accent light:text-accent-light no-underline hover:underline"
+          >
+            Email me a link to set a password
+          </Link>
+        </div>
+      ) : (
+        <form onSubmit={savePassword} className={`${cardSurface} p-6 space-y-4`}>
+          <CardTitle icon={KeyRound} title="Change password" subtitle="Changing it signs you out on other devices." />
           <FormInput
-            label="New password"
+            label="Current password"
             type={passwordType}
             required
-            minLength={8}
-            value={passwords.next}
-            onChange={(e) => setPasswords((p) => ({ ...p, next: e.target.value }))}
+            value={passwords.current}
+            onChange={(e) => setPasswords((p) => ({ ...p, current: e.target.value }))}
+            autoComplete="current-password"
+            endAdornment={toggle}
+          />
+          <div>
+            <FormInput
+              label="New password"
+              type={passwordType}
+              required
+              minLength={8}
+              value={passwords.next}
+              onChange={(e) => setPasswords((p) => ({ ...p, next: e.target.value }))}
+              autoComplete="new-password"
+              endAdornment={toggle}
+            />
+            {strengthColors && (
+              <div className="flex items-center gap-3 mt-2">
+                <div className="flex gap-1 flex-1">
+                  {[1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className={`flex-1 h-0.75 rounded-full transition-all duration-300 ${
+                        strength.score >= i ? strengthColors.bar : 'bg-mist light:bg-mist-light'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <span className={`font-barlow-condensed font-bold text-xs tracking-widest uppercase ${strengthColors.text}`}>
+                  {strength.label} password
+                </span>
+              </div>
+            )}
+          </div>
+          <FormInput
+            label="Confirm new password"
+            type={passwordType}
+            required
+            value={passwords.confirm}
+            onChange={(e) => setPasswords((p) => ({ ...p, confirm: e.target.value }))}
             autoComplete="new-password"
             endAdornment={toggle}
           />
-          {strengthColors && (
-            <div className="flex items-center gap-3 mt-2">
-              <div className="flex gap-1 flex-1">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className={`flex-1 h-0.75 rounded-full transition-all duration-300 ${
-                      strength.score >= i ? strengthColors.bar : 'bg-mist light:bg-mist-light'
-                    }`}
-                  />
-                ))}
-              </div>
-              <span className={`font-barlow-condensed font-bold text-xs tracking-widest uppercase ${strengthColors.text}`}>
-                {strength.label} password
-              </span>
-            </div>
-          )}
-        </div>
-        <FormInput
-          label="Confirm new password"
-          type={passwordType}
-          required
-          value={passwords.confirm}
-          onChange={(e) => setPasswords((p) => ({ ...p, confirm: e.target.value }))}
-          autoComplete="new-password"
-          endAdornment={toggle}
-        />
-        <FormError message={passwordError} />
-        <Button type="submit" isLoading={savingPassword}>
-          Update password
-        </Button>
-      </form>
+          <FormError message={passwordError} />
+          <Button type="submit" isLoading={savingPassword}>
+            Update password
+          </Button>
+        </form>
+      )}
     </div>
   )
 }

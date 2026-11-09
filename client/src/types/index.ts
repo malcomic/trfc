@@ -7,6 +7,9 @@ export interface User {
   whatsapp?: string | null;
   marketing_opt_in?: boolean | null;
   created_at?: string;
+  avatar_url?: string | null;
+  google_linked?: boolean;
+  has_password?: boolean;
 }
 
 export interface EventTicketType {

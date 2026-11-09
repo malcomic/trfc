@@ -27,6 +27,9 @@ import {
   Flag,
   MapPin,
   Wallet,
+  Megaphone,
+  Dumbbell,
+  Briefcase,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -77,11 +80,14 @@ export const adminNavEntries: AdminNavEntry[] = [
     label: 'Members',
     icon: UsersRound,
     children: [
+      { path: '/admin/programs', label: 'Programs', icon: Dumbbell },
       { path: '/admin/signups', label: 'Signups', icon: UserPlus },
       { path: '/admin/reach-out', label: 'Reach Out', icon: HeartHandshake },
       { path: '/admin/users', label: 'Users', icon: Users },
+      { path: '/admin/announcements', label: 'Announcements', icon: Megaphone },
       { path: '/admin/captains', label: 'Captains', icon: Flag },
       { path: '/admin/zones', label: 'Zones', icon: MapPin },
+      { path: '/admin/hiring', label: 'Hiring', icon: Briefcase },
     ],
   },
   {

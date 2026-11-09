@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { matchProgram, weekLine, type ExperienceAnswer, type GoalAnswer } from '../../content/quiz'
-import { programBySlug, PROGRAMS, PROGRAM_ORDER, type ProgramId } from '../../content/programs'
+import { CORE_PROGRAM_IDS, coreProgramName, isCoreProgramId, type CoreProgramId } from '../../content/programs'
 
-type Row = [GoalAnswer, ExperienceAnswer, ProgramId, ProgramId | null]
+type Row = [GoalAnswer, ExperienceAnswer, CoreProgramId, CoreProgramId | null]
 
 const TABLE: Row[] = [
   ['move', 'none', 'foundations', null],
@@ -37,11 +37,20 @@ describe('weekLine', () => {
   })
 })
 
-describe('programBySlug', () => {
-  it('resolves every program slug and rejects unknown ones', () => {
-    for (const id of PROGRAM_ORDER) expect(programBySlug(PROGRAMS[id].slug)?.id).toBe(id)
-    expect(programBySlug('nope')).toBeUndefined()
-    expect(programBySlug('constructor')).toBeUndefined()
-    expect(programBySlug(undefined)).toBeUndefined()
+describe('core programs', () => {
+  it('only ever matches one of the four core programs', () => {
+    for (const [goal, experience] of TABLE) {
+      const { program, nextUp } = matchProgram(goal, experience)
+      expect(CORE_PROGRAM_IDS).toContain(program)
+      if (nextUp) expect(CORE_PROGRAM_IDS).toContain(nextUp)
+    }
+  })
+
+  it('recognises core ids and names them', () => {
+    expect(isCoreProgramId('fat_loss')).toBe(true)
+    expect(isCoreProgramId('strength_for_runners')).toBe(false)
+    expect(isCoreProgramId('constructor')).toBe(false)
+    expect(coreProgramName('hiking')).toBe('Hiking')
+    expect(coreProgramName('strength_for_runners')).toBe('strength_for_runners')
   })
 })

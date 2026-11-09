@@ -1,4 +1,4 @@
-import { EXPLORE_COPY, EXPLORE_FILTERS, type ExploreFilter } from '../../content/explore'
+import { EXPLORE_COPY, type ExploreFilter, type ExploreFilterOption } from '../../content/explore'
 
 const chip =
   'min-h-[44px] px-5 rounded-full font-barlow text-[17px] font-semibold border-[1.5px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cta'
@@ -8,15 +8,17 @@ const chipOff =
   'bg-ink text-chalk border-mist hover:border-fog light:bg-white light:text-chalk-light light:border-fog-light light:hover:border-chalk-light'
 
 export default function ProgramFilter({
+  filters,
   value,
   onChange,
 }: {
+  filters: ExploreFilterOption[]
   value: ExploreFilter
   onChange: (filter: ExploreFilter) => void
 }) {
   return (
     <div role="group" aria-label={EXPLORE_COPY.programs.filterLabel} className="flex flex-wrap gap-2.5">
-      {EXPLORE_FILTERS.map((f) => {
+      {filters.map((f) => {
         const on = f.id === value
         return (
           <button

@@ -31,12 +31,21 @@ import {
   buildPasswordResetEmailText,
 } from '../utils/emailTemplates.js';
 import { config } from '../config/env.js';
+import {
+  GoogleAuthError,
+  isGoogleBlockedRole,
+  isGoogleConfigured,
+  signGoogleSignupToken,
+  verifyGoogleCredential,
+  verifyGoogleSignupToken,
+} from '../utils/googleAuth.js';
 
 const FORGOT_PASSWORD_MESSAGE = "If that email is registered, we've sent a link to reset your password.";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const PROFILE_FIELDS = 'id, name, email, phone, whatsapp, marketing_opt_in, role, created_at';
+const PROFILE_FIELDS = `id, name, email, phone, whatsapp, marketing_opt_in, role, created_at, avatar_url,
+  google_id IS NOT NULL AS google_linked, password_hash IS NOT NULL AS has_password`;
 
 interface ProfileFields {
   name: string;
@@ -73,94 +82,133 @@ export function validateProfileFields(body: Record<string, unknown>): { error: s
   return { name: trimmedName, email: normalizedEmail, phone: String(phone).trim(), phoneMsisdn, whatsappMsisdn };
 }
 
+const LINK_REQUIRED_MESSAGE =
+  'An account with this email already exists. Sign in with your password, then connect Google from My Profile.';
+
+interface SignupOwners {
+  /** Account already holding this phone; phone-only onboarding accounts (no password) get claimed. */
+  phoneOwner: { id: string; password_hash: string | null } | undefined;
+  emailTaken: boolean;
+}
+
+async function findSignupOwners(phoneMsisdn: string, email: string): Promise<SignupOwners> {
+  const phoneOwner = await query(
+    'SELECT id, password_hash FROM users WHERE phone_normalized = $1 ORDER BY created_at ASC LIMIT 1',
+    [phoneMsisdn]
+  );
+  const existingByPhone = phoneOwner.rows[0];
+  const emailOwner = await query('SELECT id FROM users WHERE LOWER(email) = $1 LIMIT 1', [email]);
+  const emailTaken = emailOwner.rows.length > 0 && emailOwner.rows[0].id !== existingByPhone?.id;
+  return { phoneOwner: existingByPhone, emailTaken };
+}
+
+interface CreateMemberInput {
+  fields: ProfileFields;
+  passwordHash: string | null;
+  google?: { id: string; avatarUrl: string | null };
+  existingId?: string;
+  body: Record<string, any>;
+}
+
+async function createOrClaimMember({ fields, passwordHash, google, existingId, body }: CreateMemberInput) {
+  const { referralCode, captainId, marketingOptIn } = body;
+  const { name, email, phone, phoneMsisdn, whatsappMsisdn } = fields;
+  const optedIn = marketingOptIn === true;
+  const params: unknown[] = [name, email, phone, phoneMsisdn, passwordHash, whatsappMsisdn, optedIn];
+  const returning = 'RETURNING id, name, email, phone, role, avatar_url';
+
+  let result;
+  if (existingId) {
+    params.push(existingId);
+    if (google) params.push(google.id, google.avatarUrl);
+    result = await query(
+      `UPDATE users
+       SET name = $1, email = $2, phone = $3, phone_normalized = $4, password_hash = $5,
+           whatsapp = $6, marketing_opt_in = $7,
+           marketing_opt_in_at = CASE WHEN $7 THEN NOW() ELSE NULL END${google ? ', google_id = $9, avatar_url = $10' : ''}
+       WHERE id = $8
+       ${returning}`,
+      params
+    );
+  } else {
+    if (google) params.push(google.id, google.avatarUrl);
+    result = await query(
+      `INSERT INTO users
+         (name, email, phone, phone_normalized, password_hash, whatsapp, marketing_opt_in, marketing_opt_in_at, role${google ? ', google_id, avatar_url' : ''})
+       VALUES ($1, $2, $3, $4, $5, $6, $7, CASE WHEN $7 THEN NOW() ELSE NULL END, 'member'${google ? ', $8, $9' : ''})
+       ${returning}`,
+      params
+    );
+  }
+
+  const user = result.rows[0];
+  const zone = referralCode ? await applyReferral(user.id, referralCode) : null;
+  if (captainId) {
+    await assignChosenCaptain(user.id, captainId, zone?.region_id);
+  }
+  const captain = await findCaptainSummary(user.id);
+
+  // Optional answers must never block sign-up; the app asks again when this fails.
+  let answersSaved = true;
+  try {
+    const answers = parseAnswers(body.answers);
+    if (hasAnyAnswer(answers) || zone) {
+      await saveMemberAnswers(user.id, answers, { fallbackRegionId: zone?.region_id });
+    }
+  } catch (error) {
+    console.error(`Failed to save signup answers for user ${user.id}:`, error);
+    answersSaved = false;
+  }
+
+  const linkedPurchases = await claimGuestPurchasesSafely(user.id, email, phoneMsisdn);
+
+  void sendAccountWelcomeOnce(user.id);
+  void sendWelcomeEmailOnce(user.id);
+
+  const token = generateAccessToken({ id: user.id, email: user.email, role: user.role });
+  const refreshToken = generateRefreshToken({ id: user.id, email: user.email, role: user.role });
+
+  return {
+    token,
+    refreshToken,
+    user: { ...user, captain },
+    answersSaved,
+    linked_purchases: linkedPurchases,
+  };
+}
+
 export const register = async (req: Request, res: Response) => {
   try {
-    const { password, referralCode, captainId, marketingOptIn } = req.body ?? {};
+    const { password } = req.body ?? {};
 
     const fieldsResult = validateProfileFields(req.body ?? {});
     if ('error' in fieldsResult) {
       return res.status(400).json({ error: fieldsResult.error });
     }
-    const { name: trimmedName, email: normalizedEmail, phone, phoneMsisdn, whatsappMsisdn } = fieldsResult;
 
     const passwordError = validatePassword(password);
     if (passwordError) {
       return res.status(400).json({ error: passwordError });
     }
 
-    // Members who joined through onboarding have a phone-only account; registering claims it.
-    const phoneOwner = await query(
-      'SELECT id, password_hash FROM users WHERE phone_normalized = $1 ORDER BY created_at ASC LIMIT 1',
-      [phoneMsisdn]
-    );
-    const existingByPhone = phoneOwner.rows[0];
-    if (existingByPhone?.password_hash) {
+    const { phoneOwner, emailTaken } = await findSignupOwners(fieldsResult.phoneMsisdn, fieldsResult.email);
+    if (phoneOwner?.password_hash) {
       return res
         .status(400)
         .json({ error: 'An account with this phone number already exists. Sign in instead.' });
     }
-
-    const emailOwner = await query('SELECT id FROM users WHERE LOWER(email) = $1 LIMIT 1', [normalizedEmail]);
-    if (emailOwner.rows.length > 0 && emailOwner.rows[0].id !== existingByPhone?.id) {
+    if (emailTaken) {
       return res.status(400).json({ error: 'Email already registered' });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const optedIn = marketingOptIn === true;
-    const fields = [trimmedName, normalizedEmail, phone, phoneMsisdn, passwordHash, whatsappMsisdn, optedIn];
-
-    const result = existingByPhone
-      ? await query(
-          `UPDATE users
-           SET name = $1, email = $2, phone = $3, phone_normalized = $4, password_hash = $5,
-               whatsapp = $6, marketing_opt_in = $7,
-               marketing_opt_in_at = CASE WHEN $7 THEN NOW() ELSE NULL END
-           WHERE id = $8
-           RETURNING id, name, email, phone, role`,
-          [...fields, existingByPhone.id]
-        )
-      : await query(
-          `INSERT INTO users
-             (name, email, phone, phone_normalized, password_hash, whatsapp, marketing_opt_in, marketing_opt_in_at, role)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, CASE WHEN $7 THEN NOW() ELSE NULL END, 'member')
-           RETURNING id, name, email, phone, role`,
-          fields
-        );
-
-    const user = result.rows[0];
-    const zone = referralCode ? await applyReferral(user.id, referralCode) : null;
-    if (captainId) {
-      await assignChosenCaptain(user.id, captainId, zone?.region_id);
-    }
-    const captain = await findCaptainSummary(user.id);
-
-    // Optional answers must never block sign-up; the app asks again when this fails.
-    let answersSaved = true;
-    try {
-      const answers = parseAnswers(req.body?.answers);
-      if (hasAnyAnswer(answers) || zone) {
-        await saveMemberAnswers(user.id, answers, { fallbackRegionId: zone?.region_id });
-      }
-    } catch (error) {
-      console.error(`Failed to save signup answers for user ${user.id}:`, error);
-      answersSaved = false;
-    }
-
-    const linkedPurchases = await claimGuestPurchasesSafely(user.id, normalizedEmail, phoneMsisdn);
-
-    void sendAccountWelcomeOnce(user.id);
-    void sendWelcomeEmailOnce(user.id);
-
-    const token = generateAccessToken({ id: user.id, email: user.email, role: user.role });
-    const refreshToken = generateRefreshToken({ id: user.id, email: user.email, role: user.role });
-
-    res.status(201).json({
-      token,
-      refreshToken,
-      user: { ...user, captain },
-      answersSaved,
-      linked_purchases: linkedPurchases,
+    const payload = await createOrClaimMember({
+      fields: fieldsResult,
+      passwordHash,
+      existingId: phoneOwner?.id,
+      body: req.body,
     });
+    res.status(201).json(payload);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Registration failed' });
@@ -436,5 +484,139 @@ export const changeMyPassword = async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Could not change your password. Please try again.' });
+  }
+};
+
+const GOOGLE_NOT_CONFIGURED = { error: 'Google sign-in is not configured' };
+const GOOGLE_BLOCKED_MESSAGE = 'This account must sign in with a password.';
+const GOOGLE_IN_USE_MESSAGE = 'This Google account is connected to another TRFC account.';
+
+export const googleAuth = async (req: Request, res: Response) => {
+  if (!isGoogleConfigured()) return res.status(503).json(GOOGLE_NOT_CONFIGURED);
+  try {
+    const profile = await verifyGoogleCredential(req.body?.credential);
+
+    const linked = await query(
+      'SELECT id, name, email, phone, role, avatar_url FROM users WHERE google_id = $1 LIMIT 1',
+      [profile.sub]
+    );
+    const user = linked.rows[0];
+    if (user) {
+      if (isGoogleBlockedRole(user.role)) {
+        return res.status(403).json({ error: GOOGLE_BLOCKED_MESSAGE });
+      }
+      const token = generateAccessToken({ id: user.id, email: user.email, role: user.role });
+      const refreshToken = generateRefreshToken({ id: user.id, email: user.email, role: user.role });
+      void touchLastActive(user.id);
+      const linkedPurchases = await claimGuestPurchasesSafely(user.id, user.email, user.phone);
+      return res.json({ token, refreshToken, user, linked_purchases: linkedPurchases });
+    }
+
+    const emailOwner = await query('SELECT id FROM users WHERE LOWER(email) = $1 LIMIT 1', [profile.email]);
+    if (emailOwner.rows.length > 0) {
+      return res
+        .status(409)
+        .json({ error: LINK_REQUIRED_MESSAGE, code: 'GOOGLE_LINK_REQUIRED', email: profile.email });
+    }
+
+    res.json({
+      needsProfile: true,
+      signupToken: signGoogleSignupToken(profile),
+      profile: { name: profile.name, email: profile.email, picture: profile.picture },
+    });
+  } catch (error) {
+    if (error instanceof GoogleAuthError) return res.status(401).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: 'Google sign-in failed. Please try again.' });
+  }
+};
+
+export const completeGoogleSignup = async (req: Request, res: Response) => {
+  if (!isGoogleConfigured()) return res.status(503).json(GOOGLE_NOT_CONFIGURED);
+  try {
+    const body = req.body ?? {};
+    const profile = verifyGoogleSignupToken(body.signupToken);
+    if (!profile) {
+      return res.status(401).json({ error: 'Your Google sign-up expired. Please continue with Google again.' });
+    }
+
+    const fieldsResult = validateProfileFields({ ...body, name: profile.name, email: profile.email });
+    if ('error' in fieldsResult) {
+      return res.status(400).json({ error: fieldsResult.error });
+    }
+
+    const googleOwner = await query('SELECT id FROM users WHERE google_id = $1 LIMIT 1', [profile.sub]);
+    if (googleOwner.rows.length > 0) {
+      return res.status(409).json({ error: 'This Google account already has a TRFC account. Sign in with Google.' });
+    }
+
+    const { phoneOwner, emailTaken } = await findSignupOwners(fieldsResult.phoneMsisdn, fieldsResult.email);
+    if (emailTaken || phoneOwner?.password_hash) {
+      return res.status(409).json({ error: LINK_REQUIRED_MESSAGE, code: 'GOOGLE_LINK_REQUIRED' });
+    }
+
+    const payload = await createOrClaimMember({
+      fields: fieldsResult,
+      passwordHash: null,
+      google: { id: profile.sub, avatarUrl: profile.picture },
+      existingId: phoneOwner?.id,
+      body,
+    });
+    res.status(201).json(payload);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Registration failed' });
+  }
+};
+
+export const linkGoogle = async (req: Request, res: Response) => {
+  if (!isGoogleConfigured()) return res.status(503).json(GOOGLE_NOT_CONFIGURED);
+  try {
+    const userId = req.user!.id;
+    const current = await query('SELECT id, role FROM users WHERE id = $1', [userId]);
+    const user = current.rows[0];
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (isGoogleBlockedRole(user.role)) {
+      return res.status(403).json({ error: GOOGLE_BLOCKED_MESSAGE });
+    }
+
+    const profile = await verifyGoogleCredential(req.body?.credential);
+    const owner = await query('SELECT id FROM users WHERE google_id = $1 AND id <> $2 LIMIT 1', [profile.sub, userId]);
+    if (owner.rows.length > 0) {
+      return res.status(409).json({ error: GOOGLE_IN_USE_MESSAGE });
+    }
+
+    const result = await query(
+      `UPDATE users SET google_id = $1, avatar_url = COALESCE(avatar_url, $2) WHERE id = $3 RETURNING ${PROFILE_FIELDS}`,
+      [profile.sub, profile.picture, userId]
+    );
+    res.json({ user: result.rows[0] });
+  } catch (error) {
+    if (error instanceof GoogleAuthError) return res.status(401).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: 'Could not connect your Google account. Please try again.' });
+  }
+};
+
+export const unlinkGoogle = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const current = await query('SELECT password_hash FROM users WHERE id = $1', [userId]);
+    if (current.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (!current.rows[0].password_hash) {
+      return res.status(400).json({ error: "Set a password first so you don't lose access to your account." });
+    }
+
+    const result = await query(`UPDATE users SET google_id = NULL WHERE id = $1 RETURNING ${PROFILE_FIELDS}`, [
+      userId,
+    ]);
+    res.json({ user: result.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Could not disconnect your Google account. Please try again.' });
   }
 };

@@ -1,4 +1,4 @@
-import type { ProgramFaq, ProgramId } from './programs'
+import type { CoreProgramId, ProgramFaq } from './programs'
 
 export type GoalAnswer = 'move' | 'lose' | 'race' | 'out'
 export type ExperienceAnswer = 'none' | 'some' | 'active' | 'runner'
@@ -48,7 +48,7 @@ export const DAYS_QUESTION: QuizQuestion<DaysAnswer> = {
   ],
 }
 
-const GOAL_PROGRAM: Record<GoalAnswer, ProgramId> = {
+const GOAL_PROGRAM: Record<GoalAnswer, CoreProgramId> = {
   move: 'foundations',
   lose: 'fat_loss',
   race: 'endurance',
@@ -56,12 +56,12 @@ const GOAL_PROGRAM: Record<GoalAnswer, ProgramId> = {
 }
 
 export interface QuizMatch {
-  program: ProgramId
-  nextUp: ProgramId | null
+  program: CoreProgramId
+  nextUp: CoreProgramId | null
 }
 
 export function matchProgram(goal: GoalAnswer, experience: ExperienceAnswer): QuizMatch {
-  let program: ProgramId = 'foundations'
+  let program: CoreProgramId = 'foundations'
   if (experience === 'active' || experience === 'runner') {
     if (goal === 'lose') program = 'fat_loss'
     else if (goal === 'out') program = 'hiking'
@@ -88,8 +88,8 @@ export interface StoredQuizResult {
   goal: GoalAnswer
   experience: ExperienceAnswer
   days: DaysAnswer
-  program: ProgramId
-  nextUp: ProgramId | null
+  program: CoreProgramId
+  nextUp: CoreProgramId | null
   completedAt: string
 }
 

@@ -37,6 +37,8 @@ import {
 } from '../controllers/siteSettingsController.js'
 import { getAdminSignups } from '../controllers/signupsController.js'
 import * as reachOut from '../controllers/reachOutController.js'
+import * as programs from '../controllers/adminProgramsController.js'
+import * as hiring from '../controllers/adminHiringController.js'
 import {
   getRegions,
   createRegion,
@@ -74,6 +76,13 @@ import {
   getEventSettlement,
   removeEventCost,
 } from '../controllers/eventSettlementController.js'
+import {
+  archiveAnnouncement,
+  createAnnouncement,
+  getRecipientCount,
+  listAnnouncements,
+  sendTestAnnouncementEmail,
+} from '../controllers/announcementsController.js'
 import { authMiddleware, adminMiddleware } from '../middleware/auth.js'
 
 const router = Router()
@@ -147,5 +156,33 @@ router.put('/page-videos/:slot', upsertPageVideo)
 router.delete('/page-videos/:slot', deletePageVideo)
 router.put('/site-images/:slot', upsertSiteImage)
 router.delete('/site-images/:slot', deleteSiteImage)
+router.get('/announcements', listAnnouncements)
+router.post('/announcements', createAnnouncement)
+router.get('/announcements/recipient-count', getRecipientCount)
+router.post('/announcements/test-email', sendTestAnnouncementEmail)
+router.post('/announcements/:id/archive', archiveAnnouncement)
+router.get('/programs', programs.listAdminPrograms)
+router.post('/programs', programs.createAdminProgram)
+router.get('/programs/:id', programs.getAdminProgram)
+router.put('/programs/:id/settings', programs.updateProgramSettings)
+router.put('/programs/:id/draft/weeks/:week', programs.saveDraftWeek)
+router.post('/programs/:id/draft/weeks/:week/move', programs.moveDraftWeek)
+router.delete('/programs/:id/draft/weeks/:week', programs.removeDraftWeek)
+router.post('/programs/:id/draft/weeks', programs.addDraftWeek)
+router.put('/programs/:id/draft/:section', programs.saveDraftSection)
+router.delete('/programs/:id/draft', programs.discardDraft)
+router.get('/programs/:id/publish-check', programs.getPublishCheck)
+router.post('/programs/:id/publish', programs.publishProgram)
+router.post('/programs/:id/archive', programs.archiveProgram)
+router.post('/programs/:id/unarchive', programs.unarchiveProgram)
+router.get('/programs/:id/versions', programs.listProgramVersions)
+router.post('/programs/:id/versions/:versionId/restore', programs.restoreProgramVersion)
+
+router.get('/hiring', hiring.listApplications)
+router.get('/hiring/export', hiring.exportApplications)
+router.get('/hiring/settings', hiring.getHiringSettings)
+router.put('/hiring/settings', hiring.updateHiringSettings)
+router.get('/hiring/:id', hiring.getApplication)
+router.patch('/hiring/:id', hiring.updateApplication)
 
 export default router

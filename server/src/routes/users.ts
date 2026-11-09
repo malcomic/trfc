@@ -16,6 +16,7 @@ import {
 } from '../controllers/usersController.js';
 import { markWelcomeVideoWatched, recordWelcomeVideoShown } from '../controllers/welcomeVideoController.js';
 import { getMyPass, regenerateMyPass } from '../controllers/memberPassController.js';
+import { getMyAnnouncements, markAnnouncementsRead } from '../controllers/announcementsController.js';
 import { authMiddleware, adminMiddleware } from '../middleware/auth.js';
 
 const router = Router();
@@ -31,6 +32,8 @@ router.put('/me/answers', authMiddleware, updateMyAnswers);
 router.delete('/me/answers', authMiddleware, deleteMyAnswers);
 router.post('/me/welcome-video/shown', authMiddleware, recordWelcomeVideoShown);
 router.post('/me/welcome-video/watched', authMiddleware, markWelcomeVideoWatched);
+router.get('/me/announcements', authMiddleware, getMyAnnouncements);
+router.post('/me/announcements/read', authMiddleware, markAnnouncementsRead);
 router.get('/', authMiddleware, adminMiddleware, getAllUsers);
 router.post('/', authMiddleware, adminMiddleware, createUser);
 router.put('/:id', authMiddleware, adminMiddleware, updateUser);

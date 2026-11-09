@@ -9,12 +9,13 @@ import { getSafeImageUrl } from '../utils/imageUrl'
 import HeroCarousel from '../components/HeroCarousel'
 import HomeHero, { HOME_HERO_COPY } from '../components/home/HomeHero'
 import CtaButton from '../components/programs/CtaButton'
-import { PROGRAMS, PROGRAM_ORDER, formatKsh, programPath, type ProgramId } from '../content/programs'
+import { formatKsh, programPath, type CoreProgramId } from '../content/programs'
+import { usePrograms } from '../context/ProgramsContext'
 
 const EVENT_IMAGE_FALLBACK =
   'https://images.unsplash.com/photo-1571008887538-b36bb32f4571?w=600&q=80'
 
-const PROGRAM_ICONS: Record<ProgramId, LucideIcon> = {
+const PROGRAM_ICONS: Partial<Record<CoreProgramId | string, LucideIcon>> = {
   foundations: Footprints,
   fat_loss: Flame,
   endurance: Timer,
@@ -27,6 +28,7 @@ export default function Home() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const { programs } = usePrograms()
 
   useEffect(() => {
     fetchData()
@@ -129,13 +131,12 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {PROGRAM_ORDER.map((id) => {
-              const program = PROGRAMS[id]
-              const Icon = PROGRAM_ICONS[id]
+            {programs.map((program) => {
+              const Icon = PROGRAM_ICONS[program.id] ?? Footprints
               return (
                 <Link
-                  key={id}
-                  to={programPath(id)}
+                  key={program.id}
+                  to={programPath(program.slug)}
                   className={`${cardSurface} text-left p-6 flex flex-col no-underline transition-all duration-300 hover:-translate-y-1.5 hover:border-accent light:hover:border-accent-light group`}
                 >
                   <div className="flex items-center justify-between mb-5">

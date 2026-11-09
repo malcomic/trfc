@@ -3,6 +3,7 @@ import { useMemberDashboard } from '../../context/MemberDashboardContext'
 import MemberPageHeader from '../../components/member/MemberPageHeader'
 import ProfileForm from '../../components/dashboard/ProfileForm'
 import MyAnswersForm from '../../components/member/MyAnswersForm'
+import ConnectedAccountsCard from '../../components/member/ConnectedAccountsCard'
 
 export default function MemberProfilePage() {
   const { data, setProfile, notify } = useMemberDashboard()
@@ -13,6 +14,7 @@ export default function MemberProfilePage() {
       {data ? (
         <>
           <ProfileForm profile={data.profile} onSaved={setProfile} notify={notify} />
+          <ConnectedAccountsCard profile={data.profile} onSaved={setProfile} notify={notify} />
           <MyAnswersForm notify={notify} />
         </>
       ) : (

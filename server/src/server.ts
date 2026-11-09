@@ -8,6 +8,7 @@ import { verifyEmailTransporter } from './utils/emailService.js';
 import { startFlashReminderScheduler } from './jobs/flashReminders.js';
 import { startInstallmentScheduler } from './jobs/installmentJobs.js';
 import { startCreditScheduler } from './jobs/creditJobs.js';
+import { startAnnouncementEmailScheduler } from './jobs/announcementEmails.js';
 
 export { pool };
 
@@ -40,6 +41,8 @@ import siteImagesRoutes from './routes/siteImages.js';
 import programsRoutes from './routes/programs.js';
 import attendanceRoutes from './routes/attendance.js';
 import checkinsRoutes from './routes/checkins.js';
+import announcementsRoutes from './routes/announcements.js';
+import coachApplicationsRoutes from './routes/coachApplications.js';
 
 dotenv.config();
 
@@ -85,6 +88,8 @@ app.use('/api/site-images', siteImagesRoutes);
 app.use('/api/programs', programsRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/checkins', checkinsRoutes);
+app.use('/api/announcements', announcementsRoutes);
+app.use('/api/coach-applications', coachApplicationsRoutes);
 
 // Start server
 const startServer = async () => {
@@ -105,6 +110,7 @@ const startServer = async () => {
       startFlashReminderScheduler();
       startInstallmentScheduler();
       startCreditScheduler();
+      startAnnouncementEmailScheduler();
     });
   } catch (error) {
     console.error('✗ Failed to connect to database:', error);

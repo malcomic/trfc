@@ -190,7 +190,9 @@ describe('getMyDashboard', () => {
     routeQueries((sql) => {
       if (sql.includes('FROM users WHERE id = $1')) return { rows: [{ ...UPDATED, member_until: null }] }
       if (sql.includes('AS total_spent')) return { rows: [{ saturdays_attended: 1 }] }
-      if (sql.includes('FROM program_enrollments')) return { rows: [{ program: 'foundations', enrolled_at: enrolledAt }] }
+      if (sql.includes('FROM program_enrollments')) {
+        return { rows: [{ program: 'foundations', enrolled_at: enrolledAt, slug: 'couch-to-5k', name: 'Couch to 5K' }] }
+      }
       return undefined
     })
     const res = makeRes()
@@ -198,7 +200,16 @@ describe('getMyDashboard', () => {
     const statsSql = vi.mocked(query).mock.calls.map(([sql]) => String(sql)).find((sql) => sql.includes('AS total_spent'))!
     expect(statsSql).toMatch(/checked_in_at IS NOT NULL/)
     expect(statsSql).toMatch(/EXTRACT\(DOW FROM e\.event_date\) = 6/)
-    expect(res.json.mock.calls[0][0].program).toEqual({ id: 'foundations', enrolled_at: enrolledAt })
+    expect(res.json.mock.calls[0][0].program).toEqual({
+      id: 'foundations',
+      slug: 'couch-to-5k',
+      name: 'Couch to 5K',
+      enrolled_at: enrolledAt,
+      currentWeek: 1,
+      totalWeeks: 0,
+      graduated: false,
+      thisWeekDone: [],
+    })
   })
 
   it('returns 404 when the user no longer exists', async () => {

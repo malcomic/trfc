@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useSearchParams } from 'react-router-dom'
 import { MailCheck } from 'lucide-react'
 import { requestPasswordReset } from '../api/auth'
 import { Button, FormInput } from '../components/ui'
@@ -10,7 +11,10 @@ interface ForgotPasswordForm {
 }
 
 export default function ForgotPassword() {
-  const { register, handleSubmit, formState: { errors } } = useForm<ForgotPasswordForm>()
+  const [searchParams] = useSearchParams()
+  const { register, handleSubmit, formState: { errors } } = useForm<ForgotPasswordForm>({
+    defaultValues: { email: searchParams.get('email')?.trim() ?? '' },
+  })
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [sentTo, setSentTo] = useState<string | null>(null)

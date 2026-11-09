@@ -1,21 +1,34 @@
 import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
-import { PROGRAMS, formatKsh, programPath, type ProgramId } from '../../content/programs'
+import { formatKsh, programPath, type CoreProgramId } from '../../content/programs'
 import { FIND_COPY } from '../../content/quiz'
+import { usePrograms } from '../../context/ProgramsContext'
 import { cardSurface } from '../../utils/themeClasses'
 import CtaButton from '../programs/CtaButton'
 
 interface QuizResultProps {
-  program: ProgramId
-  nextUp: ProgramId | null
+  program: CoreProgramId
+  nextUp: CoreProgramId | null
   week: string
   onRetake: () => void
 }
 
 export default function QuizResult({ program: programId, nextUp, week, onRetake }: QuizResultProps) {
   const copy = FIND_COPY.result
-  const program = PROGRAMS[programId]
-  const next = nextUp ? PROGRAMS[nextUp] : null
+  const { byId, loading } = usePrograms()
+  // An admin may have unpublished the matched program; the free program is always the safe start.
+  const program = byId(programId) ?? byId('foundations')
+  const next = nextUp && nextUp !== program?.id ? byId(nextUp) ?? null : null
+
+  if (!program) {
+    return loading ? (
+      <div className="w-10 h-10 rounded-full border-4 border-mist border-t-cta animate-spin" role="status" aria-label="Loading" />
+    ) : (
+      <p role="alert" className="m-0 text-fog light:text-fog-light">
+        We could not load the programs. Please refresh the page.
+      </p>
+    )
+  }
 
   const rows = [
     { label: copy.length, value: `${program.lengthWeeks} weeks` },
@@ -56,7 +69,7 @@ export default function QuizResult({ program: programId, nextUp, week, onRetake 
             <span className="text-fog light:text-fog-light">{formatKsh(next.price)}</span>
           </div>
           <Link
-            to={programPath(next.id)}
+            to={programPath(next.slug)}
             className="inline-flex items-center gap-1.5 min-h-[44px] font-semibold text-chalk light:text-chalk-light underline"
           >
             {copy.seeIt} <ArrowRight size={16} aria-hidden="true" />
@@ -64,7 +77,7 @@ export default function QuizResult({ program: programId, nextUp, week, onRetake 
         </div>
       )}
 
-      <CtaButton to={programPath(program.id)} className="self-start max-sm:w-full">
+      <CtaButton to={programPath(program.slug)} className="self-start max-sm:w-full">
         {copy.button} <ArrowRight size={20} aria-hidden="true" />
       </CtaButton>
 

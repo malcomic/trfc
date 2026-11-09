@@ -34,6 +34,7 @@ import EquipmentHire from './pages/EquipmentHire'
 import EquipmentCheckout from './pages/EquipmentCheckout'
 import HireConfirmation from './pages/HireConfirmation'
 import Register from './pages/Register'
+import RegisterComplete from './pages/RegisterComplete'
 import Login from './pages/Login'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
@@ -47,6 +48,7 @@ import Contact from './pages/Contact'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import Partnerships from './pages/Partnerships'
+import CoachHiring from './pages/CoachHiring'
 import NotFound from './pages/NotFound'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminAnalytics from './pages/AdminAnalytics'
@@ -73,6 +75,12 @@ import AdminAppearance from './pages/admin/AdminAppearance'
 import AdminScan from './pages/admin/AdminScan'
 import AdminCaptains from './pages/admin/AdminCaptains'
 import AdminRegions from './pages/admin/AdminRegions'
+import AdminAnnouncements from './pages/admin/AdminAnnouncements'
+import AdminPrograms from './pages/admin/AdminPrograms'
+import AdminProgramEditor from './pages/admin/AdminProgramEditor'
+import AdminHiring from './pages/admin/AdminHiring'
+import Unsubscribe from './pages/Unsubscribe'
+import MemberNotifications from './pages/member/MemberNotifications'
 import MemberLayout from './components/member/MemberLayout'
 import MemberOverview from './pages/member/MemberOverview'
 import MemberCalendar from './pages/member/MemberCalendar'
@@ -84,6 +92,10 @@ import MemberProfilePage from './pages/member/MemberProfilePage'
 import MemberCaptain from './pages/member/MemberCaptain'
 import MemberCaptainScan from './pages/member/MemberCaptainScan'
 import MemberPrograms from './pages/member/MemberPrograms'
+import ProgramHome from './pages/member/program/ProgramHome'
+import ProgramWeek from './pages/member/program/ProgramWeek'
+import ProgramSession from './pages/member/program/ProgramSession'
+import ProgramCheckin from './pages/member/program/ProgramCheckin'
 import MemberZone from './pages/member/MemberZone'
 import MemberPoints from './pages/member/MemberPoints'
 import MemberGuides from './pages/member/MemberGuides'
@@ -160,6 +172,9 @@ const router = createBrowserRouter(
           <Route path="site-images" element={<AdminSiteImages />} />
           <Route path="orders" element={<AdminOrders />} />
           <Route path="users" element={<AdminUsers />} />
+          <Route path="announcements" element={<AdminAnnouncements />} />
+          <Route path="programs" element={<AdminPrograms />} />
+          <Route path="programs/:id" element={<AdminProgramEditor />} />
           <Route path="testimonials" element={<AdminTestimonials />} />
           <Route path="equipment" element={<AdminEquipment />} />
           <Route path="tickets" element={<AdminTickets />} />
@@ -168,6 +183,7 @@ const router = createBrowserRouter(
           <Route path="sponsorship-tiers" element={<AdminSponsorshipTiers />} />
           <Route path="signups" element={<AdminSignups />} />
           <Route path="reach-out" element={<AdminReachOut />} />
+          <Route path="hiring" element={<AdminHiring />} />
           <Route path="wallets" element={<AdminWallets />} />
           <Route path="appearance" element={<AdminAppearance />} />
           <Route path="captains" element={<AdminCaptains />} />
@@ -193,9 +209,14 @@ const router = createBrowserRouter(
           <Route path="captain" element={<MemberCaptain />} />
           <Route path="captain/scan" element={<MemberCaptainScan />} />
           <Route path="programs" element={<MemberPrograms />} />
+          <Route path="programs/:slug" element={<ProgramHome />} />
+          <Route path="programs/:slug/week/:week" element={<ProgramWeek />} />
+          <Route path="programs/:slug/week/:week/day/:day" element={<ProgramSession />} />
+          <Route path="programs/:slug/week/:week/check-in" element={<ProgramCheckin />} />
           <Route path="zone" element={<MemberZone />} />
           <Route path="points" element={<MemberPoints />} />
           <Route path="guides" element={<MemberGuides />} />
+          <Route path="notifications" element={<MemberNotifications />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
         <Route path="/account" element={<Navigate to="/dashboard" replace />} />
@@ -209,6 +230,8 @@ const router = createBrowserRouter(
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/partnerships" element={<Partnerships />} />
+          <Route path="/coach-with-us" element={<CoachHiring />} />
+          <Route path="/work-with-us" element={<Navigate to="/coach-with-us" replace />} />
           <Route path="/events" element={<Events />} />
           <Route path="/events/:eventId/checkout" element={<EventCheckout />} />
           <Route path="/events/:id" element={<EventDetail />} />
@@ -237,9 +260,11 @@ const router = createBrowserRouter(
           <Route path="/equipment/checkout" element={<EquipmentCheckout />} />
           <Route path="/hire-confirmation/:id" element={<HireConfirmation />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/register/complete" element={<RegisterComplete />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/unsubscribe" element={<Unsubscribe />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

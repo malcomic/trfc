@@ -22,7 +22,7 @@ export function useProgramJoin(program: Program) {
 
   const join = useCallback(async () => {
     if (!user) {
-      const back = `${programPath(program.id)}?join=1`
+      const back = `${programPath(program.slug)}?join=1`
       navigate(`/register?redirect=${encodeURIComponent(back)}`)
       return
     }
@@ -36,7 +36,7 @@ export function useProgramJoin(program: Program) {
           program.id,
           quiz ? { goal: quiz.goal, experience: quiz.experience, days: quiz.days } : null
         )
-        navigate('/dashboard', { state: { joined: program.id } })
+        navigate('/dashboard', { state: { joined: program.id, joinedName: program.name } })
       } catch (err: any) {
         setJoinError(err?.response?.data?.error || 'We could not add you to the program. Please try again.')
         requestAnimationFrame(scrollToJoin)

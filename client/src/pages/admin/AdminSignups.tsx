@@ -4,14 +4,14 @@ import { getAdminSignups, AdminSignup, AdminSignupFilters } from '../../api/sign
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/AdminMobileCard'
 import AdminResponsiveData from '../../components/admin/AdminResponsiveData'
-import { PROGRAMS, PROGRAM_ORDER, isProgramId } from '../../content/programs'
+import { CORE_PROGRAMS, coreProgramName } from '../../content/programs'
 import { TIER_LABELS } from '../../content/onboarding'
 
 const selectClass =
   'w-full sm:w-auto px-4 py-2 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
 
 function programName(id: string) {
-  return isProgramId(id) ? PROGRAMS[id].name : id
+  return coreProgramName(id)
 }
 
 function tierLabel(tier: string) {
@@ -138,8 +138,8 @@ export default function AdminSignups() {
       <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         <select value={filters.program ?? ''} onChange={(e) => setFilter('program', e.target.value)} className={selectClass}>
           <option value="">All programs</option>
-          {PROGRAM_ORDER.map((id) => (
-            <option key={id} value={id}>{PROGRAMS[id].name}</option>
+          {CORE_PROGRAMS.map(({ id, name }) => (
+            <option key={id} value={id}>{name}</option>
           ))}
         </select>
         <select value={filters.tier ?? ''} onChange={(e) => setFilter('tier', e.target.value)} className={selectClass}>

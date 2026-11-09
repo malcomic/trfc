@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { AlertCircle, ArrowRight, Check, Lock, Mail, MapPin, MessageCircle, Phone, User, Users } from 'lucide-react'
-import { registerUser } from '../../api/auth'
+import { completeGoogleSignup, registerUser } from '../../api/auth'
 import { getCaptainDirectory, getReferrer, type CaptainDirectoryEntry, type Referrer } from '../../api/captains'
 import { getZones, type Zone } from '../../api/zones'
 import {
@@ -20,6 +20,8 @@ import { PasswordToggle } from '../ui'
 import { SIGNUP_ANCHOR } from './SignupCta'
 import SignupQuestions from './SignupQuestions'
 import CaptainCardPicker from '../captain/CaptainCardPicker'
+import GoogleButton, { isGoogleEnabled } from '../auth/GoogleButton'
+import { clearPendingGoogleSignup, useGoogleSignIn, type PendingGoogleSignup } from '../auth/useGoogleSignIn'
 
 interface RegisterFormValues {
   name: string
@@ -125,7 +127,12 @@ function CheckRow({
   )
 }
 
-export default function RegisterForm() {
+interface RegisterFormProps {
+  /** Set when finishing a Google sign-up: name, email and password come from Google instead of the form. */
+  googleSignup?: PendingGoogleSignup
+}
+
+export default function RegisterForm({ googleSignup }: RegisterFormProps = {}) {
   const [searchParams] = useSearchParams()
   const {
     register,
@@ -156,6 +163,13 @@ export default function RegisterForm() {
   const [captains, setCaptains] = useState<CaptainDirectoryEntry[] | null>(null)
   const [zones, setZones] = useState<Zone[]>([])
   const [answers, setAnswers] = useState<SignupAnswers>(EMPTY_ANSWERS)
+
+  const redirectParam = searchParams.get('redirect')
+  const { handleCredential, handleGoogleError, googleLoading, googleError } = useGoogleSignIn({
+    redirectFor: () => redirectTo,
+    completeSearch: redirectParam ? `?redirect=${encodeURIComponent(redirectParam)}` : '',
+  })
+  const shownError = errorMessage || googleError
 
   useEffect(() => {
     let cancelled = false
@@ -204,19 +218,20 @@ export default function RegisterForm() {
       setErrorMessage('')
       const referralCode = referrer?.code ?? getStoredReferral() ?? undefined
       const captainId = values.captainId && values.captainId !== NO_CAPTAIN ? values.captainId : undefined
-      const response = await registerUser({
-        name: values.name.trim(),
-        email: values.email.trim(),
+      const shared = {
         phone: values.phone.trim(),
         whatsapp: whatsappSame ? values.phone.trim() : values.whatsapp.trim(),
-        password: values.password,
         referralCode,
         captainId,
         marketingOptIn,
         answers: compactAnswers(referrer ? { ...answers, zone: '' } : answers),
-      })
+      }
+      const response = googleSignup
+        ? await completeGoogleSignup({ ...shared, signupToken: googleSignup.signupToken })
+        : await registerUser({ ...shared, name: values.name.trim(), email: values.email.trim(), password: values.password })
       if (response.answersSaved === false) localStorage.setItem(ANSWERS_PENDING_KEY, '1')
       clearReferral()
+      clearPendingGoogleSignup()
       login(response.token, response.user, response.refreshToken)
       const linked = response.linked_purchases ?? 0
       navigate(redirectTo, linked > 0 ? { state: { linked } } : undefined)
@@ -249,12 +264,12 @@ export default function RegisterForm() {
           <p className="m-0 text-fog light:text-fog-light">{SIGNUP_QUESTIONS_COPY.subtitle}</p>
         </div>
 
-        {errorMessage && (
+        {shownError && (
           <div className="flex items-start gap-2.5 bg-red-500/10 border border-red-500/25 border-l-4 border-l-red-500 px-4 py-3.5 text-sm text-red-600 dark:text-red-400" role="alert">
             <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
             <span>
-              {errorMessage}
-              {errorMessage.includes('Sign in instead') && (
+              {shownError}
+              {/Sign in (instead|with)/.test(shownError) && (
                 <>
                   {' '}
                   <Link to={loginPath} className="font-bold underline text-current">Sign in</Link>
@@ -264,17 +279,51 @@ export default function RegisterForm() {
           </div>
         )}
 
+        {googleSignup ? (
+          <div className="flex items-center gap-3 bg-accent/10 light:bg-accent-light/10 border border-accent/25 light:border-accent-light/25 border-l-4 border-l-accent light:border-l-accent-light px-4 py-3 text-sm text-chalk light:text-chalk-light">
+            {googleSignup.profile.picture && (
+              <img src={googleSignup.profile.picture} alt="" referrerPolicy="no-referrer" className="w-9 h-9 rounded-full flex-none" />
+            )}
+            <span className="flex-1 min-w-0">
+              Signing up as <strong>{googleSignup.profile.name}</strong>
+              <span className="block text-fog light:text-fog-light truncate">{googleSignup.profile.email}</span>
+            </span>
+            <Link
+              to="/register"
+              onClick={clearPendingGoogleSignup}
+              className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light no-underline hover:underline flex-none"
+            >
+              Not you?
+            </Link>
+          </div>
+        ) : (
+          isGoogleEnabled && (
+            <>
+              <div className={googleLoading ? 'opacity-60 pointer-events-none' : undefined} aria-busy={googleLoading}>
+                <GoogleButton text="signup_with" onCredential={handleCredential} onError={handleGoogleError} />
+              </div>
+              <div className="flex items-center gap-3.5">
+                <div className="flex-1 h-px bg-white/10 light:bg-black/10" />
+                <span className="font-barlow-condensed text-xs tracking-widest uppercase text-fog light:text-fog-light">or with email</span>
+                <div className="flex-1 h-px bg-white/10 light:bg-black/10" />
+              </div>
+            </>
+          )
+        )}
+
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-5">
-          <Field id="reg-name" label="Your name" icon={<User size={14} />} error={errors.name?.message}>
-            <input
-              id="reg-name"
-              type="text"
-              className={inputClass}
-              placeholder="Your name"
-              autoComplete="name"
-              {...register('name', { required: 'Please enter your name', validate: (v) => v.trim() !== '' || 'Please enter your name' })}
-            />
-          </Field>
+          {!googleSignup && (
+            <Field id="reg-name" label="Your name" icon={<User size={14} />} error={errors.name?.message}>
+              <input
+                id="reg-name"
+                type="text"
+                className={inputClass}
+                placeholder="Your name"
+                autoComplete="name"
+                {...register('name', { required: 'Please enter your name', validate: (v) => v.trim() !== '' || 'Please enter your name' })}
+              />
+            </Field>
+          )}
 
           <Field id="reg-phone" label="Phone number" icon={<Phone size={14} />} error={errors.phone?.message}>
             <input
@@ -324,67 +373,71 @@ export default function RegisterForm() {
             </CheckRow>
           </div>
 
-          <Field id="reg-email" label="Email address" icon={<Mail size={14} />} error={errors.email?.message}>
-            <input
-              id="reg-email"
-              type="email"
-              className={inputClass}
-              placeholder="you@example.com"
-              autoComplete="email"
-              {...register('email', {
-                required: 'Email is required',
-                pattern: { value: /^\S+@\S+\.\S+$/, message: 'Enter a valid email' },
-              })}
-            />
-          </Field>
+          {!googleSignup && (
+            <>
+              <Field id="reg-email" label="Email address" icon={<Mail size={14} />} error={errors.email?.message}>
+                <input
+                  id="reg-email"
+                  type="email"
+                  className={inputClass}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  {...register('email', {
+                    required: 'Email is required',
+                    pattern: { value: /^\S+@\S+\.\S+$/, message: 'Enter a valid email' },
+                  })}
+                />
+              </Field>
 
-          <Field
-            id="reg-password"
-            label="Password"
-            icon={<Lock size={14} />}
-            error={errors.password?.message}
-            hint={
-              passwordValue && strengthStyle ? (
-                <div className="mt-2">
-                  <div className="flex gap-1 mb-1">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className={`flex-1 h-0.75 rounded-full transition-all duration-300 ${strength.score >= i ? strengthStyle.bar : 'bg-mist light:bg-mist-light'}`} />
-                    ))}
-                  </div>
-                  <span className={`font-barlow-condensed font-bold text-xs tracking-widest uppercase ${strengthStyle.text}`}>{strength.label} password</span>
-                </div>
-              ) : undefined
-            }
-          >
-            <input
-              id="reg-password"
-              type={showPassword ? 'text' : 'password'}
-              className={`${inputClass} pr-11`}
-              placeholder="Min. 8 characters"
-              autoComplete="new-password"
-              {...register('password', {
-                required: 'Password is required',
-                minLength: { value: 8, message: 'At least 8 characters' },
-                deps: ['confirmPassword'],
-              })}
-            />
-            {toggle}
-          </Field>
+              <Field
+                id="reg-password"
+                label="Password"
+                icon={<Lock size={14} />}
+                error={errors.password?.message}
+                hint={
+                  passwordValue && strengthStyle ? (
+                    <div className="mt-2">
+                      <div className="flex gap-1 mb-1">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className={`flex-1 h-0.75 rounded-full transition-all duration-300 ${strength.score >= i ? strengthStyle.bar : 'bg-mist light:bg-mist-light'}`} />
+                        ))}
+                      </div>
+                      <span className={`font-barlow-condensed font-bold text-xs tracking-widest uppercase ${strengthStyle.text}`}>{strength.label} password</span>
+                    </div>
+                  ) : undefined
+                }
+              >
+                <input
+                  id="reg-password"
+                  type={showPassword ? 'text' : 'password'}
+                  className={`${inputClass} pr-11`}
+                  placeholder="Min. 8 characters"
+                  autoComplete="new-password"
+                  {...register('password', {
+                    required: 'Password is required',
+                    minLength: { value: 8, message: 'At least 8 characters' },
+                    deps: ['confirmPassword'],
+                  })}
+                />
+                {toggle}
+              </Field>
 
-          <Field id="reg-confirm-password" label="Confirm password" icon={<Lock size={14} />} error={errors.confirmPassword?.message}>
-            <input
-              id="reg-confirm-password"
-              type={showPassword ? 'text' : 'password'}
-              className={`${inputClass} pr-11`}
-              placeholder="Re-enter your password"
-              autoComplete="new-password"
-              {...register('confirmPassword', {
-                required: 'Please confirm your password',
-                validate: (v) => v === getValues('password') || 'Passwords do not match',
-              })}
-            />
-            {toggle}
-          </Field>
+              <Field id="reg-confirm-password" label="Confirm password" icon={<Lock size={14} />} error={errors.confirmPassword?.message}>
+                <input
+                  id="reg-confirm-password"
+                  type={showPassword ? 'text' : 'password'}
+                  className={`${inputClass} pr-11`}
+                  placeholder="Re-enter your password"
+                  autoComplete="new-password"
+                  {...register('confirmPassword', {
+                    required: 'Please confirm your password',
+                    validate: (v) => v === getValues('password') || 'Passwords do not match',
+                  })}
+                />
+                {toggle}
+              </Field>
+            </>
+          )}
 
           <SignupQuestions values={answers} onChange={setAnswer} zones={zones} hideZone={!!referrer} onSkip={skipQuestions} />
 

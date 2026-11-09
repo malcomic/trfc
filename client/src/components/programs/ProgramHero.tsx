@@ -33,6 +33,13 @@ export default function ProgramHero({ program, onJoin }: { program: Program; onJ
               </span>
             ))}
           </div>
+          {program.heroImage && (
+            <img
+              src={program.heroImage}
+              alt={program.name}
+              className="w-full aspect-video object-cover rounded-2xl mt-2"
+            />
+          )}
         </div>
 
         <div className={`${cardSurface} rounded-2xl p-6 md:p-7 flex flex-col`}>

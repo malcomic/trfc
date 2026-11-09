@@ -3,8 +3,7 @@ import type { MemberDashboard } from '../../../api/users'
 import type { Event } from '../../../types'
 import type { MemberTicket } from '../../../context/MemberDashboardContext'
 import { DASHBOARD_COPY } from '../../../content/dashboard'
-import { PROGRAMS, programWeek } from '../../../content/programs'
-import { nairobiToday } from '../../../utils/calendarGrid'
+import { dashboardProgramPath } from '../../../content/programs'
 import { formatEventDate } from '../../../utils/eventDate'
 import { dashCard, dashLink, dashMuted } from './ui'
 
@@ -44,8 +43,8 @@ interface DashboardStatsProps {
 }
 
 export default function DashboardStats({ data, nextTicket, nextEvent, isMember }: DashboardStatsProps) {
-  const program = data.program ? PROGRAMS[data.program.id] : null
-  const week = program ? programWeek(program, nairobiToday()) : null
+  const program = data.program
+  const week = program ? { week: program.currentWeek ?? 1, total: program.totalWeeks || 1 } : null
 
   const next = nextTicket?.event_date
     ? { value: nextTicket.event_title, note: shortDate(nextTicket.event_date) }
@@ -61,6 +60,7 @@ export default function DashboardStats({ data, nextTicket, nextEvent, isMember }
           label={copy.program.label(program.name)}
           value={`Week ${week.week}`}
           note={DASHBOARD_COPY.program.weekOf(week.week, week.total)}
+          to={dashboardProgramPath(program.slug)}
         />
       ) : (
         <StatCard label={copy.program.none} value="—" note={copy.program.noneNote} to="/programs" />

@@ -7,10 +7,12 @@ import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import { Button, FormInput, PasswordToggle } from '../components/ui'
 import { Logo } from '../components/Logo'
 import { safeRedirect } from '../utils/safeRedirect'
+import GoogleButton, { isGoogleEnabled } from '../components/auth/GoogleButton'
+import { useGoogleSignIn } from '../components/auth/useGoogleSignIn'
 
 export default function Login() {
   const [searchParams] = useSearchParams()
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm({
     defaultValues: { email: searchParams.get('email')?.trim() ?? '', password: '' },
   })
   const [loading, setLoading] = useState(false)
@@ -32,6 +34,16 @@ export default function Login() {
     if (role === 'scanner' && !target.startsWith('/admin/scan')) return '/admin/scan'
     return target
   }
+
+  const redirectParam = searchParams.get('redirect')
+  const { handleCredential, handleGoogleError, googleLoading, googleError } = useGoogleSignIn({
+    redirectFor: getRedirectPath,
+    completeSearch: redirectParam ? `?redirect=${encodeURIComponent(redirectParam)}` : '',
+    onLinkRequired: (email) => {
+      if (email) setValue('email', email)
+    },
+  })
+  const shownError = errorMessage || googleError
 
   const onSubmit = async (data: any) => {
     try {
@@ -96,7 +108,7 @@ export default function Login() {
           Sign in to access events, track your progress, and connect with the community.
         </p>
 
-        {passwordWasReset && !errorMessage && (
+        {passwordWasReset && !shownError && (
           <div className="flex items-start gap-2.5 bg-green-500/10 border border-green-500/25 border-l-4 border-l-green-500 px-4 py-3.5 mb-7 text-sm text-green-700 dark:text-green-400 animate-fadeUp" role="status">
             <CheckCircle2 size={16} className="flex-shrink-0 mt-0.25" />
             <span>Your password has been reset. Sign in with your new password.</span>
@@ -104,11 +116,24 @@ export default function Login() {
         )}
 
         {/* Error message */}
-        {errorMessage && (
+        {shownError && (
           <div className="flex items-start gap-2.5 bg-red-500/10 border border-red-500/25 border-l-4 border-l-red-500 px-4 py-3.5 mb-7 text-sm text-red-600 dark:text-red-400 animate-fadeUp" role="alert">
             <AlertCircle size={16} className="flex-shrink-0 mt-0.25" />
-            <span>{errorMessage}</span>
+            <span>{shownError}</span>
           </div>
+        )}
+
+        {isGoogleEnabled && (
+          <>
+            <div className={googleLoading ? 'opacity-60 pointer-events-none' : undefined} aria-busy={googleLoading}>
+              <GoogleButton text="signin_with" onCredential={handleCredential} onError={handleGoogleError} />
+            </div>
+            <div className="flex items-center gap-3.5 my-7">
+              <div className="flex-1 h-px bg-white/10 light:bg-black/10" />
+              <span className="font-barlow-condensed text-xs tracking-widest uppercase text-fog light:text-fog-light">or with email</span>
+              <div className="flex-1 h-px bg-white/10 light:bg-black/10" />
+            </div>
+          </>
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate>

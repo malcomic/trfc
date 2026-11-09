@@ -7,6 +7,7 @@ export type SiteImageSlot =
   | 'program_endurance'
   | 'program_hiking'
   | 'find_results_cover'
+  | 'coach_hiring'
 
 export interface SiteImage {
   slot: SiteImageSlot

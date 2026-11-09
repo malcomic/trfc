@@ -1,4 +1,5 @@
 import { query } from '../config/db.js'
+import { buildCatalogSeedSql } from '../config/programCatalogSeed.js'
 
 const MIGRATIONS: { name: string; sql: string }[] = [
   {
@@ -1276,6 +1277,187 @@ const MIGRATIONS: { name: string; sql: string }[] = [
           WHERE provider = 'youtube' AND video_url LIKE '%youtube.com/shorts/%';
         END IF;
       END $$;
+    `,
+  },
+  {
+    name: '056_announcements',
+    sql: `
+      CREATE TABLE IF NOT EXISTS announcements (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        title VARCHAR(150) NOT NULL,
+        body TEXT NOT NULL,
+        link_url TEXT,
+        link_label VARCHAR(40),
+        kind VARCHAR(10) NOT NULL CHECK (kind IN ('important', 'news')),
+        audience VARCHAR(10) NOT NULL CHECK (audience IN ('all', 'members', 'free')),
+        send_email BOOLEAN NOT NULL DEFAULT false,
+        published_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        archived_at TIMESTAMPTZ,
+        created_by UUID REFERENCES users(id) ON DELETE SET NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_announcements_published ON announcements(published_at DESC);
+
+      CREATE TABLE IF NOT EXISTS announcement_reads (
+        announcement_id UUID NOT NULL REFERENCES announcements(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        read_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (announcement_id, user_id)
+      );
+
+      -- One row per recipient, so a restart never emails anyone twice.
+      CREATE TABLE IF NOT EXISTS announcement_emails (
+        announcement_id UUID NOT NULL REFERENCES announcements(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        email TEXT NOT NULL,
+        status VARCHAR(10) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'sending', 'sent', 'failed')),
+        error TEXT,
+        claimed_at TIMESTAMPTZ,
+        sent_at TIMESTAMPTZ,
+        PRIMARY KEY (announcement_id, user_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_announcement_emails_status ON announcement_emails(status);
+    `,
+  },
+  {
+    name: '057_program_progress',
+    sql: `
+      CREATE TABLE IF NOT EXISTS program_session_progress (
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        program VARCHAR(40) NOT NULL,
+        week INT NOT NULL,
+        day INT NOT NULL,
+        rounds_done INT NOT NULL DEFAULT 0,
+        completed_at TIMESTAMPTZ,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (user_id, program, week, day)
+      );
+
+      -- One check-in per week; the count of check-ins is how many weeks are open.
+      CREATE TABLE IF NOT EXISTS program_checkins (
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        program VARCHAR(40) NOT NULL,
+        week INT NOT NULL,
+        answers JSONB NOT NULL DEFAULT '{}',
+        submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        captain_notified BOOLEAN NOT NULL DEFAULT false,
+        PRIMARY KEY (user_id, program, week)
+      );
+    `,
+  },
+  {
+    name: '058_program_catalog_versions',
+    sql: `
+      CREATE TABLE IF NOT EXISTS programs (
+        id VARCHAR(40) PRIMARY KEY,
+        slug VARCHAR(60) NOT NULL UNIQUE,
+        name VARCHAR(80) NOT NULL,
+        status VARCHAR(10) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
+        is_core BOOLEAN NOT NULL DEFAULT false,
+        sort_order INT NOT NULL DEFAULT 100,
+        created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      -- Each program has at most one draft and one published version; older published ones are kept as superseded.
+      CREATE TABLE IF NOT EXISTS program_versions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        program_id VARCHAR(40) NOT NULL REFERENCES programs(id) ON DELETE CASCADE,
+        state VARCHAR(12) NOT NULL CHECK (state IN ('draft', 'published', 'superseded')),
+        content JSONB NOT NULL,
+        created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        published_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        published_at TIMESTAMPTZ
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_program_versions_draft ON program_versions(program_id) WHERE state = 'draft';
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_program_versions_published ON program_versions(program_id) WHERE state = 'published';
+      CREATE INDEX IF NOT EXISTS idx_program_versions_program ON program_versions(program_id, created_at DESC);
+
+      ${buildCatalogSeedSql()}
+
+      ALTER TABLE program_enrollments ALTER COLUMN program TYPE VARCHAR(40);
+      ALTER TABLE program_session_progress ALTER COLUMN program TYPE VARCHAR(40);
+      ALTER TABLE program_checkins ALTER COLUMN program TYPE VARCHAR(40);
+
+      -- NOT VALID: only new rows are checked, so an old unknown program value never blocks start-up.
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_program_enrollments_program') THEN
+          ALTER TABLE program_enrollments ADD CONSTRAINT fk_program_enrollments_program
+            FOREIGN KEY (program) REFERENCES programs(id) NOT VALID;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_program_session_progress_program') THEN
+          ALTER TABLE program_session_progress ADD CONSTRAINT fk_program_session_progress_program
+            FOREIGN KEY (program) REFERENCES programs(id) NOT VALID;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_program_checkins_program') THEN
+          ALTER TABLE program_checkins ADD CONSTRAINT fk_program_checkins_program
+            FOREIGN KEY (program) REFERENCES programs(id) NOT VALID;
+        END IF;
+      END $$;
+    `,
+  },
+  {
+    name: '059_drop_program_content_tables',
+    sql: `
+      -- Content now lives in program_versions; 058 has already carried these rows over.
+      DROP TABLE IF EXISTS program_days;
+      DROP TABLE IF EXISTS program_weeks;
+      DROP TABLE IF EXISTS program_plans;
+    `,
+  },
+  {
+    name: '060_coach_hiring',
+    sql: `
+      CREATE TABLE IF NOT EXISTS coach_applications (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        full_name VARCHAR(120) NOT NULL,
+        phone VARCHAR(20) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        location VARCHAR(120) NOT NULL,
+        social_url TEXT NOT NULL,
+        experience TEXT NOT NULL,
+        can_give_3_hours BOOLEAN NOT NULL,
+        hours TEXT[] NOT NULL DEFAULT '{}',
+        worked_harder TEXT NOT NULL,
+        answers JSONB NOT NULL DEFAULT '{}'::jsonb,
+        video_url TEXT NOT NULL,
+        video_source VARCHAR(10) NOT NULL CHECK (video_source IN ('upload', 'link')),
+        video_public_id TEXT,
+        agreed_standards_at TIMESTAMPTZ NOT NULL,
+        agreed_storage_at TIMESTAMPTZ NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'new'
+          CHECK (status IN ('new', 'reviewing', 'call_booked', 'accepted', 'not_now')),
+        handled_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        notes TEXT,
+        status_changed_at TIMESTAMPTZ,
+        submission_key VARCHAR(64) NOT NULL UNIQUE,
+        ip_hash VARCHAR(64),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_coach_applications_status ON coach_applications(status);
+      CREATE INDEX IF NOT EXISTS idx_coach_applications_created ON coach_applications(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_coach_applications_email ON coach_applications(lower(email));
+
+      CREATE TABLE IF NOT EXISTS hiring_settings (
+        id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+        notify_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      INSERT INTO hiring_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+    `,
+  },
+  {
+    name: '061_google_auth',
+    sql: `
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(64);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id) WHERE google_id IS NOT NULL;
     `,
   },
 ]

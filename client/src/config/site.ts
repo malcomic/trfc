@@ -9,6 +9,8 @@ export const siteContact = {
   mapsUrl: 'https://maps.google.com/?q=Thika+Road+Nairobi',
 }
 
+export const googleClientId = ((env.VITE_GOOGLE_CLIENT_ID as string) || '').trim()
+
 export interface SocialLink {
   label: string
   href: string

@@ -8,6 +8,7 @@ export const config = {
   databaseUrl: process.env.DATABASE_URL || '',
   jwtSecret: process.env.JWT_SECRET || '',
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || '',
+  googleClientId: process.env.GOOGLE_CLIENT_ID || '',
   cloudinary: {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
     apiKey: process.env.CLOUDINARY_API_KEY || '',
@@ -62,6 +63,7 @@ export const config = {
     creditCreatedTemplateName: process.env.WHATSAPP_CREDIT_CREATED_TEMPLATE || '',
     creditExpiringTemplateName: process.env.WHATSAPP_CREDIT_EXPIRING_TEMPLATE || '',
     waitlistTemplateName: process.env.WHATSAPP_WAITLIST_TEMPLATE || '',
+    checkinTemplateName: process.env.WHATSAPP_CHECKIN_TEMPLATE || '',
     templateLang: process.env.WHATSAPP_TEMPLATE_LANG || 'en',
     apiVersion: process.env.WHATSAPP_API_VERSION || 'v20.0',
   },

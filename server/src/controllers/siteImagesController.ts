@@ -9,6 +9,7 @@ export const SITE_IMAGE_SLOTS = [
   'program_endurance',
   'program_hiking',
   'find_results_cover',
+  'coach_hiring',
 ] as const
 export type SiteImageSlot = (typeof SITE_IMAGE_SLOTS)[number]
 

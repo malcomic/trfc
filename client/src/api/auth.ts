@@ -66,6 +66,44 @@ export const updateMyProfile = async (data: {
   return response.data;
 };
 
+export interface GoogleSignupProfile {
+  name: string;
+  email: string;
+  picture: string | null;
+}
+
+export type GoogleAuthResponse =
+  | (AuthTokens & { user: User; linked_purchases?: number; needsProfile?: undefined })
+  | { needsProfile: true; signupToken: string; profile: GoogleSignupProfile };
+
+export const googleAuth = async (credential: string): Promise<GoogleAuthResponse> => {
+  const response = await api.post('/auth/google', { credential });
+  return response.data;
+};
+
+export const completeGoogleSignup = async (data: {
+  signupToken: string;
+  phone: string;
+  whatsapp?: string;
+  referralCode?: string;
+  captainId?: string;
+  marketingOptIn?: boolean;
+  answers?: Partial<SignupAnswers>;
+}): Promise<AuthTokens & { user: User; answersSaved?: boolean; linked_purchases?: number }> => {
+  const response = await api.post('/auth/google/complete', data);
+  return response.data;
+};
+
+export const linkGoogle = async (credential: string): Promise<{ user: User }> => {
+  const response = await api.post('/auth/me/google', { credential });
+  return response.data;
+};
+
+export const unlinkGoogle = async (): Promise<{ user: User }> => {
+  const response = await api.delete('/auth/me/google');
+  return response.data;
+};
+
 export const changeMyPassword = async (data: {
   currentPassword: string;
   newPassword: string;

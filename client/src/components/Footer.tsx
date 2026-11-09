@@ -78,6 +78,7 @@ export default function Footer() {
       links: [
         { to: '/register', label: 'Join the Community' },
         { to: '/contact', label: 'Contact' },
+        { to: '/coach-with-us', label: 'Work with us' },
         staffLink,
       ],
     },
@@ -201,10 +202,11 @@ export default function Footer() {
           <p className="text-xs text-fog light:text-fog-light tracking-tighter">
             © {new Date().getFullYear()} Thika Road Fitness Community. All Rights Reserved.
           </p>
-          <div className="flex gap-5">
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
             <Link to="/privacy" className="text-xs tracking-widest uppercase text-fog light:text-fog-light no-underline font-barlow-condensed font-bold transition-all duration-200 hover:text-accent light:hover:text-accent-light">Privacy</Link>
             <Link to="/terms" className="text-xs tracking-widest uppercase text-fog light:text-fog-light no-underline font-barlow-condensed font-bold transition-all duration-200 hover:text-accent light:hover:text-accent-light">Terms</Link>
             <Link to="/contact" className="text-xs tracking-widest uppercase text-fog light:text-fog-light no-underline font-barlow-condensed font-bold transition-all duration-200 hover:text-accent light:hover:text-accent-light">Contact</Link>
+            <Link to="/coach-with-us" className="text-xs tracking-widest uppercase text-fog light:text-fog-light no-underline font-barlow-condensed font-bold transition-all duration-200 hover:text-accent light:hover:text-accent-light">Work with us</Link>
           </div>
         </div>
       </div>

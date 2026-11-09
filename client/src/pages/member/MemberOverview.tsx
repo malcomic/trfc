@@ -23,6 +23,7 @@ import {
   PointsCard,
 } from '../../components/member/dashboard/MembershipCards'
 import WelcomeVideoModal from '../../components/member/dashboard/WelcomeVideoModal'
+import ImportantAnnouncementBanner from '../../components/member/dashboard/ImportantAnnouncementBanner'
 import { legacyTabPath } from '../../utils/legacyTabs'
 import { getPageVideos, type PageVideo } from '../../api/pageVideos'
 import { markWelcomeVideoWatched, recordWelcomeVideoShown } from '../../api/welcomeVideo'
@@ -126,6 +127,7 @@ export default function MemberOverview() {
       <WelcomeVideoModal video={openVideo} onClose={closeWelcomeVideo} onWatched={welcomeWatched} />
 
       <div className="space-y-6">
+        <ImportantAnnouncementBanner />
         <AnswersPromptCard />
         <div>
           <DashboardStats data={data} nextTicket={nextTicket} nextEvent={events?.[0]} isMember={isMember} />
@@ -141,7 +143,7 @@ export default function MemberOverview() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <ProgramProgressCard programId={data.program?.id ?? null} />
+            <ProgramProgressCard />
             <TicketsSummaryCard tickets={upcomingTickets} onCancel={cancelTicket} />
             <ComingUpList events={events} bookedEventIds={bookedEventIds} />
           </div>

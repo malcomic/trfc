@@ -2,7 +2,8 @@ import { Link } from 'react-router-dom'
 import { Loader } from 'lucide-react'
 import { useMemberDashboard } from '../../context/MemberDashboardContext'
 import { DASHBOARD_COPY } from '../../content/dashboard'
-import { PROGRAMS, PROGRAM_ORDER, formatKsh, programPath } from '../../content/programs'
+import { FREE_PROGRAM_SLUG, coreProgramName, dashboardProgramPath, formatKsh, programPath } from '../../content/programs'
+import { usePrograms } from '../../context/ProgramsContext'
 import { loadQuizResult } from '../../content/quiz'
 import { formatDate } from '../../utils/captainDisplay'
 import MemberPageHeader from '../../components/member/MemberPageHeader'
@@ -16,7 +17,9 @@ export default function MemberPrograms() {
   const { data, loading } = useMemberDashboard()
   const enrolled = data?.program ?? null
   const quiz = loadQuizResult()
-  const others = PROGRAM_ORDER.filter((id) => id !== enrolled?.id).map((id) => PROGRAMS[id])
+  const { programs, byId } = usePrograms()
+  const others = programs.filter((p) => p.id !== enrolled?.id)
+  const nameOf = (id: string) => byId(id)?.name ?? coreProgramName(id)
 
   return (
     <>
@@ -34,17 +37,24 @@ export default function MemberPrograms() {
                 <p className={dashMuted}>
                   {copy.joinedOn(formatDate(enrolled.enrolled_at))}
                 </p>
-                <Link to={programPath(enrolled.id)} className={`${dashLink} text-sm`}>
-                  {copy.viewPage}
-                </Link>
+                <div className="flex flex-wrap items-center gap-4">
+                  <Link to={dashboardProgramPath(enrolled.slug)} className={`${dashLink} text-sm`}>
+                    {copy.openProgram}
+                  </Link>
+                  {byId(enrolled.id) && (
+                    <Link to={programPath(enrolled.slug)} className={`${dashLink} text-sm`}>
+                      {copy.viewPage}
+                    </Link>
+                  )}
+                </div>
               </div>
-              <ProgramProgressCard programId={enrolled.id} />
+              <ProgramProgressCard />
             </section>
           ) : (
             <div className={dashCard}>
               <h2 className={dashHeading}>{copy.noneHeading}</h2>
               <p className={`${dashMuted} mt-2`}>{copy.noneBody}</p>
-              <CtaButton to={programPath('foundations')} size="sm" className="mt-5">
+              <CtaButton to={programPath(FREE_PROGRAM_SLUG)} size="sm" className="mt-5">
                 {DASHBOARD_COPY.program.startFree}
               </CtaButton>
             </div>
@@ -53,8 +63,8 @@ export default function MemberPrograms() {
           {quiz && (
             <div className={dashCard}>
               <h2 className={dashHeading}>{copy.quizHeading}</h2>
-              <p className="mt-2 text-chalk light:text-chalk-light">{copy.quizMatch(PROGRAMS[quiz.program].name)}</p>
-              {quiz.nextUp && <p className={`${dashMuted} mt-1`}>{copy.nextUp(PROGRAMS[quiz.nextUp].name)}</p>}
+              <p className="mt-2 text-chalk light:text-chalk-light">{copy.quizMatch(nameOf(quiz.program))}</p>
+              {quiz.nextUp && <p className={`${dashMuted} mt-1`}>{copy.nextUp(nameOf(quiz.nextUp))}</p>}
             </div>
           )}
 
@@ -64,7 +74,7 @@ export default function MemberPrograms() {
               {others.map((p) => (
                 <Link
                   key={p.id}
-                  to={programPath(p.id)}
+                  to={programPath(p.slug)}
                   className={`${dashCard} !p-5 no-underline block hover:border-cta transition-colors`}
                 >
                   <div className="flex items-center justify-between gap-2">

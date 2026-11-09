@@ -4,7 +4,7 @@ import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import AdminConfirmDialog from '../../components/AdminConfirmDialog'
 import { uploadPageMedia } from '../../api/pageVideos'
 import { deleteSiteImage, getSiteImages, saveSiteImage, type SiteImage, type SiteImages, type SiteImageSlot } from '../../api/siteImages'
-import { COACH_PHOTO, PROGRAMS, PROGRAM_ORDER } from '../../content/programs'
+import { COACH_PHOTO, CORE_PROGRAMS } from '../../content/programs'
 import { FIND_COPY } from '../../content/quiz'
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024
@@ -39,12 +39,12 @@ const GROUPS: SlotGroup[] = [
   },
   {
     heading: 'Programs',
-    slots: PROGRAM_ORDER.map((id) => ({
+    slots: CORE_PROGRAMS.map(({ id, name }) => ({
       slot: `program_${id}` as SiteImageSlot,
-      title: `${PROGRAMS[id].name} card photo`,
-      description: `Top of the ${PROGRAMS[id].name} card on the Programs page.`,
+      title: `${name} card photo`,
+      description: `Top of the ${name} card on the Programs page. A card image set in Admin › Programs is used instead.`,
       fallback: null,
-      defaultAlt: PROGRAMS[id].name,
+      defaultAlt: name,
     })),
   },
   {
@@ -56,6 +56,18 @@ const GROUPS: SlotGroup[] = [
         description: 'Covers the member results video until the visitor presses play. Shown on its own if no video is set.',
         fallback: FIND_COPY.results.cover,
         defaultAlt: FIND_COPY.results.coverAlt,
+      },
+    ],
+  },
+  {
+    heading: 'Coach with us',
+    slots: [
+      {
+        slot: 'coach_hiring',
+        title: 'Hiring page photo',
+        description: 'Top of the Coach with us page (/coach-with-us). The page shows no photo when this is empty.',
+        fallback: null,
+        defaultAlt: 'TRFC coaches leading a run',
       },
     ],
   },

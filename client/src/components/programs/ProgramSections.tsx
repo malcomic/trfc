@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { PROGRAMS, programPath, type Program } from '../../content/programs'
+import { FREE_PROGRAM_SLUG, programPath, type Program } from '../../content/programs'
 import { cardSurface } from '../../utils/themeClasses'
 import CtaButton from './CtaButton'
 import PlaceholderBox from './PlaceholderBox'
@@ -57,7 +57,7 @@ export function HowItWorks({ program }: { program: Program }) {
             </div>
           ))}
         </div>
-        <PlaceholderBox label={program.outlinePlaceholder} className="min-h-[140px]" />
+        {program.outline && <PlaceholderBox label={program.outline} className="min-h-[140px]" />}
         {program.shareNote && <p className="m-0 text-fog light:text-fog-light">{program.shareNote}</p>}
       </div>
     </section>
@@ -91,7 +91,7 @@ export function JoinBox({
               Joining {program.name} online opens soon. Start the free Couch to 5K while you wait.
             </p>
             <Link
-              to={programPath(PROGRAMS.foundations.id)}
+              to={programPath(FREE_PROGRAM_SLUG)}
               className="self-start inline-flex items-center min-h-[44px] font-semibold text-chalk light:text-chalk-light underline"
             >
               See Couch to 5K

@@ -1,12 +1,12 @@
 import api from './index'
-import type { ProgramId } from '../content/programs'
+import type { CoreProgramId } from '../content/programs'
 import type { Tier } from '../content/onboarding'
 
 export interface CreateSignupRequest {
   name: string
   phone: string
   whatsapp: string
-  program: ProgramId
+  program: CoreProgramId
   tier: Tier
   quizAnswers?: Record<string, string>
   referralCode?: string
@@ -14,7 +14,7 @@ export interface CreateSignupRequest {
 
 export interface CreateSignupResponse {
   signupId: string
-  program: ProgramId
+  program: CoreProgramId
   tier: Tier
   amount: number
   isReturning: boolean
@@ -23,7 +23,7 @@ export interface CreateSignupResponse {
 
 export interface SignupStatus {
   id: string
-  program: ProgramId
+  program: CoreProgramId
   tier: Tier
   amount: number
   payment_status: 'n/a' | 'pending' | 'paid' | 'failed'
@@ -31,7 +31,7 @@ export interface SignupStatus {
 
 export interface AdminSignup {
   id: string
-  program: ProgramId
+  program: CoreProgramId
   tier: Tier
   is_returning: boolean
   amount: number

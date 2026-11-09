@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
-import { TICKER_ITEMS, type TickerItem } from '../content/ticker'
+import { usePrograms } from '../context/ProgramsContext'
+import { tickerItems, type TickerItem } from '../content/ticker'
 
 function Item({ item, hidden }: { item: TickerItem; hidden: boolean }) {
   const content = (
@@ -21,10 +22,10 @@ function Item({ item, hidden }: { item: TickerItem; hidden: boolean }) {
   )
 }
 
-function ItemGroup({ hidden }: { hidden: boolean }) {
+function ItemGroup({ items, hidden }: { items: TickerItem[]; hidden: boolean }) {
   return (
     <div className="flex flex-none" aria-hidden={hidden || undefined}>
-      {TICKER_ITEMS.map((item) => (
+      {items.map((item) => (
         <Item key={item.name} item={item} hidden={hidden} />
       ))}
     </div>
@@ -32,14 +33,16 @@ function ItemGroup({ hidden }: { hidden: boolean }) {
 }
 
 export default function ProgramsTicker() {
+  const { programs } = usePrograms()
+  const items = tickerItems(programs)
   return (
     <div
       aria-label="Programs coming soon"
       className="programs-ticker bg-night text-white overflow-hidden py-3 text-[17px] max-sm:text-[15px] font-barlow"
     >
       <div className="programs-ticker-track">
-        <ItemGroup hidden={false} />
-        <ItemGroup hidden />
+        <ItemGroup items={items} hidden={false} />
+        <ItemGroup items={items} hidden />
       </div>
     </div>
   )

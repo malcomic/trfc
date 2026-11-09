@@ -1483,6 +1483,143 @@ export function buildSettlementPayoutReminderEmailText(data: SettlementPayoutRem
   ].join('\n\n')
 }
 
+export interface AnnouncementEmailData {
+  title: string
+  body: string
+  linkUrl: string | null
+  linkLabel: string | null
+  kind: 'important' | 'news'
+  /** Only news emails carry an unsubscribe link; important notices go to every account. */
+  unsubscribeToken: string | null
+}
+
+const absoluteLink = (url: string) => (url.startsWith('/') ? siteUrl(url) : url)
+const notificationsUrl = () => siteUrl('/dashboard/notifications')
+const unsubscribeUrl = (token: string) => siteUrl(`/unsubscribe?token=${encodeURIComponent(token)}`)
+
+export function buildAnnouncementEmailHTML(data: AnnouncementEmailData): string {
+  const paragraphs = data.body
+    .split(/\n{2,}/)
+    .map((block) => paragraph(escapeHtml(block).replace(/\n/g, '<br>')))
+    .join('')
+  const unsubscribe = data.unsubscribeToken
+    ? `<p style="margin:24px 0 0;font-size:12px;line-height:1.5;color:#6b7280;">
+        You get these because you opted in to TRFC news.
+        <a href="${escapeHtml(unsubscribeUrl(data.unsubscribeToken))}" style="color:#b45309;">Stop these emails</a>
+      </p>`
+    : ''
+  return accountEmailShell(
+    escapeHtml(data.title),
+    escapeHtml(data.title),
+    `
+      ${paragraphs}
+      ${data.linkUrl && data.linkLabel ? actionButton(escapeHtml(data.linkLabel), absoluteLink(data.linkUrl)) : ''}
+      <p style="margin:24px 0 0;font-size:14px;line-height:1.5;color:#374151;text-align:center;">
+        <a href="${escapeHtml(notificationsUrl())}" style="color:#b45309;">View in your dashboard</a>
+      </p>
+      ${unsubscribe}`
+  )
+}
+
+export function buildAnnouncementEmailText(data: AnnouncementEmailData): string {
+  return [
+    data.title,
+    data.body,
+    data.linkUrl && data.linkLabel ? `${data.linkLabel}: ${absoluteLink(data.linkUrl)}` : null,
+    `View in your dashboard: ${notificationsUrl()}`,
+    data.unsubscribeToken
+      ? `You get these because you opted in to TRFC news. Stop these emails: ${unsubscribeUrl(data.unsubscribeToken)}`
+      : null,
+    footerText(),
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+}
+
+export interface CoachApplicationEmailData {
+  id: string
+  fullName: string
+  phone: string
+  email: string
+  location: string
+  socialUrl: string
+  canGive3Hours: boolean
+  hoursLabel: string
+  videoUrl: string
+}
+
+export const COACH_APPLICATION_SUBJECT = 'We got your TRFC coach application'
+export const COACH_APPLICATION_THANKS = 'Thank you. We read every application.'
+
+const coachSummaryRows = (data: CoachApplicationEmailData) => [
+  ['Name', data.fullName],
+  ['WhatsApp', data.phone],
+  ['Email', data.email],
+  ['Based in', data.location],
+  ['3 hours a day', data.canGive3Hours ? 'Yes' : 'No'],
+  ['Hours', data.hoursLabel],
+]
+
+const summaryTable = (rows: string[][]) => `
+      <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;margin:0 0 16px;border-collapse:collapse;font-size:14px;">
+        ${rows
+          .map(
+            ([label, value]) => `<tr>
+          <td style="padding:8px 0;border-top:1px solid #e5e7eb;color:#6b7280;width:40%;">${escapeHtml(label)}</td>
+          <td style="padding:8px 0;border-top:1px solid #e5e7eb;color:#111827;font-weight:600;">${escapeHtml(value)}</td>
+        </tr>`
+          )
+          .join('')}
+      </table>`
+
+export function buildCoachApplicationEmailHTML(data: CoachApplicationEmailData): string {
+  return accountEmailShell(
+    COACH_APPLICATION_SUBJECT,
+    'Application received',
+    `
+      ${paragraph(escapeHtml(greeting(data.fullName)))}
+      ${paragraph(`${COACH_APPLICATION_THANKS} We have your application to coach with TRFC, including your video.`)}
+      ${paragraph('Here is what you sent us:')}
+      ${summaryTable(coachSummaryRows(data))}
+      ${paragraph('If anything here is wrong, reply to this email and let us know.')}`
+  )
+}
+
+export function buildCoachApplicationEmailText(data: CoachApplicationEmailData): string {
+  return [
+    greeting(data.fullName),
+    `${COACH_APPLICATION_THANKS} We have your application to coach with TRFC, including your video.`,
+    coachSummaryRows(data)
+      .map(([label, value]) => `${label}: ${value}`)
+      .join('\n'),
+    'If anything here is wrong, reply to this email and let us know.',
+    footerText(),
+  ].join('\n\n')
+}
+
+export const coachApplicationAdminUrl = (id: string) => siteUrl(`/admin/hiring?id=${encodeURIComponent(id)}`)
+
+export function buildCoachApplicationNoticeHTML(data: CoachApplicationEmailData): string {
+  return accountEmailShell(
+    `New coach application: ${escapeHtml(data.fullName)}`,
+    'New coach application',
+    `
+      ${paragraph(`<strong>${escapeHtml(data.fullName)}</strong> has applied to coach with TRFC.`)}
+      ${summaryTable([...coachSummaryRows(data), ['Social', data.socialUrl], ['Video', data.videoUrl]])}
+      ${actionButton('OPEN IN HIRING', coachApplicationAdminUrl(data.id))}`
+  )
+}
+
+export function buildCoachApplicationNoticeText(data: CoachApplicationEmailData): string {
+  return [
+    `${data.fullName} has applied to coach with TRFC.`,
+    [...coachSummaryRows(data), ['Social', data.socialUrl], ['Video', data.videoUrl]]
+      .map(([label, value]) => `${label}: ${value}`)
+      .join('\n'),
+    `Open in Hiring: ${coachApplicationAdminUrl(data.id)}`,
+  ].join('\n\n')
+}
+
 export default {
   buildTicketEmailHTML,
   buildTicketEmailText,

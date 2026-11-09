@@ -17,8 +17,13 @@ import {
   type PaymentPlan,
   type WalletSummary,
 } from '../api/wallet'
+import {
+  getMyAnnouncements,
+  markAnnouncementsRead as postAnnouncementsRead,
+  type Announcement,
+} from '../api/announcements'
 import { formatKes } from '../utils/captainDisplay'
-import { PROGRAMS, isProgramId } from '../content/programs'
+import { coreProgramName } from '../content/programs'
 import { monthOfDay, monthRange, nairobiToday } from '../utils/calendarGrid'
 import { ToastStack, type ToastMessage } from '../components/Toast'
 import PayEventsModal from '../components/wallet/PayEventsModal'
@@ -73,6 +78,12 @@ interface MemberDashboardValue {
   refreshKey: number
   fetchCalendarMonth: (month: string) => Promise<CalendarResponse>
 
+  /** Null until the first load finishes. */
+  announcements: Announcement[] | null
+  unreadAnnouncements: number
+  /** Without ids, marks every announcement as read. */
+  markAnnouncementsRead: (ids?: string[]) => void
+
   openPayEvents: () => void
   cancelTicket: (ticket: MemberTicket) => void
   notify: Notify
@@ -126,6 +137,27 @@ export function MemberDashboardProvider({ children }: { children: ReactNode }) {
     if (w) setData((d) => (d ? { ...d, stats: { ...d.stats, wallet_balance: w.ticketValue } } : d))
   }, [])
 
+  const [announcements, setAnnouncements] = useState<Announcement[] | null>(null)
+
+  const loadAnnouncements = useCallback(
+    () =>
+      getMyAnnouncements()
+        .then((result) => setAnnouncements(result.items))
+        .catch(() => setAnnouncements((prev) => prev ?? [])),
+    []
+  )
+
+  const markAnnouncementsRead = useCallback(
+    (ids?: string[]) => {
+      const targets = ids ? new Set(ids) : null
+      setAnnouncements((prev) =>
+        prev ? prev.map((a) => (!targets || targets.has(a.id) ? { ...a, read: true } : a)) : prev
+      )
+      postAnnouncementsRead(ids).catch(() => loadAnnouncements())
+    },
+    [loadAnnouncements]
+  )
+
   const fetchCalendarMonth = useCallback(async (month: string) => {
     const cached = calendarCache.current.get(month)
     if (cached) return cached
@@ -139,9 +171,10 @@ export function MemberDashboardProvider({ children }: { children: ReactNode }) {
     getMyDashboard().then(setData).catch(() => undefined)
     loadTickets()
     loadWallet()
+    loadAnnouncements()
     calendarCache.current.clear()
     setRefreshKey((v) => v + 1)
-  }, [loadTickets, loadWallet])
+  }, [loadTickets, loadWallet, loadAnnouncements])
 
   useEffect(() => {
     getMyDashboard()
@@ -150,10 +183,11 @@ export function MemberDashboardProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false))
     loadTickets()
     loadWallet()
-  }, [loadTickets, loadWallet])
+    loadAnnouncements()
+  }, [loadTickets, loadWallet, loadAnnouncements])
 
   useEffect(() => {
-    const state = location.state as { notice?: string; joined?: string; linked?: number } | null
+    const state = location.state as { notice?: string; joined?: string; joinedName?: string; linked?: number } | null
     if (!state) return
     const linked = typeof state.linked === 'number' && state.linked > 0 ? state.linked : 0
     if (!state.notice && !state.joined && !linked) return
@@ -165,8 +199,9 @@ export function MemberDashboardProvider({ children }: { children: ReactNode }) {
         `We added ${linked} earlier purchase${linked === 1 ? '' : 's'} to your account.`
       )
     }
-    if (isProgramId(state.joined)) {
-      notify('success', "You're in", `${PROGRAMS[state.joined].name} is now in your dashboard.`)
+    if (typeof state.joined === 'string' && state.joined) {
+      const name = state.joinedName || coreProgramName(state.joined)
+      notify('success', "You're in", `${name} is now in your dashboard.`)
     }
     navigate(`${location.pathname}${location.search}`, { replace: true, state: null })
   }, [location, navigate, notify])
@@ -204,6 +239,9 @@ export function MemberDashboardProvider({ children }: { children: ReactNode }) {
     setCalendarMonth,
     refreshKey,
     fetchCalendarMonth,
+    announcements,
+    unreadAnnouncements: announcements?.filter((a) => !a.read).length ?? 0,
+    markAnnouncementsRead,
     openPayEvents: () => setPayEventsOpen(true),
     cancelTicket: setCancelTarget,
     notify,

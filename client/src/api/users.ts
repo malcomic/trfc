@@ -54,6 +54,9 @@ export interface MemberProfile {
   marketing_opt_in: boolean | null;
   role: UserRole;
   created_at: string;
+  avatar_url?: string | null;
+  google_linked?: boolean;
+  has_password?: boolean;
 }
 
 export interface MemberCaptainSummary {
@@ -72,7 +75,17 @@ export interface MemberDashboard {
   profile: MemberProfile;
   captain: MemberCaptainSummary | null;
   stats: MemberStats;
-  program: { id: ProgramId; enrolled_at: string } | null;
+  program: {
+    id: ProgramId;
+    slug: string;
+    name: string;
+    enrolled_at: string;
+    currentWeek: number;
+    totalWeeks: number;
+    graduated: boolean;
+    /** Days (1 = Monday) ticked off in the current week. */
+    thisWeekDone: number[];
+  } | null;
   membership: MemberMembership;
 }
 

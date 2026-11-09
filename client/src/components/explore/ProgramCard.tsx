@@ -50,7 +50,7 @@ export default function ProgramCard({
               {isFree ? copy.freeForAll : `${copy.memberPrefix} ${formatKsh(program.memberPrice)}`}
             </div>
           </div>
-          <CtaButton to={programPath(program.id)} className="!min-h-[52px] !px-7 max-sm:w-full">
+          <CtaButton to={programPath(program.slug)} className="!min-h-[52px] !px-7 max-sm:w-full">
             {program.card.button}
           </CtaButton>
         </div>

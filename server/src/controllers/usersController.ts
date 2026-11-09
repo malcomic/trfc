@@ -4,6 +4,7 @@ import { query } from '../config/db.js';
 import { findCaptainSummary } from '../utils/captainSummary.js';
 import { CaptainChangeError, changeMyCaptain, getCaptainOptions } from '../utils/memberCaptain.js';
 import { deleteMemberAnswers, getMemberAnswers, parseAnswers, saveMemberAnswers } from '../utils/memberAnswers.js';
+import { loadProgress } from '../utils/programProgress.js';
 
 const USER_FIELDS = 'id, name, email, phone, role, created_at';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -84,7 +85,8 @@ export const getMyDashboard = async (req: Request, res: Response) => {
   try {
     const userId = req.user!.id;
     const profile = await query(
-      `SELECT id, name, email, phone, whatsapp, marketing_opt_in, role, created_at, member_until
+      `SELECT id, name, email, phone, whatsapp, marketing_opt_in, role, created_at, member_until, avatar_url,
+              google_id IS NOT NULL AS google_linked, password_hash IS NOT NULL AS has_password
        FROM users WHERE id = $1`,
       [userId]
     );
@@ -136,19 +138,36 @@ export const getMyDashboard = async (req: Request, res: Response) => {
     );
 
     const enrollment = await query(
-      `SELECT program, enrolled_at FROM program_enrollments
-       WHERE user_id = $1 AND status = 'active'
-       ORDER BY enrolled_at DESC LIMIT 1`,
+      `SELECT e.program, e.enrolled_at, p.slug, p.name
+       FROM program_enrollments e
+       LEFT JOIN programs p ON p.id = e.program
+       WHERE e.user_id = $1 AND e.status = 'active'
+       ORDER BY e.enrolled_at DESC LIMIT 1`,
       [userId]
     );
     const programRow = enrollment.rows[0];
+    const progress = programRow ? await loadProgress(userId, programRow.program) : null;
 
     const captain = await findCaptainSummary(userId);
     res.json({
       profile: profileRow,
       captain,
       stats: stats.rows[0],
-      program: programRow ? { id: programRow.program, enrolled_at: programRow.enrolled_at } : null,
+      program:
+        programRow && progress
+          ? {
+              id: programRow.program,
+              slug: programRow.slug ?? programRow.program,
+              name: programRow.name ?? programRow.program,
+              enrolled_at: programRow.enrolled_at,
+              currentWeek: progress.currentWeek,
+              totalWeeks: progress.totalWeeks,
+              graduated: progress.graduated,
+              thisWeekDone: progress.completed
+                .filter((c) => c.week === progress.currentWeek && c.done)
+                .map((c) => c.day),
+            }
+          : null,
       membership: membershipFrom(memberUntil),
     });
   } catch (error) {
@@ -437,8 +456,11 @@ export const updateUserRole = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Cannot demote the last admin user' });
     }
 
+    // Admin and scanner accounts are password-only, so any Google link is dropped on promotion.
     const result = await query(
-      `UPDATE users SET role = $1 WHERE id = $2 RETURNING ${USER_FIELDS}`,
+      `UPDATE users
+       SET role = $1, google_id = CASE WHEN $1 IN ('admin', 'scanner') THEN NULL ELSE google_id END
+       WHERE id = $2 RETURNING ${USER_FIELDS}`,
       [role, id]
     );
 

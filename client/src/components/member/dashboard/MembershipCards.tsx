@@ -1,6 +1,7 @@
 import { Check } from 'lucide-react'
 import { DASHBOARD_COPY } from '../../../content/dashboard'
-import { PROGRAMS, PROGRAM_ORDER, formatKsh } from '../../../content/programs'
+import { formatKsh } from '../../../content/programs'
+import { usePrograms } from '../../../context/ProgramsContext'
 import CtaButton from '../../programs/CtaButton'
 import { dashCard, dashHeading, dashMuted } from './ui'
 
@@ -27,7 +28,7 @@ export function BecomeMemberCard() {
 
 export function MemberPriceCard() {
   const copy = DASHBOARD_COPY.memberPrice
-  const paid = PROGRAM_ORDER.map((id) => PROGRAMS[id]).filter((p) => p.price > 0)
+  const paid = usePrograms().programs.filter((p) => p.price > 0)
   return (
     <div className={dashCard}>
       <h2 className={dashHeading}>{copy.heading}</h2>

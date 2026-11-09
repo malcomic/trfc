@@ -116,3 +116,20 @@ export async function sendWaitlistSpot(
   if (!config.whatsapp.waitlistTemplateName) return false
   return sendTemplateMessage(to, config.whatsapp.waitlistTemplateName, [params.firstName, params.eventTitle, params.link])
 }
+
+/**
+ * Tells a captain that a member sent their Sunday check-in.
+ * Template variables: captain first name, member name, week number, how the week felt. Skipped when no template is set.
+ */
+export async function sendWeekCheckinToCaptain(
+  to: string,
+  params: { captainName: string; memberName: string; week: string; feeling: string }
+): Promise<boolean> {
+  if (!config.whatsapp.checkinTemplateName) return false
+  return sendTemplateMessage(to, config.whatsapp.checkinTemplateName, [
+    params.captainName,
+    params.memberName,
+    params.week,
+    params.feeling,
+  ])
+}

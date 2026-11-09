@@ -1,22 +1,38 @@
-import { PROGRAMS, PROGRAM_ORDER, type Program, type ProgramCardFilter } from './programs'
+import type { Program } from './programs'
 
-export type ExploreFilter = 'all' | ProgramCardFilter
+/** 'all', 'free', or a category id such as 'fat-loss'. */
+export type ExploreFilter = string
 
-export const EXPLORE_FILTERS: { id: ExploreFilter; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'free', label: 'Free' },
-  { id: 'hiking', label: 'Hiking' },
-  { id: 'endurance', label: 'Endurance' },
-  { id: 'fat', label: 'Fat Loss' },
-]
-
-export function isExploreFilter(value: unknown): value is ExploreFilter {
-  return typeof value === 'string' && EXPLORE_FILTERS.some((f) => f.id === value)
+export interface ExploreFilterOption {
+  id: ExploreFilter
+  label: string
 }
 
-export function filterPrograms(filter: ExploreFilter): Program[] {
-  const all = PROGRAM_ORDER.map((id) => PROGRAMS[id])
-  return filter === 'all' ? all : all.filter((p) => p.card.filter === filter)
+export function categoryId(category: string): string {
+  return category
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
+/** All and Free first, then one chip per card category in A to Z order. */
+export function exploreFilters(programs: Program[]): ExploreFilterOption[] {
+  const categories = new Map<string, string>()
+  for (const p of programs) {
+    const id = categoryId(p.card.category)
+    if (id && id !== 'all' && id !== 'free' && !categories.has(id)) categories.set(id, p.card.category.trim())
+  }
+  const sorted = [...categories].sort((a, b) => a[1].localeCompare(b[1]))
+  const filters: ExploreFilterOption[] = [{ id: 'all', label: 'All' }]
+  if (programs.some((p) => p.price === 0)) filters.push({ id: 'free', label: 'Free' })
+  return [...filters, ...sorted.map(([id, label]) => ({ id, label }))]
+}
+
+export function filterPrograms(programs: Program[], filter: ExploreFilter): Program[] {
+  if (filter === 'all') return programs
+  if (filter === 'free') return programs.filter((p) => p.price === 0)
+  return programs.filter((p) => categoryId(p.card.category) === filter)
 }
 
 export const EXPLORE_COPY = {
