@@ -137,7 +137,6 @@ export default function ApplicationForm() {
     <section id={APPLY_ANCHOR} className="scroll-mt-32 bg-night light:bg-night-light px-4 md:px-6 py-12 md:py-[72px]">
       <div className="max-w-[760px] mx-auto flex flex-col gap-7">
         <div className="flex flex-col gap-2">
-          <div className="font-barlow font-semibold text-[15px] tracking-[3px] uppercase text-cta">{copy.eyebrow}</div>
           <SectionHeading>{copy.heading}</SectionHeading>
           {!sent && <p className="m-0 text-fog light:text-fog-light">{copy.intro}</p>}
         </div>
