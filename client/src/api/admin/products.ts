@@ -15,6 +15,7 @@ export interface ProductPayload {
   variants?: ProductVariantInput[];
   distance_options?: string[];
   zone_ids?: string[];
+  member_discount_eligible?: boolean;
 }
 
 export const getProductsForAdmin = async () => {

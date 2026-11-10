@@ -3,7 +3,7 @@ import { query } from '../config/db.js'
 export interface LocalPaymentStatus {
   payment_status: 'paid' | 'failed' | 'pending'
   mpesa_receipt?: string | null
-  source: 'callback' | 'order' | 'ticket' | 'equipment_hire' | 'medal' | 'signup' | 'wallet'
+  source: 'callback' | 'order' | 'ticket' | 'equipment_hire' | 'medal' | 'signup' | 'wallet' | 'membership'
 }
 
 export async function getLocalPaymentStatus(
@@ -24,6 +24,23 @@ export async function getLocalPaymentStatus(
       payment_status: row.status === 'completed' ? 'paid' : row.status === 'failed' ? 'failed' : 'pending',
       mpesa_receipt: row.mpesa_receipt,
       source: 'wallet',
+    }
+  }
+
+  // Same reason as wallet: the member year is only active once the callback has been applied.
+  const membershipResult = await query(
+    `SELECT status, mpesa_receipt
+     FROM memberships
+     WHERE checkout_request_id = $1
+     LIMIT 1`,
+    [checkoutRequestId]
+  )
+  if (membershipResult.rows.length > 0) {
+    const row = membershipResult.rows[0]
+    return {
+      payment_status: row.status === 'paid' ? 'paid' : row.status === 'pending' ? 'pending' : 'failed',
+      mpesa_receipt: row.mpesa_receipt,
+      source: 'membership',
     }
   }
 

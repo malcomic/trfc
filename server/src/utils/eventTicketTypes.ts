@@ -9,6 +9,7 @@ export interface EventTicketTypeRow {
   capacity: number | null
   sort_order: number
   is_active: boolean
+  members_only: boolean
   remaining: number | null
   is_sold_out: boolean
 }
@@ -20,7 +21,7 @@ export async function getEventTicketTypes(
   const result = await query(
     `SELECT
        ett.id, ett.event_id, ett.name, ett.description, ett.price, ett.capacity,
-       ett.sort_order, ett.is_active,
+       ett.sort_order, ett.is_active, ett.members_only,
        COALESCE(sold.cnt, 0)::int AS sold_count
      FROM event_ticket_types ett
      LEFT JOIN (
@@ -49,6 +50,7 @@ export async function getEventTicketTypes(
       capacity,
       sort_order: Number(row.sort_order) || 0,
       is_active: Boolean(row.is_active),
+      members_only: Boolean(row.members_only),
       remaining,
       is_sold_out: isSoldOut,
     }

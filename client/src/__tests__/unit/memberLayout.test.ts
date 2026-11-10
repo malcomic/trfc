@@ -36,6 +36,7 @@ describe('memberNavItems', () => {
       'Calendar',
       'My Programs',
       'My Zone',
+      'Membership',
       'Points',
       'Ticket value',
       'Medals',

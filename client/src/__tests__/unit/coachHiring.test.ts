@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
   EMPTY_FORM,
+  MAX_CV_BYTES,
   MAX_VIDEO_BYTES,
+  cvFileProblem,
   toSubmission,
   validateApplication,
   videoFileProblem,
@@ -78,6 +80,19 @@ describe('videoFileProblem', () => {
   })
 })
 
+describe('cvFileProblem', () => {
+  it('accepts PDF and Word files up to 5 MB', () => {
+    expect(cvFileProblem({ name: 'Jane CV.PDF', size: 200_000 })).toBeNull()
+    expect(cvFileProblem({ name: 'cv.docx', size: MAX_CV_BYTES })).toBeNull()
+    expect(cvFileProblem({ name: 'cv.doc', size: 1000 })).toBeNull()
+  })
+
+  it('rejects other files and anything over the limit', () => {
+    expect(cvFileProblem({ name: 'cv.jpg', size: 1000 })).toMatch(/PDF or Word/)
+    expect(cvFileProblem({ name: 'cv.pdf', size: MAX_CV_BYTES + 1 })).toMatch(/5 MB/)
+  })
+})
+
 describe('toSubmission', () => {
   it('adds https to links and sends only the chosen video', () => {
     const payload = toSubmission(
@@ -87,6 +102,16 @@ describe('toSubmission', () => {
     expect(payload.socialUrl).toBe('https://instagram.com/jane')
     expect(payload.video).toEqual({ source: 'link', url: 'https://youtu.be/abcdefghijk' })
     expect(payload.submissionKey).toBe('key-12345678')
+    expect(payload.cv).toBeNull()
+  })
+
+  it('sends the CV only when one was uploaded', () => {
+    const cv = { url: 'https://res.cloudinary.com/x/raw/upload/trfc_coach_cvs/a.pdf', publicId: 'trfc_coach_cvs/a.pdf', fileName: 'cv.pdf' }
+    const payload = toSubmission(
+      { ...FILLED, cvUrl: cv.url, cvPublicId: cv.publicId, cvFileName: cv.fileName },
+      { submissionKey: 'key-12345678', startedAt: 1, website: '' }
+    )
+    expect(payload.cv).toEqual(cv)
   })
 
   it('withHttps upgrades http and leaves blanks empty', () => {

@@ -77,7 +77,9 @@ function sessionEntryFromResult(result: ScanResult): SessionCheckIn | null {
       id: result.member.id,
       kind: 'member',
       name: result.member.name || 'Member',
-      detail: result.member.zone ? `${result.member.zone} zone` : 'Member pass',
+      detail: [result.member.paidMember ? 'Member' : null, result.member.zone ? `${result.member.zone} zone` : 'Member pass']
+        .filter(Boolean)
+        .join(' · '),
       shortCode: '',
       at: result.checkedInAt || new Date().toISOString(),
     }

@@ -70,13 +70,15 @@ export interface MemberByCode {
   id: string
   name: string | null
   zone: string | null
+  /** True while the person has an active paid membership. */
+  paidMember: boolean
 }
 
 export async function findMemberByCode(code: string): Promise<MemberByCode | null> {
   const normalized = normalizeMemberCode(code)
   if (!normalized) return null
   const result = await query(
-    `SELECT u.id, u.name, r.name AS zone
+    `SELECT u.id, u.name, r.name AS zone, COALESCE(u.member_until > NOW(), false) AS "paidMember"
      FROM users u
      LEFT JOIN captains c ON c.user_id = u.captain_id
      LEFT JOIN regions r ON r.id = c.region_id

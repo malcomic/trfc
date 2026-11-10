@@ -56,5 +56,24 @@ export function uploadCoachVideo(
   })
 }
 
+export interface UploadedCv {
+  url: string
+  publicId: string
+  fileName: string
+}
+
+export async function uploadCoachCv(file: File, onProgress: (percent: number) => void, signal?: AbortSignal): Promise<UploadedCv> {
+  const body = new FormData()
+  body.append('cv', file)
+  const response = await api.post<UploadedCv>('/coach-applications/cv', body, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    signal,
+    onUploadProgress: (event) => {
+      if (event.total) onProgress(Math.round((event.loaded / event.total) * 100))
+    },
+  })
+  return response.data
+}
+
 export const submitCoachApplication = async (payload: CoachApplicationPayload): Promise<{ ok: true }> =>
   (await api.post('/coach-applications', payload)).data

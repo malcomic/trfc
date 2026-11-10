@@ -42,6 +42,7 @@ export const DASHBOARD_COPY = {
     subtitle: 'Here is your week.',
     freePill: 'Free account',
     memberPill: (until: string) => `Member until ${until}`,
+    foundingPill: (until: string) => `Founding member until ${until}`,
     reminders: 'Reminders',
   },
   welcomeVideo: {
@@ -205,6 +206,7 @@ export const DASHBOARD_COPY = {
     browsePrograms: 'Browse Programs',
     freeMember: 'Free member',
     member: 'Member',
+    foundingMember: 'Founding member',
     signOut: 'Sign Out',
   },
 } as const

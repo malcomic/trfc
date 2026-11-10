@@ -47,6 +47,10 @@ export interface MemberTicket {
   /** Last moment the ticket can be given up (11:59 pm Nairobi, the set number of days before the event). */
   cancel_deadline?: string | null
   attendance_status?: string | null
+  can_transfer?: boolean
+  transfer_blocked_reason?: string | null
+  /** Name of the member who gave this ticket to the current user. */
+  transferred_from?: string | null
 }
 
 type Notify = (type: ToastMessage['type'], title: string, message?: string) => void

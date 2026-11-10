@@ -39,6 +39,7 @@ import { getAdminSignups } from '../controllers/signupsController.js'
 import * as reachOut from '../controllers/reachOutController.js'
 import * as programs from '../controllers/adminProgramsController.js'
 import * as hiring from '../controllers/adminHiringController.js'
+import * as membership from '../controllers/adminMembershipController.js'
 import {
   getRegions,
   createRegion,
@@ -184,5 +185,17 @@ router.get('/hiring/settings', hiring.getHiringSettings)
 router.put('/hiring/settings', hiring.updateHiringSettings)
 router.get('/hiring/:id', hiring.getApplication)
 router.patch('/hiring/:id', hiring.updateApplication)
+
+router.get('/membership/summary', membership.getSummary)
+router.get('/membership/members', membership.listMembers)
+router.get('/membership/members/export', membership.exportMembers)
+router.get('/membership/members/:userId/years', membership.getMemberYears)
+router.post('/membership/grant', membership.grant)
+router.get('/membership/settings', membership.getSettings)
+router.put('/membership/settings', membership.updateSettings)
+router.get('/membership/perks', membership.listPerks)
+router.post('/membership/perks/reorder', membership.reorderPerks)
+router.put('/membership/perks/:key', membership.updatePerk)
+router.post('/membership/:id/cancel', membership.cancel)
 
 export default router

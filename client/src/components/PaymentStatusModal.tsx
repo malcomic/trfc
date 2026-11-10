@@ -1,11 +1,16 @@
+import { useEffect, useRef } from 'react'
 import { AlertCircle, CheckCircle, Loader } from 'lucide-react'
-import { usePaymentPolling } from '../hooks/usePaymentPolling'
+import { usePaymentPolling, type PaymentPollingMessages } from '../hooks/usePaymentPolling'
 
 interface PaymentStatusModalProps {
   isOpen: boolean
   checkoutRequestId: string
   phone: string
   onClose: () => void
+  successBody?: string
+  messages?: PaymentPollingMessages
+  /** Called once when the payment is confirmed. */
+  onSuccess?: () => void
 }
 
 export default function PaymentStatusModal({
@@ -13,8 +18,18 @@ export default function PaymentStatusModal({
   checkoutRequestId,
   phone,
   onClose,
+  successBody = 'Your order has been confirmed.',
+  messages,
+  onSuccess,
 }: PaymentStatusModalProps) {
-  const { status, error } = usePaymentPolling(checkoutRequestId, isOpen)
+  const { status, error } = usePaymentPolling(checkoutRequestId, isOpen, messages)
+  const reported = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (status !== 'success' || reported.current === checkoutRequestId) return
+    reported.current = checkoutRequestId
+    onSuccess?.()
+  }, [status, checkoutRequestId, onSuccess])
 
   if (!isOpen) return null
 
@@ -48,7 +63,7 @@ export default function PaymentStatusModal({
             <div className="text-center">
               <CheckCircle className="w-14 h-14 text-green-400 mx-auto mb-4" />
               <p className="font-barlow-condensed font-bold text-lg tracking-tighter mb-2">Payment Successful!</p>
-              <p className="text-fog light:text-fog-light text-sm mb-4">Your order has been confirmed.</p>
+              <p className="text-fog light:text-fog-light text-sm mb-4">{successBody}</p>
               <div className="bg-green-500/10 border border-green-500/25 p-4 text-sm text-green-300 light:text-green-700">
                 <p className="font-semibold">Transaction Confirmed</p>
                 <p className="text-xs mt-1 text-fog light:text-fog-light">You will receive a confirmation email shortly.</p>

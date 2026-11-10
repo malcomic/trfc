@@ -1,6 +1,8 @@
-import { useParams, useNavigate } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { MapPin, Clock, AlertCircle, Minus, Plus, Ticket } from 'lucide-react'
+import { MapPin, Clock, AlertCircle, Minus, Plus, Ticket, Crown } from 'lucide-react'
+import MemberBookingNotice from '../components/events/MemberBookingNotice'
+import { MEMBERSHIP_COPY } from '../content/membership'
 import { getEventById } from '../api/events'
 import { Event, EventTicketType } from '../types'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
@@ -32,7 +34,8 @@ export default function EventDetail() {
       const data = await getEventById(id!)
       setEvent(data)
       const types = (data.ticket_types || []).filter((t: EventTicketType) => t.is_active)
-      const firstAvailable = types.find((t: EventTicketType) => !t.is_sold_out) || types[0] || null
+      const open = (t: EventTicketType) => !t.is_sold_out && (!t.members_only || Boolean(data.viewer_is_member))
+      const firstAvailable = types.find(open) || types.find((t: EventTicketType) => !t.is_sold_out) || types[0] || null
       setSelectedType(firstAvailable)
       setQuantity(1)
       trackViewContent(
@@ -93,11 +96,20 @@ export default function EventDetail() {
     selectedType?.remaining != null ? selectedType.remaining : 10,
     seatLimit != null ? seatLimit : 10
   )
+  const isMember = Boolean(event.viewer_is_member)
+  const earlyLocked = Boolean(event.member_early_until) && !isMember
+  const typeLocked = (type: EventTicketType | null) => Boolean(type?.members_only) && !isMember
+  const memberGate = earlyLocked || typeLocked(selectedType)
   const canBuy =
-    selectedType && !selectedType.is_sold_out && maxQty >= 1 && ticketTypes.length > 0 && !event.sold_out_for_you
+    selectedType &&
+    !selectedType.is_sold_out &&
+    maxQty >= 1 &&
+    ticketTypes.length > 0 &&
+    !event.sold_out_for_you &&
+    !memberGate
 
   const selectType = (type: EventTicketType) => {
-    if (type.is_sold_out) return
+    if (type.is_sold_out || typeLocked(type)) return
     setSelectedType(type)
     setQuantity(1)
   }
@@ -146,6 +158,7 @@ export default function EventDetail() {
           <label className="block font-barlow-condensed font-bold text-sm tracking-widest uppercase text-accent light:text-accent-light mb-4">
             Ticket type
           </label>
+          {event.member_early_until && <MemberBookingNotice until={event.member_early_until} isMember={isMember} />}
           {event.priority_note && <p className="text-sm text-fog light:text-fog-light mb-4">{event.priority_note}</p>}
 
           {ticketTypes.length === 0 ? (
@@ -156,15 +169,16 @@ export default function EventDetail() {
             <div className="flex flex-col gap-2 mb-6">
               {ticketTypes.map((type) => {
                 const soldOut = type.is_sold_out
+                const locked = typeLocked(type)
                 const selected = selectedType?.id === type.id
                 return (
                   <button
                     key={type.id}
                     type="button"
-                    disabled={soldOut}
+                    disabled={soldOut || locked}
                     onClick={() => selectType(type)}
                     className={`text-left px-4 py-3 border transition ${
-                      soldOut
+                      soldOut || locked
                         ? 'opacity-50 cursor-not-allowed border-white/10 light:border-black/10'
                         : selected
                           ? 'border-accent light:border-accent-light bg-accent/10 light:bg-accent-light/10'
@@ -173,7 +187,17 @@ export default function EventDetail() {
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="font-semibold">{type.name}</p>
+                        <p className="font-semibold">
+                          {type.name}
+                          {type.members_only && (
+                            <span className="ml-2 inline-flex items-center gap-1 text-[11px] font-barlow-condensed font-bold uppercase tracking-widest text-amber-400">
+                              <Crown size={12} /> {MEMBERSHIP_COPY.membersOnly.badge}
+                            </span>
+                          )}
+                        </p>
+                        {locked && (
+                          <p className="text-xs text-fog light:text-fog-light mt-0.5">{MEMBERSHIP_COPY.membersOnly.locked}</p>
+                        )}
                         {type.remaining != null && !soldOut && (
                           <p className="text-xs text-fog light:text-fog-light mt-0.5">
                             {type.remaining} left
@@ -241,7 +265,16 @@ export default function EventDetail() {
             </>
           )}
 
-          {ticketTypes.length > 0 && !canBuy && <WaitlistForm eventId={event.id} />}
+          {memberGate && !earlyLocked && (
+            <Link
+              to="/dashboard/membership"
+              className="w-full bg-cta text-cta-ink py-4 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-cta/90 flex items-center justify-center gap-2 no-underline"
+            >
+              <Crown size={18} />
+              {MEMBERSHIP_COPY.early.join}
+            </Link>
+          )}
+          {ticketTypes.length > 0 && !canBuy && !memberGate && <WaitlistForm eventId={event.id} />}
         </div>
       </div>
     </div>

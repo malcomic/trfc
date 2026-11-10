@@ -6,6 +6,7 @@ vi.mock('../../utils/cloudinary.js', () => ({
   signVideoUpload: vi.fn(() => ({ signature: 'sig', timestamp: 1, folder: 'trfc_coach_videos' })),
   getVideoBytes: vi.fn(async () => 1000),
   deleteVideo: vi.fn(async () => undefined),
+  uploadRawToCloudinary: vi.fn(async () => ({ url: '', publicId: '' })),
 }))
 
 import { query } from '../../config/db.js'
@@ -14,6 +15,7 @@ import {
   MIN_FILL_MS,
   buildHiringWhere,
   cleanApplication,
+  detectCvFormat,
   isLikelySpam,
   isOwnCoachVideo,
   parseHiringFilters,
@@ -130,6 +132,47 @@ describe('cleanApplication', () => {
 
   it('isOwnCoachVideo refuses when no cloud is configured', () => {
     expect(isOwnCoachVideo(UPLOAD_URL, 'trfc_coach_videos/abc123', '')).toBe(false)
+  })
+
+  it('treats the CV as optional', () => {
+    const result = cleanApplication(validBody(), CLOUD)
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.value).toMatchObject({ cvUrl: null, cvPublicId: null, cvFileName: null })
+  })
+
+  it('only accepts CVs from our own Cloudinary coach CV folder', () => {
+    const publicId = 'trfc_coach_cvs/abc123.pdf'
+    const cvUrl = `https://res.cloudinary.com/${CLOUD}/raw/upload/v1700000000/${publicId}`
+    const ok = cleanApplication(validBody({ cv: { url: cvUrl, publicId, fileName: 'Jane CV.pdf' } }), CLOUD)
+    expect(ok.ok).toBe(true)
+    if (ok.ok) expect(ok.value).toMatchObject({ cvUrl, cvPublicId: publicId, cvFileName: 'Jane CV.pdf' })
+
+    const elsewhere = cleanApplication(
+      validBody({ cv: { url: 'https://example.com/trfc_coach_cvs/abc123.pdf', publicId, fileName: 'cv.pdf' } }),
+      CLOUD
+    )
+    expect(elsewhere.ok).toBe(false)
+    if (!elsewhere.ok) expect(elsewhere.errors).toHaveProperty('cv')
+
+    const otherFolder = cleanApplication(
+      validBody({ cv: { url: cvUrl.replace('trfc_coach_cvs', 'trfc_events'), publicId: 'trfc_events/abc123.pdf' } }),
+      CLOUD
+    )
+    expect(otherFolder.ok).toBe(false)
+  })
+})
+
+describe('detectCvFormat', () => {
+  it('recognises PDF, Word and old Word files by their contents', () => {
+    expect(detectCvFormat(Buffer.from('%PDF-1.7\n...'))).toBe('pdf')
+    expect(detectCvFormat(Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.from('....word/document.xml')]))).toBe('docx')
+    expect(detectCvFormat(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1, 0x00]))).toBe('doc')
+  })
+
+  it('refuses other files, including a plain zip and a renamed image', () => {
+    expect(detectCvFormat(Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.from('....photos/a.jpg')]))).toBeNull()
+    expect(detectCvFormat(Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46]))).toBeNull()
+    expect(detectCvFormat(Buffer.from('%PDF'))).toBeNull()
   })
 })
 

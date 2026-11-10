@@ -21,6 +21,8 @@ export interface EventTicketType {
   capacity: number | null;
   sort_order: number;
   is_active: boolean;
+  /** Only paid members can buy this type. */
+  members_only?: boolean;
   remaining: number | null;
   is_sold_out: boolean;
 }
@@ -50,6 +52,10 @@ export interface Event {
   /** Public: seats this viewer can book right now (null = no limit). */
   seats_available?: number | null;
   sold_out_for_you?: boolean;
+  /** Public: while set, only paid members can book; booking opens to everyone at this time. */
+  member_early_until?: string | null;
+  /** Public: whether the viewer is a paid member. */
+  viewer_is_member?: boolean;
   payment_rules?: PaymentRules;
   /** Admin only */
   zones?: { id: string; name: string }[];
@@ -94,6 +100,8 @@ export interface Product {
   created_at?: string;
   variants?: ProductVariant[];
   distance_options?: string[];
+  /** Paid members can use their yearly shop discount on this item. */
+  member_discount_eligible?: boolean;
 }
 
 export interface ProductVariant {

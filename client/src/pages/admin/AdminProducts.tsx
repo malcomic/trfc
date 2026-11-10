@@ -35,6 +35,7 @@ interface Product {
   variants?: ProductVariant[]
   distance_options?: string[]
   zones?: Zone[]
+  member_discount_eligible?: boolean
 }
 
 function sizeStockHint(product: Product): string | null {
@@ -148,6 +149,7 @@ export default function AdminProducts() {
         variants,
         distance_options,
         zone_ids: selectedZoneIds,
+        member_discount_eligible: Boolean(data.member_discount_eligible),
       }
 
       if (editingId) {
@@ -480,6 +482,18 @@ export default function AdminProducts() {
                     className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="flex items-start gap-2">
+                  <input type="checkbox" {...register('member_discount_eligible')} className="w-4 h-4 mt-0.5" />
+                  <span>
+                    <span className="block text-sm font-semibold text-gray-900 dark:text-gray-100">Member discount applies</span>
+                    <span className="block text-xs text-gray-500 dark:text-gray-400">
+                      Paid members can use their yearly KSh 300 shop discount on this item.
+                    </span>
+                  </span>
+                </label>
               </div>
 
               {editingId && (

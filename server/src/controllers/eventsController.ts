@@ -8,6 +8,8 @@ import { isActiveMember, loadSeatState, publicSeatInfo } from '../utils/seatPrio
 import { getTicketRules } from '../utils/ticketRules.js'
 import { WaitlistError, joinWaitlist, listWaitlist, waitlistCounts } from '../utils/waitlist.js'
 import { poolDb } from '../utils/wallet.js'
+import { getPerk, perkNumber } from '../utils/memberPerks.js'
+import { DEFAULT_EARLY_HOURS, earlyUntil } from '../utils/memberEarly.js'
 
 type EventRow = { id: string; [key: string]: any }
 
@@ -30,10 +32,20 @@ async function zonesByEvent(eventIds: string[]): Promise<Map<string, { id: strin
 /** Public view: seat availability for this viewer only; member seat counts are never exposed. */
 async function withPublicSeats<T extends EventRow>(events: T[], userId: string | null | undefined) {
   const member = await isActiveMember(poolDb, userId)
+  const early = events.some((e) => e.member_early_booking) ? await getPerk(poolDb, 'early_hikes') : null
+  const earlyHours = early?.status === 'on' ? perkNumber(early, 'hours', DEFAULT_EARLY_HOURS) : null
+  const now = new Date()
   return Promise.all(
     events.map(async (event) => {
       const { cancel_reason: _reason, scan_list_confirmed_by: _by, priority_release_notified_at: _n, ...rest } = event
-      return { ...rest, ...publicSeatInfo(await loadSeatState(poolDb, event.id), member) }
+      const until =
+        earlyHours != null ? earlyUntil({ member_early_booking: event.member_early_booking, created_at: event.created_at }, earlyHours) : null
+      return {
+        ...rest,
+        ...publicSeatInfo(await loadSeatState(poolDb, event.id), member),
+        member_early_until: until && until.getTime() > now.getTime() ? until.toISOString() : null,
+        viewer_is_member: member,
+      }
     })
   )
 }
@@ -104,6 +116,7 @@ interface EventSettings {
   installmentsAllowed?: number
   paymentDeadlineDays?: number | null
   memberPriorityPct?: number | null
+  memberEarlyBooking?: boolean
   capacity?: number | null
   zoneIds?: string[]
 }
@@ -128,6 +141,9 @@ export function parseEventSettings(body: any): EventSettings | string {
   const priority = optionalInt(body.member_priority_pct, 0, 100)
   if (priority === 'invalid') return 'member_priority_pct must be a whole number from 0 to 100'
   if (priority !== undefined) settings.memberPriorityPct = priority
+  if (body.member_early_booking !== undefined && body.member_early_booking !== null) {
+    settings.memberEarlyBooking = body.member_early_booking === true || body.member_early_booking === 'true'
+  }
   const capacity = optionalInt(body.capacity, 0, 1_000_000)
   if (capacity === 'invalid') return 'capacity must be a whole number or empty'
   if (capacity !== undefined) settings.capacity = capacity
@@ -150,6 +166,7 @@ async function saveEventSettings(eventId: string, settings: EventSettings) {
   if (settings.installmentsAllowed !== undefined) add('installments_allowed', settings.installmentsAllowed)
   if (settings.paymentDeadlineDays !== undefined) add('payment_deadline_days', settings.paymentDeadlineDays)
   if (settings.memberPriorityPct !== undefined) add('member_priority_pct', settings.memberPriorityPct)
+  if (settings.memberEarlyBooking !== undefined) add('member_early_booking', settings.memberEarlyBooking)
   if (settings.capacity !== undefined) add('capacity', settings.capacity)
   if (sets.length > 0) await query(`UPDATE events SET ${sets.join(', ')} WHERE id = $1`, params)
   if (settings.zoneIds !== undefined) {
@@ -269,13 +286,14 @@ export async function createEventTicketType(req: Request, res: Response) {
 
     const order = Number.isFinite(Number(sort_order)) ? Number(sort_order) : 0
     const active = typeof is_active === 'boolean' ? is_active : true
+    const membersOnly = req.body.members_only === true
 
     const result = await query(
       `INSERT INTO event_ticket_types
-         (event_id, name, description, price, capacity, sort_order, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+         (event_id, name, description, price, capacity, sort_order, is_active, members_only)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-      [eventId, trimmedName, description || null, typePrice, cap, order, active]
+      [eventId, trimmedName, description || null, typePrice, cap, order, active, membersOnly]
     )
 
     const types = await getEventTicketTypes(eventId, false)
@@ -316,14 +334,15 @@ export async function updateEventTicketType(req: Request, res: Response) {
 
     const order = Number.isFinite(Number(sort_order)) ? Number(sort_order) : 0
     const active = typeof is_active === 'boolean' ? is_active : true
+    const membersOnly = typeof req.body.members_only === 'boolean' ? req.body.members_only : null
 
     const result = await query(
       `UPDATE event_ticket_types
        SET name = $1, description = $2, price = $3, capacity = $4,
-           sort_order = $5, is_active = $6
+           sort_order = $5, is_active = $6, members_only = COALESCE($9, members_only)
        WHERE id = $7 AND event_id = $8
        RETURNING *`,
-      [trimmedName, description || null, typePrice, cap, order, active, typeId, eventId]
+      [trimmedName, description || null, typePrice, cap, order, active, typeId, eventId, membersOnly]
     )
 
     if (result.rows.length === 0) {

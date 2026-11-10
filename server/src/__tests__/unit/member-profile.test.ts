@@ -165,7 +165,7 @@ describe('getMyDashboard', () => {
       captain: null,
       stats,
       program: null,
-      membership: { active: false, until: null },
+      membership: { active: false, until: null, isFounding: false, renewalUntil: null },
     })
   })
 

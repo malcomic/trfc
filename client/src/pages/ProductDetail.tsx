@@ -16,6 +16,7 @@ import {
 } from '../utils/productOptions'
 import { trackViewContent } from '../utils/tiktokPixel'
 import { pageRoot, inputField } from '../utils/themeClasses'
+import { MEMBERSHIP_COPY } from '../content/membership'
 
 export default function ProductDetail() {
   const { id } = useParams()
@@ -108,7 +109,14 @@ export default function ProductDetail() {
               <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light mb-2">{categoryLabel}</p>
             )}
             <h1 className="font-bebas text-5xl mb-4">{p.name}</h1>
-            <p className="font-bebas text-4xl text-accent light:text-accent-light mb-6">KES {Number(p.price).toLocaleString()}</p>
+            <p className={`font-bebas text-4xl text-accent light:text-accent-light ${p.member_discount_eligible ? 'mb-2' : 'mb-6'}`}>
+              KES {Number(p.price).toLocaleString()}
+            </p>
+            {p.member_discount_eligible && (
+              <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-amber-400 mb-6">
+                {MEMBERSHIP_COPY.shopDiscount.tag}: members save KSh 300 once a year
+              </p>
+            )}
             {p.description && <p className="text-fog light:text-fog-light leading-relaxed mb-8">{p.description}</p>}
             {p.stock === 0 || (options && allSizesSoldOut(options)) ? (
               <p className="text-fog light:text-fog-light font-barlow-condensed font-bold uppercase text-sm">Sold out</p>

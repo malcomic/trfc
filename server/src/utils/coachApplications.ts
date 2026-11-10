@@ -5,6 +5,25 @@ import { isHttpsUrl } from './videoLink.js'
 export const COACH_VIDEO_FOLDER = 'trfc_coach_videos'
 export const MAX_VIDEO_BYTES = 150 * 1024 * 1024
 
+export const COACH_CV_FOLDER = 'trfc_coach_cvs'
+export const MAX_CV_BYTES = 5 * 1024 * 1024
+export const CV_MIME_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/octet-stream',
+]
+export type CvFormat = 'pdf' | 'doc' | 'docx'
+
+/** Reads the file's first bytes, so a renamed file of another type is refused. */
+export function detectCvFormat(buffer: Buffer): CvFormat | null {
+  if (buffer.length < 8) return null
+  if (buffer.subarray(0, 5).toString('latin1') === '%PDF-') return 'pdf'
+  if (buffer.subarray(0, 8).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]))) return 'doc'
+  if (buffer.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04])) && buffer.includes('word/')) return 'docx'
+  return null
+}
+
 export const HOUR_OPTIONS = ['morning', 'afternoon', 'evening'] as const
 export type HourOption = (typeof HOUR_OPTIONS)[number]
 
@@ -36,6 +55,8 @@ const LIMITS = {
   socialUrl: 500,
   longText: 3000,
   videoUrl: 1000,
+  cvUrl: 1000,
+  cvFileName: 200,
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -62,6 +83,9 @@ export interface CoachApplicationInput {
   videoSource: 'upload' | 'link'
   videoUrl: string
   videoPublicId: string | null
+  cvUrl: string | null
+  cvPublicId: string | null
+  cvFileName: string | null
   submissionKey: string
 }
 
@@ -81,6 +105,22 @@ export function isOwnCoachVideo(url: string, publicId: string, cloudName = confi
       parsed.hostname === 'res.cloudinary.com' &&
       parsed.pathname.startsWith(`/${cloudName}/video/upload/`) &&
       parsed.pathname.includes(`/${publicId}`)
+    )
+  } catch {
+    return false
+  }
+}
+
+/** CV links must point at our own Cloudinary account and the coach CV folder. */
+export function isOwnCoachCv(url: string, publicId: string, cloudName = config.cloudinary.cloudName): boolean {
+  if (!cloudName || !publicId.startsWith(`${COACH_CV_FOLDER}/`)) return false
+  try {
+    const parsed = new URL(url)
+    return (
+      parsed.protocol === 'https:' &&
+      parsed.hostname === 'res.cloudinary.com' &&
+      parsed.pathname.startsWith(`/${cloudName}/raw/upload/`) &&
+      parsed.pathname.endsWith(`/${publicId}`)
     )
   } catch {
     return false
@@ -135,6 +175,14 @@ export function cleanApplication(body: unknown, cloudName = config.cloudinary.cl
     errors.video = 'Enter a full video link starting with https://'
   }
 
+  const cv = input.cv && typeof input.cv === 'object' ? (input.cv as Record<string, unknown>) : null
+  const cvUrl = text(cv?.url)
+  const cvPublicId = text(cv?.publicId)
+  const cvFileName = text(cv?.fileName).slice(0, LIMITS.cvFileName)
+  if (cvUrl && (cvUrl.length > LIMITS.cvUrl || !isOwnCoachCv(cvUrl, cvPublicId, cloudName))) {
+    errors.cv = 'The CV upload did not finish. Please upload it again, or remove it.'
+  }
+
   if (input.agreeStandards !== true) errors.agreeStandards = 'Please confirm you will follow the coach standards'
   if (input.agreeStorage !== true) errors.agreeStorage = 'Please agree so we can keep your details for hiring'
 
@@ -157,6 +205,9 @@ export function cleanApplication(body: unknown, cloudName = config.cloudinary.cl
       videoSource: videoSource!,
       videoUrl,
       videoPublicId: videoSource === 'upload' ? videoPublicId : null,
+      cvUrl: cvUrl || null,
+      cvPublicId: cvUrl ? cvPublicId : null,
+      cvFileName: cvUrl ? cvFileName || 'CV' : null,
       submissionKey,
     },
   }
@@ -237,6 +288,7 @@ export const HIRING_CSV_COLUMNS = [
   { key: 'hours_label', label: 'Hours they can give' },
   { key: 'worked_harder', label: 'Worked harder than anyone' },
   { key: 'video_url', label: 'Video' },
+  { key: 'cv_url', label: 'CV' },
   { key: 'status_label', label: 'Status' },
   { key: 'handled_by_name', label: 'Handled by' },
   { key: 'notes', label: 'Notes' },

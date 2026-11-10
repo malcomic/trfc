@@ -1,6 +1,7 @@
 import { Product } from '../types'
 import { Tag, Package } from 'lucide-react'
 import { LOW_STOCK_THRESHOLD, optionsFromProduct, requiresSize } from '../utils/productOptions'
+import { MEMBERSHIP_COPY } from '../content/membership'
 
 export default function ProductCard({ product, variant = 'full' }: { product: Product; variant?: 'full' | 'compact' }) {
   const prod = product as any
@@ -93,6 +94,11 @@ export default function ProductCard({ product, variant = 'full' }: { product: Pr
         {sizeHint && (
           <p className="font-barlow-condensed font-bold text-[10px] tracking-[2px] uppercase text-fog light:text-fog-light mt-1">
             {sizeHint}
+          </p>
+        )}
+        {prod.member_discount_eligible && (
+          <p className="font-barlow-condensed font-bold text-[10px] tracking-[2px] uppercase text-amber-400 mt-1">
+            {MEMBERSHIP_COPY.shopDiscount.tag}
           </p>
         )}
 

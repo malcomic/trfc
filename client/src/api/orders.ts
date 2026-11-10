@@ -18,6 +18,7 @@ export const createOrder = async (data: {
   email: string;
   delivery_address: string;
   flash_token?: string;
+  member_discount?: boolean;
 }) => {
   const response = await api.post('/orders', data);
   return response.data;

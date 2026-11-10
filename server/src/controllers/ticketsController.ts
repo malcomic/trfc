@@ -21,8 +21,11 @@ import {
   resendTicketBatch,
 } from '../utils/ticketEmail.js'
 import { annotateCancellation, cancelTicket, CancellationError } from '../utils/ticketCancellation.js'
+import { annotateTransfer, transferTicket, TransferError } from '../utils/ticketTransfer.js'
 import { allocateSeats, availableFor, isActiveMember, loadSeatState } from '../utils/seatPriority.js'
-import { getTicketRules } from '../utils/ticketRules.js'
+import { formatNairobiDate, getTicketRules } from '../utils/ticketRules.js'
+import { getPerk, perkNumber } from '../utils/memberPerks.js'
+import { DEFAULT_EARLY_HOURS, earlyUntil, earlyWindowOpen, formatNairobiTime } from '../utils/memberEarly.js'
 import { randomUUID } from 'crypto'
 import type { PoolClient } from 'pg'
 
@@ -128,7 +131,8 @@ export async function buyTicket(req: Request, res: Response) {
 
     if (req.body.termsAccepted !== true) {
       return res.status(400).json({
-        error: 'Please accept the ticket terms (60-day ticket value, no transfers, payment deadline) to continue',
+        error:
+          'Please accept the ticket terms (60-day ticket value, transfers only through member ticket transfer, payment deadline) to continue',
       })
     }
 
@@ -147,6 +151,24 @@ export async function buyTicket(req: Request, res: Response) {
       if (typeResult.rows.length === 0) throw new BookingError('Ticket type not found or inactive', 404)
       const ticketType = typeResult.rows[0]
 
+      const member = await isActiveMember(client, userId)
+      if (ticketType.members_only && !member) {
+        throw new BookingError('This ticket is for TRFC members. Become a member to book it.', 403)
+      }
+      if (!member && event.member_early_booking) {
+        const perk = await getPerk(client, 'early_hikes')
+        if (perk?.status === 'on') {
+          const hours = perkNumber(perk, 'hours', DEFAULT_EARLY_HOURS)
+          const until = earlyUntil(event, hours)
+          if (until && earlyWindowOpen(event, hours)) {
+            throw new BookingError(
+              `Members book first. Booking opens to everyone on ${formatNairobiDate(until)}, ${formatNairobiTime(until)}.`,
+              403
+            )
+          }
+        }
+      }
+
       if (ticketType.capacity != null) {
         const countResult = await client.query(
           `SELECT COUNT(*)::int AS cnt FROM tickets
@@ -161,7 +183,6 @@ export async function buyTicket(req: Request, res: Response) {
         }
       }
 
-      const member = await isActiveMember(client, userId)
       const seats = await loadSeatState(client, eventId)
       const pools = seats ? allocateSeats(seats, member, quantity) : null
       if (seats && !pools) {
@@ -261,10 +282,24 @@ export async function getUserTickets(req: Request, res: Response) {
       [userId]
     )
 
-    res.json(await annotateCancellation(userId, result.rows))
+    res.json(await annotateTransfer(userId, await annotateCancellation(userId, result.rows)))
   } catch (error) {
     console.error('Error fetching user tickets:', error)
     res.status(500).json({ error: 'Failed to fetch tickets' })
+  }
+}
+
+export async function transferMyTicket(req: Request, res: Response) {
+  const userId = req.user?.id
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' })
+  try {
+    res.json(await transferTicket(String(req.params.id), userId, req.body?.email))
+  } catch (error) {
+    if (error instanceof TransferError) {
+      return res.status(error.status).json({ error: error.message })
+    }
+    console.error('Error transferring ticket:', error)
+    res.status(500).json({ error: 'Failed to transfer ticket' })
   }
 }
 

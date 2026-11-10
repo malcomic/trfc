@@ -1,5 +1,5 @@
 import { FormEvent, ReactNode, useEffect, useState } from 'react'
-import { ExternalLink, Loader, Mail, MessageCircle, X } from 'lucide-react'
+import { ExternalLink, FileText, Loader, Mail, MessageCircle, X } from 'lucide-react'
 import {
   HIRING_STATUSES,
   HIRING_STATUS_LABELS,
@@ -192,6 +192,17 @@ export default function ApplicationDrawer({
               <a href={app.video_url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 dark:text-blue-400 break-all">
                 <ExternalLink size={16} className="flex-shrink-0" /> {app.video_source === 'upload' ? 'Open the video file' : app.video_url}
               </a>
+            </section>
+
+            <section>
+              <h3 className="text-sm font-semibold mb-2">CV</h3>
+              {app.cv_url ? (
+                <a href={app.cv_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 dark:text-blue-400 break-all">
+                  <FileText size={16} className="flex-shrink-0" /> {app.cv_file_name || 'Open the CV'}
+                </a>
+              ) : (
+                <p className="m-0 text-sm text-gray-500 dark:text-gray-400">No CV added</p>
+              )}
             </section>
 
             <section>

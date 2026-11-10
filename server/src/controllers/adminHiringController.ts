@@ -16,7 +16,7 @@ const PAGE_SIZE = 25
 const EXPORT_MAX_ROWS = 10_000
 
 const LIST_FIELDS = `a.id, a.full_name, a.phone, a.email, a.location, a.social_url, a.experience,
-  a.can_give_3_hours, a.hours, a.worked_harder, a.answers, a.video_url, a.video_source,
+  a.can_give_3_hours, a.hours, a.worked_harder, a.answers, a.video_url, a.video_source, a.cv_url, a.cv_file_name,
   a.status, a.handled_by, h.name AS handled_by_name, a.notes, a.status_changed_at,
   a.agreed_standards_at, a.agreed_storage_at, a.created_at, a.updated_at`
 const FROM = 'FROM coach_applications a LEFT JOIN users h ON h.id = a.handled_by'

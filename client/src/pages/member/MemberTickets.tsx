@@ -3,15 +3,18 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, Loader, Zap } from 'lucide-react'
 import { getFlashStatus } from '../../api/flashSales'
 import { formatTimeLeft, loadFlashAccess } from '../../utils/flashAccess'
-import { useMemberDashboard } from '../../context/MemberDashboardContext'
+import { useMemberDashboard, type MemberTicket } from '../../context/MemberDashboardContext'
+import TransferTicketDialog from '../../components/member/TransferTicketDialog'
+import { MEMBERSHIP_COPY } from '../../content/membership'
 import MemberPageHeader from '../../components/member/MemberPageHeader'
 import TicketRow from '../../components/member/TicketRow'
 import EmptyState from '../../components/member/EmptyState'
 
 export default function MemberTickets() {
   const navigate = useNavigate()
-  const { tickets, plansByBatch, cancelTicket } = useMemberDashboard()
+  const { tickets, plansByBatch, cancelTicket, loadTickets, notify } = useMemberDashboard()
   const [flashExpiresAt, setFlashExpiresAt] = useState<string | null>(null)
+  const [transferTarget, setTransferTarget] = useState<MemberTicket | null>(null)
 
   useEffect(() => {
     getFlashStatus(loadFlashAccess()?.token)
@@ -59,6 +62,7 @@ export default function MemberTickets() {
                 ticket={t}
                 plan={t.purchase_batch_id ? plansByBatch.get(t.purchase_batch_id) : undefined}
                 onCancel={cancelTicket}
+                onTransfer={setTransferTarget}
                 onViewPlan={() => navigate('/dashboard/wallet')}
               />
             ))
@@ -69,6 +73,16 @@ export default function MemberTickets() {
           </p>
         </div>
       )}
+
+      <TransferTicketDialog
+        ticket={transferTarget}
+        onClose={() => setTransferTarget(null)}
+        onTransferred={(result) => {
+          setTransferTarget(null)
+          notify('success', 'Ticket transferred', MEMBERSHIP_COPY.transfer.done(result.recipientName))
+          loadTickets()
+        }}
+      />
     </>
   )
 }

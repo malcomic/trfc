@@ -38,7 +38,9 @@ export default function DashboardGreeting({ name, membership, onWatchWelcome }: 
       <div className="flex items-center gap-3">
         {membership.active ? (
           <span className="rounded-full bg-cta text-cta-ink px-4 py-1.5 font-barlow font-semibold text-sm">
-            {copy.memberPill(membership.until ? formatDate(membership.until) : '')}
+            {(membership.isFounding ? copy.foundingPill : copy.memberPill)(
+              membership.until ? formatDate(membership.until) : ''
+            )}
           </span>
         ) : (
           <span className="rounded-full bg-smoke light:bg-smoke-light text-chalk light:text-chalk-light px-4 py-1.5 font-barlow font-semibold text-sm">

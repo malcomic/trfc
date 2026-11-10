@@ -64,6 +64,7 @@ export const config = {
     creditExpiringTemplateName: process.env.WHATSAPP_CREDIT_EXPIRING_TEMPLATE || '',
     waitlistTemplateName: process.env.WHATSAPP_WAITLIST_TEMPLATE || '',
     checkinTemplateName: process.env.WHATSAPP_CHECKIN_TEMPLATE || '',
+    membershipTemplateName: process.env.WHATSAPP_MEMBERSHIP_TEMPLATE || '',
     templateLang: process.env.WHATSAPP_TEMPLATE_LANG || 'en',
     apiVersion: process.env.WHATSAPP_API_VERSION || 'v20.0',
   },

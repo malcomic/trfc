@@ -9,6 +9,7 @@ import { startFlashReminderScheduler } from './jobs/flashReminders.js';
 import { startInstallmentScheduler } from './jobs/installmentJobs.js';
 import { startCreditScheduler } from './jobs/creditJobs.js';
 import { startAnnouncementEmailScheduler } from './jobs/announcementEmails.js';
+import { startMembershipScheduler } from './jobs/membershipJobs.js';
 
 export { pool };
 
@@ -43,6 +44,7 @@ import attendanceRoutes from './routes/attendance.js';
 import checkinsRoutes from './routes/checkins.js';
 import announcementsRoutes from './routes/announcements.js';
 import coachApplicationsRoutes from './routes/coachApplications.js';
+import membershipRoutes from './routes/membership.js';
 
 dotenv.config();
 
@@ -90,6 +92,7 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/checkins', checkinsRoutes);
 app.use('/api/announcements', announcementsRoutes);
 app.use('/api/coach-applications', coachApplicationsRoutes);
+app.use('/api/membership', membershipRoutes);
 
 // Start server
 const startServer = async () => {
@@ -111,6 +114,7 @@ const startServer = async () => {
       startInstallmentScheduler();
       startCreditScheduler();
       startAnnouncementEmailScheduler();
+      startMembershipScheduler();
     });
   } catch (error) {
     console.error('✗ Failed to connect to database:', error);

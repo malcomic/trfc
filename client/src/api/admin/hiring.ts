@@ -34,6 +34,8 @@ export interface CoachApplication {
   answers: Record<string, unknown>
   video_url: string
   video_source: 'upload' | 'link'
+  cv_url: string | null
+  cv_file_name: string | null
   status: HiringStatus
   handled_by: string | null
   handled_by_name: string | null

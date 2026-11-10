@@ -21,7 +21,10 @@ import {
   MemberPerksCard,
   MemberPriceCard,
   PointsCard,
+  RenewBanner,
+  usePublicMembershipPrice,
 } from '../../components/member/dashboard/MembershipCards'
+import { renewalState } from '../../content/membership'
 import WelcomeVideoModal from '../../components/member/dashboard/WelcomeVideoModal'
 import ImportantAnnouncementBanner from '../../components/member/dashboard/ImportantAnnouncementBanner'
 import { legacyTabPath } from '../../utils/legacyTabs'
@@ -37,6 +40,7 @@ export default function MemberOverview() {
   const [events, setEvents] = useState<Event[] | null>(null)
   const [welcomeVideo, setWelcomeVideo] = useState<PageVideo | null>(null)
   const [openVideo, setOpenVideo] = useState<PageVideo | null>(null)
+  const membershipPrice = usePublicMembershipPrice()
   const welcomeRequested = useRef(false)
   // The dashboard provider clears location.state right after mount, so read it on the first render.
   const arrivedWithNotice = useRef(
@@ -128,6 +132,12 @@ export default function MemberOverview() {
 
       <div className="space-y-6">
         <ImportantAnnouncementBanner />
+        <RenewBanner
+          state={renewalState(data.membership)}
+          until={data.membership.until}
+          renewalUntil={data.membership.renewalUntil ?? null}
+          renewalPrice={membershipPrice?.renewal ?? null}
+        />
         <AnswersPromptCard />
         <div>
           <DashboardStats data={data} nextTicket={nextTicket} nextEvent={events?.[0]} isMember={isMember} />
@@ -148,7 +158,10 @@ export default function MemberOverview() {
             <ComingUpList events={events} bookedEventIds={bookedEventIds} />
           </div>
           <div className="space-y-6">
-            <MemberPassCard userId={data.profile.id} />
+            <MemberPassCard
+              userId={data.profile.id}
+              member={isMember ? { founding: Boolean(data.membership.isFounding) } : null}
+            />
             <WalletCard
               ticketValue={ticketValue}
               upcoming={wallet?.upcoming ?? 0}

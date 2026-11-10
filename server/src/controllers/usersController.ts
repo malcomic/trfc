@@ -5,6 +5,7 @@ import { findCaptainSummary } from '../utils/captainSummary.js';
 import { CaptainChangeError, changeMyCaptain, getCaptainOptions } from '../utils/memberCaptain.js';
 import { deleteMemberAnswers, getMemberAnswers, parseAnswers, saveMemberAnswers } from '../utils/memberAnswers.js';
 import { loadProgress } from '../utils/programProgress.js';
+import { membershipDashboardExtras } from '../utils/membership.js';
 
 const USER_FIELDS = 'id, name, email, phone, role, created_at';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -149,6 +150,7 @@ export const getMyDashboard = async (req: Request, res: Response) => {
     const progress = programRow ? await loadProgress(userId, programRow.program) : null;
 
     const captain = await findCaptainSummary(userId);
+    const membershipExtra = await membershipDashboardExtras(userId, memberUntil);
     res.json({
       profile: profileRow,
       captain,
@@ -168,7 +170,7 @@ export const getMyDashboard = async (req: Request, res: Response) => {
                 .map((c) => c.day),
             }
           : null,
-      membership: membershipFrom(memberUntil),
+      membership: { ...membershipFrom(memberUntil), ...membershipExtra },
     });
   } catch (error) {
     console.error(error);

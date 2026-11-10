@@ -1,11 +1,54 @@
-import { createHash } from 'crypto'
-import { Request, Response } from 'express'
+import { createHash, randomUUID } from 'crypto'
+import { NextFunction, Request, Response } from 'express'
+import multer from 'multer'
 import { query } from '../config/db.js'
-import { deleteVideo, getVideoBytes, signVideoUpload } from '../utils/cloudinary.js'
+import { deleteVideo, getVideoBytes, signVideoUpload, uploadRawToCloudinary } from '../utils/cloudinary.js'
 import { sendCoachApplicationEmails } from '../utils/coachApplicationEmail.js'
-import { COACH_VIDEO_FOLDER, MAX_VIDEO_BYTES, cleanApplication, isLikelySpam, type CoachApplicationInput } from '../utils/coachApplications.js'
+import {
+  COACH_CV_FOLDER,
+  COACH_VIDEO_FOLDER,
+  CV_MIME_TYPES,
+  MAX_CV_BYTES,
+  MAX_VIDEO_BYTES,
+  cleanApplication,
+  detectCvFormat,
+  isLikelySpam,
+  type CoachApplicationInput,
+} from '../utils/coachApplications.js'
 
 const hashIp = (ip: string | undefined) => (ip ? createHash('sha256').update(ip).digest('hex') : null)
+
+const CV_TYPE_ERROR = 'Please choose a PDF or Word file (.pdf, .doc or .docx)'
+
+const cvUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_CV_BYTES, files: 1 },
+  fileFilter: (_req, file, cb) => cb(null, CV_MIME_TYPES.includes(file.mimetype)),
+}).single('cv')
+
+/** Reads one file from the `cv` field; files of other types are dropped so the handler can reject them. */
+export function receiveCoachCv(req: Request, res: Response, next: NextFunction) {
+  cvUpload(req, res, (error: unknown) => {
+    if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'Your CV must be 5 MB or smaller' })
+    }
+    if (error) return res.status(400).json({ error: 'Could not read your CV. Please try again.' })
+    next()
+  })
+}
+
+export async function uploadCoachCv(req: Request, res: Response) {
+  if (!req.file) return res.status(400).json({ error: CV_TYPE_ERROR })
+  const format = detectCvFormat(req.file.buffer)
+  if (!format) return res.status(400).json({ error: CV_TYPE_ERROR })
+  try {
+    const uploaded = await uploadRawToCloudinary(req.file.buffer, COACH_CV_FOLDER, `${randomUUID()}.${format}`)
+    res.status(201).json({ ...uploaded, fileName: req.file.originalname.slice(0, 200) })
+  } catch (error) {
+    console.error('Could not upload coach CV:', error)
+    res.status(500).json({ error: 'We could not upload your CV right now. You can still apply without it.' })
+  }
+}
 
 export function getCoachVideoSignature(_req: Request, res: Response) {
   try {
@@ -57,8 +100,9 @@ export async function createCoachApplication(req: Request, res: Response) {
     const inserted = await query(
       `INSERT INTO coach_applications (
          full_name, phone, email, location, social_url, experience, can_give_3_hours, hours, worked_harder,
-         video_url, video_source, video_public_id, agreed_standards_at, agreed_storage_at, submission_key, ip_hash
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW(), $13, $14)
+         video_url, video_source, video_public_id, agreed_standards_at, agreed_storage_at, submission_key, ip_hash,
+         cv_url, cv_public_id, cv_file_name
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW(), $13, $14, $15, $16, $17)
        ON CONFLICT (submission_key) DO NOTHING
        RETURNING id`,
       [
@@ -76,6 +120,9 @@ export async function createCoachApplication(req: Request, res: Response) {
         value.videoPublicId,
         value.submissionKey,
         hashIp(req.ip),
+        value.cvUrl,
+        value.cvPublicId,
+        value.cvFileName,
       ]
     )
 

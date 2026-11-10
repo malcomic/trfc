@@ -30,6 +30,7 @@ import {
   Megaphone,
   Dumbbell,
   Briefcase,
+  Crown,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -80,6 +81,7 @@ export const adminNavEntries: AdminNavEntry[] = [
     label: 'Members',
     icon: UsersRound,
     children: [
+      { path: '/admin/membership', label: 'Membership', icon: Crown },
       { path: '/admin/programs', label: 'Programs', icon: Dumbbell },
       { path: '/admin/signups', label: 'Signups', icon: UserPlus },
       { path: '/admin/reach-out', label: 'Reach Out', icon: HeartHandshake },

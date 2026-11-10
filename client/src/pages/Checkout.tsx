@@ -21,6 +21,8 @@ import { pageRoot, inputField } from '../utils/themeClasses'
 import { trackInitiateCheckout } from '../utils/tiktokPixel'
 import { useAuth } from '../context/AuthContext'
 import { MPESA_PHONE_PLACEHOLDER, mpesaPhoneRules, toKenyanMsisdn } from '../utils/phone'
+import { getShopDiscount, type ShopDiscount } from '../api/membership'
+import { MEMBERSHIP_COPY, kes, shopDiscountFor } from '../content/membership'
 
 export default function Checkout() {
   const { user } = useAuth()
@@ -42,7 +44,27 @@ export default function Checkout() {
     [isBuyNow, buyNowItem, cartItems]
   )
   const items = submittedItems ?? liveItems
-  const grandTotal = getGrandTotal(items.reduce((sum, item) => sum + cartLinePrice(item) * item.quantity, 0))
+  const [shopDiscount, setShopDiscount] = useState<ShopDiscount | null>(null)
+  const [useMemberDiscount, setUseMemberDiscount] = useState(true)
+  useEffect(() => {
+    if (!user) {
+      setShopDiscount(null)
+      return
+    }
+    getShopDiscount().then(setShopDiscount).catch(() => setShopDiscount(null))
+  }, [user])
+  const discountAvailable = shopDiscountFor(
+    items.map((item) => ({
+      price: cartLinePrice(item),
+      quantity: item.quantity,
+      eligible: Boolean(item.product.member_discount_eligible),
+      flash: Boolean(item.flashSaleId),
+    })),
+    shopDiscount
+  )
+  const memberDiscount = useMemberDiscount ? discountAvailable : 0
+  const grandTotal =
+    getGrandTotal(items.reduce((sum, item) => sum + cartLinePrice(item) * item.quantity, 0)) - memberDiscount
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [deliveryDate, setDeliveryDate] = useState<string | null>(null)
@@ -157,6 +179,7 @@ export default function Checkout() {
         email: normalizedEmail,
         delivery_address: data.address,
         ...(hasFlashItems ? { flash_token: loadFlashAccess()?.token } : {}),
+        ...(memberDiscount > 0 ? { member_discount: true } : {}),
       })
 
       setOrderId(createdOrder.id)
@@ -358,6 +381,9 @@ export default function Checkout() {
                         <p className="text-xs text-fog light:text-fog-light mt-1">
                           KES {cartLinePrice(item).toFixed(0)} × {item.quantity}
                           {item.flashSaleId && <span className="ml-2 text-accent light:text-accent-light font-bold">Flash</span>}
+                          {!item.flashSaleId && item.product.member_discount_eligible && shopDiscount?.isMember && (
+                            <span className="ml-2 text-amber-400 font-bold">{MEMBERSHIP_COPY.shopDiscount.tag}</span>
+                          )}
                         </p>
                       </div>
                       <p className="font-bebas text-lg text-accent light:text-accent-light flex-shrink-0">
@@ -366,6 +392,30 @@ export default function Checkout() {
                     </div>
                   ))}
                 </div>
+
+                {discountAvailable > 0 && (
+                  <div className="mb-6 pb-6 border-b border-white/10 light:border-black/10 space-y-2">
+                    <label className="flex items-start gap-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={useMemberDiscount}
+                        onChange={(e) => setUseMemberDiscount(e.target.checked)}
+                        disabled={Boolean(submittedItems)}
+                        className="w-4 h-4 mt-0.5"
+                      />
+                      <span>{MEMBERSHIP_COPY.shopDiscount.toggle(kes(discountAvailable))}</span>
+                    </label>
+                    {memberDiscount > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-amber-400">{MEMBERSHIP_COPY.shopDiscount.tag}</span>
+                        <span className="font-bebas text-lg text-amber-400">-{memberDiscount.toFixed(0)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {shopDiscount?.isMember && !shopDiscount.available && shopDiscount.usedOrderId && (
+                  <p className="text-xs text-fog light:text-fog-light mb-4">{MEMBERSHIP_COPY.shopDiscount.usedNote}</p>
+                )}
 
                 {/* Total */}
                 <div className="flex justify-between items-baseline mb-6 pb-6 border-b border-white/10 light:border-black/10">

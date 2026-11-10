@@ -31,6 +31,11 @@ async function findCategoryName(categoryId: unknown): Promise<string | null> {
   return result.rows[0]?.name ?? null;
 }
 
+async function saveMemberDiscountFlag(client: Awaited<ReturnType<typeof getClient>>, productId: string, value: unknown) {
+  if (typeof value !== 'boolean') return;
+  await client.query('UPDATE products SET member_discount_eligible = $2 WHERE id = $1', [productId, value]);
+}
+
 async function fetchAdminProduct(id: string) {
   const result = await query(`${ADMIN_PRODUCT_SQL} WHERE p.id = $1`, [id]);
   return result.rows[0];
@@ -96,6 +101,7 @@ export const createProduct = async (req: Request, res: Response) => {
       [name, description, price, stock ?? 0, categoryName, category_id, image_url, JSON.stringify(distanceOptions)]
     );
     const productId = result.rows[0].id;
+    await saveMemberDiscountFlag(client, productId, req.body.member_discount_eligible);
     if (variants) {
       await saveProductVariants(client, productId, variants);
       await syncProductStock(client, productId);
@@ -156,6 +162,7 @@ export const updateProduct = async (req: Request, res: Response) => {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Product not found' });
     }
+    await saveMemberDiscountFlag(client, id, req.body.member_discount_eligible);
     if (variants) {
       await saveProductVariants(client, id, variants);
     }

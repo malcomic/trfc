@@ -16,7 +16,7 @@ export const FREE_ACCOUNT_ROWS: MembershipRow[] = [
 
 export const MEMBER_ROWS: MembershipRow[] = [
   { feature: '15% off one paid program a year', value: 'Save up to KSh 525' },
-  { feature: 'KSh 300 off one clothes purchase a year', value: 'KSh 300' },
+  { feature: 'KSh 300 off one shop order a year', value: 'KSh 300' },
   { feature: 'Members-only flash sale on our 2nd edition jerseys', value: 'Before anyone else' },
   { feature: 'Hike seat priority', value: 'Members book first' },
   { feature: 'Lower prices for Fit Fest tickets', value: 'Members pay less' },
@@ -28,7 +28,7 @@ export const MEMBER_ROWS: MembershipRow[] = [
   { feature: 'Discounts at our partners: pharmacies, physios, sports shops', value: '10% off' },
   { feature: 'A friend pass for 1 Saturday run a year', value: 'Bring 1 friend' },
   { feature: "A vote on hike routes and next year's events", value: '1 vote each' },
-  { feature: 'Free ticket swap', value: 'KSh 0 to swap or move' },
+  { feature: 'Free ticket transfer', value: 'KSh 0 to give your ticket to another account' },
   { feature: 'We share your wins on our Instagram', value: 'Every milestone' },
   { feature: 'A finisher certificate and medal', value: 'At the end of the season' },
 ]

@@ -3,6 +3,7 @@ import { phonesMatch } from './phone.js'
 import { activateSignupsByCheckoutId } from './signupActivation.js'
 import { recordCaptainCommissionsForCheckout } from './captainCommissions.js'
 import { failWalletCheckout, settleWalletCheckout } from './walletPayments.js'
+import { failMembershipByCheckoutId, settleMembershipByCheckoutId } from './membership.js'
 
 export async function validatePaymentReference(
   orderId?: string,
@@ -190,6 +191,7 @@ export async function markEntitiesPaidByCheckoutId(
   )
   const signupCount = await activateSignupsByCheckoutId(checkoutRequestId, mpesaReceipt || null)
   const walletCount = await settleWalletCheckout(checkoutRequestId, mpesaReceipt || null)
+  const membershipCount = await settleMembershipByCheckoutId(checkoutRequestId, mpesaReceipt || null)
 
   const commissionableCount =
     (orderResult.rowCount || 0) + (ticketResult.rowCount || 0) + (hireResult.rowCount || 0) + (medalResult.rowCount || 0)
@@ -203,7 +205,8 @@ export async function markEntitiesPaidByCheckoutId(
     (hireResult.rowCount || 0) +
     (medalResult.rowCount || 0) +
     signupCount +
-    walletCount
+    walletCount +
+    membershipCount
   )
 }
 
@@ -229,6 +232,7 @@ async function markEntitiesFailedByCheckoutId(checkoutRequestId: string) {
     [checkoutRequestId]
   )
   await failWalletCheckout(checkoutRequestId)
+  await failMembershipByCheckoutId(checkoutRequestId)
 }
 
 export { markEntitiesFailedByCheckoutId }

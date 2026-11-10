@@ -31,6 +31,7 @@ import { activateSignup, notifyPaidSignupsByCheckoutId } from '../utils/signupAc
 import { MPESA_PHONE_ERROR, toKenyanMsisdn } from '../utils/phone.js'
 import { recordCaptainCommissionsForCheckout } from '../utils/captainCommissions.js'
 import { settleWalletCheckout } from '../utils/walletPayments.js'
+import { MEMBERSHIP_ACCOUNT_PREFIX, settleMembershipByCheckoutId } from '../utils/membership.js'
 import { captureMetaContext, reportMetaPurchase, saveMetaContext } from '../utils/metaConversions.js'
 
 const MPESA_QUERY_GRACE_MS = 10_000
@@ -130,6 +131,14 @@ async function applyPaymentFromAccountRef(
       ['paid', mpesaReceipt, checkoutRequestId, batchId]
     )
     return result.rowCount || 0
+  }
+
+  if (accountRef.startsWith(MEMBERSHIP_ACCOUNT_PREFIX)) {
+    return settleMembershipByCheckoutId(
+      checkoutRequestId,
+      mpesaReceipt,
+      accountRef.slice(MEMBERSHIP_ACCOUNT_PREFIX.length)
+    )
   }
 
   if (accountRef.startsWith('MEDAL-BATCH-')) {

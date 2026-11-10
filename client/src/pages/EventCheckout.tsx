@@ -27,6 +27,7 @@ import { useAuth } from '../context/AuthContext'
 import { trackInitiateCheckout } from '../utils/tiktokPixel'
 import { MPESA_PHONE_PLACEHOLDER, localPhoneOrEmpty, mpesaPhoneRules, toKenyanMsisdn } from '../utils/phone'
 import type { Event, EventTicketType } from '../types'
+import { MEMBERSHIP_COPY, memberDateTime } from '../content/membership'
 
 type CheckoutForm = {
   quantity: number
@@ -199,14 +200,16 @@ export default function EventCheckout() {
         }
         const data: Event = await getEventById(eventId)
         setEvent(data)
+        const isMember = Boolean(data.viewer_is_member)
+        const bookable = (t: EventTicketType) => !t.is_sold_out && (!t.members_only || isMember)
         const types = (data.ticket_types || []).filter((t: EventTicketType) => t.is_active)
         const fromState = types.find((t: EventTicketType) => t.id === initialTypeId)
-        const firstAvailable =
-          (fromState && !fromState.is_sold_out ? fromState : null) ||
-          types.find((t: EventTicketType) => !t.is_sold_out) ||
-          null
+        const firstAvailable = (fromState && bookable(fromState) ? fromState : null) || types.find(bookable) || null
         setSelectedType(firstAvailable)
-        if (data.sold_out_for_you) {
+        if (data.member_early_until && !isMember) {
+          setError(MEMBERSHIP_COPY.early.nonMember(memberDateTime(data.member_early_until)))
+          setSelectedType(null)
+        } else if (data.sold_out_for_you) {
           setError('No seats are open to you right now. Join the waiting list and we will tell you when one opens.')
           setCanWaitlist(true)
         } else if (!firstAvailable) {
@@ -507,6 +510,9 @@ export default function EventCheckout() {
           <h1 className="font-bebas text-4xl text-chalk light:text-chalk-light">BUY <span className="text-accent light:text-accent-light">TICKETS</span></h1>
           <p className="text-fog light:text-fog-light mt-1">{event.title}</p>
           {event.priority_note && <p className="text-sm text-fog light:text-fog-light mt-1">{event.priority_note}</p>}
+          {event.member_early_until && event.viewer_is_member && (
+            <p className="text-sm text-amber-400 mt-1">{MEMBERSHIP_COPY.early.member(memberDateTime(event.member_early_until))}</p>
+          )}
         </div>
       </section>
 

@@ -14,7 +14,7 @@ export type MemberCheckinStatus = 'valid' | 'already_checked_in' | 'not_found' |
 export interface MemberCheckinResult {
   kind: 'member'
   status: MemberCheckinStatus
-  member: { id: string; name: string | null; zone: string | null } | null
+  member: { id: string; name: string | null; zone: string | null; paidMember?: boolean } | null
   checkedInAt: string | null
   ticketCheckedIn?: boolean
 }

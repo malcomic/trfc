@@ -79,6 +79,7 @@ import AdminAnnouncements from './pages/admin/AdminAnnouncements'
 import AdminPrograms from './pages/admin/AdminPrograms'
 import AdminProgramEditor from './pages/admin/AdminProgramEditor'
 import AdminHiring from './pages/admin/AdminHiring'
+import AdminMembership from './pages/admin/AdminMembership'
 import Unsubscribe from './pages/Unsubscribe'
 import MemberNotifications from './pages/member/MemberNotifications'
 import MemberLayout from './components/member/MemberLayout'
@@ -97,6 +98,7 @@ import ProgramWeek from './pages/member/program/ProgramWeek'
 import ProgramSession from './pages/member/program/ProgramSession'
 import ProgramCheckin from './pages/member/program/ProgramCheckin'
 import MemberZone from './pages/member/MemberZone'
+import MemberMembership from './pages/member/MemberMembership'
 import MemberPoints from './pages/member/MemberPoints'
 import MemberGuides from './pages/member/MemberGuides'
 import { captureReferralFromUrl } from './utils/referral'
@@ -184,6 +186,7 @@ const router = createBrowserRouter(
           <Route path="signups" element={<AdminSignups />} />
           <Route path="reach-out" element={<AdminReachOut />} />
           <Route path="hiring" element={<AdminHiring />} />
+          <Route path="membership" element={<AdminMembership />} />
           <Route path="wallets" element={<AdminWallets />} />
           <Route path="appearance" element={<AdminAppearance />} />
           <Route path="captains" element={<AdminCaptains />} />
@@ -214,6 +217,7 @@ const router = createBrowserRouter(
           <Route path="programs/:slug/week/:week/day/:day" element={<ProgramSession />} />
           <Route path="programs/:slug/week/:week/check-in" element={<ProgramCheckin />} />
           <Route path="zone" element={<MemberZone />} />
+          <Route path="membership" element={<MemberMembership />} />
           <Route path="points" element={<MemberPoints />} />
           <Route path="guides" element={<MemberGuides />} />
           <Route path="notifications" element={<MemberNotifications />} />

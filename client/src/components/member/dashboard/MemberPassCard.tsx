@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Loader, Maximize2, QrCode, X } from 'lucide-react'
 import { getMyPass, regenerateMyPass, type MemberPass } from '../../../api/users'
 import { DASHBOARD_COPY } from '../../../content/dashboard'
+import MemberBadge from '../membership/MemberBadge'
 import { dashCard, dashHeading, dashLink, dashMuted } from './ui'
 
 const copy = DASHBOARD_COPY.pass
@@ -31,7 +32,14 @@ function displayCode(code: string) {
   return code.length > 5 ? `${code.slice(0, 5)}-${code.slice(5)}` : code
 }
 
-export default function MemberPassCard({ userId }: { userId: string }) {
+export default function MemberPassCard({
+  userId,
+  member = null,
+}: {
+  userId: string
+  /** Paid membership badge; null for free accounts. */
+  member?: { founding: boolean } | null
+}) {
   const [pass, setPass] = useState<MemberPass | null>(() => readCache(userId))
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -96,6 +104,7 @@ export default function MemberPassCard({ userId }: { userId: string }) {
       <div className="flex items-center gap-2 mb-2">
         <QrCode size={20} aria-hidden="true" className="text-cta" />
         <h2 className={dashHeading}>{copy.heading}</h2>
+        {member && <MemberBadge founding={member.founding} className="ml-auto" />}
       </div>
       <p className={`${dashMuted} mb-4`}>{copy.body}</p>
 
@@ -175,6 +184,7 @@ export default function MemberPassCard({ userId }: { userId: string }) {
           </button>
           <img src={pass.qrDataUrl} alt={`QR code ${pass.code}`} className="w-full max-w-sm aspect-square" />
           {pass.name && <p className="mt-6 text-2xl font-bold text-gray-900 text-center">{pass.name}</p>}
+          {member && <MemberBadge founding={member.founding} className="mt-3" />}
           <p className="mt-2 font-mono text-2xl tracking-widest text-gray-900">{displayCode(pass.code)}</p>
         </div>
       )}

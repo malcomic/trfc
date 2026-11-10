@@ -10,6 +10,7 @@ import { FLASH_SOLD_UNITS_SQL } from './flashSalesController.js';
 import { productInZoneSql } from '../utils/zones.js';
 import { ProductOptionsError, resolveSelectedOptions } from '../utils/productVariants.js';
 import { nextDeliveryWednesday } from '../utils/ticketRules.js';
+import { memberDiscountFor, shopDiscountStatus } from '../utils/memberShopDiscount.js';
 
 type DbClient = Awaited<ReturnType<typeof getClient>>;
 
@@ -206,6 +207,7 @@ export const createOrder = async (req: Request, res: Response) => {
     }
 
     let subtotal = 0;
+    let eligibleSubtotal = 0;
     const lines: {
       product_id: string;
       quantity: number;
@@ -224,7 +226,7 @@ export const createOrder = async (req: Request, res: Response) => {
         throw new OrderValidationError(400, 'Invalid item quantity');
       }
       const productResult = await client.query(
-        `SELECT p.id, p.price, p.stock, p.is_active, p.name, p.distance_options
+        `SELECT p.id, p.price, p.stock, p.is_active, p.name, p.distance_options, p.member_discount_eligible
          FROM products p
          WHERE p.id = $1`,
         [item.product_id]
@@ -283,6 +285,7 @@ export const createOrder = async (req: Request, res: Response) => {
         throw new OrderValidationError(400, `Price mismatch for ${product.name}`);
       }
       subtotal += unitPrice * quantity;
+      if (product.member_discount_eligible && !flashSaleId) eligibleSubtotal += unitPrice * quantity;
       lines.push({
         product_id: product.id,
         quantity,
@@ -294,7 +297,25 @@ export const createOrder = async (req: Request, res: Response) => {
       });
     }
 
-    const expectedTotal = getGrandTotal(subtotal);
+    let memberDiscount = 0;
+    let discountMembershipId: string | null = null;
+    if (req.body.member_discount === true) {
+      if (!userId) throw new OrderValidationError(401, 'Log in to use your member discount');
+      if (eligibleSubtotal <= 0) {
+        throw new OrderValidationError(400, 'None of these items have the member discount');
+      }
+      const discount = await shopDiscountStatus(client, userId, true);
+      if (!discount.membershipId) {
+        throw new OrderValidationError(403, 'The member discount is for paid TRFC members');
+      }
+      if (!discount.available) {
+        throw new OrderValidationError(409, 'You have already used your member discount this membership year');
+      }
+      memberDiscount = memberDiscountFor(eligibleSubtotal, discount.amount);
+      discountMembershipId = discount.membershipId;
+    }
+
+    const expectedTotal = getGrandTotal(subtotal) - memberDiscount;
     if (Math.round(Number(total_amount)) !== Math.round(expectedTotal)) {
       throw new OrderValidationError(400, `Order total must be KES ${expectedTotal}`);
     }
@@ -304,6 +325,14 @@ export const createOrder = async (req: Request, res: Response) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *, to_char(delivery_date, 'YYYY-MM-DD') AS delivery_date`,
       [userId, expectedTotal, phone, delivery_address, email, flashRedemptionId, nextDeliveryWednesday(new Date())]
     );
+    if (discountMembershipId) {
+      await client.query(
+        'UPDATE orders SET member_discount_amount = $2, member_discount_membership_id = $3 WHERE id = $1',
+        [orderResult.rows[0].id, memberDiscount, discountMembershipId]
+      );
+      orderResult.rows[0].member_discount_amount = memberDiscount;
+      orderResult.rows[0].member_discount_membership_id = discountMembershipId;
+    }
 
     const orderId = orderResult.rows[0].id;
 

@@ -24,6 +24,7 @@ import EventWaitlistPanel from '../../components/admin/EventWaitlistPanel'
 import ScanListPanel from '../../components/attendance/ScanListPanel'
 import { getZones, type Zone } from '../../api/zones'
 import { formatEventDate, toDatetimeLocalValue } from '../../utils/eventDate'
+import { earlyWindowEnd, memberDateTime } from '../../content/membership'
 
 const optionalNumber = (value: unknown) =>
   value === '' || value === null || value === undefined ? null : Number(value)
@@ -70,6 +71,7 @@ export default function AdminEvents() {
     price: 0,
     capacity: '' as string | number,
     is_active: true,
+    members_only: false,
   })
   const [savingType, setSavingType] = useState(false)
   const [deleteType, setDeleteType] = useState<{ eventId: string; typeId: string } | null>(null)
@@ -140,6 +142,7 @@ export default function AdminEvents() {
         installments_enabled: Boolean(data.installments_enabled),
         payment_deadline_days: optionalNumber(data.payment_deadline_days),
         member_priority_pct: optionalNumber(data.member_priority_pct),
+        member_early_booking: Boolean(data.member_early_booking),
         capacity: optionalNumber(data.capacity),
         zone_ids: zoneIds,
       }
@@ -186,6 +189,7 @@ export default function AdminEvents() {
       installments_enabled: Number(event.installments_allowed ?? 0) > 0,
       payment_deadline_days: event.payment_deadline_days ?? '',
       member_priority_pct: event.member_priority_pct ?? '',
+      member_early_booking: Boolean(event.member_early_booking),
       capacity: event.capacity ?? '',
     })
     setZoneIds((event.zones ?? []).map((z) => z.id))
@@ -212,6 +216,14 @@ export default function AdminEvents() {
     }
   }
 
+  const editingEvent = editingId ? events.find((e) => e.id === editingId) : undefined
+  const earlyEnd = earlyWindowEnd(editingEvent?.created_at ?? new Date().toISOString())
+  const earlyHint = !editingEvent
+    ? `Only members can book until ${memberDateTime(earlyEnd)}. Then everyone can.`
+    : earlyEnd.getTime() > Date.now()
+      ? `Only members can book until ${memberDateTime(earlyEnd)}. Then everyone can.`
+      : `The members-only window ended on ${memberDateTime(earlyEnd)}, 48 hours after this event was created.`
+
   const eventStarted = (event: AdminEvent) => new Date(event.event_date).getTime() <= Date.now()
 
   const openTypeModal = (event: AdminEvent, type?: AdminTicketType) => {
@@ -222,6 +234,7 @@ export default function AdminEvents() {
       price: type?.price ?? 0,
       capacity: type?.capacity ?? '',
       is_active: type?.is_active ?? true,
+      members_only: type?.members_only ?? false,
     })
     setShowTypeModal(true)
   }
@@ -244,6 +257,7 @@ export default function AdminEvents() {
             ? null
             : Number(typeForm.capacity),
         is_active: typeForm.is_active,
+        members_only: typeForm.members_only,
       }
       if (editingType) {
         await updateEventTicketType(typesEvent.id, editingType.id, payload)
@@ -546,6 +560,16 @@ export default function AdminEvents() {
               </p>
 
               <div>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" {...register('member_early_booking')} className="w-4 h-4" />
+                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    Members book first (48 hours from creation)
+                  </span>
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{earlyHint}</p>
+              </div>
+
+              <div>
                 <span className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Zones</span>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                   Captains of these zones can confirm the scan list. Leave empty for admin only.
@@ -691,6 +715,11 @@ export default function AdminEvents() {
                           {!type.is_active && (
                             <span className="text-xs font-normal text-gray-500">(inactive)</span>
                           )}
+                          {type.members_only && (
+                            <span className="ml-2 text-xs font-semibold text-amber-700 dark:text-amber-300">
+                              Members only
+                            </span>
+                          )}
                           {type.is_sold_out && (
                             <span className="ml-2 text-xs font-semibold text-red-600 dark:text-red-400">
                               Sold out
@@ -780,6 +809,20 @@ export default function AdminEvents() {
                   className="w-4 h-4"
                 />
                 <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Active</span>
+              </label>
+              <label className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  checked={typeForm.members_only}
+                  onChange={(e) => setTypeForm({ ...typeForm, members_only: e.target.checked })}
+                  className="w-4 h-4 mt-0.5"
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-gray-900 dark:text-gray-100">Members only</span>
+                  <span className="block text-xs text-gray-500 dark:text-gray-400">
+                    Only paid members can buy it, e.g. a members' early bird. Others see it locked.
+                  </span>
+                </span>
               </label>
               <div className="flex gap-2 justify-end pt-2">
                 <button

@@ -1168,6 +1168,59 @@ export function buildTicketCancelledEmailText(data: TicketCancelledEmailData): s
   ].join('\n\n')
 }
 
+export interface TicketTransferEmailData {
+  name: string | null
+  otherName: string
+  eventTitle: string
+  eventDate: string
+}
+
+const ticketsUrl = () => siteUrl('/dashboard/tickets')
+
+export function buildTicketTransferSentEmailHTML(data: TicketTransferEmailData): string {
+  return accountEmailShell(
+    'Your ticket was transferred',
+    'Ticket transferred',
+    `
+      ${paragraph(escapeHtml(greeting(data.name)))}
+      ${paragraph(`Your ticket for <strong>${escapeHtml(data.eventTitle)}</strong> (${escapeHtml(data.eventDate)}) now belongs to <strong>${escapeHtml(data.otherName)}</strong>. It no longer shows in your account.`)}
+      ${paragraph('Free ticket transfer is a TRFC member perk. Each ticket can be transferred once.')}
+      ${actionButton('VIEW MY TICKETS', ticketsUrl())}`
+  )
+}
+
+export function buildTicketTransferSentEmailText(data: TicketTransferEmailData): string {
+  return [
+    greeting(data.name),
+    `Your ticket for ${data.eventTitle} (${data.eventDate}) now belongs to ${data.otherName}. It no longer shows in your account.`,
+    'Free ticket transfer is a TRFC member perk. Each ticket can be transferred once.',
+    `Your tickets: ${ticketsUrl()}`,
+    footerText(),
+  ].join('\n\n')
+}
+
+export function buildTicketTransferReceivedEmailHTML(data: TicketTransferEmailData): string {
+  return accountEmailShell(
+    'You have a new ticket',
+    'A ticket for you',
+    `
+      ${paragraph(escapeHtml(greeting(data.name)))}
+      ${paragraph(`<strong>${escapeHtml(data.otherName)}</strong> gave you their ticket for <strong>${escapeHtml(data.eventTitle)}</strong> (${escapeHtml(data.eventDate)}).`)}
+      ${paragraph('Find it under My Tickets and show its QR code at the event.')}
+      ${actionButton('VIEW MY TICKETS', ticketsUrl())}`
+  )
+}
+
+export function buildTicketTransferReceivedEmailText(data: TicketTransferEmailData): string {
+  return [
+    greeting(data.name),
+    `${data.otherName} gave you their ticket for ${data.eventTitle} (${data.eventDate}).`,
+    'Find it under My Tickets and show its QR code at the event.',
+    `Your tickets: ${ticketsUrl()}`,
+    footerText(),
+  ].join('\n\n')
+}
+
 export const CREDIT_REASON_LABELS: Record<string, string> = {
   no_show: 'No-show',
   cancelled_early: 'Cancelled early',
@@ -1617,6 +1670,115 @@ export function buildCoachApplicationNoticeText(data: CoachApplicationEmailData)
       .map(([label, value]) => `${label}: ${value}`)
       .join('\n'),
     `Open in Hiring: ${coachApplicationAdminUrl(data.id)}`,
+  ].join('\n\n')
+}
+
+export interface MembershipWelcomeEmailData {
+  name: string | null
+  startsAt: Date
+  endsAt: Date
+  amount: number
+  receipt: string | null
+  isFounding: boolean
+  isRenewal: boolean
+}
+
+export type MembershipReminderKind = 'd30' | 'd7' | 'expired' | 'grace_d25'
+
+export interface MembershipReminderEmailData {
+  name: string | null
+  endsAt: Date
+  renewalPrice: number
+  renewalUntil: Date
+}
+
+const memberDate = (date: Date) =>
+  date.toLocaleDateString('en-KE', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Nairobi' })
+export const membershipPageUrl = () => siteUrl('/dashboard/membership')
+
+export function membershipWelcomeSubject(data: Pick<MembershipWelcomeEmailData, 'isRenewal'>): string {
+  return data.isRenewal ? 'Your TRFC membership is renewed' : "You're a TRFC member"
+}
+
+function membershipWelcomeLines(data: MembershipWelcomeEmailData): string[] {
+  return [
+    data.isRenewal
+      ? `Thank you for renewing. Your new membership year runs from ${memberDate(data.startsAt)} to ${memberDate(data.endsAt)}.`
+      : `Welcome to the member side of TRFC. Your membership runs from ${memberDate(data.startsAt)} to ${memberDate(data.endsAt)}.`,
+    ...(data.isFounding
+      ? ['You are one of our founding members. Your founding member badge is on your dashboard and your member pass.']
+      : []),
+    `You paid ${kes(data.amount)}${data.receipt ? ` (M-Pesa receipt ${data.receipt})` : ''}.`,
+    'Your member perks, badge and past years are on your membership page.',
+  ]
+}
+
+export function buildMembershipWelcomeEmailHTML(data: MembershipWelcomeEmailData): string {
+  return accountEmailShell(
+    membershipWelcomeSubject(data),
+    data.isRenewal ? 'Membership renewed' : "You're a member",
+    `
+      ${paragraph(escapeHtml(greeting(data.name)))}
+      ${membershipWelcomeLines(data).map((line) => paragraph(escapeHtml(line))).join('\n      ')}
+      ${actionButton('MY MEMBERSHIP', membershipPageUrl())}`
+  )
+}
+
+export function buildMembershipWelcomeEmailText(data: MembershipWelcomeEmailData): string {
+  return [
+    greeting(data.name),
+    ...membershipWelcomeLines(data),
+    `My membership: ${membershipPageUrl()}`,
+    footerText(),
+  ].join('\n\n')
+}
+
+export const MEMBERSHIP_REMINDER_SUBJECTS: Record<MembershipReminderKind, string> = {
+  d30: 'Your TRFC membership ends in 30 days',
+  d7: 'Your TRFC membership ends in 7 days',
+  expired: 'Your TRFC membership has ended',
+  grace_d25: '5 days left to renew at the member price',
+}
+
+function membershipReminderLines(kind: MembershipReminderKind, data: MembershipReminderEmailData): string[] {
+  const price = kes(data.renewalPrice)
+  switch (kind) {
+    case 'd30':
+    case 'd7':
+      return [
+        `Your TRFC membership ends on ${memberDate(data.endsAt)}.`,
+        `Renew now for ${price}. Your new year starts the day your current one ends, so you lose no days.`,
+      ]
+    case 'expired':
+      return [
+        `Your TRFC membership ended on ${memberDate(data.endsAt)}. Your free account stays open.`,
+        `You can still renew for ${price} until ${memberDate(data.renewalUntil)}. After that, membership is full price.`,
+      ]
+    case 'grace_d25':
+      return [
+        `You have 5 days left to renew your TRFC membership for ${price}.`,
+        `The renewal price ends on ${memberDate(data.renewalUntil)}. After that, membership is full price.`,
+      ]
+  }
+}
+
+export function buildMembershipReminderEmailHTML(kind: MembershipReminderKind, data: MembershipReminderEmailData): string {
+  return accountEmailShell(
+    MEMBERSHIP_REMINDER_SUBJECTS[kind],
+    kind === 'expired' ? 'Membership ended' : 'Time to renew',
+    `
+      ${paragraph(escapeHtml(greeting(data.name)))}
+      ${membershipReminderLines(kind, data).map((line) => paragraph(escapeHtml(line))).join('\n      ')}
+      ${actionButton('RENEW MY MEMBERSHIP', membershipPageUrl())}`
+  )
+}
+
+export function buildMembershipReminderEmailText(kind: MembershipReminderKind, data: MembershipReminderEmailData): string {
+  return [
+    greeting(data.name),
+    ...membershipReminderLines(kind, data),
+    `Renew my membership: ${membershipPageUrl()}`,
+    footerText(),
   ].join('\n\n')
 }
 

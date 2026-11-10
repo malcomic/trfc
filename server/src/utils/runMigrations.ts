@@ -1,5 +1,6 @@
 import { query } from '../config/db.js'
 import { buildCatalogSeedSql } from '../config/programCatalogSeed.js'
+import { buildMemberPerksSeedSql } from '../config/memberPerksSeed.js'
 
 const MIGRATIONS: { name: string; sql: string }[] = [
   {
@@ -1458,6 +1459,120 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(64);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
       CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id) WHERE google_id IS NOT NULL;
+    `,
+  },
+  {
+    name: '062_membership',
+    sql: `
+      CREATE TABLE IF NOT EXISTS membership_settings (
+        id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+        standard_price NUMERIC(10,2) NOT NULL DEFAULT 2447,
+        founding_price NUMERIC(10,2) NOT NULL DEFAULT 1997,
+        founding_limit INT NOT NULL DEFAULT 100,
+        founding_deadline TIMESTAMPTZ NOT NULL DEFAULT '2026-12-31 23:59:59+03',
+        renewal_price NUMERIC(10,2) NOT NULL DEFAULT 1997,
+        renewal_grace_days INT NOT NULL DEFAULT 30,
+        sales_open_at TIMESTAMPTZ NOT NULL DEFAULT '2026-12-01 00:00:00+03',
+        sales_paused BOOLEAN NOT NULL DEFAULT false,
+        updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      INSERT INTO membership_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
+      CREATE TABLE IF NOT EXISTS memberships (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        price_type VARCHAR(12) NOT NULL CHECK (price_type IN ('founding', 'standard', 'renewal', 'gift')),
+        amount NUMERIC(10,2) NOT NULL DEFAULT 0,
+        status VARCHAR(12) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'failed', 'cancelled')),
+        starts_at TIMESTAMPTZ NOT NULL,
+        ends_at TIMESTAMPTZ NOT NULL,
+        checkout_request_id VARCHAR(100) UNIQUE,
+        mpesa_receipt VARCHAR(50),
+        phone VARCHAR(20),
+        hold_expires_at TIMESTAMPTZ,
+        granted_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        note TEXT,
+        over_limit BOOLEAN NOT NULL DEFAULT false,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        paid_at TIMESTAMPTZ,
+        cancelled_at TIMESTAMPTZ
+      );
+      CREATE INDEX IF NOT EXISTS idx_memberships_user_status ON memberships(user_id, status);
+      CREATE INDEX IF NOT EXISTS idx_memberships_founding ON memberships(status)
+        WHERE price_type = 'founding' AND status IN ('paid', 'pending');
+
+      CREATE TABLE IF NOT EXISTS membership_reminders (
+        membership_id UUID NOT NULL REFERENCES memberships(id) ON DELETE CASCADE,
+        kind VARCHAR(12) NOT NULL,
+        sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (membership_id, kind)
+      );
+
+      CREATE TABLE IF NOT EXISTS member_perks (
+        key VARCHAR(40) PRIMARY KEY,
+        title VARCHAR(160) NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        status VARCHAR(12) NOT NULL DEFAULT 'coming_soon' CHECK (status IN ('on', 'coming_soon', 'hidden')),
+        sort_order INT NOT NULL DEFAULT 0,
+        icon VARCHAR(40),
+        link_url TEXT,
+        button_label VARCHAR(60),
+        settings JSONB NOT NULL DEFAULT '{}'::jsonb,
+        updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      ${buildMemberPerksSeedSql()}
+
+      -- Members who existed before this table get their current year as a gift, so history is complete.
+      INSERT INTO memberships (user_id, price_type, amount, status, starts_at, ends_at, paid_at, note)
+      SELECT u.id, 'gift', 0, 'paid', u.member_until - INTERVAL '12 months', u.member_until, NOW(), 'Imported'
+      FROM users u
+      WHERE u.member_until > NOW()
+        AND NOT EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = u.id);
+    `,
+  },
+  {
+    name: '063_membership_phase2',
+    sql: `
+      ALTER TABLE events ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+      ALTER TABLE events ADD COLUMN IF NOT EXISTS member_early_booking BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE event_ticket_types ADD COLUMN IF NOT EXISTS members_only BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS member_discount_eligible BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS member_discount_amount NUMERIC(10,2) NOT NULL DEFAULT 0;
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS member_discount_membership_id UUID
+        REFERENCES memberships(id) ON DELETE SET NULL;
+      CREATE INDEX IF NOT EXISTS idx_orders_member_discount ON orders(member_discount_membership_id)
+        WHERE member_discount_membership_id IS NOT NULL;
+
+      -- One row per transferred ticket; the unique ticket_id allows a single transfer.
+      CREATE TABLE IF NOT EXISTS ticket_transfers (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        ticket_id UUID NOT NULL UNIQUE REFERENCES tickets(id) ON DELETE CASCADE,
+        from_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        to_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_ticket_transfers_to ON ticket_transfers(to_user_id);
+
+      -- Only rewrites the original Phase 1 copy, so later admin edits are kept.
+      UPDATE member_perks
+      SET title = 'Free ticket transfer',
+          description = 'Give your ticket to another TRFC account for free, up to the cancel deadline.',
+          status = 'on'
+      WHERE key = 'ticket_swap' AND description LIKE 'Give your ticket to another member or move it%';
+      UPDATE member_perks
+      SET title = 'KSh 300 off one shop order a year',
+          description = 'Take KSh 300 off one shop order each membership year on marked items.'
+      WHERE key = 'clothes_discount' AND description = 'Take KSh 300 off one TRFC clothes order each membership year.';
+    `,
+  },
+  {
+    name: '064_coach_application_cv',
+    sql: `
+      ALTER TABLE coach_applications ADD COLUMN IF NOT EXISTS cv_url TEXT;
+      ALTER TABLE coach_applications ADD COLUMN IF NOT EXISTS cv_public_id TEXT;
+      ALTER TABLE coach_applications ADD COLUMN IF NOT EXISTS cv_file_name VARCHAR(200);
     `,
   },
 ]

@@ -25,6 +25,24 @@ export async function uploadToCloudinary(
   })
 }
 
+/** Stores a document as-is (raw) so PDFs and Word files download unchanged. `fileName` should include the extension. */
+export async function uploadRawToCloudinary(
+  fileBuffer: Buffer,
+  folder: string,
+  fileName: string
+): Promise<{ url: string; publicId: string }> {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      { folder, public_id: fileName, resource_type: 'raw' },
+      (error, result) => {
+        if (error || !result?.secure_url) reject(error ?? new Error('Upload returned no URL'))
+        else resolve({ url: result.secure_url, publicId: result.public_id })
+      }
+    )
+    uploadStream.end(fileBuffer)
+  })
+}
+
 export const COACH_VIDEO_FORMATS = 'mp4,mov,webm,3gp,m4v'
 
 export interface SignedVideoUpload {

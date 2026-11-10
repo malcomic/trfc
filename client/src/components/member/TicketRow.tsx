@@ -5,6 +5,7 @@ import type { PaymentPlan } from '../../api/wallet'
 import type { MemberTicket } from '../../context/MemberDashboardContext'
 import TicketDownloadButton from '../TicketDownloadButton'
 import StatusBadge from './StatusBadge'
+import { MEMBERSHIP_COPY } from '../../content/membership'
 
 const ATTENDANCE_BADGES: Record<string, string> = {
   attended: 'Attended',
@@ -32,10 +33,11 @@ interface TicketRowProps {
   ticket: MemberTicket
   plan?: PaymentPlan
   onCancel: (ticket: MemberTicket) => void
+  onTransfer?: (ticket: MemberTicket) => void
   onViewPlan: () => void
 }
 
-export default function TicketRow({ ticket, plan, onCancel, onViewPlan }: TicketRowProps) {
+export default function TicketRow({ ticket, plan, onCancel, onTransfer, onViewPlan }: TicketRowProps) {
   const reserved = ticket.payment_status === 'reserved'
   const remaining = plan ? Math.max(0, plan.total_amount - plan.amount_paid) : null
   const showCancelInfo = (ticket.payment_status === 'paid' || reserved) && isUpcoming(ticket)
@@ -58,6 +60,11 @@ export default function TicketRow({ ticket, plan, onCancel, onViewPlan }: Ticket
         {showCancelInfo && !ticket.can_cancel && ticket.cancel_blocked_reason && (
           <p className="text-xs text-fog light:text-fog-light mt-1">{ticket.cancel_blocked_reason}</p>
         )}
+        {ticket.transferred_from && (
+          <p className="text-xs text-accent light:text-accent-light mt-1">
+            {MEMBERSHIP_COPY.transfer.from(ticket.transferred_from)}
+          </p>
+        )}
       </div>
       <div className="flex flex-col items-end gap-2">
         {ticket.attendance_status && ATTENDANCE_BADGES[ticket.attendance_status] ? (
@@ -77,6 +84,11 @@ export default function TicketRow({ ticket, plan, onCancel, onViewPlan }: Ticket
         {reserved && (
           <button type="button" onClick={onViewPlan} className="text-xs text-accent light:text-accent-light hover:underline">
             Pay balance
+          </button>
+        )}
+        {ticket.can_transfer && onTransfer && (
+          <button type="button" onClick={() => onTransfer(ticket)} className="text-xs text-accent light:text-accent-light hover:underline">
+            {MEMBERSHIP_COPY.transfer.button}
           </button>
         )}
         {ticket.can_cancel && (

@@ -48,7 +48,7 @@ export const termsSections: LegalSection[] = [
     id: 'events-and-tickets',
     title: 'Events and Tickets',
     paragraphs: [
-      'Event details including date, location, price, and capacity are displayed on the website at the time of booking. Tickets are generally non-transferable unless we explicitly state otherwise.',
+      'Event details including date, location, price, and capacity are displayed on the website at the time of booking. Tickets are non-transferable, except that paid TRFC members can transfer a fully paid ticket once, free, to another TRFC account before the cancel deadline. Members-only tickets can only go to another member.',
       'Participation in TRFC events and fitness activities involves inherent physical risk. You participate at your own risk and should consult a medical professional before engaging in strenuous activity if you have health concerns.',
     ],
   },

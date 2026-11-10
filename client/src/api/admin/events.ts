@@ -10,6 +10,7 @@ export interface AdminTicketType {
   capacity: number | null;
   sort_order: number;
   is_active: boolean;
+  members_only?: boolean;
   remaining: number | null;
   is_sold_out: boolean;
 }
@@ -30,6 +31,8 @@ export interface AdminEvent {
   installments_allowed?: number;
   payment_deadline_days?: number | null;
   member_priority_pct?: number | null;
+  member_early_booking?: boolean;
+  created_at?: string;
   cancelled_at?: string | null;
   cancel_reason?: string | null;
   scan_list_confirmed_at?: string | null;
@@ -57,6 +60,7 @@ export interface EventSettingsInput {
   installments_enabled?: boolean;
   payment_deadline_days?: number | null;
   member_priority_pct?: number | null;
+  member_early_booking?: boolean;
   capacity?: number | null;
   zone_ids?: string[];
 }
@@ -106,6 +110,7 @@ export const createEventTicketType = async (
     capacity?: number | null;
     sort_order?: number;
     is_active?: boolean;
+    members_only?: boolean;
   }
 ) => {
   const response = await api.post<AdminTicketType>(
@@ -125,6 +130,7 @@ export const updateEventTicketType = async (
     capacity?: number | null;
     sort_order?: number;
     is_active?: boolean;
+    members_only?: boolean;
   }
 ) => {
   const response = await api.put<AdminTicketType>(

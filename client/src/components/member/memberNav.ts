@@ -3,6 +3,7 @@ import {
   BookOpen,
   CalendarDays,
   CreditCard,
+  Crown,
   Flag,
   LayoutGrid,
   Library,
@@ -43,6 +44,7 @@ export function memberNavItems(
     { path: '/dashboard/calendar', label: 'Calendar', icon: CalendarDays },
     { path: '/dashboard/programs', label: 'My Programs', icon: BookOpen },
     { path: '/dashboard/zone', label: 'My Zone', icon: MapPin },
+    { path: '/dashboard/membership', label: 'Membership', icon: Crown },
     isMember
       ? { path: '/dashboard/points', label: 'Points', icon: Star }
       : { path: '/dashboard/points', label: 'Points', icon: Star, disabled: true, badge: DASHBOARD_COPY.nav.membersTag },

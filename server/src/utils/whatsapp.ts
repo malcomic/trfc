@@ -108,6 +108,15 @@ export async function sendCreditExpiring(
   ])
 }
 
+/** Membership paid. Template variables: first name, member until date. Skipped when no template is set. */
+export async function sendMembershipWelcomeWhatsApp(
+  to: string,
+  params: { firstName: string; until: string }
+): Promise<boolean> {
+  if (!config.whatsapp.membershipTemplateName) return false
+  return sendTemplateMessage(to, config.whatsapp.membershipTemplateName, [params.firstName, params.until])
+}
+
 /** A seat opened for someone on the waiting list. Template variables: first name, event title, booking link. Skipped when no template is set. */
 export async function sendWaitlistSpot(
   to: string,

@@ -73,6 +73,7 @@ export const COACH_HIRING_COPY = {
     submit: 'Submit my application',
     sending: 'Sending...',
     uploading: 'Wait for the video to finish uploading',
+    uploadingCv: 'Wait for your CV to finish uploading',
   },
   thanks: {
     heading: 'Thank you. We read every application.',
@@ -93,6 +94,11 @@ export const VIDEO_ACCEPT = 'video/mp4,video/quicktime,video/webm,video/3gpp,vid
 const VIDEO_EXTENSIONS = /\.(mp4|mov|webm|3gp|m4v)$/i
 const VIDEO_MIME = /^video\/(mp4|quicktime|webm|3gpp|x-m4v)$/
 
+export const MAX_CV_BYTES = 5 * 1024 * 1024
+export const CV_ACCEPT =
+  '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+const CV_EXTENSIONS = /\.(pdf|docx?)$/i
+
 export type VideoSource = 'upload' | 'link'
 
 export interface ApplicationForm {
@@ -109,6 +115,9 @@ export interface ApplicationForm {
   uploadUrl: string
   uploadPublicId: string
   linkUrl: string
+  cvUrl: string
+  cvPublicId: string
+  cvFileName: string
   agreeStandards: boolean
   agreeStorage: boolean
 }
@@ -127,11 +136,14 @@ export const EMPTY_FORM: ApplicationForm = {
   uploadUrl: '',
   uploadPublicId: '',
   linkUrl: '',
+  cvUrl: '',
+  cvPublicId: '',
+  cvFileName: '',
   agreeStandards: false,
   agreeStorage: false,
 }
 
-export type FormErrors = Partial<Record<keyof ApplicationForm | 'video' | 'form', string>>
+export type FormErrors = Partial<Record<keyof ApplicationForm | 'video' | 'cv' | 'form', string>>
 
 const LONG_TEXT_MAX = 3000
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -184,6 +196,13 @@ export function videoFileProblem(file: { name: string; type: string; size: numbe
   return null
 }
 
+/** Null when the CV can be uploaded, otherwise the message to show. */
+export function cvFileProblem(file: { name: string; size: number }): string | null {
+  if (!CV_EXTENSIONS.test(file.name)) return 'Please choose a PDF or Word file (.pdf, .doc or .docx)'
+  if (file.size > MAX_CV_BYTES) return 'Your CV must be 5 MB or smaller'
+  return null
+}
+
 export function toSubmission(form: ApplicationForm, extras: { submissionKey: string; startedAt: number; website: string }) {
   return {
     fullName: form.fullName.trim(),
@@ -199,6 +218,7 @@ export function toSubmission(form: ApplicationForm, extras: { submissionKey: str
       form.videoSource === 'upload'
         ? { source: 'upload' as const, url: form.uploadUrl, publicId: form.uploadPublicId }
         : { source: 'link' as const, url: withHttps(form.linkUrl) },
+    cv: form.cvUrl ? { url: form.cvUrl, publicId: form.cvPublicId, fileName: form.cvFileName } : null,
     agreeStandards: form.agreeStandards,
     agreeStorage: form.agreeStorage,
     ...extras,

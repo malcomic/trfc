@@ -69,6 +69,9 @@ export interface MemberCaptainSummary {
 export interface MemberMembership {
   active: boolean;
   until: string | null;
+  isFounding?: boolean;
+  /** Last moment the renewal price applies (member until + grace days). */
+  renewalUntil?: string | null;
 }
 
 export interface MemberDashboard {

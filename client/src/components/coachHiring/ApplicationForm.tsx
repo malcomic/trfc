@@ -17,6 +17,7 @@ import {
 import { cardSurface, inputField } from '../../utils/themeClasses'
 import CtaButton from '../programs/CtaButton'
 import SectionHeading from '../programs/SectionHeading'
+import CvField from './CvField'
 import VideoField from './VideoField'
 
 const fieldInput = `${inputField} w-full min-h-[48px] px-4 rounded-lg text-lg`
@@ -71,7 +72,9 @@ export default function ApplicationForm() {
   const copy = COACH_HIRING_COPY.form
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [errors, setErrors] = useState<FormErrors>({})
-  const [uploading, setUploading] = useState(false)
+  const [uploadingVideo, setUploadingVideo] = useState(false)
+  const [uploadingCv, setUploadingCv] = useState(false)
+  const uploading = uploadingVideo || uploadingCv
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
   const [website, setWebsite] = useState('')
@@ -81,7 +84,8 @@ export default function ApplicationForm() {
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((f) => ({ ...f, [key]: value }))
     setErrors((e) => {
-      const errorKey = key === 'uploadUrl' || key === 'linkUrl' || key === 'videoSource' ? 'video' : key
+      const errorKey =
+        key === 'uploadUrl' || key === 'linkUrl' || key === 'videoSource' ? 'video' : key === 'cvUrl' ? 'cv' : key
       if (!e[errorKey as keyof FormErrors] && !e.form) return e
       const next = { ...e }
       delete next[errorKey as keyof FormErrors]
@@ -95,7 +99,7 @@ export default function ApplicationForm() {
 
   const focusFirstError = (found: FormErrors) => {
     const first = Object.keys(found)[0]
-    const target = first === 'video' ? 'video-field' : first
+    const target = first === 'video' ? 'video-field' : first === 'cv' ? 'cv-field' : first
     requestAnimationFrame(() => {
       const el = document.getElementById(target)
       el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -229,7 +233,21 @@ export default function ApplicationForm() {
                   update('uploadPublicId', video?.publicId ?? '')
                 }}
                 onLinkChange={(url) => update('linkUrl', url)}
-                onUploadingChange={setUploading}
+                onUploadingChange={setUploadingVideo}
+              />
+            </div>
+
+            <div id="cv-field">
+              <CvField
+                fileName={form.cvFileName}
+                uploaded={Boolean(form.cvUrl)}
+                error={errors.cv}
+                onUploaded={(cv) => {
+                  update('cvUrl', cv?.url ?? '')
+                  update('cvPublicId', cv?.publicId ?? '')
+                  update('cvFileName', cv?.fileName ?? '')
+                }}
+                onUploadingChange={setUploadingCv}
               />
             </div>
 
@@ -266,7 +284,11 @@ export default function ApplicationForm() {
               >
                 {sending ? copy.sending : copy.submit}
               </button>
-              {uploading && <p className="m-0 text-base text-fog light:text-fog-light text-center">{copy.uploading}</p>}
+              {uploading && (
+                <p className="m-0 text-base text-fog light:text-fog-light text-center">
+                  {uploadingVideo ? copy.uploading : copy.uploadingCv}
+                </p>
+              )}
             </div>
           </form>
         )}

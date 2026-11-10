@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate, useNavigationType } from 'react
 import {
   ArrowLeft,
   CalendarSearch,
+  Crown,
   Globe,
   LayoutDashboard,
   LogOut,
@@ -137,7 +138,14 @@ function SidebarContent({ onNavigate, onLogout }: { onNavigate: () => void; onLo
             </div>
             <div className="min-w-0">
               <div className="font-barlow font-semibold leading-tight text-chalk light:text-chalk-light truncate">{name}</div>
-              <div className="text-sm text-fog light:text-fog-light">{isMember ? navCopy.member : navCopy.freeMember}</div>
+              {isMember ? (
+                <span className="inline-flex items-center gap-1 text-sm font-semibold text-cta light:text-chalk-light">
+                  <Crown size={13} aria-hidden="true" />
+                  {data?.membership.isFounding ? navCopy.foundingMember : navCopy.member}
+                </span>
+              ) : (
+                <div className="text-sm text-fog light:text-fog-light">{navCopy.freeMember}</div>
+              )}
             </div>
           </div>
         )}
