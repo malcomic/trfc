@@ -108,25 +108,21 @@ export function StandardsGrid() {
   return (
     <section
       id={STANDARDS_ANCHOR}
-      className="scroll-mt-32 bg-black light:bg-white border-t border-white/10 light:border-transparent px-4 md:px-6 py-12 md:py-[72px]"
+      className="scroll-mt-32 bg-black text-white border-t border-white/10 light:border-transparent px-4 md:px-6 py-12 md:py-[72px]"
     >
-      <div className="max-w-[1120px] mx-auto flex flex-col gap-8">
+      <div className="max-w-[1120px] mx-auto flex flex-col gap-7">
         <div className="flex flex-col gap-2">
-          <SectionEyebrow className="text-cta light:text-[#8A6A00]">{copy.eyebrow}</SectionEyebrow>
-          <SectionHeading className="uppercase md:text-[48px]">{copy.heading}</SectionHeading>
-          <p className="m-0 text-fog light:text-[#4A4A4A]">{copy.intro}</p>
+          <SectionEyebrow>{copy.eyebrow}</SectionEyebrow>
+          <h2 className="m-0 font-barlow-condensed font-bold text-[30px] md:text-[40px] leading-[1.05] text-white">{copy.heading}</h2>
+          <p className="m-0 text-[#E6E6E6]">{copy.intro}</p>
         </div>
-        <ol className="m-0 p-0 list-none grid grid-cols-[repeat(auto-fill,minmax(230px,1fr))] gap-5">
+        <ol className="m-0 p-0 list-none flex flex-wrap gap-4">
           {copy.items.map((item, i) => (
-            <li
-              key={item.title}
-              className="min-w-0 rounded-xl p-[22px] flex flex-col gap-2 bg-ash light:bg-white border border-white/10 light:border-[#E5E5E5] border-t-4 border-t-cta light:border-t-cta"
-            >
-              <div className="font-barlow font-bold text-[15px] text-cta light:text-[#8A6A00]">{stepNumber(i)}</div>
-              <div className="font-barlow-condensed font-bold text-[26px] leading-[1.1] uppercase text-chalk light:text-chalk-light">
-                {item.title}
-              </div>
-              <p className="m-0 text-base leading-normal text-fog light:text-[#4A4A4A]">{item.body}</p>
+            <li key={item.title} className="flex-[1_1_200px] min-w-0 rounded-xl p-[22px] bg-[#1E1E1E]">
+              <div className="font-barlow-condensed font-bold text-[40px] leading-none text-[#8A8A8A]">{stepNumber(i)}</div>
+              <div className="w-10 h-[3px] bg-cta mt-2 mb-2.5" aria-hidden="true" />
+              <div className="font-barlow-condensed font-bold text-[26px]">{item.title}</div>
+              <p className="m-0 mt-1 text-[#E6E6E6] text-base">{item.body}</p>
             </li>
           ))}
         </ol>
