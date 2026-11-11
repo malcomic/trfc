@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { getOrderById, formatDeliveryDate, DELIVERY_RULE } from '../api/orders'
+import { getOrderById, formatDeliveryDate, DELIVERY_RULE, downloadOrderReceipt, receiptNumberFor } from '../api/orders'
 import { pollPaymentStatus } from '../api/payments'
-import { AlertCircle, CheckCircle, Clock } from 'lucide-react'
+import { AlertCircle, CheckCircle, Clock, Download, Printer } from 'lucide-react'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 import { MPESA_PHONE_ERROR, MPESA_PHONE_PLACEHOLDER, toKenyanMsisdn } from '../utils/phone'
-import { trackCompletePayment } from '../utils/tiktokPixel'
+import { identifyTikTokUser, trackCompletePayment } from '../utils/tiktokPixel'
 import { trackMetaPurchase } from '../utils/metaPixel'
 import { formatSelectedOptions } from '../utils/productOptions'
 import GuestSignupCard from '../components/guest/GuestSignupCard'
@@ -30,6 +30,8 @@ interface Order {
   delivery_date?: string | null
   checkout_request_id?: string
   created_at: string
+  receipt_qr?: string
+  receipt_url?: string
 }
 
 export default function OrderConfirmation() {
@@ -44,6 +46,21 @@ export default function OrderConfirmation() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'paid' | 'failed'>('pending')
+  const [downloading, setDownloading] = useState(false)
+  const [receiptError, setReceiptError] = useState('')
+
+  const handleDownloadReceipt = async () => {
+    if (!order) return
+    try {
+      setDownloading(true)
+      setReceiptError('')
+      await downloadOrderReceipt(order.id, phone || order.phone)
+    } catch {
+      setReceiptError('Could not download the receipt. Please try again.')
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   const fetchOrder = async (verifyPhone?: string) => {
     if (!orderId) return
@@ -85,6 +102,7 @@ export default function OrderConfirmation() {
 
   useEffect(() => {
     if (paymentStatus !== 'paid' || !order) return
+    identifyTikTokUser({ email: order.email ?? navState.email, phone: order.phone || phone })
     trackCompletePayment(`order_${order.id}`, {
       contents: (order.items ?? []).map((item) => ({
         content_id: String(item.product_id),
@@ -239,11 +257,47 @@ export default function OrderConfirmation() {
           <span>KES {Number(order.total_amount).toLocaleString()}</span>
         </div>
 
+        {paymentStatus === 'paid' && order.receipt_qr && (
+          <div className={`${cardSurface} p-6 mb-6 text-sm print:shadow-none`}>
+            <h2 className="font-barlow-condensed font-bold text-accent light:text-accent-light tracking-widest uppercase mb-4">Your Receipt</h2>
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              <div className="bg-white p-2 shrink-0">
+                <img src={order.receipt_qr} alt="Receipt QR code" className="w-36 h-36" />
+              </div>
+              <div className="flex-1 w-full">
+                <p className="text-fog light:text-fog-light text-xs uppercase tracking-widest">Receipt No.</p>
+                <p className="font-mono text-2xl font-bold mb-2">{receiptNumberFor(order.id)}</p>
+                <p className="text-fog light:text-fog-light text-xs mb-4">
+                  Scan the QR code to verify this receipt. Show it when collecting or receiving your order.
+                </p>
+                {receiptError && <p className="text-red-400 text-xs mb-3">{receiptError}</p>}
+                <div className="flex gap-3 print:hidden">
+                  <button
+                    onClick={handleDownloadReceipt}
+                    disabled={downloading}
+                    className="flex-1 inline-flex items-center justify-center gap-2 bg-cta text-cta-ink py-2.5 clip-angled-sm font-barlow-condensed font-black text-xs tracking-widest uppercase hover:bg-cta/90 disabled:opacity-60"
+                  >
+                    <Download className="w-4 h-4" />
+                    {downloading ? 'Preparing…' : 'Download PDF'}
+                  </button>
+                  <button
+                    onClick={() => window.print()}
+                    className={`flex-1 inline-flex items-center justify-center gap-2 py-2.5 font-barlow-condensed font-bold text-xs tracking-widest uppercase hover:border-accent light:hover:border-accent-light ${inputField}`}
+                  >
+                    <Printer className="w-4 h-4" />
+                    Print
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {paymentStatus === 'paid' && (
           <GuestSignupCard kind="order" email={confirmationEmail} phone={order.phone || phone} />
         )}
 
-        <div className="flex gap-3">
+        <div className="flex gap-3 print:hidden">
           <button onClick={() => navigate('/shop')} className="flex-1 bg-cta text-cta-ink py-3 clip-angled font-barlow-condensed font-black text-sm tracking-widest uppercase hover:bg-cta/90">
             {paymentStatus === 'paid' ? 'Continue Shopping' : 'Back to Shop'}
           </button>

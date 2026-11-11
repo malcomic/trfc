@@ -4,6 +4,7 @@ import { submitPartnership } from '../api/partnerships'
 import { getSponsorshipTiers, type SponsorshipTier } from '../api/sponsorshipTiers'
 import { getSponsorshipIcon } from '../utils/sponsorshipIcons'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
+import { identifyTikTokUser } from '../utils/tiktokPixel'
 
 const PARTNERSHIP_BENEFITS = [
   'Brand visibility across TRFC events and digital channels',
@@ -68,6 +69,7 @@ export default function Partnerships() {
       setError('Please select a sponsorship tier')
       return
     }
+    identifyTikTokUser({ email: form.email, phone: form.phone })
     try {
       setSubmitting(true)
       setError('')

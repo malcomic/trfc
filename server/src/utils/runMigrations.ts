@@ -1575,6 +1575,13 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       ALTER TABLE coach_applications ADD COLUMN IF NOT EXISTS cv_file_name VARCHAR(200);
     `,
   },
+  {
+    name: '065_order_receipt_collection',
+    sql: `
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS collected_at TIMESTAMPTZ;
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS collected_by UUID REFERENCES users(id) ON DELETE SET NULL;
+    `,
+  },
 ]
 
 export async function runMigrations() {

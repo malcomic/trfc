@@ -24,7 +24,7 @@ import { formatDate, formatKes } from '../utils/captainDisplay'
 import { AlertCircle, Loader, ArrowLeft, Plus, X } from 'lucide-react'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 import { useAuth } from '../context/AuthContext'
-import { trackInitiateCheckout } from '../utils/tiktokPixel'
+import { identifyTikTokUser, trackInitiateCheckout } from '../utils/tiktokPixel'
 import { MPESA_PHONE_PLACEHOLDER, localPhoneOrEmpty, mpesaPhoneRules, toKenyanMsisdn } from '../utils/phone'
 import type { Event, EventTicketType } from '../types'
 import { MEMBERSHIP_COPY, memberDateTime } from '../content/membership'
@@ -355,6 +355,7 @@ export default function EventCheckout() {
       const normalizedEmail = data.email.trim().toLowerCase()
       setPhone(data.phone)
       setEmail(normalizedEmail)
+      identifyTikTokUser({ email: normalizedEmail, phone: data.phone })
 
       if (moving) {
         const booking = await bookTickets(data, normalizedEmail)

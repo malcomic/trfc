@@ -29,6 +29,7 @@ interface Order {
   /** 'YYYY-MM-DD' Wednesday the order is delivered. */
   delivery_date?: string | null
   created_at: string
+  collected_at?: string | null
   items?: OrderItem[]
 }
 
@@ -173,6 +174,14 @@ export default function AdminOrders() {
                     <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(order.payment_status)}`}>
                       {order.payment_status.toUpperCase()}
                     </span>
+                    {order.collected_at && (
+                      <span
+                        className="ml-2 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300"
+                        title={`Collected ${new Date(order.collected_at).toLocaleString()}`}
+                      >
+                        COLLECTED
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 font-mono text-sm">{order.mpesa_receipt || '—'}</td>
                   <td className="px-6 py-4">{order.phone || '—'}</td>
@@ -207,6 +216,9 @@ export default function AdminOrders() {
                 </span>
               }
             />
+            {order.collected_at && (
+              <AdminMobileCardRow label="Collected" value={new Date(order.collected_at).toLocaleString()} />
+            )}
             <AdminMobileCardRow label="Phone" value={order.phone || '—'} />
             <AdminMobileCardRow label="Email" value={order.email || '—'} />
             <AdminMobileCardRow label="Date" value={new Date(order.created_at).toLocaleDateString()} />
@@ -245,6 +257,12 @@ export default function AdminOrders() {
                     <p className="text-sm text-gray-600 dark:text-gray-400">Total Amount</p>
                     <p className="text-xl font-bold text-primary dark:text-primary-dark">
                       KES {(Number(selectedOrder.total_amount) || 0).toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Collected</p>
+                    <p className="font-semibold">
+                      {selectedOrder.collected_at ? new Date(selectedOrder.collected_at).toLocaleString() : 'Not yet'}
                     </p>
                   </div>
                 </div>

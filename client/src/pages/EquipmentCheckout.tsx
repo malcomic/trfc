@@ -5,6 +5,7 @@ import { createEquipmentHireRequest, initiateEquipmentPayment } from '../api/equ
 import PaymentStatusModal from '../components/PaymentStatusModal'
 import { AlertCircle, Loader, Calendar } from 'lucide-react'
 import { MPESA_PHONE_PLACEHOLDER, mpesaPhoneRules, toKenyanMsisdn } from '../utils/phone'
+import { identifyTikTokUser } from '../utils/tiktokPixel'
 
 export default function EquipmentCheckout() {
   const location = useLocation()
@@ -53,6 +54,7 @@ export default function EquipmentCheckout() {
       setLoading(true)
       setError('')
       setPhone(data.phone)
+      identifyTikTokUser({ email: data.email, phone: data.phone })
 
       // Create hire request first
       const hireRequest = await createEquipmentHireRequest({

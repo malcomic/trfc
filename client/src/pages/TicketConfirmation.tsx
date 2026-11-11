@@ -16,7 +16,7 @@ import { googleCalendarUrl, downloadIcs } from '../utils/calendar'
 import { formatEventDateTime } from '../utils/eventDate'
 import { pageRoot } from '../utils/themeClasses'
 import { MPESA_PHONE_ERROR, MPESA_PHONE_PLACEHOLDER, toKenyanMsisdn } from '../utils/phone'
-import { trackCompletePayment } from '../utils/tiktokPixel'
+import { identifyTikTokUser, trackCompletePayment } from '../utils/tiktokPixel'
 import { trackMetaPurchase } from '../utils/metaPixel'
 
 interface NavState {
@@ -102,6 +102,7 @@ export default function TicketConfirmation() {
     const title = details?.event_title || state.eventTitle
     const qty = details?.quantity ?? state.quantity ?? 1
     const value = details?.total_price ?? state.totalPrice
+    identifyTikTokUser({ email, phone })
     trackCompletePayment(`ticket_${checkoutRequestId}`, {
       contents: [{
         content_id: checkoutRequestId,
@@ -117,7 +118,7 @@ export default function TicketConfirmation() {
         { id: details?.event_id ? `event_${details.event_id}` : checkoutRequestId, quantity: qty, item_price: total / qty },
       ])
     }
-  }, [paymentStatus, details, checkoutRequestId, state.eventTitle, state.quantity, state.totalPrice])
+  }, [paymentStatus, details, checkoutRequestId, state.eventTitle, state.quantity, state.totalPrice, email, phone])
 
   useEffect(() => {
     if (paymentStatus !== 'paid' || !checkoutRequestId || (!email && !phone)) return

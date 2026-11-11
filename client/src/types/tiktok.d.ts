@@ -5,7 +5,7 @@ declare global {
     ttq?: {
       page?: () => void
       track?: (event: string, data?: Record<string, unknown>) => void
-      identify?: (userId: string, data?: Record<string, unknown>) => void
+      identify?: (data: { email?: string; phone_number?: string; external_id?: string }) => void
       [key: string]: unknown
     }
     /**

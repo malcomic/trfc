@@ -33,7 +33,7 @@ type ScanResult = ScanLookupResult | MemberCheckinResult | { kind: 'member'; sta
 
 interface SessionCheckIn {
   id: string
-  kind: 'ticket' | 'medal' | 'member'
+  kind: 'ticket' | 'medal' | 'member' | 'order'
   name: string
   detail: string
   shortCode: string
@@ -72,6 +72,17 @@ function sessionEntryFromResult(result: ScanResult): SessionCheckIn | null {
       at: result.purchase.redeemedAt || new Date().toISOString(),
     }
   }
+  if (result.kind === 'order' && result.order) {
+    const units = result.order.items.reduce((sum, item) => sum + item.quantity, 0)
+    return {
+      id: result.order.id,
+      kind: 'order',
+      name: result.order.buyerName || result.order.phone || 'Customer',
+      detail: `Order · ${units} item${units === 1 ? '' : 's'}`,
+      shortCode: result.order.shortCode,
+      at: result.order.collectedAt || new Date().toISOString(),
+    }
+  }
   if (result.kind === 'member' && 'member' in result && result.member) {
     return {
       id: result.member.id,
@@ -98,7 +109,7 @@ function formatWhen(value: string | null | undefined) {
 
 function statusTone(status: string) {
   if (status === 'valid') return 'bg-emerald-600'
-  if (status === 'already_checked_in' || status === 'already_redeemed') return 'bg-amber-500'
+  if (status === 'already_checked_in' || status === 'already_redeemed' || status === 'already_collected') return 'bg-amber-500'
   return 'bg-red-600'
 }
 
@@ -117,11 +128,15 @@ function statusLabel(result: ScanResult) {
   }
   switch (result.status) {
     case 'valid':
-      return result.kind === 'medal' ? 'Valid medal' : 'Valid ticket'
+      return result.kind === 'medal' ? 'Valid medal' : result.kind === 'order' ? 'Valid order' : 'Valid ticket'
     case 'already_checked_in':
       return 'Already checked in'
     case 'already_redeemed':
       return 'Already redeemed'
+    case 'already_collected':
+      return 'Already collected'
+    case 'invalid_signature':
+      return 'Invalid receipt'
     case 'unpaid':
       return 'Unpaid'
     case 'wrong_event':
@@ -284,6 +299,12 @@ export default function AdminScan() {
         setManualOpen(false)
         setManualCode('')
 
+        // Orders wait for staff to confirm the items before marking them collected.
+        if (data.kind === 'order') {
+          if (data.status !== 'valid') scheduleReset(ERROR_DISMISS_MS * 2)
+          return
+        }
+
         if (data.kind && data.status === 'valid') {
           setLookingUp(false)
           setAdmitting(true)
@@ -322,6 +343,28 @@ export default function AdminScan() {
     },
     [scheduleReset, pushSessionCheckIn, processMemberScan]
   )
+
+  const markOrderCollected = async (orderId: string) => {
+    if (admitting) return
+    try {
+      setAdmitting(true)
+      const updated = await admitScan({ kind: 'order', id: orderId })
+      setResult(updated)
+      setFlash('Collected')
+      pushSessionCheckIn(updated)
+      scheduleReset(SUCCESS_DISMISS_MS)
+    } catch (err: unknown) {
+      const errData = errorBody<ScanLookupResult>(err)
+      if (errData && 'status' in errData) {
+        setResult(errData)
+      } else {
+        setFlash('Update failed')
+      }
+      scheduleReset(ERROR_DISMISS_MS)
+    } finally {
+      setAdmitting(false)
+    }
+  }
 
   const closeSearch = () => {
     setSearchOpen(false)
@@ -430,7 +473,7 @@ export default function AdminScan() {
           paused={lookingUp || admitting || result !== null}
           inputBlocked={manualOpen || searchOpen}
           busyLabel={busyLabel}
-          hint="Point the scanner gun at a ticket, medal or member pass QR code"
+          hint="Point the scanner gun at a ticket, medal, member pass or order receipt QR code"
         />
 
         <div className="mx-auto flex flex-wrap justify-center gap-3">
@@ -486,7 +529,13 @@ export default function AdminScan() {
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-xs font-semibold uppercase tracking-wide text-emerald-400">
-                        {item.kind === 'ticket' ? 'In' : item.kind === 'member' ? 'Member' : 'Medal'}
+                        {item.kind === 'ticket'
+                          ? 'In'
+                          : item.kind === 'member'
+                            ? 'Member'
+                            : item.kind === 'order'
+                              ? 'Collected'
+                              : 'Medal'}
                       </p>
                       <p className="text-xs text-gray-500 mt-1">
                         {new Date(item.at).toLocaleTimeString([], {
@@ -663,6 +712,36 @@ export default function AdminScan() {
                 </>
               )}
 
+              {result.kind === 'order' && result.order && (
+                <>
+                  <p className="text-xl font-bold">{result.order.buyerName || result.order.phone || 'Customer'}</p>
+                  <p className="text-gray-500 font-mono">Receipt {result.order.shortCode}</p>
+                  <ul className="divide-y divide-gray-800 border border-gray-800 rounded-lg">
+                    {result.order.items.map((item, i) => (
+                      <li key={i} className="flex justify-between gap-3 px-3 py-2">
+                        <span className="min-w-0">
+                          {item.name} × {item.quantity}
+                          {(item.size || item.distance) && (
+                            <span className="block text-xs text-gray-400">
+                              {[item.size && `Size ${item.size}`, item.distance].filter(Boolean).join(' · ')}
+                            </span>
+                          )}
+                        </span>
+                        <span className="text-gray-300 shrink-0">
+                          KES {(item.unitPrice * item.quantity).toLocaleString()}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="font-bold">Total KES {result.order.totalAmount.toLocaleString()}</p>
+                  {result.order.collectedAt && (
+                    <p className="text-amber-300">Collected {formatWhen(result.order.collectedAt)}</p>
+                  )}
+                </>
+              )}
+
+              {result.kind === 'order' && !result.order && <p className="text-gray-300">No matching order found.</p>}
+
               {result.kind === 'member' &&
                 (result.status === 'no_event' ? (
                   <p className="text-gray-300">Pick the event in the filter above, then scan the member pass again.</p>
@@ -679,7 +758,17 @@ export default function AdminScan() {
               )}
             </div>
 
-            <div className="px-5 pb-5">
+            <div className="px-5 pb-5 space-y-2">
+              {result.kind === 'order' && result.order && result.status === 'valid' && !flash && (
+                <button
+                  type="button"
+                  disabled={admitting}
+                  onClick={() => void markOrderCollected(result.order!.id)}
+                  className="w-full min-h-[48px] rounded-lg bg-emerald-600 font-bold disabled:opacity-50"
+                >
+                  {admitting ? 'Saving…' : 'Mark collected'}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => resetScan()}

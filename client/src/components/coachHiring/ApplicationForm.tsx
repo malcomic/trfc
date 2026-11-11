@@ -15,6 +15,7 @@ import {
   type HourOption,
 } from '../../content/coachHiring'
 import { cardSurface, inputField } from '../../utils/themeClasses'
+import { identifyTikTokUser } from '../../utils/tiktokPixel'
 import CtaButton from '../programs/CtaButton'
 import SectionHeading from '../programs/SectionHeading'
 import CvField from './CvField'
@@ -117,6 +118,7 @@ export default function ApplicationForm() {
       return
     }
     setSending(true)
+    identifyTikTokUser({ email: form.email, phone: form.phone })
     try {
       await submitCoachApplication(
         toSubmission(form, { submissionKey: submissionKey.current, startedAt: startedAt.current, website })

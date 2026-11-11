@@ -6,6 +6,7 @@ import {
   buildOrderConfirmationEmailText,
   buildGuestSignupUrl,
 } from './emailTemplates.js'
+import { buildOrderReceipt, receiptFilename } from './orderReceipt.js'
 
 async function releaseClaim(orderId: string) {
   await query('UPDATE orders SET confirmation_email_sent_at = NULL WHERE id = $1', [orderId]).catch(
@@ -69,11 +70,26 @@ export async function sendOrderConfirmationEmail(orderId: string): Promise<void>
       signupUrl: order.user_id ? null : buildGuestSignupUrl({ email, phone: order.phone }),
     }
 
+    const attachments: Array<{ filename: string; content: Buffer; contentType: string }> = []
+    try {
+      const built = await buildOrderReceipt(orderId)
+      if (built) {
+        attachments.push({
+          filename: receiptFilename(built.receipt.receiptNumber),
+          content: built.pdf,
+          contentType: 'application/pdf',
+        })
+      }
+    } catch (error: any) {
+      console.error(`⚠️  Could not build receipt PDF for order ${orderId}: ${error.message}`)
+    }
+
     const result = await sendEmail({
       to: email,
       subject: `Your TRFC order is confirmed (#${orderNumber})`,
       html: buildOrderConfirmationEmailHTML(templateData),
       text: buildOrderConfirmationEmailText(templateData),
+      attachments,
     })
 
     if (result.success) {

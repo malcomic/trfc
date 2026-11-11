@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react'
 import { joinEventWaitlist } from '../api/events'
 import { useAuth } from '../context/AuthContext'
 import { inputField } from '../utils/themeClasses'
+import { identifyTikTokUser } from '../utils/tiktokPixel'
 
 /** Shown when no seats are open to this viewer: we tell them when one opens. */
 export default function WaitlistForm({ eventId }: { eventId: string }) {
@@ -17,6 +18,7 @@ export default function WaitlistForm({ eventId }: { eventId: string }) {
     e.preventDefault()
     setSubmitting(true)
     setMessage('')
+    identifyTikTokUser({ email, phone })
     try {
       const result = await joinEventWaitlist(eventId, { name, email, phone })
       setJoined(true)

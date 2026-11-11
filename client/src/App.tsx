@@ -30,6 +30,7 @@ import FlashSales from './pages/FlashSales'
 import Cart from './pages/Cart'
 import Checkout from './pages/Checkout'
 import OrderConfirmation from './pages/OrderConfirmation'
+import ReceiptVerify from './pages/ReceiptVerify'
 import EquipmentHire from './pages/EquipmentHire'
 import EquipmentCheckout from './pages/EquipmentCheckout'
 import HireConfirmation from './pages/HireConfirmation'
@@ -102,6 +103,17 @@ import MemberMembership from './pages/member/MemberMembership'
 import MemberPoints from './pages/member/MemberPoints'
 import MemberGuides from './pages/member/MemberGuides'
 import { captureReferralFromUrl } from './utils/referral'
+import { identifyTikTokUser } from './utils/tiktokPixel'
+import { useAuth } from './context/AuthContext'
+
+function TikTokIdentify() {
+  const { user } = useAuth()
+  useEffect(() => {
+    if (!user) return
+    identifyTikTokUser({ email: user.email, phone: user.phone, externalId: user.id })
+  }, [user?.id, user?.email, user?.phone])
+  return null
+}
 
 function TikTokPixelTracker() {
   const location = useLocation()
@@ -135,6 +147,7 @@ function RootLayout() {
   return (
     <>
       <ScrollRestoration />
+      <TikTokIdentify />
       <TikTokPixelTracker />
       <ReferralCapture />
       <Outlet />
@@ -260,6 +273,7 @@ const router = createBrowserRouter(
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
+          <Route path="/receipt/:orderId" element={<ReceiptVerify />} />
           <Route path="/equipment" element={<EquipmentHire />} />
           <Route path="/equipment/checkout" element={<EquipmentCheckout />} />
           <Route path="/hire-confirmation/:id" element={<HireConfirmation />} />

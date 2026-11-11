@@ -1,4 +1,6 @@
 import QRCode from 'qrcode'
+import { createHmac, timingSafeEqual } from 'crypto'
+import { config } from '../config/env.js'
 
 interface QRCodeData {
   ticketId: string
@@ -103,6 +105,43 @@ export async function generateTextQRCodeDataUrl(text: string): Promise<string> {
   return QRCode.toDataURL(text, { width: 400, margin: 2 })
 }
 
+const RECEIPT_SIG_LENGTH = 16
+
+export function signReceipt(orderId: string): string {
+  return createHmac('sha256', config.jwtSecret || 'trfc-receipt')
+    .update(`receipt:${orderId.toLowerCase()}`)
+    .digest('hex')
+    .slice(0, RECEIPT_SIG_LENGTH)
+}
+
+export function verifyReceiptSignature(orderId: string, sig: unknown): boolean {
+  if (typeof sig !== 'string' || sig.length !== RECEIPT_SIG_LENGTH) return false
+  const expected = Buffer.from(signReceipt(orderId))
+  const given = Buffer.from(sig.toLowerCase())
+  return expected.length === given.length && timingSafeEqual(expected, given)
+}
+
+export function receiptVerifyUrl(orderId: string): string {
+  const base = config.frontendUrl.replace(/\/+$/, '')
+  return `${base}/receipt/${encodeURIComponent(orderId)}?t=${signReceipt(orderId)}`
+}
+
+export function shortOrderCode(orderId: string): string {
+  return String(orderId).slice(0, 8).toUpperCase()
+}
+
+export async function generateReceiptQRCodeBuffer(orderId: string): Promise<Buffer> {
+  return (await QRCode.toBuffer(receiptVerifyUrl(orderId), {
+    type: 'png',
+    width: 300,
+    margin: 1,
+  })) as Buffer
+}
+
+export async function generateReceiptQRCodeDataUrl(orderId: string): Promise<string> {
+  return QRCode.toDataURL(receiptVerifyUrl(orderId), { width: 300, margin: 1 })
+}
+
 export function verifyQRCodeData(data: QRCodeData): boolean {
   return !!(data.ticketId && data.eventId)
 }
@@ -119,9 +158,13 @@ export type ParsedScanPayload =
   | { kind: 'ticket'; ticketId: string; eventId?: string }
   | { kind: 'medal'; purchaseId: string }
   | { kind: 'member'; code: string }
+  | { kind: 'order'; orderId: string; sig?: string }
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+const RECEIPT_URL_RE =
+  /\/receipt\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})(?:[/?#]|$)/i
 
 export function normalizeShortCode(raw: string): string | null {
   const cleaned = raw.replace(/[^0-9a-fA-F]/g, '').toUpperCase()
@@ -137,6 +180,18 @@ export function parseScanPayload(raw: string): ParsedScanPayload | null {
     const parts = trimmed.split(':')
     if (parts.length < 2 || !UUID_RE.test(parts[1])) return null
     return { kind: 'medal', purchaseId: parts[1] }
+  }
+
+  if (trimmed.toLowerCase().startsWith('order:')) {
+    const orderId = trimmed.slice('order:'.length).trim()
+    if (!UUID_RE.test(orderId)) return null
+    return { kind: 'order', orderId }
+  }
+
+  const receiptMatch = trimmed.match(RECEIPT_URL_RE)
+  if (receiptMatch) {
+    const sigMatch = trimmed.match(/[?&]t=([0-9a-f]+)/i)
+    return { kind: 'order', orderId: receiptMatch[1], sig: sigMatch ? sigMatch[1] : undefined }
   }
 
   if (trimmed.toLowerCase().startsWith('member:')) {
@@ -166,6 +221,12 @@ export default {
   verifyQRCodeData,
   shortTicketCode,
   shortMedalCode,
+  shortOrderCode,
+  signReceipt,
+  verifyReceiptSignature,
+  receiptVerifyUrl,
+  generateReceiptQRCodeBuffer,
+  generateReceiptQRCodeDataUrl,
   parseScanPayload,
   normalizeShortCode,
 }

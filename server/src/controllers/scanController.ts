@@ -4,7 +4,9 @@ import {
   normalizeShortCode,
   parseScanPayload,
   shortMedalCode,
+  shortOrderCode,
   shortTicketCode,
+  verifyReceiptSignature,
 } from '../utils/qrCodeGenerator.js'
 import { searchTicketsForGate } from '../utils/ticketLookup.js'
 
@@ -47,6 +49,65 @@ async function findMedalById(purchaseId: string) {
     [purchaseId]
   )
   return result.rows[0] || null
+}
+
+type OrderStatus = 'valid' | 'already_collected' | 'unpaid' | 'not_found' | 'invalid_signature'
+
+async function findOrderById(orderId: string) {
+  const result = await query(
+    `SELECT o.id, o.email, o.phone, o.delivery_address, o.total_amount, o.payment_status,
+            o.mpesa_receipt, o.created_at, o.collected_at, o.collected_by,
+            to_char(o.delivery_date, 'YYYY-MM-DD') AS delivery_date,
+            u.name AS buyer_name
+     FROM orders o
+     LEFT JOIN users u ON o.user_id = u.id
+     WHERE o.id = $1`,
+    [orderId]
+  )
+  const order = result.rows[0]
+  if (!order) return null
+  const items = await query(
+    `SELECT COALESCE(p.name, 'Product') AS name, oi.quantity, oi.unit_price, oi.size, oi.distance
+     FROM order_items oi
+     LEFT JOIN products p ON oi.product_id = p.id
+     WHERE oi.order_id = $1`,
+    [orderId]
+  )
+  return { ...order, items: items.rows }
+}
+
+function orderResponse(row: any, status: OrderStatus) {
+  return {
+    kind: 'order' as const,
+    status,
+    order: {
+      id: row.id,
+      shortCode: shortOrderCode(row.id),
+      buyerName: row.buyer_name || null,
+      email: row.email || null,
+      phone: row.phone || null,
+      deliveryAddress: row.delivery_address || null,
+      deliveryDate: row.delivery_date || null,
+      totalAmount: Number(row.total_amount),
+      paymentStatus: row.payment_status,
+      mpesaReceipt: row.mpesa_receipt || null,
+      createdAt: row.created_at,
+      collectedAt: row.collected_at || null,
+      items: (row.items || []).map((item: any) => ({
+        name: item.name,
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.unit_price),
+        size: item.size || null,
+        distance: item.distance || null,
+      })),
+    },
+  }
+}
+
+function deriveOrderStatus(row: any): OrderStatus {
+  if (row.payment_status !== 'paid') return 'unpaid'
+  if (row.collected_at) return 'already_collected'
+  return 'valid'
 }
 
 async function findByShortCode(table: 'tickets' | 'medal_purchases', shortCode: string) {
@@ -182,6 +243,13 @@ export async function lookupScan(req: Request, res: Response) {
       } else if (parsed.kind === 'member') {
         // Member passes are checked in through /checkins, which needs an event.
         return res.json({ kind: null, status: 'not_found' })
+      } else if (parsed.kind === 'order') {
+        const row = await findOrderById(parsed.orderId)
+        if (!row) return res.json({ kind: 'order', status: 'not_found' })
+        if (parsed.sig !== undefined && !verifyReceiptSignature(parsed.orderId, parsed.sig)) {
+          return res.json(orderResponse(row, 'invalid_signature'))
+        }
+        return res.json(orderResponse(row, deriveOrderStatus(row)))
       } else {
         kind = parsed.kind
         entityId = parsed.kind === 'ticket' ? parsed.ticketId : parsed.purchaseId
@@ -256,8 +324,37 @@ export async function admitScan(req: Request, res: Response) {
       eventId?: string
     }
 
-    if (!kind || !id || (kind !== 'ticket' && kind !== 'medal')) {
+    if (!kind || !id || (kind !== 'ticket' && kind !== 'medal' && kind !== 'order')) {
       return res.status(400).json({ error: 'kind and id are required' })
+    }
+
+    if (kind === 'order') {
+      const existing = await findOrderById(id)
+      if (!existing) {
+        return res.status(404).json({ kind: 'order', status: 'not_found' })
+      }
+      const orderStatus = deriveOrderStatus(existing)
+      if (orderStatus === 'unpaid') {
+        return res.status(400).json(orderResponse(existing, 'unpaid'))
+      }
+      if (orderStatus === 'already_collected') {
+        return res.status(409).json(orderResponse(existing, 'already_collected'))
+      }
+
+      const result = await query(
+        `UPDATE orders
+         SET collected_at = NOW(), collected_by = $1
+         WHERE id = $2
+           AND payment_status = 'paid'
+           AND collected_at IS NULL
+         RETURNING id`,
+        [staffId, id]
+      )
+      const updated = await findOrderById(id)
+      if (result.rows.length === 0) {
+        return res.status(409).json(orderResponse(updated ?? existing, 'already_collected'))
+      }
+      return res.json(orderResponse(updated, 'already_collected'))
     }
 
     const eventFilter = typeof eventId === 'string' && eventId.trim() ? eventId.trim() : undefined

@@ -8,6 +8,7 @@ import { AlertCircle, Loader, ArrowLeft } from 'lucide-react'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 import { useAuth } from '../context/AuthContext'
 import { MPESA_PHONE_PLACEHOLDER, localPhoneOrEmpty, mpesaPhoneRules, toKenyanMsisdn } from '../utils/phone'
+import { identifyTikTokUser } from '../utils/tiktokPixel'
 
 type CheckoutForm = {
   quantity: number
@@ -95,6 +96,7 @@ export default function MedalCheckout() {
       const normalizedName = data.buyerName.trim()
       setPhone(data.phone)
       setEmail(normalizedEmail)
+      identifyTikTokUser({ email: normalizedEmail, phone: data.phone })
 
       const purchaseResult = await createMedalPurchases(slug, {
         optionId: option.id,

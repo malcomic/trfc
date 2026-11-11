@@ -11,10 +11,30 @@ import { productInZoneSql } from '../utils/zones.js';
 import { ProductOptionsError, resolveSelectedOptions } from '../utils/productVariants.js';
 import { nextDeliveryWednesday } from '../utils/ticketRules.js';
 import { memberDiscountFor, shopDiscountStatus } from '../utils/memberShopDiscount.js';
+import { generateReceiptQRCodeDataUrl, receiptVerifyUrl, verifyReceiptSignature } from '../utils/qrCodeGenerator.js';
+import {
+  loadOrderReceipt,
+  publicReceiptView,
+  receiptFilename,
+  renderOrderReceiptPDF,
+} from '../utils/orderReceipt.js';
 
 type DbClient = Awaited<ReturnType<typeof getClient>>;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Order owner, an admin, or someone who knows the checkout phone number. */
+export function canViewOrder(
+  req: Request,
+  order: { user_id?: string | null; phone?: string | null },
+  phoneQuery?: string
+): boolean {
+  const userId = req.user?.id;
+  if (userId && order.user_id === userId) return true;
+  if (req.user?.role === 'admin') return true;
+  return Boolean(phoneQuery && order.phone && phonesMatch(phoneQuery, order.phone));
+}
 
 class OrderValidationError extends Error {
   constructor(public status: number, message: string) {
@@ -105,7 +125,6 @@ export const getOrderById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const phoneQuery = typeof req.query.phone === 'string' ? req.query.phone : undefined;
-    const userId = req.user?.id;
 
     const result = await query(
       `SELECT *, to_char(delivery_date, 'YYYY-MM-DD') AS delivery_date FROM orders WHERE id = $1`,
@@ -116,11 +135,7 @@ export const getOrderById = async (req: Request, res: Response) => {
     }
     const order = result.rows[0];
 
-    const isOwner = userId && order.user_id === userId;
-    const isAdmin = req.user?.role === 'admin';
-    const phoneVerified = phoneQuery && order.phone && phonesMatch(phoneQuery, order.phone);
-
-    if (!isOwner && !isAdmin && !phoneVerified) {
+    if (!canViewOrder(req, order, phoneQuery)) {
       return res.json({
         id: order.id,
         status: order.payment_status,
@@ -131,10 +146,58 @@ export const getOrderById = async (req: Request, res: Response) => {
     }
 
     const items = await fetchOrderItems(id);
-    res.json({ ...order, items });
+    const receipt =
+      order.payment_status === 'paid'
+        ? { receipt_qr: await generateReceiptQRCodeDataUrl(order.id), receipt_url: receiptVerifyUrl(order.id) }
+        : {};
+    res.json({ ...order, items, ...receipt });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch order' });
+  }
+};
+
+export const downloadOrderReceipt = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const phoneQuery = typeof req.query.phone === 'string' ? req.query.phone : undefined;
+
+    const receipt = UUID_PATTERN.test(id) ? await loadOrderReceipt(id) : null;
+    if (!receipt) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    if (!canViewOrder(req, receipt.order, phoneQuery)) {
+      return res.status(403).json({ error: 'Not allowed to view this receipt' });
+    }
+    if (receipt.order.payment_status !== 'paid') {
+      return res.status(409).json({ error: 'A receipt is available once payment is confirmed' });
+    }
+
+    const pdf = await renderOrderReceiptPDF(receipt);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${receiptFilename(receipt.receiptNumber)}"`);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.send(pdf);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to generate receipt' });
+  }
+};
+
+export const verifyOrderReceipt = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!UUID_PATTERN.test(id) || !verifyReceiptSignature(id, req.query.t)) {
+      return res.status(404).json({ valid: false, error: 'Receipt not recognised' });
+    }
+    const receipt = await loadOrderReceipt(id);
+    if (!receipt) {
+      return res.status(404).json({ valid: false, error: 'Receipt not recognised' });
+    }
+    res.json({ valid: receipt.order.payment_status === 'paid', receipt: publicReceiptView(receipt) });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to verify receipt' });
   }
 };
 

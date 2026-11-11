@@ -55,12 +55,39 @@ export interface MedalScanResult {
   }
 }
 
+export type OrderScanStatus =
+  | 'valid'
+  | 'already_collected'
+  | 'unpaid'
+  | 'not_found'
+  | 'invalid_signature'
+
+export interface OrderScanResult {
+  kind: 'order'
+  status: OrderScanStatus
+  order?: {
+    id: string
+    shortCode: string
+    buyerName: string | null
+    email: string | null
+    phone: string | null
+    deliveryAddress: string | null
+    deliveryDate: string | null
+    totalAmount: number
+    paymentStatus: string
+    mpesaReceipt: string | null
+    createdAt: string
+    collectedAt: string | null
+    items: { name: string; quantity: number; unitPrice: number; size: string | null; distance: string | null }[]
+  }
+}
+
 export interface EmptyScanResult {
   kind: null
   status: 'not_found' | 'ambiguous'
 }
 
-export type ScanLookupResult = TicketScanResult | MedalScanResult | EmptyScanResult
+export type ScanLookupResult = TicketScanResult | MedalScanResult | OrderScanResult | EmptyScanResult
 
 export const listScanEvents = async (): Promise<ScanEvent[]> => {
   const response = await api.get('/scan/events')
@@ -94,10 +121,10 @@ export const searchScanTickets = async (body: {
 }
 
 export const admitScan = async (body: {
-  kind: 'ticket' | 'medal'
+  kind: 'ticket' | 'medal' | 'order'
   id: string
   eventId?: string
-}): Promise<TicketScanResult | MedalScanResult> => {
+}): Promise<TicketScanResult | MedalScanResult | OrderScanResult> => {
   const response = await api.post('/scan/admit', body)
   return response.data
 }

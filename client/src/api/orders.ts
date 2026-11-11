@@ -29,6 +29,46 @@ export const updateOrderStatus = async (id: string, data: { payment_status: stri
   return response.data;
 };
 
+export const receiptNumberFor = (orderId: string) => orderId.slice(0, 8).toUpperCase();
+
+/** Downloads the PDF receipt for a paid order. Guests verify with the checkout phone number. */
+export const downloadOrderReceipt = async (id: string, phone?: string): Promise<void> => {
+  const response = await api.get(`/orders/${id}/receipt.pdf`, {
+    responseType: 'blob',
+    params: phone ? { phone } : undefined,
+  });
+  const blob = new Blob([response.data], { type: 'application/pdf' });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `TRFC-receipt-${receiptNumberFor(id)}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+};
+
+export interface PublicReceipt {
+  receipt_number: string;
+  created_at: string;
+  payment_status: string;
+  items: { name: string; quantity: number; unit_price: number; size: string | null; distance: string | null }[];
+  subtotal: number;
+  member_discount: number;
+  delivery_fee: number;
+  total_amount: number;
+  mpesa_receipt: string | null;
+  collected_at: string | null;
+}
+
+export const verifyOrderReceipt = async (
+  id: string,
+  t: string
+): Promise<{ valid: boolean; receipt: PublicReceipt }> => {
+  const response = await api.get(`/orders/${id}/verify`, { params: { t } });
+  return response.data;
+};
+
 /** The Wednesday an order placed now would be delivered. */
 export const getDeliveryDatePreview = async (): Promise<{ delivery_date: string }> => {
   const response = await api.get('/orders/delivery-date');

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AlertCircle, Calendar, DollarSign, Download, Eye, FileText, Loader } from 'lucide-react'
 import { getPaymentHistory, paymentTypeLabel, type PaymentHistoryItem } from '../../api/payments'
 import { downloadReceiptAsCSV, downloadReceiptAsText } from '../../utils/receiptGenerator'
+import { downloadOrderReceipt } from '../../api/orders'
 import { cardSurface, inputField } from '../../utils/themeClasses'
 import { useMemberDashboard } from '../../context/MemberDashboardContext'
 import TicketDownloadButton from '../../components/TicketDownloadButton'
@@ -54,6 +55,16 @@ export default function MemberPayments() {
     }
     downloadReceiptAsCSV(filtered)
     notify('success', 'Export started', 'Your CSV download should begin shortly.')
+  }
+
+  const downloadReceipt = (payment: PaymentHistoryItem) => {
+    if (payment.type === 'order' && payment.payment_status === 'paid') {
+      downloadOrderReceipt(payment.id).catch(() =>
+        notify('error', 'Download failed', 'Could not download the receipt. Please try again.')
+      )
+      return
+    }
+    downloadReceiptAsText(payment)
   }
 
   return (
@@ -173,7 +184,7 @@ export default function MemberPayments() {
                     <>
                       <button
                         type="button"
-                        onClick={() => downloadReceiptAsText(payment)}
+                        onClick={() => downloadReceipt(payment)}
                         className="inline-flex items-center gap-2 px-3 py-2 text-green-400 hover:bg-green-500/10 transition clip-angled-sm"
                         title="Download receipt"
                       >
@@ -262,7 +273,7 @@ export default function MemberPayments() {
                 <button
                   type="button"
                   onClick={() => {
-                    downloadReceiptAsText(selected)
+                    downloadReceipt(selected)
                     setSelected(null)
                   }}
                   className="flex-1 bg-cta text-cta-ink px-4 py-2.5 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled hover:bg-cta/90 flex items-center justify-center gap-2"

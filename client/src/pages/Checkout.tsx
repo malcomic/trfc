@@ -18,7 +18,7 @@ import PaymentStatusModal from '../components/PaymentStatusModal'
 import { AlertCircle, ShoppingCart, Truck, ArrowLeft } from 'lucide-react'
 import { Button, FormInput, Card } from '../components/ui'
 import { pageRoot, inputField } from '../utils/themeClasses'
-import { trackInitiateCheckout } from '../utils/tiktokPixel'
+import { identifyTikTokUser, trackInitiateCheckout } from '../utils/tiktokPixel'
 import { useAuth } from '../context/AuthContext'
 import { MPESA_PHONE_PLACEHOLDER, mpesaPhoneRules, toKenyanMsisdn } from '../utils/phone'
 import { getShopDiscount, type ShopDiscount } from '../api/membership'
@@ -162,6 +162,7 @@ export default function Checkout() {
       setPhone(data.phone)
       const normalizedEmail = data.email.trim().toLowerCase()
       setEmail(normalizedEmail)
+      identifyTikTokUser({ email: normalizedEmail, phone: data.phone })
 
       const orderItems = items.map((item) => ({
         product_id: item.product.id,
