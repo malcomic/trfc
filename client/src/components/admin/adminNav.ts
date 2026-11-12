@@ -31,6 +31,8 @@ import {
   Dumbbell,
   Briefcase,
   Crown,
+  ShieldCheck,
+  SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -110,6 +112,15 @@ export const adminNavEntries: AdminNavEntry[] = [
     children: [
       { path: '/admin/partnerships', label: 'Partnerships', icon: Handshake },
       { path: '/admin/sponsorship-tiers', label: 'Sponsorship Tiers', icon: Layers },
+    ],
+  },
+  {
+    id: 'privacy',
+    label: 'Privacy',
+    icon: ShieldCheck,
+    children: [
+      { path: '/admin/policies', label: 'Privacy & Terms', icon: FileText },
+      { path: '/admin/privacy-settings', label: 'Privacy settings', icon: SlidersHorizontal },
     ],
   },
   { path: '/admin/appearance', label: 'Appearance', icon: Type },

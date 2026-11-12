@@ -12,7 +12,7 @@ export const registerUser = async (data: {
   captainId?: string;
   marketingOptIn?: boolean;
   answers?: Partial<SignupAnswers>;
-}): Promise<AuthTokens & { user: User; answersSaved?: boolean; linked_purchases?: number }> => {
+} & SignupConsent): Promise<AuthTokens & { user: User; answersSaved?: boolean; linked_purchases?: number }> => {
   const response = await api.post('/auth/register', data);
   return response.data;
 };
@@ -89,7 +89,7 @@ export const completeGoogleSignup = async (data: {
   captainId?: string;
   marketingOptIn?: boolean;
   answers?: Partial<SignupAnswers>;
-}): Promise<AuthTokens & { user: User; answersSaved?: boolean; linked_purchases?: number }> => {
+} & SignupConsent): Promise<AuthTokens & { user: User; answersSaved?: boolean; linked_purchases?: number }> => {
   const response = await api.post('/auth/google/complete', data);
   return response.data;
 };
@@ -109,5 +109,25 @@ export const changeMyPassword = async (data: {
   newPassword: string;
 }): Promise<AuthTokens & { message: string }> => {
   const response = await api.put('/auth/me/password', data);
+  return response.data;
+};
+
+/** Box 1, the age box and the policy version shown, as sent on sign-up and on the agree-again prompt. */
+export interface SignupConsent {
+  acceptTerms: boolean;
+  ageConfirmed: boolean;
+  policyVersion: string;
+}
+
+export interface ConsentStatus {
+  needs_consent: boolean;
+  needs_marketing_prompt: boolean;
+  privacy_version: string | null;
+}
+
+export const acceptConsent = async (
+  data: Partial<SignupConsent> & { marketingOptIn?: boolean }
+): Promise<ConsentStatus & { ok: true }> => {
+  const response = await api.post('/auth/consent', data);
   return response.data;
 };

@@ -6,6 +6,7 @@ vi.mock('../../config/env.js', () => ({
     contact: { email: 'support@example.com', phone: '+254 700 000000' },
   },
 }))
+vi.mock('../../utils/consents.js', async () => (await import('./helpers/consentMock.js')).consentModuleMock())
 vi.mock('../../config/db.js', () => ({
   query: vi.fn(),
 }))

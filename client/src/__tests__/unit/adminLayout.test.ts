@@ -73,6 +73,8 @@ describe('adminNavEntries', () => {
       '/admin/partnerships',
       '/admin/sponsorship-tiers',
       '/admin/appearance',
+      '/admin/policies',
+      '/admin/privacy-settings',
     ]
     expect([...allPaths].sort()).toEqual([...expected].sort())
   })

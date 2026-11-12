@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'crypto'
+import { randomUUID } from 'crypto'
 import { NextFunction, Request, Response } from 'express'
 import multer from 'multer'
 import { query } from '../config/db.js'
@@ -15,8 +15,8 @@ import {
   isLikelySpam,
   type CoachApplicationInput,
 } from '../utils/coachApplications.js'
-
-const hashIp = (ip: string | undefined) => (ip ? createHash('sha256').update(ip).digest('hex') : null)
+import { hashIp, recordConsent } from '../utils/consents.js'
+import { currentPolicyVersion, getNumberSetting } from '../utils/policies.js'
 
 const CV_TYPE_ERROR = 'Please choose a PDF or Word file (.pdf, .doc or .docx)'
 
@@ -97,12 +97,23 @@ export async function createCoachApplication(req: Request, res: Response) {
       return res.status(400).json({ error: 'Please check the highlighted answers', errors: { video: videoProblem } })
     }
 
+    const currentVersion = await currentPolicyVersion('privacy-applicants')
+    if (!currentVersion || value.policyVersion !== currentVersion) {
+      return res.status(409).json({
+        error: 'The Privacy and Confidentiality Terms for applicants were just updated. Please read them and tick the box again.',
+        errors: { agreeApplicantPrivacy: 'Please read the updated terms and tick the box again' },
+        code: 'CONSENT_INVALID',
+      })
+    }
+    const retentionMonths = await getNumberSetting('coach_app_retention_months')
+
     const inserted = await query(
       `INSERT INTO coach_applications (
          full_name, phone, email, location, social_url, experience, can_give_3_hours, hours, worked_harder,
          video_url, video_source, video_public_id, agreed_standards_at, agreed_storage_at, submission_key, ip_hash,
-         cv_url, cv_public_id, cv_file_name
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW(), $13, $14, $15, $16, $17)
+         cv_url, cv_public_id, cv_file_name, privacy_version_accepted, privacy_agreed_at, delete_after
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW(), $13, $14, $15, $16, $17,
+                 $18, NOW(), NOW() + make_interval(months => $19))
        ON CONFLICT (submission_key) DO NOTHING
        RETURNING id`,
       [
@@ -123,11 +134,23 @@ export async function createCoachApplication(req: Request, res: Response) {
         value.cvUrl,
         value.cvPublicId,
         value.cvFileName,
+        currentVersion,
+        retentionMonths,
       ]
     )
 
     const id: string | undefined = inserted.rows[0]?.id
     if (!id) return res.status(200).json({ ok: true })
+
+    await recordConsent({
+      applicationId: id,
+      type: 'applicant_privacy',
+      granted: true,
+      policySlug: 'privacy-applicants',
+      policyVersion: currentVersion,
+      source: 'coach_form',
+      ipHash: hashIp(req.ip),
+    })
 
     void sendCoachApplicationEmails(id)
     res.status(201).json({ ok: true })

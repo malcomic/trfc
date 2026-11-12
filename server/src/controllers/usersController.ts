@@ -459,11 +459,12 @@ export const updateUserRole = async (req: Request, res: Response) => {
     }
 
     // Admin and scanner accounts are password-only, so any Google link is dropped on promotion.
+    const dropGoogle = role === 'admin' || role === 'scanner';
     const result = await query(
       `UPDATE users
-       SET role = $1, google_id = CASE WHEN $1 IN ('admin', 'scanner') THEN NULL ELSE google_id END
+       SET role = $1, google_id = CASE WHEN $3 THEN NULL ELSE google_id END
        WHERE id = $2 RETURNING ${USER_FIELDS}`,
-      [role, id]
+      [role, id, dropGoogle]
     );
 
     if (result.rows.length === 0) {

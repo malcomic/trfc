@@ -4,6 +4,9 @@ import { metaRequestHeaders } from '../utils/metaPixel';
 /** Requests that start or complete a payment; these carry the Meta browser identifiers. */
 const PAYMENT_PATHS = /^\/?(payments\/mpesa\/stkpush|wallet\/checkout|wallet\/plans\/[^/]+\/(pay|move))/;
 
+/** Fired when the server refuses a request until the member agrees to a changed policy. */
+export const CONSENT_REQUIRED_EVENT = 'trfc:consent-required';
+
 const API_URL = (import.meta.env.VITE_API_URL as string) || 'http://localhost:5000/api';
 
 const api = axios.create({
@@ -28,6 +31,11 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
+    if (error.response?.status === 428 && error.response.data?.code === 'CONSENT_REQUIRED') {
+      window.dispatchEvent(new Event(CONSENT_REQUIRED_EVENT));
+      return Promise.reject(error);
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;

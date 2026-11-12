@@ -43,6 +43,7 @@ describe('memberNavItems', () => {
       'Payments',
       'Support',
       'Settings',
+      'Privacy',
     ])
   })
 
@@ -52,11 +53,18 @@ describe('memberNavItems', () => {
     expect(points.badge).toBe('Members')
   })
 
-  it('opens Points and adds Guides Library for members', () => {
+  it('opens Points and adds Guides Library and Member vote for members', () => {
     const items = memberNavItems('member', true)
     expect(items.find((i) => i.label === 'Points')!.disabled).toBeFalsy()
-    expect(items.map((i) => i.path)).toContain('/dashboard/guides')
-    expect(memberNavItems('member').map((i) => i.path)).not.toContain('/dashboard/guides')
+    const memberPaths = items.map((i) => i.path)
+    expect(memberPaths.slice(memberPaths.indexOf('/dashboard/points') + 1, memberPaths.indexOf('/dashboard/points') + 3)).toEqual([
+      '/dashboard/guides',
+      '/dashboard/vote',
+    ])
+    expect(items.find((i) => i.path === '/dashboard/vote')!.label).toBe('Member vote')
+    const freePaths = memberNavItems('member').map((i) => i.path)
+    expect(freePaths).not.toContain('/dashboard/guides')
+    expect(freePaths).not.toContain('/dashboard/vote')
   })
 
   it('points Support at the given link', () => {

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+vi.mock('../../utils/consents.js', async () => (await import('./helpers/consentMock.js')).consentModuleMock())
 vi.mock('../../config/db.js', () => ({
   query: vi.fn(),
 }))

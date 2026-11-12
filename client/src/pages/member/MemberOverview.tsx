@@ -16,6 +16,7 @@ import ComingUpList, { upcomingEvents } from '../../components/member/dashboard/
 import ExploreBanner from '../../components/member/dashboard/ExploreBanner'
 import AnswersPromptCard from '../../components/member/dashboard/AnswersPromptCard'
 import MemberPassCard from '../../components/member/dashboard/MemberPassCard'
+import LiveQaCard from '../../components/member/membership/LiveQaCard'
 import {
   BecomeMemberCard,
   MemberPerksCard,
@@ -172,6 +173,7 @@ export default function MemberOverview() {
             />
             {isMember ? (
               <>
+                <LiveQaCard hideWhenEmpty />
                 <MemberPriceCard />
                 <PointsCard />
               </>

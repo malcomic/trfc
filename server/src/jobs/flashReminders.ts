@@ -8,6 +8,7 @@ import {
   type FlashReminderStage,
 } from '../utils/emailTemplates.js'
 import { FLASH_ACCESS_HOURS, buildFlashSalesUrl } from '../utils/flashAccess.js'
+import { signUnsubscribeToken } from '../utils/announcements.js'
 
 /** Minutes after the ticket was paid at which each reminder is due. */
 export const FLASH_REMINDER_STAGES: Array<{ stage: FlashReminderStage; afterMinutes: number }> = [
@@ -39,7 +40,7 @@ export function dueFlashReminderStage(paidAt: Date, now: Date): FlashReminderSta
 // skipping anyone who already has a paid order containing a flash item.
 // zone_id comes from the address's most recent open ticket, matching what the flash page shows.
 const CANDIDATES_SQL = `
-  SELECT DISTINCT ON (c.email) c.ticket_id, c.email, c.paid_at,
+  SELECT DISTINCT ON (c.email) c.ticket_id, c.email, c.paid_at, c.user_id,
     COALESCE((SELECT MAX(r.stage) FROM flash_reminder_emails r WHERE r.ticket_id = c.ticket_id), 0)::int AS last_stage,
     (
       SELECT t2.zone_id
@@ -64,6 +65,8 @@ const CANDIDATES_SQL = `
       AND t.paid_at + INTERVAL '${FLASH_ACCESS_HOURS} hours' > $1
       AND t.paid_at + INTERVAL '${FLASH_REMINDER_STAGES[0].afterMinutes} minutes' <= $1
       AND NULLIF(TRIM(COALESCE(NULLIF(TRIM(t.email), ''), u.email)), '') IS NOT NULL
+      AND u.marketing_opt_in = true
+      AND u.deletion_requested_at IS NULL
   ) c
   WHERE NOT EXISTS (
     SELECT 1
@@ -140,7 +143,12 @@ export async function runFlashReminderTick(now = new Date()): Promise<FlashRemin
       continue
     }
 
-    const data = { salePrice: offer.salePrice, regularPrice: offer.regularPrice, flashUrl }
+    const data = {
+      salePrice: offer.salePrice,
+      regularPrice: offer.regularPrice,
+      flashUrl,
+      unsubscribeToken: row.user_id ? signUnsubscribeToken(String(row.user_id)) : null,
+    }
     const result = await sendEmail({
       to: email,
       subject: FLASH_REMINDER_SUBJECTS[stage],

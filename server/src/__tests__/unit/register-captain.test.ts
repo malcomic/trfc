@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+vi.mock('../../utils/consents.js', async () => (await import('./helpers/consentMock.js')).consentModuleMock())
 vi.mock('../../config/db.js', () => ({
   query: vi.fn(),
 }))
@@ -259,22 +260,21 @@ describe('getMyTeam', () => {
     vi.clearAllMocks()
   })
 
-  it('lists members with masked names and how they joined', async () => {
-    vi.mocked(query).mockResolvedValueOnce({
-      rows: [
-        { id: 'a', name: 'Jane Wanjiku', joined_at: '2026-10-01', joined_via: 'zone_link' },
-        { id: 'b', name: 'Tom', joined_at: '2026-10-02', joined_via: 'chosen' },
-      ],
-    } as any)
+  it('lists zone members with Saturdays and progress, and WhatsApp only through an active share', async () => {
+    const rows = [
+      { id: 'a', name: 'Jane Wanjiku', zone: 'Thika', saturdays_attended: 3, programs: [], whatsapp: null },
+      { id: 'b', name: 'Tom', zone: 'Thika', saturdays_attended: 1, programs: [], whatsapp: '254712345678' },
+    ]
+    vi.mocked(query).mockResolvedValueOnce({ rows } as any)
     const res = makeRes()
     await getMyTeam({ user: { id: CAPTAIN_ID } } as any, res)
 
     const [sql, params] = vi.mocked(query).mock.calls[0]
-    expect(String(sql)).toContain('WHERE u.captain_id = $1')
+    expect(String(sql)).toContain('captain_whatsapp_shares s ON s.member_id = u.id AND s.captain_id = $1')
+    expect(String(sql)).toContain('CASE WHEN s.enabled THEN')
+    expect(String(sql)).toContain('u.deletion_requested_at IS NULL')
+    expect(String(sql)).not.toMatch(/base_amount|total_spent/)
     expect(params).toEqual([CAPTAIN_ID])
-    expect(res.json).toHaveBeenCalledWith([
-      { id: 'a', name: 'Jane W.', joined_at: '2026-10-01', joined_via: 'zone_link' },
-      { id: 'b', name: 'Tom', joined_at: '2026-10-02', joined_via: 'chosen' },
-    ])
+    expect(res.json).toHaveBeenCalledWith(rows)
   })
 })

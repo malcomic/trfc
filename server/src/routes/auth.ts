@@ -13,6 +13,7 @@ import {
   completeGoogleSignup,
   linkGoogle,
   unlinkGoogle,
+  acceptConsent,
 } from '../controllers/authController.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { simpleRateLimit } from '../middleware/simpleRateLimit.js';
@@ -29,6 +30,7 @@ router.post('/google', simpleRateLimit(10, 15 * 60_000), googleAuth);
 router.post('/google/complete', simpleRateLimit(10, 15 * 60_000), completeGoogleSignup);
 router.get('/me', authMiddleware, getProfile);
 router.put('/me', authMiddleware, updateMyProfile);
+router.post('/consent', authMiddleware, simpleRateLimit(20, 15 * 60_000), acceptConsent);
 router.put('/me/password', authMiddleware, simpleRateLimit(10, 15 * 60_000), changeMyPassword);
 router.post('/me/google', authMiddleware, simpleRateLimit(10, 15 * 60_000), linkGoogle);
 router.delete('/me/google', authMiddleware, simpleRateLimit(10, 15 * 60_000), unlinkGoogle);

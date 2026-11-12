@@ -1,4 +1,4 @@
-import type { MembershipQuote } from '../api/membership'
+import type { GuideCategory, LiveQa, MembershipQuote } from '../api/membership'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 export const RENEW_SOON_DAYS = 30
@@ -76,6 +76,80 @@ export function quoteLine(quote: Pick<MembershipQuote, 'priceType' | 'amount'>):
 export function foundingLine(left: number, limit: number, deadline: string): string | null {
   if (left <= 0) return null
   return `${left} of ${limit} founding places left, until ${memberDate(deadline, false)}`
+}
+
+export const GUIDE_CATEGORY_LABELS: Record<GuideCategory, string> = {
+  grocery: 'Grocery',
+  cooking: 'Cooking',
+  mindset: 'Mindset',
+  workouts: 'Workouts',
+}
+
+/** "850 KB" or "2.4 MB". */
+export function fileSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return ''
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+/** Whole-number percentages that add up to 100 (largest remainder), matching the server. */
+export function pollPercents(counts: number[]): number[] {
+  const total = counts.reduce((sum, n) => sum + n, 0)
+  if (total === 0) return counts.map(() => 0)
+  const exact = counts.map((n) => (n * 100) / total)
+  const result = exact.map(Math.floor)
+  let left = 100 - result.reduce((sum, n) => sum + n, 0)
+  const order = exact
+    .map((value, index) => ({ index, remainder: value - Math.floor(value) }))
+    .sort((a, b) => b.remainder - a.remainder || a.index - b.index)
+  for (const { index } of order) {
+    if (left <= 0) break
+    result[index]++
+    left--
+  }
+  return result
+}
+
+export const LIVE_QA_MINUTES = 60
+
+export type LiveQaState = 'none' | 'join' | 'soon' | 'members'
+
+/** What the live Q&A card shows: nothing scheduled, the join button, "link appears soon", or a members-only teaser. */
+export function liveQaState(qa: Pick<LiveQa, 'nextAt' | 'joinUrl' | 'isMember'> | null | undefined): LiveQaState {
+  if (!qa?.nextAt) return 'none'
+  if (!qa.isMember) return 'members'
+  return qa.joinUrl ? 'join' : 'soon'
+}
+
+function icsDate(date: Date): string {
+  return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+}
+
+function icsText(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/([,;])/g, '\\$1')
+}
+
+/** A one-event calendar file. It never includes the Zoom link, which only appears in the account. */
+export function buildIcs(event: { start: string | Date; title: string; description?: string; url?: string; minutes?: number }, now = new Date()): string {
+  const start = new Date(event.start)
+  const end = new Date(start.getTime() + (event.minutes ?? LIVE_QA_MINUTES) * 60 * 1000)
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//TRFC//Member live Q&A//EN',
+    'CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT',
+    `UID:live-qa-${icsDate(start)}@trfc`,
+    `DTSTAMP:${icsDate(now)}`,
+    `DTSTART:${icsDate(start)}`,
+    `DTEND:${icsDate(end)}`,
+    `SUMMARY:${icsText(event.title)}`,
+    ...(event.description ? [`DESCRIPTION:${icsText(event.description)}`] : []),
+    ...(event.url ? [`URL:${event.url}`] : []),
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ]
+  return `${lines.join('\r\n')}\r\n`
 }
 
 export const MEMBERSHIP_COPY = {
@@ -179,5 +253,40 @@ export const MEMBERSHIP_COPY = {
     statusHeading: 'Shop discount',
     available: (amount: string) => `${amount} off one shop order this membership year. Look for the Member discount tag.`,
     used: (order: string) => `Used on order #${order}. It comes back when your next membership year starts.`,
+  },
+  guides: {
+    heading: 'Guides library',
+    subtitle: 'Grocery, cooking, mindset and workout guides for members.',
+    all: 'All',
+    download: 'Download',
+    downloading: 'Preparing…',
+    empty: 'No guides yet. New guides will show here.',
+    emptyCategory: 'No guides in this category yet.',
+    downloadError: 'Could not download this guide. Please try again.',
+    loadError: 'Could not load the guides.',
+  },
+  liveQa: {
+    heading: 'Monthly live Q&A',
+    defaultTitle: 'Live Q&A with Coach Maurice',
+    none: 'The next session date will be posted here.',
+    when: (date: string) => `${date} (Nairobi time)`,
+    join: 'Join on Zoom',
+    soon: 'The Zoom link appears here 1 hour before the session.',
+    members: 'Members get the Zoom link and a reminder the day before.',
+    calendar: 'Add to calendar',
+  },
+  vote: {
+    heading: 'Member vote',
+    subtitle: "Have your say on hike routes and next year's events. Tap another option to change your vote.",
+    open: 'Open',
+    closed: 'Closed',
+    closes: (date: string) => `Closes ${date}`,
+    closedOn: (date: string) => `Closed ${date}`,
+    yourVote: 'Your vote',
+    votes: (n: number) => `${n} ${n === 1 ? 'vote' : 'votes'}`,
+    empty: 'No polls right now. New polls will show here.',
+    closedHeading: 'Recent results',
+    voteError: 'Could not save your vote. Please try again.',
+    loadError: 'Could not load the polls.',
   },
 } as const

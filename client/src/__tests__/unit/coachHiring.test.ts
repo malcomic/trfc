@@ -27,7 +27,7 @@ const FILLED: ApplicationForm = {
   videoSource: 'link',
   linkUrl: 'youtu.be/abcdefghijk',
   agreeStandards: true,
-  agreeStorage: true,
+  agreeApplicantPrivacy: true,
 }
 
 describe('validateApplication', () => {
@@ -39,7 +39,7 @@ describe('validateApplication', () => {
     expect(Object.keys(validateApplication(EMPTY_FORM)).sort()).toEqual(
       [
         'agreeStandards',
-        'agreeStorage',
+        'agreeApplicantPrivacy',
         'canGive3Hours',
         'email',
         'experience',
@@ -97,19 +97,21 @@ describe('toSubmission', () => {
   it('adds https to links and sends only the chosen video', () => {
     const payload = toSubmission(
       { ...FILLED, uploadUrl: 'https://res.cloudinary.com/x/video/upload/a.mp4', uploadPublicId: 'trfc_coach_videos/a' },
-      { submissionKey: 'key-12345678', startedAt: 1, website: '' }
+      { submissionKey: 'key-12345678', startedAt: 1, website: '', policyVersion: '1.0' }
     )
     expect(payload.socialUrl).toBe('https://instagram.com/jane')
     expect(payload.video).toEqual({ source: 'link', url: 'https://youtu.be/abcdefghijk' })
     expect(payload.submissionKey).toBe('key-12345678')
     expect(payload.cv).toBeNull()
+    expect(payload.agreeApplicantPrivacy).toBe(true)
+    expect(payload.policyVersion).toBe('1.0')
   })
 
   it('sends the CV only when one was uploaded', () => {
     const cv = { url: 'https://res.cloudinary.com/x/raw/upload/trfc_coach_cvs/a.pdf', publicId: 'trfc_coach_cvs/a.pdf', fileName: 'cv.pdf' }
     const payload = toSubmission(
       { ...FILLED, cvUrl: cv.url, cvPublicId: cv.publicId, cvFileName: cv.fileName },
-      { submissionKey: 'key-12345678', startedAt: 1, website: '' }
+      { submissionKey: 'key-12345678', startedAt: 1, website: '', policyVersion: '1.0' }
     )
     expect(payload.cv).toEqual(cv)
   })

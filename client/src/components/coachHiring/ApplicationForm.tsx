@@ -1,5 +1,6 @@
 import { FormEvent, ReactNode, useRef, useState } from 'react'
 import { CheckCircle2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { submitCoachApplication } from '../../api/coachApplications'
 import {
   APPLY_ANCHOR,
@@ -20,6 +21,10 @@ import CtaButton from '../programs/CtaButton'
 import SectionHeading from '../programs/SectionHeading'
 import CvField from './CvField'
 import VideoField from './VideoField'
+import LinkedText from '../policy/LinkedText'
+import { useConsentCopy } from '../policy/useConsentCopy'
+
+const APPLICANT_LINKS = [{ phrase: 'Privacy and Confidentiality Terms', to: '/privacy/applicants' }]
 
 const fieldInput = `${inputField} w-full min-h-[48px] px-4 rounded-lg text-lg`
 const errorText = 'm-0 text-base text-red-400 light:text-red-600'
@@ -81,6 +86,7 @@ export default function ApplicationForm() {
   const [website, setWebsite] = useState('')
   const startedAt = useRef(Date.now())
   const submissionKey = useRef(newSubmissionKey())
+  const consentCopy = useConsentCopy('privacy-applicants')
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((f) => ({ ...f, [key]: value }))
@@ -121,7 +127,12 @@ export default function ApplicationForm() {
     identifyTikTokUser({ email: form.email, phone: form.phone })
     try {
       await submitCoachApplication(
-        toSubmission(form, { submissionKey: submissionKey.current, startedAt: startedAt.current, website })
+        toSubmission(form, {
+          submissionKey: submissionKey.current,
+          startedAt: startedAt.current,
+          website,
+          policyVersion: consentCopy.version ?? '',
+        })
       )
       setSent(true)
       scrollToAnchor(APPLY_ANCHOR)
@@ -131,6 +142,8 @@ export default function ApplicationForm() {
       const message =
         err?.response?.status === 429
           ? 'Too many tries. Please wait a few minutes and send again.'
+          : err?.response?.status === 409
+          ? 'The applicant terms were just updated. Please refresh the page, read them and send again.'
           : data?.error || 'We could not send your application. Check your connection and try again.'
       setErrors({ ...serverErrors, form: message })
       if (Object.keys(serverErrors).length > 0) focusFirstError(serverErrors)
@@ -146,6 +159,12 @@ export default function ApplicationForm() {
           <SectionHeading>{copy.heading}</SectionHeading>
           {!sent && <p className="m-0 text-fog light:text-fog-light">{copy.intro}</p>}
         </div>
+
+        {!sent && consentCopy.cookieNotice && (
+          <p className="m-0 rounded-lg border border-white/10 light:border-black/10 px-4 py-3 text-base text-fog light:text-fog-light" role="note">
+            {consentCopy.cookieNotice}
+          </p>
+        )}
 
         {sent ? (
           <ThankYou />
@@ -266,10 +285,12 @@ export default function ApplicationForm() {
               </label>
               {errors.agreeStandards && <p className={errorText} role="alert">{errors.agreeStandards}</p>}
               <label className="flex items-start gap-3 cursor-pointer">
-                <input id="agreeStorage" type="checkbox" checked={form.agreeStorage} onChange={(e) => update('agreeStorage', e.target.checked)} className="mt-1 w-5 h-5 accent-cta flex-shrink-0" />
-                <span>I agree that TRFC may store my details for hiring.</span>
+                <input id="agreeApplicantPrivacy" type="checkbox" checked={form.agreeApplicantPrivacy} onChange={(e) => update('agreeApplicantPrivacy', e.target.checked)} className="mt-1 w-5 h-5 accent-cta flex-shrink-0" />
+                <span>
+                  <LinkedText text={consentCopy.applicantBox} links={APPLICANT_LINKS} />
+                </span>
               </label>
-              {errors.agreeStorage && <p className={errorText} role="alert">{errors.agreeStorage}</p>}
+              {errors.agreeApplicantPrivacy && <p className={errorText} role="alert">{errors.agreeApplicantPrivacy}</p>}
             </div>
 
             {errors.form && (
@@ -281,11 +302,18 @@ export default function ApplicationForm() {
             <div className="flex flex-col gap-2">
               <button
                 type="submit"
-                disabled={sending || uploading}
+                disabled={sending || uploading || !consentCopy.version}
                 className="inline-flex items-center justify-center gap-2 min-h-[56px] px-8 rounded-lg font-barlow font-semibold text-lg bg-cta text-cta-ink hover:bg-cta/90 transition-colors disabled:bg-smoke light:disabled:bg-smoke-light disabled:text-fog light:disabled:text-fog-light disabled:cursor-not-allowed"
               >
                 {sending ? copy.sending : copy.submit}
               </button>
+              <p className="m-0 text-base text-fog light:text-fog-light text-center">
+                Read the{' '}
+                <Link to="/privacy/applicants" target="_blank" className="underline">
+                  Privacy and Confidentiality Terms for coach applicants
+                </Link>
+                {consentCopy.version ? ` (version ${consentCopy.version})` : ''}.
+              </p>
               {uploading && (
                 <p className="m-0 text-base text-fog light:text-fog-light text-center">
                   {uploadingVideo ? copy.uploading : copy.uploadingCv}

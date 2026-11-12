@@ -28,11 +28,22 @@ export function perkFromRow(row: any) {
   }
 }
 
+/** Settings only admins may read; the Zoom link reaches members through the live Q&A endpoint instead. */
+export const PRIVATE_SETTING_KEYS = ['zoom_url']
+
+export function publicPerkFromRow(row: any) {
+  const perk = perkFromRow(row)
+  const settings = Object.fromEntries(
+    Object.entries(perk.settings).filter(([key]) => !PRIVATE_SETTING_KEYS.includes(key))
+  )
+  return { ...perk, settings }
+}
+
 export async function listVisiblePerks() {
   const result = await query(
     `SELECT * FROM member_perks WHERE status <> 'hidden' ORDER BY sort_order, title`
   )
-  return result.rows.map(perkFromRow)
+  return result.rows.map((row) => publicPerkFromRow(row))
 }
 
 function quoteJson(quote: ReturnType<typeof quoteFor>) {

@@ -10,8 +10,10 @@ import {
   LifeBuoy,
   MapPin,
   Settings,
+  ShieldCheck,
   Star,
   Ticket,
+  Vote,
   WalletCards,
   type LucideIcon,
 } from 'lucide-react'
@@ -49,13 +51,19 @@ export function memberNavItems(
       ? { path: '/dashboard/points', label: 'Points', icon: Star }
       : { path: '/dashboard/points', label: 'Points', icon: Star, disabled: true, badge: DASHBOARD_COPY.nav.membersTag },
   ]
-  if (isMember) items.push({ path: '/dashboard/guides', label: 'Guides Library', icon: Library })
+  if (isMember) {
+    items.push(
+      { path: '/dashboard/guides', label: 'Guides Library', icon: Library },
+      { path: '/dashboard/vote', label: 'Member vote', icon: Vote }
+    )
+  }
   items.push(
     { path: '/dashboard/wallet', label: 'Ticket value', icon: WalletCards },
     { path: '/dashboard/medals', label: 'Medals', icon: Award },
     { path: '/dashboard/payments', label: 'Payments', icon: CreditCard },
     { path: support.href, label: 'Support', icon: LifeBuoy, external: support.external },
-    { path: '/dashboard/profile', label: 'Settings', icon: Settings }
+    { path: '/dashboard/profile', label: 'Settings', icon: Settings },
+    { path: '/dashboard/privacy', label: 'Privacy', icon: ShieldCheck }
   )
   if (role === 'captain') items.push({ path: '/dashboard/captain', label: 'Captain', icon: Flag })
   return items

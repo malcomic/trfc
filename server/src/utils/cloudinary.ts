@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto'
 import { v2 as cloudinary } from 'cloudinary'
 import { config } from '../config/env.js'
 
@@ -43,6 +44,41 @@ export async function uploadRawToCloudinary(
   })
 }
 
+/**
+ * Stores a PDF as an authenticated raw file: it has no public URL, so it can only be
+ * fetched through a signed link from `signedPdfUrl`.
+ */
+export async function uploadPrivatePdf(fileBuffer: Buffer, folder: string): Promise<{ publicId: string; bytes: number }> {
+  const fileName = `${randomUUID()}.pdf`
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      { folder, public_id: fileName, resource_type: 'raw', type: 'authenticated' },
+      (error, result) => {
+        if (error || !result?.public_id) reject(error ?? new Error('Upload returned no file'))
+        else resolve({ publicId: result.public_id, bytes: typeof result.bytes === 'number' ? result.bytes : fileBuffer.length })
+      }
+    )
+    uploadStream.end(fileBuffer)
+  })
+}
+
+export const SIGNED_PDF_TTL_SECONDS = 300
+
+/** Short-lived download link for a file stored by `uploadPrivatePdf`. */
+export function signedPdfUrl(publicId: string, now = Date.now()): string {
+  // Raw public ids already carry the extension, so the format argument stays empty.
+  return cloudinary.utils.private_download_url(publicId, '', {
+    resource_type: 'raw',
+    type: 'authenticated',
+    expires_at: Math.floor(now / 1000) + SIGNED_PDF_TTL_SECONDS,
+    attachment: true,
+  })
+}
+
+export async function deletePrivateRaw(publicId: string): Promise<void> {
+  await cloudinary.uploader.destroy(publicId, { resource_type: 'raw', type: 'authenticated', invalidate: true })
+}
+
 export const COACH_VIDEO_FORMATS = 'mp4,mov,webm,3gp,m4v'
 
 export interface SignedVideoUpload {
@@ -80,6 +116,10 @@ export async function getVideoBytes(publicId: string): Promise<number | null> {
     if (error?.error?.http_code === 404 || error?.http_code === 404) return null
     throw error
   }
+}
+
+export async function deletePublicRaw(publicId: string): Promise<void> {
+  await cloudinary.uploader.destroy(publicId, { resource_type: 'raw', invalidate: true })
 }
 
 export async function deleteVideo(publicId: string): Promise<void> {

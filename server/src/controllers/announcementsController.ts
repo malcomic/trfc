@@ -13,10 +13,11 @@ import {
   signUnsubscribeToken,
   verifyUnsubscribeToken,
 } from '../utils/announcements.js'
+import { ANNOUNCEMENT_FIELDS as FIELDS, publishAnnouncement } from '../utils/publishAnnouncement.js'
+import { hashIp, setMarketing } from '../utils/consents.js'
 
 const MEMBER_LIST_LIMIT = 30
 const ADMIN_LIST_LIMIT = 50
-const FIELDS = 'id, title, body, link_url, link_label, kind, audience, send_email, published_at, archived_at'
 
 /** Announcements this user can see: targeted at them, sent after they joined, and not archived. */
 const VISIBLE_TO_USER = `
@@ -33,27 +34,7 @@ export async function createAnnouncement(req: Request, res: Response) {
     const input = parseAnnouncementInput(req.body)
     if (typeof input === 'string') return res.status(400).json({ error: input })
 
-    const created = await query(
-      `INSERT INTO announcements (title, body, link_url, link_label, kind, audience, send_email, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING ${FIELDS}`,
-      [input.title, input.body, input.linkUrl, input.linkLabel, input.kind, input.audience, input.sendEmail, req.user!.id]
-    )
-    const announcement = created.rows[0]
-
-    let queued = 0
-    if (input.sendEmail) {
-      const result = await query(
-        `INSERT INTO announcement_emails (announcement_id, user_id, email)
-         SELECT $1, u.id, TRIM(u.email) FROM users u
-         WHERE ${audienceSql(input.audience)} AND ${emailRecipientsSql(input.kind)}
-         ON CONFLICT DO NOTHING`,
-        [announcement.id]
-      )
-      queued = result.rowCount ?? 0
-    }
-
-    res.status(201).json({ announcement, queued })
+    res.status(201).json(await publishAnnouncement(input, req.user!.id))
   } catch (error) {
     console.error(error)
     res.status(500).json({ error: 'Failed to send the announcement' })
@@ -209,7 +190,7 @@ export async function unsubscribeFromMarketing(req: Request, res: Response) {
   try {
     const userId = verifyUnsubscribeToken(req.body?.token)
     if (!userId) return res.status(400).json({ error: 'This unsubscribe link is invalid or has expired' })
-    await query('UPDATE users SET marketing_opt_in = false, marketing_opt_in_at = NULL WHERE id = $1', [userId])
+    await setMarketing(userId, false, { source: 'unsubscribe_link', ipHash: hashIp(req.ip) })
     res.json({ ok: true })
   } catch (error) {
     console.error(error)

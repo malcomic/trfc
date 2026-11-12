@@ -4,7 +4,7 @@ import { AlertCircle, KeyRound, UserRound } from 'lucide-react'
 import { changeMyPassword, updateMyProfile } from '../../api/auth'
 import type { MemberProfile } from '../../api/users'
 import { useAuth } from '../../context/AuthContext'
-import { Button, FormCheckbox, FormInput, PasswordToggle } from '../ui'
+import { Button, FormInput, PasswordToggle } from '../ui'
 import { getPasswordStrength } from '../../utils/passwordStrength'
 import { cardSurface } from '../../utils/themeClasses'
 
@@ -50,7 +50,6 @@ export default function ProfileForm({ profile, onSaved, notify }: ProfileFormPro
     email: profile.email ?? '',
     phone: profile.phone ?? '',
     whatsapp: profile.whatsapp ?? '',
-    marketingOptIn: profile.marketing_opt_in === true,
   })
   const [savingDetails, setSavingDetails] = useState(false)
   const [detailsError, setDetailsError] = useState('')
@@ -73,7 +72,6 @@ export default function ProfileForm({ profile, onSaved, notify }: ProfileFormPro
         email: details.email,
         phone: details.phone,
         whatsapp: details.whatsapp,
-        marketingOptIn: details.marketingOptIn,
       })
       setTokens(token, refreshToken)
       updateUser(user)
@@ -147,11 +145,13 @@ export default function ProfileForm({ profile, onSaved, notify }: ProfileFormPro
           onChange={(e) => setDetails((d) => ({ ...d, whatsapp: e.target.value }))}
           placeholder="Leave blank to use your phone number"
         />
-        <FormCheckbox
-          label="Send me news, events and offers on WhatsApp"
-          checked={details.marketingOptIn}
-          onChange={(e) => setDetails((d) => ({ ...d, marketingOptIn: e.target.checked }))}
-        />
+        <p className="text-sm text-fog light:text-fog-light">
+          Email choices, captain WhatsApp access and your data are in{' '}
+          <Link to="/dashboard/privacy" className="text-accent light:text-accent-light no-underline hover:underline">
+            Privacy
+          </Link>
+          .
+        </p>
         <FormError message={detailsError} />
         <Button type="submit" isLoading={savingDetails}>
           Save changes

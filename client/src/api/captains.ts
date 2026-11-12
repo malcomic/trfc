@@ -18,11 +18,25 @@ export interface CaptainDirectoryEntry {
   photo_url: string | null
 }
 
+export interface CaptainTeamProgram {
+  program: string
+  status: string
+  sessions_done: number
+  weeks_checked_in: number
+}
+
 export interface CaptainTeamMember {
   id: string
   name: string
+  zone: string | null
   joined_at: string | null
   joined_via: 'zone_link' | 'chosen'
+  /** True when the member chose this captain; otherwise they are in the captain's zone. */
+  is_my_member: boolean
+  saturdays_attended: number
+  programs: CaptainTeamProgram[]
+  /** Only present while the member has turned on WhatsApp sharing with this captain. */
+  whatsapp: string | null
 }
 
 export interface CaptainZoneSummary {
@@ -69,9 +83,6 @@ export interface CaptainReferral {
   id: string
   name: string
   referred_at: string | null
-  purchases: number
-  total_spent: number
-  commission_earned: number
 }
 
 export interface CaptainCommission {

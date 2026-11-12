@@ -40,6 +40,10 @@ import * as reachOut from '../controllers/reachOutController.js'
 import * as programs from '../controllers/adminProgramsController.js'
 import * as hiring from '../controllers/adminHiringController.js'
 import * as membership from '../controllers/adminMembershipController.js'
+import * as guides from '../controllers/adminGuidesController.js'
+import * as liveQa from '../controllers/adminLiveQaController.js'
+import * as polls from '../controllers/adminPollsController.js'
+import * as policies from '../controllers/policiesController.js'
 import {
   getRegions,
   createRegion,
@@ -179,12 +183,22 @@ router.post('/programs/:id/unarchive', programs.unarchiveProgram)
 router.get('/programs/:id/versions', programs.listProgramVersions)
 router.post('/programs/:id/versions/:versionId/restore', programs.restoreProgramVersion)
 
+router.get('/policies', policies.adminListPolicies)
+router.post('/policies', policies.adminCreateDraft)
+router.put('/policies/:id', policies.adminUpdateDraft)
+router.post('/policies/:id/publish', policies.adminPublishDraft)
+router.delete('/policies/:id', policies.adminDeleteDraft)
+router.get('/privacy-settings', policies.adminGetPrivacySettings)
+router.put('/privacy-settings', policies.adminUpdatePrivacySettings)
+router.get('/users/:id/consents', policies.adminGetUserConsents)
+
 router.get('/hiring', hiring.listApplications)
 router.get('/hiring/export', hiring.exportApplications)
 router.get('/hiring/settings', hiring.getHiringSettings)
 router.put('/hiring/settings', hiring.updateHiringSettings)
 router.get('/hiring/:id', hiring.getApplication)
 router.patch('/hiring/:id', hiring.updateApplication)
+router.delete('/hiring/:id', hiring.deleteApplication)
 
 router.get('/membership/summary', membership.getSummary)
 router.get('/membership/members', membership.listMembers)
@@ -196,6 +210,18 @@ router.put('/membership/settings', membership.updateSettings)
 router.get('/membership/perks', membership.listPerks)
 router.post('/membership/perks/reorder', membership.reorderPerks)
 router.put('/membership/perks/:key', membership.updatePerk)
+router.get('/membership/guides', guides.listGuides)
+router.post('/membership/guides', guides.receiveGuideFile, guides.createGuide)
+router.post('/membership/guides/reorder', guides.reorderGuides)
+router.put('/membership/guides/:id', guides.receiveGuideFile, guides.updateGuide)
+router.delete('/membership/guides/:id', guides.deleteGuide)
+router.get('/membership/live-qa', liveQa.getLiveQaAdmin)
+router.put('/membership/live-qa', liveQa.updateLiveQa)
+router.get('/membership/polls', polls.listPolls)
+router.post('/membership/polls', polls.createPoll)
+router.put('/membership/polls/:id', polls.updatePoll)
+router.post('/membership/polls/:id/close', polls.closePoll)
+router.delete('/membership/polls/:id', polls.deletePoll)
 router.post('/membership/:id/cancel', membership.cancel)
 
 export default router

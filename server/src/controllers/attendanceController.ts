@@ -34,7 +34,12 @@ export async function getEventScanList(req: Request, res: Response) {
   try {
     const eventId = String(req.params.id)
     await assertCanAct(req, eventId)
-    res.json(await getScanList(eventId))
+    const list = await getScanList(eventId)
+    // Captains see names only; contact details stay with admins and gate staff.
+    if (req.user?.role === 'captain') {
+      list.tickets = list.tickets.map(({ phone, email, ...ticket }) => ticket)
+    }
+    res.json(list)
   } catch (error) {
     sendError(res, error, 'Failed to load the scan list')
   }

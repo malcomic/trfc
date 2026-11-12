@@ -10,6 +10,11 @@ export interface User {
   avatar_url?: string | null;
   google_linked?: boolean;
   has_password?: boolean;
+  /** Box 1 and the 18+ box must be agreed (again) before using the app. */
+  needs_consent?: boolean;
+  /** Existing members see the marketing box once, unticked. */
+  needs_marketing_prompt?: boolean;
+  privacy_version?: string | null;
 }
 
 export interface EventTicketType {

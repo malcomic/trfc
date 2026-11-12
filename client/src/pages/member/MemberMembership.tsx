@@ -17,6 +17,7 @@ import {
 } from '../../content/membership'
 import { useMemberDashboard } from '../../context/MemberDashboardContext'
 import MemberPageHeader from '../../components/member/MemberPageHeader'
+import LiveQaCard from '../../components/member/membership/LiveQaCard'
 import MemberBadge from '../../components/member/membership/MemberBadge'
 import PerkList from '../../components/member/membership/PerkList'
 import PaymentStatusModal from '../../components/PaymentStatusModal'
@@ -242,6 +243,7 @@ export default function MemberMembership() {
               onRefresh={onPaid}
             />
           )}
+          {membership.perks.some((p) => p.key === 'live_qa' && p.status === 'on') && <LiveQaCard />}
           <div className={dashCard}>
             <h2 className={`${dashHeading} mb-4`}>{copy.active.yourPerks}</h2>
             <PerkList perks={[...onPerks, ...membership.perks.filter((p) => p.status === 'coming_soon')]} withActions />

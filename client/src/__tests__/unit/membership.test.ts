@@ -1,8 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import {
   MEMBERSHIP_COPY,
+  buildIcs,
   earlyWindowEnd,
+  fileSize,
   foundingLine,
+  liveQaState,
+  pollPercents,
   memberDate,
   memberDateTime,
   quoteLine,
@@ -118,5 +122,53 @@ describe('shopDiscountFor', () => {
     expect(shopDiscountFor([{ price: 1000, quantity: 1, eligible: false, flash: false }], status)).toBe(0)
     expect(shopDiscountFor([{ price: 1000, quantity: 1, eligible: true, flash: false }], { available: false, amount: 300 })).toBe(0)
     expect(shopDiscountFor([{ price: 1000, quantity: 1, eligible: true, flash: false }], null)).toBe(0)
+  })
+})
+
+describe('live Q&A helpers', () => {
+  it('builds a calendar file in UTC with escaped text and no Zoom link', () => {
+    const ics = buildIcs(
+      { start: '2026-12-03T16:00:00Z', title: 'Q&A; nutrition, sleep', description: 'Line one\nLine two', url: 'https://trfc.example/dashboard/membership' },
+      new Date('2026-11-10T09:00:00Z')
+    )
+    const lines = ics.split('\r\n')
+    expect(lines[0]).toBe('BEGIN:VCALENDAR')
+    expect(lines).toContain('DTSTART:20261203T160000Z')
+    expect(lines).toContain('DTEND:20261203T170000Z')
+    expect(lines).toContain('DTSTAMP:20261110T090000Z')
+    expect(lines).toContain('SUMMARY:Q&A\\; nutrition\\, sleep')
+    expect(lines).toContain('DESCRIPTION:Line one\\nLine two')
+    expect(ics.endsWith('END:VCALENDAR\r\n')).toBe(true)
+    expect(ics).not.toContain('zoom')
+  })
+
+  it('picks the join, soon, members and empty states', () => {
+    const base = { nextAt: '2026-12-03T16:00:00Z', joinUrl: null, isMember: true }
+    expect(liveQaState({ ...base, joinUrl: 'https://zoom.us/j/1' })).toBe('join')
+    expect(liveQaState(base)).toBe('soon')
+    expect(liveQaState({ ...base, isMember: false })).toBe('members')
+    expect(liveQaState({ ...base, nextAt: null })).toBe('none')
+    expect(liveQaState(null)).toBe('none')
+    expect(MEMBERSHIP_COPY.liveQa.soon).toBe('The Zoom link appears here 1 hour before the session.')
+  })
+})
+
+describe('member vote helpers', () => {
+  it('rounds poll percentages so they add up to 100', () => {
+    expect(pollPercents([1, 1, 1])).toEqual([34, 33, 33])
+    expect(pollPercents([2, 1])).toEqual([67, 33])
+    expect(pollPercents([1, 2, 3, 4, 5, 6, 7])).toEqual([4, 7, 11, 14, 18, 21, 25])
+    expect(pollPercents([0, 0, 0])).toEqual([0, 0, 0])
+  })
+
+  it('counts votes in words', () => {
+    expect(MEMBERSHIP_COPY.vote.votes(1)).toBe('1 vote')
+    expect(MEMBERSHIP_COPY.vote.votes(12)).toBe('12 votes')
+  })
+
+  it('shows guide sizes in KB or MB', () => {
+    expect(fileSize(850 * 1024)).toBe('850 KB')
+    expect(fileSize(2.4 * 1024 * 1024)).toBe('2.4 MB')
+    expect(fileSize(0)).toBe('')
   })
 })

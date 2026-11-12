@@ -87,6 +87,8 @@ export interface CoachApplicationInput {
   cvPublicId: string | null
   cvFileName: string | null
   submissionKey: string
+  /** Version of the applicant privacy page the applicant agreed to. */
+  policyVersion: string
 }
 
 export type CleanResult =
@@ -184,7 +186,10 @@ export function cleanApplication(body: unknown, cloudName = config.cloudinary.cl
   }
 
   if (input.agreeStandards !== true) errors.agreeStandards = 'Please confirm you will follow the coach standards'
-  if (input.agreeStorage !== true) errors.agreeStorage = 'Please agree so we can keep your details for hiring'
+  if (input.agreeApplicantPrivacy !== true) {
+    errors.agreeApplicantPrivacy = 'Please tick the box to agree to the Privacy and Confidentiality Terms for applicants'
+  }
+  const policyVersion = text(input.policyVersion).slice(0, 20)
 
   const submissionKey = text(input.submissionKey)
   if (!SUBMISSION_KEY_PATTERN.test(submissionKey)) errors.form = 'Please refresh the page and try again'
@@ -209,6 +214,7 @@ export function cleanApplication(body: unknown, cloudName = config.cloudinary.cl
       cvPublicId: cvUrl ? cvPublicId : null,
       cvFileName: cvUrl ? cvFileName || 'CV' : null,
       submissionKey,
+      policyVersion,
     },
   }
 }

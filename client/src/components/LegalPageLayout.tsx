@@ -1,11 +1,17 @@
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { pageRoot } from '../utils/themeClasses'
+
+export interface LegalTable {
+  headers: string[]
+  rows: string[][]
+}
 
 export interface LegalSection {
   id: string
   title: string
   paragraphs: string[]
+  table?: LegalTable
 }
 
 export interface LegalPageMeta {
@@ -16,15 +22,69 @@ export interface LegalPageMeta {
   intro: string
   watermark: string
   lastUpdated: string
+  version?: string
 }
 
 interface LegalPageLayoutProps {
   meta: LegalPageMeta
   sections: LegalSection[]
   crossLink?: { label: string; to: string }
+  children?: ReactNode
 }
 
-export default function LegalPageLayout({ meta, sections, crossLink }: LegalPageLayoutProps) {
+export function LegalSections({ sections }: { sections: LegalSection[] }) {
+  return (
+    <>
+      {sections.map((section) => (
+        <section key={section.id} id={section.id}>
+          <h2 className="font-bebas text-3xl text-chalk light:text-chalk-light mb-4">{section.title}</h2>
+          <div className="space-y-4">
+            {section.paragraphs.map((paragraph, index) => (
+              <p key={index} className="text-fog light:text-fog-light leading-relaxed text-sm md:text-base">
+                {paragraph}
+              </p>
+            ))}
+            {section.table && <LegalTableView table={section.table} />}
+          </div>
+        </section>
+      ))}
+    </>
+  )
+}
+
+function LegalTableView({ table }: { table: LegalTable }) {
+  return (
+    <div className="overflow-x-auto border border-white/10 light:border-black/10 rounded-lg">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-white/5 light:bg-black/5">
+          <tr>
+            {table.headers.map((header, index) => (
+              <th key={index} scope="col" className="px-4 py-3 font-barlow-condensed font-bold tracking-wider uppercase text-xs text-chalk light:text-chalk-light">
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {table.rows.map((row, rowIndex) => (
+            <tr key={rowIndex} className="border-t border-white/5 light:border-black/8 align-top">
+              {row.map((cell, cellIndex) => (
+                <td
+                  key={cellIndex}
+                  className={`px-4 py-3 leading-relaxed ${cellIndex === 0 ? 'font-semibold text-chalk light:text-chalk-light' : 'text-fog light:text-fog-light'}`}
+                >
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+export default function LegalPageLayout({ meta, sections, crossLink, children }: LegalPageLayoutProps) {
   useEffect(() => {
     const previousTitle = document.title
     document.title = meta.documentTitle
@@ -54,24 +114,15 @@ export default function LegalPageLayout({ meta, sections, crossLink }: LegalPage
           </h1>
           <p className="text-fog light:text-fog-light mt-4 leading-relaxed">{meta.intro}</p>
           <p className="text-xs text-fog/70 light:text-fog-light/70 mt-3 font-barlow-condensed tracking-widest uppercase">
-            Last updated: {meta.lastUpdated}
+            {meta.version && <>Version {meta.version} · </>}Last updated: {meta.lastUpdated}
           </p>
         </div>
       </section>
 
       <div className="max-w-3xl mx-auto px-[6%] py-10 pb-20 space-y-10">
-        {sections.map((section) => (
-          <section key={section.id} id={section.id}>
-            <h2 className="font-bebas text-3xl text-chalk light:text-chalk-light mb-4">{section.title}</h2>
-            <div className="space-y-4">
-              {section.paragraphs.map((paragraph, index) => (
-                <p key={index} className="text-fog light:text-fog-light leading-relaxed text-sm md:text-base">
-                  {paragraph}
-                </p>
-              ))}
-            </div>
-          </section>
-        ))}
+        <LegalSections sections={sections} />
+
+        {children}
 
         <div className="border-t border-white/5 light:border-black/8 pt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
           {crossLink && (

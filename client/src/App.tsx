@@ -48,6 +48,8 @@ import Testimonials from './pages/Testimonials'
 import Contact from './pages/Contact'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
+import PrivacyApplicants from './pages/PrivacyApplicants'
+import ConsentGate from './components/policy/ConsentGate'
 import Partnerships from './pages/Partnerships'
 import CoachHiring from './pages/CoachHiring'
 import NotFound from './pages/NotFound'
@@ -81,8 +83,11 @@ import AdminPrograms from './pages/admin/AdminPrograms'
 import AdminProgramEditor from './pages/admin/AdminProgramEditor'
 import AdminHiring from './pages/admin/AdminHiring'
 import AdminMembership from './pages/admin/AdminMembership'
+import AdminPolicies from './pages/admin/AdminPolicies'
+import AdminPrivacySettings from './pages/admin/AdminPrivacySettings'
 import Unsubscribe from './pages/Unsubscribe'
 import MemberNotifications from './pages/member/MemberNotifications'
+import MemberPrivacy from './pages/member/MemberPrivacy'
 import MemberLayout from './components/member/MemberLayout'
 import MemberOverview from './pages/member/MemberOverview'
 import MemberCalendar from './pages/member/MemberCalendar'
@@ -102,6 +107,7 @@ import MemberZone from './pages/member/MemberZone'
 import MemberMembership from './pages/member/MemberMembership'
 import MemberPoints from './pages/member/MemberPoints'
 import MemberGuides from './pages/member/MemberGuides'
+import MemberVote from './pages/member/MemberVote'
 import { captureReferralFromUrl } from './utils/referral'
 import { identifyTikTokUser } from './utils/tiktokPixel'
 import { useAuth } from './context/AuthContext'
@@ -150,6 +156,7 @@ function RootLayout() {
       <TikTokIdentify />
       <TikTokPixelTracker />
       <ReferralCapture />
+      <ConsentGate />
       <Outlet />
     </>
   )
@@ -200,6 +207,8 @@ const router = createBrowserRouter(
           <Route path="reach-out" element={<AdminReachOut />} />
           <Route path="hiring" element={<AdminHiring />} />
           <Route path="membership" element={<AdminMembership />} />
+          <Route path="policies" element={<AdminPolicies />} />
+          <Route path="privacy-settings" element={<AdminPrivacySettings />} />
           <Route path="wallets" element={<AdminWallets />} />
           <Route path="appearance" element={<AdminAppearance />} />
           <Route path="captains" element={<AdminCaptains />} />
@@ -233,7 +242,9 @@ const router = createBrowserRouter(
           <Route path="membership" element={<MemberMembership />} />
           <Route path="points" element={<MemberPoints />} />
           <Route path="guides" element={<MemberGuides />} />
+          <Route path="vote" element={<MemberVote />} />
           <Route path="notifications" element={<MemberNotifications />} />
+          <Route path="privacy" element={<MemberPrivacy />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
         <Route path="/account" element={<Navigate to="/dashboard" replace />} />
@@ -265,6 +276,7 @@ const router = createBrowserRouter(
           <Route path="/testimonials" element={<Testimonials />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/privacy" element={<Privacy />} />
+          <Route path="/privacy/applicants" element={<PrivacyApplicants />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/shop" element={<Shop />} />
           <Route path="/shop/c/:slug" element={<ShopCategory />} />

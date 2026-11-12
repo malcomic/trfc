@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link } from 'react-router-dom'
-import { Trash2, Edit2, Plus, KeyRound, Search, Flag } from 'lucide-react'
+import { Trash2, Edit2, Plus, KeyRound, Search, Flag, ScrollText } from 'lucide-react'
 import {
   getAllUsers,
   createUser,
@@ -18,6 +18,7 @@ import AdminConfirmDialog from '../../components/AdminConfirmDialog'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/AdminMobileCard'
 import AdminResponsiveData from '../../components/admin/AdminResponsiveData'
+import ConsentHistoryDialog from '../../components/admin/ConsentHistoryDialog'
 
 type RoleFilter = '' | 'member' | 'admin' | 'scanner' | 'captain'
 type ModalMode = 'create' | 'edit' | null
@@ -47,6 +48,7 @@ export default function AdminUsers() {
   const [resetPasswordUser, setResetPasswordUser] = useState<AdminUser | null>(null)
   const [pendingRoleChange, setPendingRoleChange] = useState<{ userId: string; newRole: string } | null>(null)
   const [saving, setSaving] = useState(false)
+  const [consentUser, setConsentUser] = useState<AdminUser | null>(null)
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<UserFormData>()
   const {
@@ -285,7 +287,7 @@ export default function AdminUsers() {
     <span className="text-sm">
       {user.whatsapp || <span className="text-gray-400">—</span>}
       <span className="block text-xs text-gray-500 dark:text-gray-400">
-        {user.marketing_opt_in ? 'Opted in' : 'Not opted in'}
+        {user.marketing_opt_in ? 'Promo emails on' : 'Promo emails off'}
         {user.welcome_whatsapp_sent_at && ' · Welcome sent'}
       </span>
     </span>
@@ -340,6 +342,14 @@ export default function AdminUsers() {
         title="Reset password"
       >
         <KeyRound size={18} />
+      </button>
+      <button
+        onClick={() => setConsentUser(user)}
+        className="flex items-center gap-1 text-gray-600 dark:text-gray-300 min-h-[44px] px-2"
+        title="Consent history"
+        aria-label={`Consent history for ${user.name}`}
+      >
+        <ScrollText size={18} />
       </button>
       <button
         onClick={() => setDeleteId(user.id)}
@@ -660,6 +670,8 @@ export default function AdminUsers() {
         onConfirm={confirmDelete}
         onCancel={() => setDeleteId(null)}
       />
+
+      {consentUser && <ConsentHistoryDialog user={consentUser} onClose={() => setConsentUser(null)} />}
     </div>
   )
 }

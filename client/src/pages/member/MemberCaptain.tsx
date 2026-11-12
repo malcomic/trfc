@@ -43,6 +43,7 @@ import MemberPageHeader from '../../components/member/MemberPageHeader'
 import ScanListPanel from '../../components/attendance/ScanListPanel'
 import CaptainPhotoCard from '../../components/captain/CaptainPhotoCard'
 import { getAttendanceEvents, type AttendanceEvent } from '../../api/attendance'
+import { coreProgramName } from '../../content/programs'
 
 type Tab = 'commissions' | 'referrals' | 'team' | 'payouts' | 'attendance'
 
@@ -376,12 +377,6 @@ function CaptainContent() {
                           <p className="font-barlow-condensed font-bold text-lg">{r.name}</p>
                           <p className="text-sm text-fog light:text-fog-light">Joined {formatDate(r.referred_at)}</p>
                         </div>
-                        <div className="text-right text-sm">
-                          <p className="text-chalk light:text-chalk-light">
-                            {r.purchases} purchase{r.purchases === 1 ? '' : 's'} · {formatKes(r.total_spent)}
-                          </p>
-                          <p className="text-accent light:text-accent-light">Zone earned {formatKes(r.commission_earned)}</p>
-                        </div>
                       </div>
                     ))
                   )}
@@ -391,26 +386,53 @@ function CaptainContent() {
               {!tabLoading && tab === 'team' && team && (
                 <div className="space-y-3">
                   <p className="text-sm text-fog light:text-fog-light">
-                    Members who chose you as their captain. Their purchases earn for the zone only if they joined with a zone link.
+                    Members in your zone and members who chose you. Follow up with them through the TRFC app. You see a WhatsApp
+                    number only while that member has turned it on for you, and it must never be used for promotions.
                   </p>
                   {team.length === 0 ? (
                     <p className="text-center py-10 text-fog light:text-fog-light">No team members yet.</p>
                   ) : (
                     team.map((member) => (
-                      <div key={member.id} className={`${cardSurface} p-4 flex flex-wrap justify-between gap-3 items-center`}>
-                        <div>
+                      <div key={member.id} className={`${cardSurface} p-4 flex flex-wrap justify-between gap-3 items-start`}>
+                        <div className="min-w-0 space-y-1">
                           <p className="font-barlow-condensed font-bold text-lg">{member.name}</p>
-                          <p className="text-sm text-fog light:text-fog-light">Joined {formatDate(member.joined_at)}</p>
+                          <p className="text-sm text-fog light:text-fog-light">
+                            {member.zone ?? 'No zone'} · Joined {formatDate(member.joined_at)} · {member.saturdays_attended} Saturday
+                            {member.saturdays_attended === 1 ? '' : 's'}
+                          </p>
+                          {member.programs.length > 0 && (
+                            <ul className="text-sm text-fog light:text-fog-light">
+                              {member.programs.map((p) => (
+                                <li key={p.program}>
+                                  {coreProgramName(p.program)}: {p.sessions_done} session{p.sessions_done === 1 ? '' : 's'} done,{' '}
+                                  {p.weeks_checked_in} week{p.weeks_checked_in === 1 ? '' : 's'} checked in
+                                  {p.status !== 'active' ? ` (${p.status})` : ''}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
                         </div>
-                        <span
-                          className={`inline-block px-2.5 py-1 text-xs font-barlow-condensed font-bold tracking-widest uppercase border ${
-                            member.joined_via === 'zone_link'
-                              ? 'bg-accent/15 light:bg-accent-light/15 border-accent/30 light:border-accent-light/30 text-accent light:text-accent-light'
-                              : 'bg-white/5 light:bg-black/5 border-white/10 light:border-black/10 text-fog light:text-fog-light'
-                          }`}
-                        >
-                          {member.joined_via === 'zone_link' ? 'Joined with zone link' : 'Chose you'}
-                        </span>
+                        <div className="flex flex-col items-end gap-2">
+                          <span
+                            className={`inline-block px-2.5 py-1 text-xs font-barlow-condensed font-bold tracking-widest uppercase border ${
+                              member.is_my_member
+                                ? 'bg-accent/15 light:bg-accent-light/15 border-accent/30 light:border-accent-light/30 text-accent light:text-accent-light'
+                                : 'bg-white/5 light:bg-black/5 border-white/10 light:border-black/10 text-fog light:text-fog-light'
+                            }`}
+                          >
+                            {member.is_my_member ? 'Chose you' : member.joined_via === 'zone_link' ? 'Joined with zone link' : 'In your zone'}
+                          </span>
+                          {member.whatsapp && (
+                            <a
+                              href={`https://wa.me/${member.whatsapp.replace(/\D/g, '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-sm text-accent light:text-accent-light no-underline hover:underline"
+                            >
+                              <MessageCircle size={14} /> WhatsApp
+                            </a>
+                          )}
+                        </div>
                       </div>
                     ))
                   )}

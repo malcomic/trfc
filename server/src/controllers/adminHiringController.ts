@@ -11,6 +11,8 @@ import {
 } from '../utils/coachApplications.js'
 import { toCsv } from '../utils/reachOut.js'
 import { isUuid } from '../utils/zones.js'
+import { getNumberSetting } from '../utils/policies.js'
+import { deleteCoachApplication } from '../utils/retention.js'
 
 const PAGE_SIZE = 25
 const EXPORT_MAX_ROWS = 10_000
@@ -18,7 +20,8 @@ const EXPORT_MAX_ROWS = 10_000
 const LIST_FIELDS = `a.id, a.full_name, a.phone, a.email, a.location, a.social_url, a.experience,
   a.can_give_3_hours, a.hours, a.worked_harder, a.answers, a.video_url, a.video_source, a.cv_url, a.cv_file_name,
   a.status, a.handled_by, h.name AS handled_by_name, a.notes, a.status_changed_at,
-  a.agreed_standards_at, a.agreed_storage_at, a.created_at, a.updated_at`
+  a.agreed_standards_at, a.agreed_storage_at, a.privacy_version_accepted, a.privacy_agreed_at,
+  a.hired_at, a.coaching_ended_at, a.delete_after, a.created_at, a.updated_at`
 const FROM = 'FROM coach_applications a LEFT JOIN users h ON h.id = a.handled_by'
 
 async function isAdminUser(userId: string): Promise<boolean> {
@@ -120,7 +123,22 @@ export async function updateApplication(req: Request, res: Response) {
       if (statusChanged) {
         set('status', body.status)
         sets.push('status_changed_at = NOW()')
+        // Hired applications move into the coach file and are kept while they coach.
+        if (body.status === 'accepted') {
+          sets.push('hired_at = COALESCE(hired_at, NOW())', 'delete_after = NULL')
+        } else if (current.rows[0].status === 'accepted') {
+          const months = await getNumberSetting('coach_app_retention_months')
+          params.push(months)
+          sets.push('hired_at = NULL', 'coaching_ended_at = NULL', `delete_after = created_at + make_interval(months => $${params.length})`)
+        }
       }
+    }
+
+    if (body.coachingEnded !== undefined) {
+      if (current.rows[0].status !== 'accepted' && body.status !== 'accepted') {
+        return res.status(400).json({ error: 'Only hired coaches can be marked as no longer coaching' })
+      }
+      sets.push(body.coachingEnded === true ? 'coaching_ended_at = COALESCE(coaching_ended_at, NOW())' : 'coaching_ended_at = NULL')
     }
 
     if (body.notes !== undefined) {
@@ -152,6 +170,18 @@ export async function updateApplication(req: Request, res: Response) {
   } catch (error) {
     console.error(error)
     res.status(500).json({ error: 'Failed to update application' })
+  }
+}
+
+/** For written deletion requests: removes the application and its files straight away. */
+export async function deleteApplication(req: Request, res: Response) {
+  try {
+    if (!isUuid(req.params.id)) return res.status(404).json({ error: 'Application not found' })
+    if (!(await deleteCoachApplication(req.params.id))) return res.status(404).json({ error: 'Application not found' })
+    res.json({ ok: true })
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: 'Failed to delete application' })
   }
 }
 

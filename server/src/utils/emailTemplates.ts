@@ -633,6 +633,7 @@ export interface FlashReminderEmailData {
   salePrice: number
   regularPrice: number
   flashUrl: string
+  unsubscribeToken?: string | null
 }
 
 export const FLASH_REMINDER_SUBJECTS: Record<FlashReminderStage, string> = {
@@ -809,6 +810,7 @@ export function buildFlashReminderEmailHTML(stage: FlashReminderStage, data: Fla
       <p style="margin:0 0 8px;">
         Questions? Email <a href="mailto:${escapeHtml(config.contact.email)}" style="color:#b45309;">${escapeHtml(config.contact.email)}</a>
       </p>
+      ${data.unsubscribeToken ? `<p style="margin:0 0 8px;"><a href="${escapeHtml(unsubscribeUrl(data.unsubscribeToken))}" style="color:#b45309;">Stop these emails</a></p>` : ''}
       <p style="margin:8px 0 0;">© ${new Date().getFullYear()} TRFC — Thika Road Fitness Community</p>
     </div>
   </div>
@@ -823,8 +825,11 @@ export function buildFlashReminderEmailText(stage: FlashReminderStage, data: Fla
     ...blocks.map((block) => flashBlockText(block, data)),
     'See you at the run,\nCoach Maurice\nTRFC',
     `P.S. ${ps}`,
+    data.unsubscribeToken ? `Stop these emails: ${unsubscribeUrl(data.unsubscribeToken)}` : null,
     `You're receiving this because you registered for a TRFC Community Run.\n© ${new Date().getFullYear()} TRFC — Thika Road Fitness Community`,
-  ].join('\n\n')
+  ]
+    .filter(Boolean)
+    .join('\n\n')
 }
 
 export interface TicketEmailChangedData {

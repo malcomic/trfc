@@ -39,6 +39,16 @@ import {
   verifyGoogleCredential,
   verifyGoogleSignupToken,
 } from '../utils/googleAuth.js';
+import {
+  acceptPrivacy,
+  checkSignupConsent,
+  ConsentError,
+  getConsentStatus,
+  getConsentStatusForUser,
+  hashIp,
+  recordConsent,
+  setMarketing,
+} from '../utils/consents.js';
 
 const FORGOT_PASSWORD_MESSAGE = "If that email is registered, we've sent a link to reset your password.";
 
@@ -108,9 +118,11 @@ interface CreateMemberInput {
   google?: { id: string; avatarUrl: string | null };
   existingId?: string;
   body: Record<string, any>;
+  policyVersion: string;
+  ipHash: string | null;
 }
 
-async function createOrClaimMember({ fields, passwordHash, google, existingId, body }: CreateMemberInput) {
+async function createOrClaimMember({ fields, passwordHash, google, existingId, body, policyVersion, ipHash }: CreateMemberInput) {
   const { referralCode, captainId, marketingOptIn } = body;
   const { name, email, phone, phoneMsisdn, whatsappMsisdn } = fields;
   const optedIn = marketingOptIn === true;
@@ -142,6 +154,19 @@ async function createOrClaimMember({ fields, passwordHash, google, existingId, b
   }
 
   const user = result.rows[0];
+  const consentSource = google ? 'google_signup' : 'signup';
+  await acceptPrivacy(user.id, { version: policyVersion, source: consentSource, ipHash, marketingPromptSeen: true });
+  if (optedIn) {
+    await recordConsent({
+      userId: user.id,
+      type: 'marketing_email',
+      granted: true,
+      policySlug: 'privacy-members',
+      policyVersion,
+      source: consentSource,
+      ipHash,
+    });
+  }
   const zone = referralCode ? await applyReferral(user.id, referralCode) : null;
   if (captainId) {
     await assignChosenCaptain(user.id, captainId, zone?.region_id);
@@ -171,11 +196,21 @@ async function createOrClaimMember({ fields, passwordHash, google, existingId, b
   return {
     token,
     refreshToken,
-    user: { ...user, captain },
+    user: { ...user, captain, needs_consent: false, needs_marketing_prompt: false },
     answersSaved,
     linked_purchases: linkedPurchases,
   };
 }
+
+function consentErrorResponse(res: Response, error: unknown) {
+  if (error instanceof ConsentError) {
+    res.status(error.status).json({ error: error.message, code: 'CONSENT_INVALID' });
+    return true;
+  }
+  return false;
+}
+
+const DELETED_ACCOUNT_MESSAGE = 'This account has been deleted.';
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -190,6 +225,8 @@ export const register = async (req: Request, res: Response) => {
     if (passwordError) {
       return res.status(400).json({ error: passwordError });
     }
+
+    const policyVersion = await checkSignupConsent(req.body ?? {});
 
     const { phoneOwner, emailTaken } = await findSignupOwners(fieldsResult.phoneMsisdn, fieldsResult.email);
     if (phoneOwner?.password_hash) {
@@ -207,9 +244,12 @@ export const register = async (req: Request, res: Response) => {
       passwordHash,
       existingId: phoneOwner?.id,
       body: req.body,
+      policyVersion,
+      ipHash: hashIp(req.ip),
     });
     res.status(201).json(payload);
   } catch (error) {
+    if (consentErrorResponse(res, error)) return;
     console.error(error);
     res.status(500).json({ error: 'Registration failed' });
   }
@@ -236,16 +276,20 @@ export const login = async (req: Request, res: Response) => {
     if (!passwordMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
+    if (user.deletion_requested_at) {
+      return res.status(401).json({ error: DELETED_ACCOUNT_MESSAGE });
+    }
 
     const token = generateAccessToken({ id: user.id, email: user.email, role: user.role });
     const refreshToken = generateRefreshToken({ id: user.id, email: user.email, role: user.role });
     void touchLastActive(user.id);
     const linkedPurchases = await claimGuestPurchasesSafely(user.id, user.email, user.phone);
+    const consent = await getConsentStatus(user);
 
     res.json({
       token,
       refreshToken,
-      user: { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role },
+      user: { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role, ...consent },
       linked_purchases: linkedPurchases,
     });
   } catch (error) {
@@ -272,15 +316,15 @@ export const refresh = async (req: Request, res: Response) => {
     }
 
     const result = await query(
-      'SELECT id, name, email, phone, role, password_changed_at FROM users WHERE id = $1',
+      'SELECT id, name, email, phone, role, password_changed_at, deletion_requested_at FROM users WHERE id = $1',
       [decoded.id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const { password_changed_at: passwordChangedAt, ...user } = result.rows[0];
-    if (isTokenStale(decoded.iat, passwordChangedAt)) {
+    const { password_changed_at: passwordChangedAt, deletion_requested_at: deletionRequestedAt, ...user } = result.rows[0];
+    if (deletionRequestedAt || isTokenStale(decoded.iat, passwordChangedAt)) {
       return res.status(401).json({ error: 'Session expired. Please sign in again.' });
     }
 
@@ -370,15 +414,47 @@ export const getProfile = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const result = await query(`SELECT ${PROFILE_FIELDS} FROM users WHERE id = $1`, [userId]);
+    const result = await query(
+      `SELECT ${PROFILE_FIELDS}, privacy_accepted_at, privacy_version_accepted, marketing_prompt_seen_at FROM users WHERE id = $1`,
+      [userId]
+    );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    res.json({ user: result.rows[0] });
+    const { privacy_accepted_at, marketing_prompt_seen_at, ...user } = result.rows[0];
+    const consent = await getConsentStatus({ privacy_accepted_at, marketing_prompt_seen_at, marketing_opt_in: user.marketing_opt_in });
+    res.json({ user: { ...user, ...consent } });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+};
+
+/** Agreeing again at login: Box 1 and the 18+ box are required; Box 2 is shown once, unticked. */
+export const acceptConsent = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const body = req.body ?? {};
+    const ipHash = hashIp(req.ip);
+    const status = await getConsentStatusForUser(userId);
+
+    if (status.needs_consent) {
+      const version = await checkSignupConsent(body);
+      await acceptPrivacy(userId, { version, source: 'login_prompt', ipHash });
+    }
+    if (status.needs_marketing_prompt) {
+      if (body.marketingOptIn === true) {
+        await setMarketing(userId, true, { source: 'login_prompt', ipHash });
+      } else {
+        await query('UPDATE users SET marketing_prompt_seen_at = NOW() WHERE id = $1', [userId]);
+      }
+    }
+    res.json({ ok: true, ...(await getConsentStatusForUser(userId)) });
+  } catch (error) {
+    if (consentErrorResponse(res, error)) return;
+    console.error(error);
+    res.status(500).json({ error: 'Could not save your answer. Please try again.' });
   }
 };
 
@@ -390,7 +466,7 @@ export const updateMyProfile = async (req: Request, res: Response) => {
       return res.status(400).json({ error: fieldsResult.error });
     }
     const { name, email, phone, phoneMsisdn, whatsappMsisdn } = fieldsResult;
-    const optedIn = req.body?.marketingOptIn === true;
+    const marketingChoice = typeof req.body?.marketingOptIn === 'boolean' ? req.body.marketingOptIn : null;
 
     const emailOwner = await query('SELECT id FROM users WHERE LOWER(email) = $1 AND id <> $2 LIMIT 1', [
       email,
@@ -408,21 +484,19 @@ export const updateMyProfile = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'That phone number is already used by another account' });
     }
 
-    const result = await query(
+    let result = await query(
       `UPDATE users
-       SET name = $1, email = $2, phone = $3, phone_normalized = $4, whatsapp = $5,
-           marketing_opt_in_at = CASE
-             WHEN $6 AND NOT COALESCE(marketing_opt_in, false) THEN NOW()
-             WHEN NOT $6 THEN NULL
-             ELSE marketing_opt_in_at
-           END,
-           marketing_opt_in = $6
-       WHERE id = $7
+       SET name = $1, email = $2, phone = $3, phone_normalized = $4, whatsapp = $5
+       WHERE id = $6
        RETURNING ${PROFILE_FIELDS}`,
-      [name, email, phone, phoneMsisdn, whatsappMsisdn, optedIn, userId]
+      [name, email, phone, phoneMsisdn, whatsappMsisdn, userId]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
+    }
+    if (marketingChoice !== null && marketingChoice !== Boolean(result.rows[0].marketing_opt_in)) {
+      await setMarketing(userId, marketingChoice, { source: 'settings', ipHash: hashIp(req.ip) });
+      result = await query(`SELECT ${PROFILE_FIELDS} FROM users WHERE id = $1`, [userId]);
     }
 
     const user = result.rows[0];
@@ -497,11 +571,17 @@ export const googleAuth = async (req: Request, res: Response) => {
     const profile = await verifyGoogleCredential(req.body?.credential);
 
     const linked = await query(
-      'SELECT id, name, email, phone, role, avatar_url FROM users WHERE google_id = $1 LIMIT 1',
+      `SELECT id, name, email, phone, role, avatar_url, deletion_requested_at, privacy_accepted_at,
+              marketing_prompt_seen_at, marketing_opt_in
+       FROM users WHERE google_id = $1 LIMIT 1`,
       [profile.sub]
     );
-    const user = linked.rows[0];
-    if (user) {
+    const row = linked.rows[0];
+    if (row) {
+      const { deletion_requested_at, privacy_accepted_at, marketing_prompt_seen_at, marketing_opt_in, ...user } = row;
+      if (deletion_requested_at) {
+        return res.status(401).json({ error: DELETED_ACCOUNT_MESSAGE });
+      }
       if (isGoogleBlockedRole(user.role)) {
         return res.status(403).json({ error: GOOGLE_BLOCKED_MESSAGE });
       }
@@ -509,7 +589,8 @@ export const googleAuth = async (req: Request, res: Response) => {
       const refreshToken = generateRefreshToken({ id: user.id, email: user.email, role: user.role });
       void touchLastActive(user.id);
       const linkedPurchases = await claimGuestPurchasesSafely(user.id, user.email, user.phone);
-      return res.json({ token, refreshToken, user, linked_purchases: linkedPurchases });
+      const consent = await getConsentStatus({ privacy_accepted_at, marketing_prompt_seen_at, marketing_opt_in });
+      return res.json({ token, refreshToken, user: { ...user, ...consent }, linked_purchases: linkedPurchases });
     }
 
     const emailOwner = await query('SELECT id FROM users WHERE LOWER(email) = $1 LIMIT 1', [profile.email]);
@@ -545,6 +626,8 @@ export const completeGoogleSignup = async (req: Request, res: Response) => {
       return res.status(400).json({ error: fieldsResult.error });
     }
 
+    const policyVersion = await checkSignupConsent(body);
+
     const googleOwner = await query('SELECT id FROM users WHERE google_id = $1 LIMIT 1', [profile.sub]);
     if (googleOwner.rows.length > 0) {
       return res.status(409).json({ error: 'This Google account already has a TRFC account. Sign in with Google.' });
@@ -561,9 +644,12 @@ export const completeGoogleSignup = async (req: Request, res: Response) => {
       google: { id: profile.sub, avatarUrl: profile.picture },
       existingId: phoneOwner?.id,
       body,
+      policyVersion,
+      ipHash: hashIp(req.ip),
     });
     res.status(201).json(payload);
   } catch (error) {
+    if (consentErrorResponse(res, error)) return;
     console.error(error);
     res.status(500).json({ error: 'Registration failed' });
   }

@@ -27,10 +27,11 @@ const CLAIM_SQL = `
     FOR UPDATE SKIP LOCKED
   )
   UPDATE announcement_emails e SET status = 'sending', claimed_at = NOW()
-  FROM batch, announcements a
+  FROM batch, announcements a, users u
   WHERE e.announcement_id = batch.announcement_id AND e.user_id = batch.user_id
-    AND a.id = e.announcement_id
-  RETURNING e.announcement_id, e.user_id, e.email, a.title, a.body, a.link_url, a.link_label, a.kind`
+    AND a.id = e.announcement_id AND u.id = e.user_id
+  RETURNING e.announcement_id, e.user_id, e.email, a.title, a.body, a.link_url, a.link_label, a.kind,
+    u.marketing_opt_in, u.deletion_requested_at`
 
 async function finish(announcementId: string, userId: string, success: boolean, error?: string) {
   await query(
@@ -49,6 +50,12 @@ export async function runAnnouncementEmailTick(): Promise<AnnouncementEmailTickR
 
   const claimed = await query(CLAIM_SQL, [EMAILS_PER_TICK])
   for (const row of claimed.rows) {
+    // Checked again at send time so an unsubscribe after publishing still stops queued news.
+    if (row.deletion_requested_at || (row.kind === 'news' && !row.marketing_opt_in)) {
+      await finish(row.announcement_id, row.user_id, false, 'Skipped: no longer opted in')
+      summary.failed++
+      continue
+    }
     const data = {
       title: row.title,
       body: row.body,

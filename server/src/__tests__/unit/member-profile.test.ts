@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+vi.mock('../../utils/consents.js', async () => (await import('./helpers/consentMock.js')).consentModuleMock())
 vi.mock('../../config/db.js', () => ({
   query: vi.fn(),
 }))
@@ -89,8 +90,19 @@ describe('updateMyProfile', () => {
 
     const [sql, params] = updateCall()!
     expect(sql).not.toMatch(/role\s*=|captain_id|referred_by/)
-    expect(params).toEqual(['Jane Wanjiku', 'jane@example.com', '0712345678', '254712345678', '254712345678', false, USER_ID])
+    expect(params).toEqual(['Jane Wanjiku', 'jane@example.com', '0712345678', '254712345678', '254712345678', USER_ID])
+    expect(String(sql).split('WHERE')[0]).not.toContain('marketing_opt_in')
     expect(res.json).toHaveBeenCalledWith({ user: UPDATED, token: 'access', refreshToken: 'refresh' })
+  })
+
+  it('logs a marketing change through the consent service only when the choice changes', async () => {
+    const { setMarketing } = await import('../../utils/consents.js')
+    routeQueries((sql) => (sql.includes('UPDATE users') || sql.includes('FROM users WHERE id') ? { rows: [UPDATED] } : undefined))
+    await updateMyProfile(makeReq({ ...BODY, marketingOptIn: false }), makeRes())
+    expect(setMarketing).not.toHaveBeenCalled()
+
+    await updateMyProfile(makeReq({ ...BODY, marketingOptIn: true }), makeRes())
+    expect(setMarketing).toHaveBeenCalledWith(USER_ID, true, expect.objectContaining({ source: 'settings' }))
   })
 })
 

@@ -1,8 +1,9 @@
 import { FormEvent, ReactNode, useEffect, useState } from 'react'
-import { ExternalLink, FileText, Loader, Mail, MessageCircle, X } from 'lucide-react'
+import { ExternalLink, FileText, Loader, Mail, MessageCircle, Trash2, X } from 'lucide-react'
 import {
   HIRING_STATUSES,
   HIRING_STATUS_LABELS,
+  deleteApplication,
   getApplication,
   updateApplication,
   type AdminOption,
@@ -12,6 +13,7 @@ import {
 import { formatDate } from '../reachOut/memberDisplay'
 import { adminSelectClass } from '../reachOut/ReachOutFilters'
 import { HiringStatusBadge, adminName, hoursLabel } from './hiringDisplay'
+import AdminConfirmDialog from '../../AdminConfirmDialog'
 
 const NOTES_MAX = 5000
 
@@ -29,11 +31,13 @@ export default function ApplicationDrawer({
   admins,
   onClose,
   onSaved,
+  onDeleted,
 }: {
   id: string
   admins: AdminOption[]
   onClose: () => void
   onSaved: (application: CoachApplication) => void
+  onDeleted: (id: string) => void
 }) {
   const [app, setApp] = useState<CoachApplication | null>(null)
   const [loadError, setLoadError] = useState('')
@@ -43,6 +47,8 @@ export default function ApplicationDrawer({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [savedAt, setSavedAt] = useState<number | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [busy, setBusy] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -97,6 +103,35 @@ export default function ApplicationDrawer({
       setError(err.response?.data?.error || 'Could not save')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const setCoachingEnded = async (ended: boolean) => {
+    if (!app) return
+    try {
+      setBusy(true)
+      setError('')
+      const updated = await updateApplication(app.id, { coachingEnded: ended })
+      setApp(updated)
+      onSaved(updated)
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Could not save')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const removeNow = async () => {
+    if (!app) return
+    setConfirmDelete(false)
+    try {
+      setBusy(true)
+      setError('')
+      await deleteApplication(app.id)
+      onDeleted(app.id)
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Could not delete this application')
+      setBusy(false)
     }
   }
 
@@ -219,15 +254,64 @@ export default function ApplicationDrawer({
                 <Answer label="Hours they can give">{hoursLabel(app.hours)}</Answer>
                 <Answer label="A time they worked harder than anyone">{app.worked_harder}</Answer>
                 <Answer label="Agreed to">
-                  Coach standards and storing their details, {formatDate(app.agreed_storage_at, true)}
+                  {app.privacy_agreed_at
+                    ? `Coach standards and the applicant Privacy and Confidentiality Terms (version ${app.privacy_version_accepted ?? '-'}), ${formatDate(app.privacy_agreed_at, true)}`
+                    : `Coach standards and storing their details, ${formatDate(app.agreed_storage_at, true)}`}
                 </Answer>
                 {app.status_changed_at && (
                   <Answer label="Status last changed">{formatDate(app.status_changed_at, true)}</Answer>
                 )}
               </dl>
             </section>
+
+            <section className="space-y-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+              <h3 className="text-sm font-semibold m-0">Keeping this application</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300 m-0">
+                {app.delete_after
+                  ? `Deleted automatically on ${formatDate(app.delete_after)}, with the video and CV.`
+                  : 'Kept while this coach is coaching for TRFC. Mark when they stop to start the countdown.'}
+              </p>
+              {app.status === 'accepted' && (
+                <p className="text-sm m-0">
+                  {app.coaching_ended_at ? (
+                    <>
+                      Stopped coaching on {formatDate(app.coaching_ended_at)}.{' '}
+                      <button type="button" disabled={busy} onClick={() => setCoachingEnded(false)} className="font-semibold text-blue-600 dark:text-blue-400 disabled:opacity-50">
+                        Undo
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => setCoachingEnded(true)}
+                      className="px-4 min-h-[44px] rounded-lg border border-gray-300 dark:border-gray-600 font-semibold disabled:opacity-50"
+                    >
+                      Mark as no longer coaching
+                    </button>
+                  )}
+                </p>
+              )}
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setConfirmDelete(true)}
+                className="inline-flex items-center gap-2 px-4 min-h-[44px] rounded-lg border border-red-300 dark:border-red-800 text-red-700 dark:text-red-400 font-semibold disabled:opacity-50"
+              >
+                <Trash2 size={16} /> Delete now
+              </button>
+            </section>
           </div>
         )}
+        <AdminConfirmDialog
+          open={confirmDelete}
+          title="Delete this application?"
+          message="The application, video and CV are removed for good. Use this when the applicant asks to be deleted."
+          confirmLabel="Delete"
+          variant="danger"
+          onConfirm={removeNow}
+          onCancel={() => setConfirmDelete(false)}
+        />
       </aside>
     </div>
   )

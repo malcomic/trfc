@@ -1,6 +1,7 @@
 import { query } from '../config/db.js'
 import { buildCatalogSeedSql } from '../config/programCatalogSeed.js'
 import { buildMemberPerksSeedSql } from '../config/memberPerksSeed.js'
+import { buildPolicySeedSql } from '../config/policySeed.js'
 
 const MIGRATIONS: { name: string; sql: string }[] = [
   {
@@ -1580,6 +1581,147 @@ const MIGRATIONS: { name: string; sql: string }[] = [
     sql: `
       ALTER TABLE orders ADD COLUMN IF NOT EXISTS collected_at TIMESTAMPTZ;
       ALTER TABLE orders ADD COLUMN IF NOT EXISTS collected_by UUID REFERENCES users(id) ON DELETE SET NULL;
+    `,
+  },
+  {
+    name: '066_membership_phase3',
+    sql: `
+      CREATE TABLE IF NOT EXISTS member_guides (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        title VARCHAR(160) NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        category VARCHAR(20) NOT NULL CHECK (category IN ('grocery', 'cooking', 'mindset', 'workouts')),
+        public_id TEXT NOT NULL,
+        file_name VARCHAR(200) NOT NULL,
+        bytes INT NOT NULL DEFAULT 0,
+        sort_order INT NOT NULL DEFAULT 0,
+        is_published BOOLEAN NOT NULL DEFAULT false,
+        created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_member_guides_published ON member_guides(is_published, category, sort_order);
+
+      CREATE TABLE IF NOT EXISTS member_polls (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        question VARCHAR(200) NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        opens_at TIMESTAMPTZ NOT NULL,
+        closes_at TIMESTAMPTZ NOT NULL,
+        closed_early_at TIMESTAMPTZ,
+        created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        CHECK (closes_at > opens_at)
+      );
+      CREATE TABLE IF NOT EXISTS member_poll_options (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        poll_id UUID NOT NULL REFERENCES member_polls(id) ON DELETE CASCADE,
+        label VARCHAR(120) NOT NULL,
+        sort_order INT NOT NULL DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS idx_member_poll_options_poll ON member_poll_options(poll_id, sort_order);
+      -- One row per member per poll; changing a vote updates the row.
+      CREATE TABLE IF NOT EXISTS member_votes (
+        poll_id UUID NOT NULL REFERENCES member_polls(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        option_id UUID NOT NULL REFERENCES member_poll_options(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (poll_id, user_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_member_votes_option ON member_votes(option_id);
+
+      CREATE TABLE IF NOT EXISTS live_qa_reminders (
+        session_at TIMESTAMPTZ PRIMARY KEY,
+        sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      -- Only switches on perks still carrying the original copy, so admin edits are kept.
+      UPDATE member_perks SET status = 'on', link_url = '/dashboard/guides', button_label = 'Open the library'
+      WHERE key = 'guides' AND status = 'coming_soon' AND description = 'Grocery, cooking, mindset and workout guides.';
+      UPDATE member_perks
+      SET status = 'on', settings = jsonb_build_object('zoom_url', '', 'next_at', '', 'title', '', 'notes', '')
+      WHERE key = 'live_qa' AND status = 'coming_soon'
+        AND description = 'A live Q&A on Zoom every month. The link and a reminder will be in your account.';
+      UPDATE member_perks SET status = 'on', link_url = '/dashboard/vote', button_label = 'Vote now'
+      WHERE key = 'member_vote' AND status = 'coming_soon' AND description = 'Vote on hike routes and next year''s events.';
+    `,
+  },
+  {
+    name: '067_privacy_consent',
+    sql: `
+      CREATE TABLE IF NOT EXISTS policy_documents (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        slug VARCHAR(40) NOT NULL CHECK (slug IN ('privacy-members', 'privacy-applicants', 'terms')),
+        version VARCHAR(20) NOT NULL,
+        title VARCHAR(200) NOT NULL,
+        intro TEXT NOT NULL DEFAULT '',
+        sections JSONB NOT NULL DEFAULT '[]'::jsonb,
+        last_updated DATE NOT NULL DEFAULT CURRENT_DATE,
+        is_material BOOLEAN NOT NULL DEFAULT false,
+        status VARCHAR(12) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
+        published_at TIMESTAMPTZ,
+        created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (slug, version)
+      );
+      CREATE INDEX IF NOT EXISTS idx_policy_documents_published ON policy_documents(slug, published_at DESC)
+        WHERE status = 'published';
+
+      CREATE TABLE IF NOT EXISTS privacy_settings (
+        key VARCHAR(60) PRIMARY KEY,
+        value JSONB NOT NULL,
+        updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      -- Append-only: a withdrawn consent is a new row with granted = false.
+      CREATE TABLE IF NOT EXISTS consent_records (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        coach_application_id UUID,
+        consent_type VARCHAR(30) NOT NULL
+          CHECK (consent_type IN ('terms_privacy', 'age_18_plus', 'marketing_email', 'applicant_privacy', 'captain_whatsapp')),
+        granted BOOLEAN NOT NULL,
+        policy_slug VARCHAR(40),
+        policy_version VARCHAR(20),
+        captain_id UUID,
+        source VARCHAR(30) NOT NULL,
+        ip_hash VARCHAR(64),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_consent_records_user ON consent_records(user_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_consent_records_application ON consent_records(coach_application_id);
+
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS privacy_version_accepted VARCHAR(20);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS privacy_accepted_at TIMESTAMPTZ;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS age_confirmed_at TIMESTAMPTZ;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS marketing_prompt_seen_at TIMESTAMPTZ;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS deletion_requested_at TIMESTAMPTZ;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS anonymised_at TIMESTAMPTZ;
+
+      CREATE TABLE IF NOT EXISTS captain_whatsapp_shares (
+        member_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        captain_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        enabled BOOLEAN NOT NULL DEFAULT false,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (member_id, captain_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_captain_whatsapp_shares_captain ON captain_whatsapp_shares(captain_id) WHERE enabled;
+
+      ALTER TABLE coach_applications ADD COLUMN IF NOT EXISTS privacy_version_accepted VARCHAR(20);
+      ALTER TABLE coach_applications ADD COLUMN IF NOT EXISTS privacy_agreed_at TIMESTAMPTZ;
+      ALTER TABLE coach_applications ADD COLUMN IF NOT EXISTS hired_at TIMESTAMPTZ;
+      ALTER TABLE coach_applications ADD COLUMN IF NOT EXISTS coaching_ended_at TIMESTAMPTZ;
+      ALTER TABLE coach_applications ADD COLUMN IF NOT EXISTS delete_after TIMESTAMPTZ;
+      ALTER TABLE coach_applications ALTER COLUMN agreed_storage_at DROP NOT NULL;
+      UPDATE coach_applications SET delete_after = created_at + INTERVAL '12 months'
+        WHERE delete_after IS NULL AND status <> 'accepted';
+      UPDATE coach_applications SET hired_at = COALESCE(status_changed_at, updated_at)
+        WHERE hired_at IS NULL AND status = 'accepted';
+
+      ${buildPolicySeedSql()}
     `,
   },
 ]

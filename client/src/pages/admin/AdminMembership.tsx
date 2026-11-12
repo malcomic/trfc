@@ -1,13 +1,19 @@
 import { useSearchParams } from 'react-router-dom'
 import { Crown } from 'lucide-react'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
+import GuidesTab from '../../components/admin/membership/GuidesTab'
+import LiveQaTab from '../../components/admin/membership/LiveQaTab'
 import MembersTab from '../../components/admin/membership/MembersTab'
 import PerksTab from '../../components/admin/membership/PerksTab'
+import PollsTab from '../../components/admin/membership/PollsTab'
 import SettingsTab from '../../components/admin/membership/SettingsTab'
 
 const TABS = [
   { id: 'members', label: 'Members' },
   { id: 'perks', label: 'Perks' },
+  { id: 'guides', label: 'Guides' },
+  { id: 'live-qa', label: 'Live Q&A' },
+  { id: 'polls', label: 'Member vote' },
   { id: 'settings', label: 'Settings' },
 ] as const
 type TabId = (typeof TABS)[number]['id']
@@ -43,6 +49,9 @@ export default function AdminMembership() {
       </div>
       {tab === 'members' && <MembersTab />}
       {tab === 'perks' && <PerksTab />}
+      {tab === 'guides' && <GuidesTab />}
+      {tab === 'live-qa' && <LiveQaTab />}
+      {tab === 'polls' && <PollsTab />}
       {tab === 'settings' && <SettingsTab />}
     </div>
   )

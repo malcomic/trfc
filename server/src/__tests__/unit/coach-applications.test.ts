@@ -40,7 +40,8 @@ function validBody(overrides: Record<string, unknown> = {}) {
     workedHarder: 'Trained for a marathon while working nights.',
     video: { source: 'link', url: 'https://youtu.be/abcdefghijk' },
     agreeStandards: true,
-    agreeStorage: true,
+    agreeApplicantPrivacy: true,
+    policyVersion: '1.0',
     submissionKey: '3f2a6c1e-1111-4111-8111-111111111111',
     website: '',
     startedAt: Date.now() - 60_000,
@@ -70,7 +71,7 @@ describe('cleanApplication', () => {
     expect(Object.keys(result.errors).sort()).toEqual(
       [
         'agreeStandards',
-        'agreeStorage',
+        'agreeApplicantPrivacy',
         'canGive3Hours',
         'email',
         'experience',
@@ -100,11 +101,11 @@ describe('cleanApplication', () => {
   })
 
   it('needs both tick boxes to be true, not just truthy', () => {
-    const result = cleanApplication(validBody({ agreeStandards: 'yes', agreeStorage: false }), CLOUD)
+    const result = cleanApplication(validBody({ agreeStandards: 'yes', agreeApplicantPrivacy: false }), CLOUD)
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.errors).toHaveProperty('agreeStandards')
-    expect(result.errors).toHaveProperty('agreeStorage')
+    expect(result.errors).toHaveProperty('agreeApplicantPrivacy')
   })
 
   it('only accepts uploads from our own Cloudinary coach video folder', () => {
@@ -236,8 +237,27 @@ describe('createCoachApplication', () => {
         existingKey = String(params?.[12])
         return { rows: [{ id: 'app-1' }] }
       }
+      if (sql.includes('FROM policy_documents')) return { rows: [{ version: '1.0' }] }
       return { rows: [] }
     }) as any)
+  })
+
+  it('saves the applicant privacy version, the delete date and a consent record', async () => {
+    const res = makeRes()
+    await createCoachApplication({ body: validBody(), ip: '1.2.3.4' } as any, res)
+    expect(res.status).toHaveBeenCalledWith(201)
+    const [sql, params] = calls('INSERT INTO coach_applications')[0]
+    expect(String(sql)).toContain('privacy_version_accepted')
+    expect(params).toEqual(expect.arrayContaining(['1.0', 12]))
+    const [, consent] = calls('INSERT INTO consent_records')[0]
+    expect(consent).toEqual(expect.arrayContaining(['app-1', 'applicant_privacy', true, 'privacy-applicants', '1.0', 'coach_form']))
+  })
+
+  it('refuses an application ticked against an older version of the terms', async () => {
+    const res = makeRes()
+    await createCoachApplication({ body: validBody({ policyVersion: '0.9' }), ip: '1.2.3.4' } as any, res)
+    expect(res.status).toHaveBeenCalledWith(409)
+    expect(calls('INSERT INTO coach_applications')).toHaveLength(0)
   })
 
   it('saves once when the same form is sent twice', async () => {

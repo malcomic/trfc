@@ -99,3 +99,58 @@ export interface TicketTransferResult {
 
 export const transferTicket = async (ticketId: string, email: string): Promise<TicketTransferResult> =>
   (await api.post(`/events/tickets/${ticketId}/transfer`, { email })).data
+
+export type GuideCategory = 'grocery' | 'cooking' | 'mindset' | 'workouts'
+
+export interface MemberGuide {
+  id: string
+  title: string
+  description: string
+  category: GuideCategory
+  fileName: string
+  bytes: number
+  updatedAt: string
+}
+
+export const getMemberGuides = async (): Promise<MemberGuide[]> => (await api.get('/membership/guides')).data
+
+export const getGuideDownloadUrl = async (id: string): Promise<string> =>
+  (await api.get<{ url: string }>(`/membership/guides/${id}/download`)).data.url
+
+export interface LiveQa {
+  nextAt: string | null
+  title: string
+  notes: string
+  joinOpensAt: string | null
+  joinUrl: string | null
+  isMember: boolean
+}
+
+export const getLiveQa = async (): Promise<LiveQa> => (await api.get('/membership/live-qa')).data
+
+export type PollStatus = 'upcoming' | 'open' | 'closed'
+
+export interface PollOption {
+  id: string
+  label: string
+  votes: number
+  percent: number
+}
+
+export interface MemberPoll {
+  id: string
+  question: string
+  description: string
+  opensAt: string
+  closesAt: string
+  closedEarlyAt: string | null
+  status: PollStatus
+  options: PollOption[]
+  total: number
+  myVote: string | null
+}
+
+export const getMemberPolls = async (): Promise<MemberPoll[]> => (await api.get('/membership/polls')).data
+
+export const voteInPoll = async (pollId: string, optionId: string): Promise<MemberPoll | null> =>
+  (await api.post(`/membership/polls/${pollId}/vote`, { optionId })).data

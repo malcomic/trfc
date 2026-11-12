@@ -19,8 +19,9 @@ export interface ScanListTicket {
   id: string
   attendee_name: string | null
   user_name: string | null
-  phone: string | null
-  email: string | null
+  /** Left out for captains; only admins and scanners get contact details. */
+  phone?: string | null
+  email?: string | null
   payment_status: string
   checked_in_at: string | null
   attendance_status: AttendanceStatus

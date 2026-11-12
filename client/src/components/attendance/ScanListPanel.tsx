@@ -138,7 +138,7 @@ export default function ScanListPanel({ eventId, onClose, onChanged, tone = 'adm
                 <li key={ticket.id} className="py-2 flex justify-between gap-3 text-sm">
                   <div className="min-w-0">
                     <p className="font-medium truncate">{ticket.attendee_name || ticket.user_name || 'Guest'}</p>
-                    <p className={`text-xs truncate ${t.muted}`}>{ticket.phone || ticket.email}</p>
+                    {(ticket.phone || ticket.email) && <p className={`text-xs truncate ${t.muted}`}>{ticket.phone || ticket.email}</p>}
                   </div>
                   <div className="text-right whitespace-nowrap">
                     <p className="text-xs">

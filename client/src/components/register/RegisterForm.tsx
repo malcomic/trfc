@@ -22,6 +22,13 @@ import SignupQuestions from './SignupQuestions'
 import CaptainCardPicker from '../captain/CaptainCardPicker'
 import GoogleButton, { isGoogleEnabled } from '../auth/GoogleButton'
 import { clearPendingGoogleSignup, useGoogleSignIn, type PendingGoogleSignup } from '../auth/useGoogleSignIn'
+import LinkedText from '../policy/LinkedText'
+import { useConsentCopy } from '../policy/useConsentCopy'
+
+export const CONSENT_LINKS = [
+  { phrase: 'Privacy and Confidentiality Terms', to: '/privacy' },
+  { phrase: 'Terms', to: '/terms' },
+]
 
 interface RegisterFormValues {
   name: string
@@ -159,6 +166,8 @@ export default function RegisterForm({ googleSignup }: RegisterFormProps = {}) {
   const [whatsappSame, setWhatsappSame] = useState(true)
   const [marketingOptIn, setMarketingOptIn] = useState(false)
   const [agreed, setAgreed] = useState(false)
+  const [ageConfirmed, setAgeConfirmed] = useState(false)
+  const consentCopy = useConsentCopy('privacy-members')
   const [referrer, setReferrer] = useState<Referrer | null>(null)
   const [captains, setCaptains] = useState<CaptainDirectoryEntry[] | null>(null)
   const [zones, setZones] = useState<Zone[]>([])
@@ -224,6 +233,9 @@ export default function RegisterForm({ googleSignup }: RegisterFormProps = {}) {
         referralCode,
         captainId,
         marketingOptIn,
+        acceptTerms: agreed,
+        ageConfirmed,
+        policyVersion: consentCopy.version ?? '',
         answers: compactAnswers(referrer ? { ...answers, zone: '' } : answers),
       }
       const response = googleSignup
@@ -473,21 +485,28 @@ export default function RegisterForm({ googleSignup }: RegisterFormProps = {}) {
             </div>
           )}
 
-          <CheckRow id="reg-marketing" checked={marketingOptIn} onChange={setMarketingOptIn}>
-            Yes, text me and email me about my program, TRFC events and the 2027 membership.
-          </CheckRow>
+          <p className="m-0 text-sm text-fog light:text-fog-light">
+            You must be 18 or older to make your own account. A parent or guardian can register a child for a family event when
+            buying the ticket.
+          </p>
 
           <CheckRow id="reg-terms" checked={agreed} onChange={setAgreed}>
-            I agree to the{' '}
-            <Link to="/terms" className="text-accent light:text-accent-light no-underline hover:underline">Terms</Link> and{' '}
-            <Link to="/privacy" className="text-accent light:text-accent-light no-underline hover:underline">Privacy Notice</Link>.
+            <LinkedText text={consentCopy.box1} links={CONSENT_LINKS} />
+          </CheckRow>
+
+          <CheckRow id="reg-age" checked={ageConfirmed} onChange={setAgeConfirmed}>
+            {consentCopy.ageBox}
+          </CheckRow>
+
+          <CheckRow id="reg-marketing" checked={marketingOptIn} onChange={setMarketingOptIn}>
+            {consentCopy.box2} <span className="text-fog/70 light:text-fog-light/70">(Optional)</span>
           </CheckRow>
 
           <p className="m-0 text-sm text-fog light:text-fog-light">{SIGNUP_QUESTIONS_COPY.beforeButton}</p>
 
           <button
             type="submit"
-            disabled={loading || !agreed}
+            disabled={loading || !agreed || !ageConfirmed || !consentCopy.version}
             className="w-full min-h-14 bg-cta border-0 text-cta-ink font-barlow-condensed font-black text-lg tracking-widest uppercase px-8 cursor-pointer clip-angled transition-all duration-200 flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-cta/90"
           >
             {loading ? 'Creating your account…' : <><span>{SIGNUP_QUESTIONS_COPY.button}</span> <ArrowRight size={18} /></>}
@@ -495,8 +514,14 @@ export default function RegisterForm({ googleSignup }: RegisterFormProps = {}) {
         </form>
 
         <p className="m-0 text-sm text-fog light:text-fog-light">
-          We will not give your number or email to anyone. To stop messages, tell us or tell your captain.
+          We will not give your number or email to anyone. Account messages, like ticket receipts and payment reminders, still
+          reach you. You can change your email choice any time from your dashboard.
         </p>
+        {consentCopy.loadFailed && (
+          <p className="m-0 text-sm text-red-500" role="alert">
+            We could not load the Privacy and Confidentiality Terms. Please refresh the page to sign up.
+          </p>
+        )}
         <p className="m-0 text-sm text-fog light:text-fog-light">
           Already have an account?{' '}
           <Link to={loginPath} className="font-barlow-condensed font-black tracking-widest uppercase text-accent light:text-accent-light no-underline hover:underline">

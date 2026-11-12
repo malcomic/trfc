@@ -7,6 +7,7 @@ import {
   type MembershipReminderKind,
 } from '../utils/emailTemplates.js'
 import { expireStaleMembershipHolds, getMembershipSettings } from '../utils/membership.js'
+import { sendLiveQaReminder } from '../utils/liveQa.js'
 
 const TICK_MS = 60 * 60 * 1000
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -73,7 +74,11 @@ export async function sendMembershipReminders(now = new Date()): Promise<number>
 export async function runMembershipTick(now = new Date()) {
   const holdsExpired = await expireStaleMembershipHolds()
   const reminded = await sendMembershipReminders(now)
-  return { holdsExpired, reminded }
+  const liveQaReminded = await sendLiveQaReminder(now).catch((error) => {
+    console.error('⚠️  Live Q&A reminder failed:', error?.message || error)
+    return false
+  })
+  return { holdsExpired, reminded, liveQaReminded }
 }
 
 let timer: NodeJS.Timeout | null = null
@@ -87,6 +92,7 @@ async function tick() {
     if (result.holdsExpired > 0 || result.reminded > 0) {
       console.log(`👑 Membership: ${result.reminded} reminders sent, ${result.holdsExpired} payment holds expired`)
     }
+    if (result.liveQaReminded) console.log('👑 Membership: live Q&A reminder posted')
   } catch (error: any) {
     console.error('⚠️  Membership job failed:', error?.message || error)
   } finally {

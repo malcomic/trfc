@@ -42,7 +42,14 @@ export interface CoachApplication {
   notes: string | null
   status_changed_at: string | null
   agreed_standards_at: string
-  agreed_storage_at: string
+  /** Older applications agreed to storage; newer ones agree to the applicant privacy terms. */
+  agreed_storage_at: string | null
+  privacy_version_accepted: string | null
+  privacy_agreed_at: string | null
+  hired_at: string | null
+  coaching_ended_at: string | null
+  /** When the retention job deletes this application; null while the coach is hired and coaching. */
+  delete_after: string | null
   created_at: string
   updated_at: string
 }
@@ -76,9 +83,13 @@ export async function getApplication(id: string): Promise<CoachApplication> {
 
 export async function updateApplication(
   id: string,
-  body: { status?: HiringStatus; notes?: string | null; handledBy?: string | null }
+  body: { status?: HiringStatus; notes?: string | null; handledBy?: string | null; coachingEnded?: boolean }
 ): Promise<CoachApplication> {
   return (await api.patch<CoachApplication>(`/admin/hiring/${id}`, body)).data
+}
+
+export async function deleteApplication(id: string): Promise<void> {
+  await api.delete(`/admin/hiring/${id}`)
 }
 
 export async function getHiringSettings(): Promise<HiringSettings> {

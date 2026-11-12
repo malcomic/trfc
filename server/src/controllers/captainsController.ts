@@ -127,21 +127,54 @@ export async function getCaptainDirectory(_req: Request, res: Response) {
 
 // ---------- Captain ----------
 
+/**
+ * Members whose zone is this captain's zone, or who chose this captain. Captains see name, zone,
+ * Saturdays attended and program progress; the WhatsApp number only while the member shares it
+ * with this captain, checked on every request so turning it off takes effect at once.
+ */
 export async function getMyTeam(req: Request, res: Response) {
   try {
     const captainId = req.user!.id
     const result = await query(
-      `SELECT u.id, u.name,
+      `WITH me AS (SELECT region_id FROM captains WHERE user_id = $1)
+       SELECT u.id, u.name, z.name AS zone,
               COALESCE(u.captain_chosen_at, u.referred_at, u.created_at) AS joined_at,
-              CASE WHEN u.referred_by_region_id = c.region_id THEN 'zone_link' ELSE 'chosen' END AS joined_via
-       FROM users u
-       JOIN captains c ON c.user_id = $1
-       WHERE u.captain_id = $1
-       ORDER BY joined_at DESC NULLS LAST
+              CASE WHEN u.referred_by_region_id = me.region_id THEN 'zone_link' ELSE 'chosen' END AS joined_via,
+              (u.captain_id = $1) AS is_my_member,
+              (SELECT COUNT(DISTINCT e.event_date::date)::int
+                 FROM events e
+                 WHERE EXTRACT(DOW FROM e.event_date) = 6
+                   AND e.cancelled_at IS NULL
+                   AND e.id IN (
+                     SELECT event_id FROM event_checkins WHERE user_id = u.id
+                     UNION
+                     SELECT event_id FROM tickets WHERE user_id = u.id AND checked_in_at IS NOT NULL
+                   )) AS saturdays_attended,
+              COALESCE((
+                SELECT json_agg(json_build_object(
+                  'program', pe.program,
+                  'status', pe.status,
+                  'sessions_done', (SELECT COUNT(*)::int FROM program_session_progress p
+                                    WHERE p.user_id = u.id AND p.program = pe.program AND p.completed_at IS NOT NULL),
+                  'weeks_checked_in', (SELECT COUNT(*)::int FROM program_checkins pc
+                                       WHERE pc.user_id = u.id AND pc.program = pe.program)
+                ) ORDER BY pe.enrolled_at)
+                FROM program_enrollments pe WHERE pe.user_id = u.id
+              ), '[]'::json) AS programs,
+              CASE WHEN s.enabled THEN COALESCE(u.whatsapp, u.phone_normalized) END AS whatsapp
+       FROM me
+       JOIN users u ON u.id <> $1
+       LEFT JOIN captains oc ON oc.user_id = u.captain_id
+       LEFT JOIN regions z ON z.id = COALESCE(u.referred_by_region_id, oc.region_id)
+       LEFT JOIN captain_whatsapp_shares s ON s.member_id = u.id AND s.captain_id = $1
+       WHERE (u.captain_id = $1 OR COALESCE(u.referred_by_region_id, oc.region_id) = me.region_id)
+         AND u.deletion_requested_at IS NULL
+         AND u.role = 'member'
+       ORDER BY is_my_member DESC, joined_at DESC NULLS LAST
        LIMIT 500`,
       [captainId]
     )
-    res.json(result.rows.map(({ name, ...row }) => ({ ...row, name: maskName(name) })))
+    res.json(result.rows)
   } catch (error) {
     console.error(error)
     res.status(500).json({ error: 'Failed to fetch team members' })
@@ -200,15 +233,11 @@ export async function getMyReferrals(req: Request, res: Response) {
   try {
     const zone = await getCaptainZone(req.user!.id)
     if (!zone) return res.status(404).json({ error: 'Captain profile not found' })
+    // Only admins see purchase history, so no per-member purchase counts or spend here.
     const result = await query(
-      `SELECT u.id, u.name, u.referred_at,
-              COUNT(cc.id) FILTER (WHERE cc.status <> 'reversed')::int AS purchases,
-              COALESCE(SUM(cc.base_amount) FILTER (WHERE cc.status <> 'reversed'), 0)::float AS total_spent,
-              COALESCE(SUM(cc.amount) FILTER (WHERE cc.status <> 'reversed'), 0)::float AS commission_earned
+      `SELECT u.id, u.name, u.referred_at
        FROM users u
-       LEFT JOIN captain_commissions cc ON cc.referred_user_id = u.id AND cc.region_id = $1
-       WHERE u.referred_by_region_id = $1
-       GROUP BY u.id
+       WHERE u.referred_by_region_id = $1 AND u.deletion_requested_at IS NULL
        ORDER BY u.referred_at DESC NULLS LAST
        LIMIT 500`,
       [zone.id]
@@ -238,10 +267,9 @@ export async function getMyCommissions(req: Request, res: Response) {
     )
     const rows = await query(
       `SELECT cc.id, cc.source_type, cc.base_amount::float AS base_amount, cc.rate::float AS rate,
-              cc.amount::float AS amount, cc.status, cc.created_at, cc.approved_at, u.name AS customer_name,
+              cc.amount::float AS amount, cc.status, cc.created_at, cc.approved_at,
               ev.title AS event_title, esl.used_tickets
        FROM captain_commissions cc
-       LEFT JOIN users u ON u.id = cc.referred_user_id
        LEFT JOIN event_settlement_lines esl ON cc.source_type = 'event_share' AND esl.id = cc.source_id
        LEFT JOIN events ev ON ev.id = esl.event_id
        WHERE cc.region_id = $1 ${statusFilter}
@@ -250,7 +278,8 @@ export async function getMyCommissions(req: Request, res: Response) {
       params
     )
     res.json({
-      commissions: rows.rows.map(({ customer_name, ...row }) => ({ ...row, customer_name: maskName(customer_name) })),
+      // Purchases are never tied to a named member for captains.
+      commissions: rows.rows.map((row) => ({ ...row, customer_name: 'A member' })),
       total: total.rows[0].count,
       page,
       limit,

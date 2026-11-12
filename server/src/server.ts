@@ -10,6 +10,7 @@ import { startInstallmentScheduler } from './jobs/installmentJobs.js';
 import { startCreditScheduler } from './jobs/creditJobs.js';
 import { startAnnouncementEmailScheduler } from './jobs/announcementEmails.js';
 import { startMembershipScheduler } from './jobs/membershipJobs.js';
+import { startRetentionScheduler } from './jobs/retentionJobs.js';
 
 export { pool };
 
@@ -45,6 +46,8 @@ import checkinsRoutes from './routes/checkins.js';
 import announcementsRoutes from './routes/announcements.js';
 import coachApplicationsRoutes from './routes/coachApplications.js';
 import membershipRoutes from './routes/membership.js';
+import policiesRoutes from './routes/policies.js';
+import privacyRoutes from './routes/privacy.js';
 
 dotenv.config();
 
@@ -93,6 +96,8 @@ app.use('/api/checkins', checkinsRoutes);
 app.use('/api/announcements', announcementsRoutes);
 app.use('/api/coach-applications', coachApplicationsRoutes);
 app.use('/api/membership', membershipRoutes);
+app.use('/api/policies', policiesRoutes);
+app.use('/api/me/privacy', privacyRoutes);
 
 // Start server
 const startServer = async () => {
@@ -115,6 +120,7 @@ const startServer = async () => {
       startCreditScheduler();
       startAnnouncementEmailScheduler();
       startMembershipScheduler();
+      startRetentionScheduler();
     });
   } catch (error) {
     console.error('✗ Failed to connect to database:', error);

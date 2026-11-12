@@ -21,6 +21,8 @@ const row = (n: number, kind: 'important' | 'news' = 'important') => ({
   link_url: null,
   link_label: null,
   kind,
+  marketing_opt_in: kind === 'news',
+  deletion_requested_at: null as string | null,
 })
 
 const callsMatching = (fragment: string) =>
@@ -86,6 +88,15 @@ describe('runAnnouncementEmailTick', () => {
     const token = decodeURIComponent(news.match(/unsubscribe\?token=([^\s]+)/)![1])
     expect(verifyUnsubscribeToken(token)).toBe(row(1).user_id)
     expect(important).not.toContain('unsubscribe')
+  })
+
+  it('skips queued news for someone who unsubscribed after it was published', async () => {
+    mockDb([{ ...row(1, 'news'), marketing_opt_in: false }, row(2, 'important')])
+    const result = await runAnnouncementEmailTick()
+
+    expect(sendEmail).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(sendEmail).mock.calls[0][0]).toMatchObject({ to: 'runner2@example.com' })
+    expect(result).toMatchObject({ sent: 1, failed: 1 })
   })
 
   it('returns rows stuck in sending to the queue', async () => {

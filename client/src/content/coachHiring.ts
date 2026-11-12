@@ -119,7 +119,7 @@ export interface ApplicationForm {
   cvPublicId: string
   cvFileName: string
   agreeStandards: boolean
-  agreeStorage: boolean
+  agreeApplicantPrivacy: boolean
 }
 
 export const EMPTY_FORM: ApplicationForm = {
@@ -140,7 +140,7 @@ export const EMPTY_FORM: ApplicationForm = {
   cvPublicId: '',
   cvFileName: '',
   agreeStandards: false,
-  agreeStorage: false,
+  agreeApplicantPrivacy: false,
 }
 
 export type FormErrors = Partial<Record<keyof ApplicationForm | 'video' | 'cv' | 'form', string>>
@@ -181,7 +181,7 @@ export function validateApplication(form: ApplicationForm): FormErrors {
   if (form.videoSource === 'upload' && !form.uploadUrl) errors.video = 'Please upload your 1 minute video'
   if (form.videoSource === 'link' && !isHttpsLink(withHttps(form.linkUrl))) errors.video = 'Paste a full link to your video'
   if (!form.agreeStandards) errors.agreeStandards = 'Please confirm you will follow the coach standards'
-  if (!form.agreeStorage) errors.agreeStorage = 'Please agree so we can keep your details for hiring'
+  if (!form.agreeApplicantPrivacy) errors.agreeApplicantPrivacy = 'Please agree to the applicant Privacy and Confidentiality Terms'
   return errors
 }
 
@@ -203,7 +203,10 @@ export function cvFileProblem(file: { name: string; size: number }): string | nu
   return null
 }
 
-export function toSubmission(form: ApplicationForm, extras: { submissionKey: string; startedAt: number; website: string }) {
+export function toSubmission(
+  form: ApplicationForm,
+  extras: { submissionKey: string; startedAt: number; website: string; policyVersion: string }
+) {
   return {
     fullName: form.fullName.trim(),
     phone: form.phone.trim(),
@@ -220,7 +223,7 @@ export function toSubmission(form: ApplicationForm, extras: { submissionKey: str
         : { source: 'link' as const, url: withHttps(form.linkUrl) },
     cv: form.cvUrl ? { url: form.cvUrl, publicId: form.cvPublicId, fileName: form.cvFileName } : null,
     agreeStandards: form.agreeStandards,
-    agreeStorage: form.agreeStorage,
+    agreeApplicantPrivacy: form.agreeApplicantPrivacy,
     ...extras,
   }
 }

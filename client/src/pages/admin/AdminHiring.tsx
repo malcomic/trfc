@@ -190,6 +190,11 @@ export default function AdminHiring() {
     if (before && before.status !== updated.status) load()
   }
 
+  const onDeleted = () => {
+    openApplication(null)
+    load()
+  }
+
   const rows = data?.rows ?? []
   const total = data?.total ?? 0
   const pageSize = data?.pageSize ?? 25
@@ -328,7 +333,7 @@ export default function AdminHiring() {
       )}
 
       {openId && (
-        <ApplicationDrawer id={openId} admins={settings?.admins ?? []} onClose={() => openApplication(null)} onSaved={onSaved} />
+        <ApplicationDrawer id={openId} admins={settings?.admins ?? []} onClose={() => openApplication(null)} onSaved={onSaved} onDeleted={onDeleted} />
       )}
     </div>
   )

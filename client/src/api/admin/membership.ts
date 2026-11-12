@@ -1,5 +1,5 @@
 import api from '../index'
-import type { MemberPerk, MembershipPriceType, PerkStatus } from '../membership'
+import type { GuideCategory, MemberGuide, MemberPerk, MemberPoll, MembershipPriceType, PerkStatus } from '../membership'
 
 export type MemberStatusFilter = 'active' | 'expiring' | 'grace' | 'lapsed'
 
@@ -110,6 +110,91 @@ export const updatePerk = async (key: string, body: PerkUpdate): Promise<MemberP
 
 export const reorderPerks = async (keys: string[]): Promise<MemberPerk[]> =>
   (await api.post('/admin/membership/perks/reorder', { keys })).data
+
+export interface AdminGuide extends MemberGuide {
+  sortOrder: number
+  isPublished: boolean
+  createdAt: string
+}
+
+export interface GuideFields {
+  title?: string
+  description?: string
+  category?: GuideCategory
+  isPublished?: boolean
+}
+
+function guideForm(fields: GuideFields, file?: File | null): FormData {
+  const body = new FormData()
+  for (const [key, value] of Object.entries(fields)) {
+    if (value !== undefined) body.append(key, String(value))
+  }
+  if (file) body.append('file', file)
+  return body
+}
+
+export const getAdminGuides = async (): Promise<AdminGuide[]> => (await api.get('/admin/membership/guides')).data
+
+export async function uploadGuide(
+  fields: Required<Pick<GuideFields, 'title' | 'category'>> & GuideFields,
+  file: File,
+  onProgress?: (percent: number) => void
+): Promise<AdminGuide> {
+  const response = await api.post<AdminGuide>('/admin/membership/guides', guideForm(fields, file), {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: (event) => {
+      if (onProgress && event.total) onProgress(Math.round((event.loaded / event.total) * 100))
+    },
+  })
+  return response.data
+}
+
+export const updateGuide = async (id: string, fields: GuideFields, file?: File | null): Promise<AdminGuide> =>
+  (
+    await api.put(`/admin/membership/guides/${id}`, guideForm(fields, file), {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  ).data
+
+export const deleteGuide = async (id: string) => (await api.delete(`/admin/membership/guides/${id}`)).data
+
+export const reorderGuides = async (ids: string[]): Promise<AdminGuide[]> =>
+  (await api.post('/admin/membership/guides/reorder', { ids })).data
+
+export interface AdminLiveQa {
+  on: boolean
+  nextAt: string | null
+  zoomUrl: string
+  title: string
+  notes: string
+  reminderAt: string | null
+  reminderSentAt: string | null
+}
+
+export const getAdminLiveQa = async (): Promise<AdminLiveQa> => (await api.get('/admin/membership/live-qa')).data
+
+export const saveLiveQa = async (body: { nextAt: string; zoomUrl: string; title: string; notes: string }): Promise<AdminLiveQa> =>
+  (await api.put('/admin/membership/live-qa', body)).data
+
+export interface PollFields {
+  question: string
+  description: string
+  opensAt: string
+  closesAt: string
+  options: string[]
+}
+
+export const getAdminPolls = async (): Promise<MemberPoll[]> => (await api.get('/admin/membership/polls')).data
+
+export const createPoll = async (body: PollFields & { announce: boolean }): Promise<{ poll: MemberPoll | null; announced: boolean }> =>
+  (await api.post('/admin/membership/polls', body)).data
+
+export const updatePoll = async (id: string, body: Partial<PollFields>): Promise<MemberPoll> =>
+  (await api.put(`/admin/membership/polls/${id}`, body)).data
+
+export const closePoll = async (id: string): Promise<MemberPoll> => (await api.post(`/admin/membership/polls/${id}/close`)).data
+
+export const deletePoll = async (id: string) => (await api.delete(`/admin/membership/polls/${id}`)).data
 
 export async function exportMembers(filters: MembersFilters): Promise<void> {
   const response = await api.get<Blob>('/admin/membership/members/export', { params: filters, responseType: 'blob' })

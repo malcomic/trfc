@@ -194,9 +194,13 @@ describe('unsubscribe tokens', () => {
     const res = makeRes()
     await unsubscribeFromMarketing({ body: { token: signUnsubscribeToken(USER_ID) } } as any, res)
 
-    const [sql, params] = callsMatching('UPDATE users SET marketing_opt_in = false')[0]
-    expect(String(sql)).toContain('marketing_opt_in_at = NULL')
-    expect(params).toEqual([USER_ID])
+    const [sql, params] = callsMatching('marketing_opt_in = $1')[0]
+    expect(String(sql)).toContain('UPDATE users')
+    expect(params).toEqual([false, USER_ID])
+    const [, consentParams] = callsMatching('INSERT INTO consent_records')[0]
+    expect(consentParams).toEqual(
+      expect.arrayContaining([USER_ID, 'marketing_email', false, 'unsubscribe_link'])
+    )
     expect(res.json).toHaveBeenCalledWith({ ok: true })
   })
 
