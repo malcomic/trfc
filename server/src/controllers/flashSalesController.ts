@@ -1,5 +1,5 @@
 import { Request, Response } from 'express'
-import { query } from '../config/db.js'
+import { getClient, query } from '../config/db.js'
 import {
   FLASH_ACCESS_HOURS,
   findEligibleTicket,
@@ -41,6 +41,35 @@ const LIVE_CONDITION = `
   fs.is_active = true
   AND fs.starts_at <= NOW()
   AND (fs.ends_at IS NULL OR fs.ends_at > NOW())
+`
+
+/**
+ * True when the sale has no unlock rows, or one of them matches the buyer's events (whole-event
+ * rows) or ticket types. The params must be uuid[]; guests pass empty arrays.
+ */
+export function flashSaleUnlockedSql(alias: string, eventIdsParam: string, typeIdsParam: string): string {
+  return `(
+    NOT EXISTS (SELECT 1 FROM flash_sale_unlocks u WHERE u.flash_sale_id = ${alias}.id)
+    OR EXISTS (
+      SELECT 1 FROM flash_sale_unlocks u
+      WHERE u.flash_sale_id = ${alias}.id
+        AND (
+          (u.ticket_type_id IS NULL AND u.event_id = ANY(${eventIdsParam}::uuid[]))
+          OR u.ticket_type_id = ANY(${typeIdsParam}::uuid[])
+        )
+    )
+  )`
+}
+
+/** Labels like "Night Run" or "Night Run: VIP" for the events a sale is locked to. */
+const UNLOCK_LABELS_SQL = `
+  COALESCE((
+    SELECT json_agg(DISTINCT CASE WHEN ett.name IS NULL THEN e.title ELSE e.title || ': ' || ett.name END)
+    FROM flash_sale_unlocks u
+    JOIN events e ON e.id = u.event_id
+    LEFT JOIN event_ticket_types ett ON ett.id = u.ticket_type_id
+    WHERE u.flash_sale_id = fs.id
+  ), '[]'::json)
 `
 
 function withRemaining<T extends { quantity_limit: number | null; sold_units: number }>(row: T) {
@@ -198,15 +227,17 @@ export async function getLiveFlashSales(req: Request, res: Response) {
          p.name AS product_name, p.description AS product_description, p.image_url AS product_image_url,
          p.price AS regular_price, p.stock AS product_stock, p.category AS product_category,
          p.distance_options, ${variantsJsonSql()} AS product_variants,
-         c.name AS category_name, c.slug AS category_slug
+         c.name AS category_name, c.slug AS category_slug,
+         ${UNLOCK_LABELS_SQL} AS unlock_labels
        FROM flash_sales fs
        JOIN products p ON p.id = fs.product_id
        LEFT JOIN product_categories c ON c.id = p.category_id
        WHERE ${LIVE_CONDITION}
          AND p.is_active = true
          AND ${productInZoneSql('p', '$1')}
+         AND ${flashSaleUnlockedSql('fs', '$2', '$3')}
        ORDER BY fs.sort_order ASC, fs.created_at ASC`,
-      [access.zoneId]
+      [access.zoneId, access.eventIds, access.ticketTypeIds]
     )
 
     res.json({
@@ -225,8 +256,15 @@ export interface LiveOfferPrice {
   regularPrice: number
 }
 
-/** Cheapest live flash offer visible in `zoneId` that still has units and stock left, or null. */
-export async function getCheapestLiveOffer(zoneId: string | null = null): Promise<LiveOfferPrice | null> {
+/**
+ * Cheapest live flash offer visible in `zoneId` and unlocked by the given events / ticket types
+ * that still has units and stock left, or null.
+ */
+export async function getCheapestLiveOffer(
+  zoneId: string | null = null,
+  eventIds: string[] = [],
+  ticketTypeIds: string[] = []
+): Promise<LiveOfferPrice | null> {
   const result = await query(
     `SELECT fs.sale_price, p.price AS regular_price
      FROM flash_sales fs
@@ -236,9 +274,10 @@ export async function getCheapestLiveOffer(zoneId: string | null = null): Promis
        AND p.stock > 0
        AND (fs.quantity_limit IS NULL OR fs.quantity_limit > ${FLASH_SOLD_UNITS_SQL})
        AND ${productInZoneSql('p', '$1')}
+       AND ${flashSaleUnlockedSql('fs', '$2', '$3')}
      ORDER BY fs.sale_price ASC
      LIMIT 1`,
-    [zoneId]
+    [zoneId, eventIds, ticketTypeIds]
   )
   const row = result.rows[0]
   if (!row) return null
@@ -252,7 +291,19 @@ export async function getAdminFlashSales(_req: Request, res: Response) {
          fs.*,
          ${FLASH_SOLD_UNITS_SQL} AS sold_units,
          p.name AS product_name, p.price AS regular_price, p.is_active AS product_active,
-         ${zonesJsonSql('p')} AS product_zones
+         ${zonesJsonSql('p')} AS product_zones,
+         COALESCE((
+           SELECT json_agg(json_build_object(
+             'event_id', u.event_id,
+             'event_title', e.title,
+             'ticket_type_id', u.ticket_type_id,
+             'ticket_type_name', ett.name
+           ) ORDER BY e.title, ett.name NULLS FIRST)
+           FROM flash_sale_unlocks u
+           JOIN events e ON e.id = u.event_id
+           LEFT JOIN event_ticket_types ett ON ett.id = u.ticket_type_id
+           WHERE u.flash_sale_id = fs.id
+         ), '[]'::json) AS unlocks
        FROM flash_sales fs
        JOIN products p ON p.id = fs.product_id
        ORDER BY fs.sort_order ASC, fs.created_at DESC`
@@ -264,6 +315,12 @@ export async function getAdminFlashSales(_req: Request, res: Response) {
   }
 }
 
+export interface FlashSaleUnlockInput {
+  event_id: string
+  /** Null unlocks the sale for every ticket type of the event. */
+  ticket_type_id: string | null
+}
+
 interface FlashSaleInput {
   product_id: string
   sale_price: number
@@ -272,6 +329,79 @@ interface FlashSaleInput {
   ends_at: Date | null
   sort_order: number
   is_active: boolean
+  /** Undefined keeps the sale's current unlocks; an empty list opens it to all ticket holders. */
+  unlocks?: FlashSaleUnlockInput[]
+}
+
+/**
+ * Validates the events / ticket types that unlock a sale. Duplicates are dropped, as are ticket
+ * type rows for an event that is also selected as a whole event.
+ */
+export async function parseFlashSaleUnlocks(
+  value: unknown
+): Promise<{ unlocks?: FlashSaleUnlockInput[]; error?: string }> {
+  if (value === undefined) return {}
+  if (value === null) return { unlocks: [] }
+  if (!Array.isArray(value)) return { error: 'Unlocks must be a list' }
+
+  const wholeEvents = new Set<string>()
+  const typesByEvent = new Map<string, Set<string>>()
+  for (const item of value) {
+    const eventId = (item as { event_id?: unknown } | null)?.event_id
+    const rawTypeId = (item as { ticket_type_id?: unknown } | null)?.ticket_type_id
+    if (!isUuid(eventId)) return { error: 'Invalid event selected' }
+    if (rawTypeId === undefined || rawTypeId === null || rawTypeId === '') {
+      wholeEvents.add(eventId)
+      continue
+    }
+    if (!isUuid(rawTypeId)) return { error: 'Invalid ticket type selected' }
+    const types = typesByEvent.get(eventId) ?? new Set<string>()
+    types.add(rawTypeId)
+    typesByEvent.set(eventId, types)
+  }
+
+  const eventIds = [...new Set([...wholeEvents, ...typesByEvent.keys()])]
+  if (eventIds.length === 0) return { unlocks: [] }
+
+  const eventsResult = await query('SELECT id FROM events WHERE id = ANY($1::uuid[])', [eventIds])
+  const foundEvents = new Set(eventsResult.rows.map((row) => String(row.id)))
+  if (eventIds.some((id) => !foundEvents.has(id))) return { error: 'Event not found' }
+
+  const unlocks: FlashSaleUnlockInput[] = [...wholeEvents].map((event_id) => ({ event_id, ticket_type_id: null }))
+  const typeIds = [...typesByEvent.entries()]
+    .filter(([eventId]) => !wholeEvents.has(eventId))
+    .flatMap(([, types]) => [...types])
+  if (typeIds.length > 0) {
+    const typesResult = await query(
+      'SELECT id, event_id FROM event_ticket_types WHERE id = ANY($1::uuid[])',
+      [typeIds]
+    )
+    const eventOfType = new Map(typesResult.rows.map((row) => [String(row.id), String(row.event_id)]))
+    for (const [eventId, types] of typesByEvent) {
+      if (wholeEvents.has(eventId)) continue
+      for (const typeId of types) {
+        if (eventOfType.get(typeId) !== eventId) {
+          return { error: 'Ticket type does not belong to the selected event' }
+        }
+        unlocks.push({ event_id: eventId, ticket_type_id: typeId })
+      }
+    }
+  }
+
+  return { unlocks }
+}
+
+type DbClient = Awaited<ReturnType<typeof getClient>>
+
+async function replaceUnlocks(client: DbClient, flashSaleId: string, unlocks: FlashSaleUnlockInput[]) {
+  await client.query('DELETE FROM flash_sale_unlocks WHERE flash_sale_id = $1', [flashSaleId])
+  if (unlocks.length === 0) return
+  await client.query(
+    `INSERT INTO flash_sale_unlocks (flash_sale_id, event_id, ticket_type_id)
+     SELECT $1, u.event_id, u.ticket_type_id
+     FROM unnest($2::uuid[], $3::uuid[]) AS u(event_id, ticket_type_id)`,
+    [flashSaleId, unlocks.map((u) => u.event_id), unlocks.map((u) => u.ticket_type_id)]
+  )
 }
 
 async function parseFlashSaleInput(
@@ -313,6 +443,9 @@ async function parseFlashSaleInput(
 
   const sortOrder = Number.isFinite(Number(body.sort_order)) ? Number(body.sort_order) : 0
 
+  const { unlocks, error: unlockError } = await parseFlashSaleUnlocks(body.unlocks)
+  if (unlockError) return { error: unlockError }
+
   return {
     data: {
       product_id: productId,
@@ -322,16 +455,22 @@ async function parseFlashSaleInput(
       ends_at: endsAt,
       sort_order: sortOrder,
       is_active: typeof body.is_active === 'boolean' ? body.is_active : true,
+      unlocks,
     },
   }
 }
 
 export async function createFlashSale(req: Request, res: Response) {
-  try {
-    const { data, error } = await parseFlashSaleInput(req.body || {})
-    if (!data) return res.status(400).json({ error })
+  const { data, error } = await parseFlashSaleInput(req.body || {}).catch((err) => {
+    console.error(err)
+    return { data: undefined, error: undefined }
+  })
+  if (!data) return res.status(error ? 400 : 500).json({ error: error ?? 'Failed to create flash sale' })
 
-    const result = await query(
+  const client = await getClient()
+  try {
+    await client.query('BEGIN')
+    const result = await client.query(
       `INSERT INTO flash_sales (product_id, sale_price, quantity_limit, starts_at, ends_at, sort_order, is_active)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
       [
@@ -344,20 +483,31 @@ export async function createFlashSale(req: Request, res: Response) {
         data.is_active,
       ]
     )
-    res.status(201).json(result.rows[0])
+    const sale = result.rows[0]
+    await replaceUnlocks(client, sale.id, data.unlocks ?? [])
+    await client.query('COMMIT')
+    res.status(201).json(sale)
   } catch (error) {
+    await client.query('ROLLBACK').catch(() => {})
     console.error(error)
     res.status(500).json({ error: 'Failed to create flash sale' })
+  } finally {
+    client.release()
   }
 }
 
 export async function updateFlashSale(req: Request, res: Response) {
-  try {
-    const { id } = req.params
-    const { data, error } = await parseFlashSaleInput(req.body || {})
-    if (!data) return res.status(400).json({ error })
+  const { id } = req.params
+  const { data, error } = await parseFlashSaleInput(req.body || {}).catch((err) => {
+    console.error(err)
+    return { data: undefined, error: undefined }
+  })
+  if (!data) return res.status(error ? 400 : 500).json({ error: error ?? 'Failed to update flash sale' })
 
-    const result = await query(
+  const client = await getClient()
+  try {
+    await client.query('BEGIN')
+    const result = await client.query(
       `UPDATE flash_sales
        SET product_id = $1, sale_price = $2, quantity_limit = $3, starts_at = $4,
            ends_at = $5, sort_order = $6, is_active = $7
@@ -374,12 +524,18 @@ export async function updateFlashSale(req: Request, res: Response) {
       ]
     )
     if (result.rows.length === 0) {
+      await client.query('ROLLBACK')
       return res.status(404).json({ error: 'Flash sale not found' })
     }
+    if (data.unlocks) await replaceUnlocks(client, id, data.unlocks)
+    await client.query('COMMIT')
     res.json(result.rows[0])
   } catch (error) {
+    await client.query('ROLLBACK').catch(() => {})
     console.error(error)
     res.status(500).json({ error: 'Failed to update flash sale' })
+  } finally {
+    client.release()
   }
 }
 

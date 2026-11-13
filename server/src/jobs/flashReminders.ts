@@ -38,24 +38,25 @@ export function dueFlashReminderStage(paidAt: Date, now: Date): FlashReminderSta
 
 // For each address, the earliest paid ticket whose flash window is still open,
 // skipping anyone who already has a paid order containing a flash item.
-// zone_id comes from the address's most recent open ticket, matching what the flash page shows.
+// zone_id comes from the address's most recent open ticket, and event_ids / ticket_type_ids from
+// all of them, matching what the flash page shows.
+const BUYER_TICKETS_SQL = `
+  FROM tickets t2
+  WHERE t2.payment_status = 'paid'
+    AND t2.paid_at IS NOT NULL
+    AND t2.paid_at + INTERVAL '${FLASH_ACCESS_HOURS} hours' > $1
+    AND (
+      t2.id = c.ticket_id
+      OR (c.user_id IS NOT NULL AND t2.user_id = c.user_id)
+      OR LOWER(t2.email) = c.email
+    )
+`
 const CANDIDATES_SQL = `
   SELECT DISTINCT ON (c.email) c.ticket_id, c.email, c.paid_at, c.user_id,
     COALESCE((SELECT MAX(r.stage) FROM flash_reminder_emails r WHERE r.ticket_id = c.ticket_id), 0)::int AS last_stage,
-    (
-      SELECT t2.zone_id
-      FROM tickets t2
-      WHERE t2.payment_status = 'paid'
-        AND t2.paid_at IS NOT NULL
-        AND t2.paid_at + INTERVAL '${FLASH_ACCESS_HOURS} hours' > $1
-        AND (
-          t2.id = c.ticket_id
-          OR (c.user_id IS NOT NULL AND t2.user_id = c.user_id)
-          OR LOWER(t2.email) = c.email
-        )
-      ORDER BY t2.paid_at DESC
-      LIMIT 1
-    ) AS zone_id
+    (SELECT t2.zone_id ${BUYER_TICKETS_SQL} ORDER BY t2.paid_at DESC LIMIT 1) AS zone_id,
+    ARRAY(SELECT DISTINCT t2.event_id ${BUYER_TICKETS_SQL} AND t2.event_id IS NOT NULL) AS event_ids,
+    ARRAY(SELECT DISTINCT t2.ticket_type_id ${BUYER_TICKETS_SQL} AND t2.ticket_type_id IS NOT NULL) AS ticket_type_ids
   FROM (
     SELECT t.id AS ticket_id, LOWER(TRIM(COALESCE(NULLIF(TRIM(t.email), ''), u.email))) AS email, t.paid_at, t.user_id, t.phone
     FROM tickets t
@@ -83,6 +84,11 @@ const CANDIDATES_SQL = `
   ORDER BY c.email, c.paid_at ASC
 `
 
+function idList(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((id): id is string => typeof id === 'string' && id.length > 0).sort()
+}
+
 async function claimStage(email: string, ticketId: string, stage: FlashReminderStage, status = 'sending') {
   const result = await query(
     `INSERT INTO flash_reminder_emails (email, ticket_id, stage, status)
@@ -107,7 +113,7 @@ export async function runFlashReminderTick(now = new Date()): Promise<FlashRemin
   const summary: FlashReminderTickResult = { sent: 0, failed: 0 }
 
   const candidates = await query(CANDIDATES_SQL, [now])
-  const offersByZone = new Map<string, Awaited<ReturnType<typeof getCheapestLiveOffer>>>()
+  const offersByBuyer = new Map<string, Awaited<ReturnType<typeof getCheapestLiveOffer>>>()
 
   for (const row of candidates.rows) {
     if (summary.sent + summary.failed >= MAX_SENDS_PER_TICK) break
@@ -119,11 +125,13 @@ export async function runFlashReminderTick(now = new Date()): Promise<FlashRemin
     if (!stage || lastStage >= stage) continue
 
     const zoneId: string | null = row.zone_id ?? null
-    const zoneKey = zoneId ?? ''
-    if (!offersByZone.has(zoneKey)) {
-      offersByZone.set(zoneKey, await getCheapestLiveOffer(zoneId))
+    const eventIds = idList(row.event_ids)
+    const ticketTypeIds = idList(row.ticket_type_ids)
+    const buyerKey = `${zoneId ?? ''}|${eventIds.join(',')}|${ticketTypeIds.join(',')}`
+    if (!offersByBuyer.has(buyerKey)) {
+      offersByBuyer.set(buyerKey, await getCheapestLiveOffer(zoneId, eventIds, ticketTypeIds))
     }
-    const offer = offersByZone.get(zoneKey)
+    const offer = offersByBuyer.get(buyerKey)
     if (!offer) continue
 
     const claimId = await claimStage(email, ticketId, stage)

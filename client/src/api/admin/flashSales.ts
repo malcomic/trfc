@@ -37,6 +37,7 @@ export interface FlashSalePayload {
   ends_at: string | null
   sort_order: number
   is_active: boolean
+  unlocks: Array<{ event_id: string; ticket_type_id: string | null }>
 }
 
 export const getFlashSalesForAdmin = async (): Promise<FlashSale[]> => {

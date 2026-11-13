@@ -1724,6 +1724,23 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       ${buildPolicySeedSql()}
     `,
   },
+  {
+    name: '068_flash_sale_unlocks',
+    sql: `
+      -- A flash sale with no rows here is open to every ticket holder. A row with a NULL
+      -- ticket_type_id unlocks the sale for any ticket to that event.
+      CREATE TABLE IF NOT EXISTS flash_sale_unlocks (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        flash_sale_id UUID NOT NULL REFERENCES flash_sales(id) ON DELETE CASCADE,
+        event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+        ticket_type_id UUID REFERENCES event_ticket_types(id) ON DELETE CASCADE
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_flash_sale_unlocks ON flash_sale_unlocks (
+        flash_sale_id, event_id, COALESCE(ticket_type_id, '00000000-0000-0000-0000-000000000000'::uuid)
+      );
+      CREATE INDEX IF NOT EXISTS idx_flash_sale_unlocks_sale ON flash_sale_unlocks(flash_sale_id);
+    `,
+  },
 ]
 
 export async function runMigrations() {

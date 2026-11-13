@@ -1,14 +1,16 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
-import { Trash2, Edit2, Plus } from 'lucide-react'
+import { Trash2, Edit2, Plus, X } from 'lucide-react'
 import {
   getFlashSalesForAdmin,
   createFlashSale,
   updateFlashSale,
   deleteFlashSale,
+  type FlashSalePayload,
 } from '../../api/admin/flashSales'
 import { getProductsForAdmin } from '../../api/admin/products'
-import type { FlashSale } from '../../types'
+import { getEventsForAdmin, type AdminEvent } from '../../api/admin/events'
+import type { FlashSale, FlashSaleUnlock } from '../../types'
 import AdminConfirmDialog from '../../components/AdminConfirmDialog'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/AdminMobileCard'
@@ -32,6 +34,50 @@ interface FlashSaleFormValues {
   ends_at: string
   sort_order: string
   is_active: boolean
+}
+
+/** One event in the "Unlocked by" picker. `typeIds` null means every ticket type of the event. */
+interface UnlockSelection {
+  eventId: string
+  typeIds: string[] | null
+}
+
+function selectionFromUnlocks(unlocks: FlashSaleUnlock[] | undefined): UnlockSelection[] {
+  const byEvent = new Map<string, UnlockSelection>()
+  for (const unlock of unlocks ?? []) {
+    const current = byEvent.get(unlock.event_id) ?? { eventId: unlock.event_id, typeIds: [] }
+    if (unlock.ticket_type_id == null) current.typeIds = null
+    else if (current.typeIds) current.typeIds.push(unlock.ticket_type_id)
+    byEvent.set(unlock.event_id, current)
+  }
+  return [...byEvent.values()]
+}
+
+function unlocksFromSelection(selection: UnlockSelection[]): FlashSalePayload['unlocks'] {
+  return selection.flatMap<FlashSalePayload['unlocks'][number]>(({ eventId, typeIds }) =>
+    typeIds === null
+      ? [{ event_id: eventId, ticket_type_id: null }]
+      : typeIds.map((typeId) => ({ event_id: eventId, ticket_type_id: typeId }))
+  )
+}
+
+function UnlockChips({ unlocks }: { unlocks?: FlashSaleUnlock[] }) {
+  if (!unlocks || unlocks.length === 0) {
+    return <span className="text-sm text-gray-500 dark:text-gray-400">All ticket holders</span>
+  }
+  return (
+    <div className="flex flex-wrap gap-1">
+      {unlocks.map((u) => (
+        <span
+          key={`${u.event_id}-${u.ticket_type_id ?? 'all'}`}
+          className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300"
+        >
+          {u.event_title ?? 'Event'}
+          {u.ticket_type_name ? `: ${u.ticket_type_name}` : ''}
+        </span>
+      ))}
+    </div>
+  )
 }
 
 type FlashStatus = 'Scheduled' | 'Live' | 'Sold out' | 'Ended' | 'Inactive'
@@ -84,6 +130,8 @@ function StatusBadge({ status, small }: { status: FlashStatus; small?: boolean }
 export default function AdminFlashSales() {
   const [sales, setSales] = useState<FlashSale[]>([])
   const [products, setProducts] = useState<AdminProductOption[]>([])
+  const [events, setEvents] = useState<AdminEvent[]>([])
+  const [unlockSelection, setUnlockSelection] = useState<UnlockSelection[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showModal, setShowModal] = useState(false)
@@ -110,9 +158,14 @@ export default function AdminFlashSales() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [salesData, productData] = await Promise.all([getFlashSalesForAdmin(), getProductsForAdmin()])
+      const [salesData, productData, eventData] = await Promise.all([
+        getFlashSalesForAdmin(),
+        getProductsForAdmin(),
+        getEventsForAdmin(),
+      ])
       setSales(Array.isArray(salesData) ? salesData : [])
       setProducts(Array.isArray(productData) ? productData : [])
+      setEvents(Array.isArray(eventData) ? eventData : [])
     } catch (err) {
       setError('Failed to fetch flash sales')
       console.error(err)
@@ -124,8 +177,41 @@ export default function AdminFlashSales() {
   const closeModal = () => {
     setShowModal(false)
     setEditingId(null)
+    setUnlockSelection([])
     reset()
   }
+
+  const eventsById = useMemo(() => new Map(events.map((e) => [e.id, e])), [events])
+  const addableEvents = events.filter(
+    (e) => !e.cancelled_at && !unlockSelection.some((s) => s.eventId === e.id)
+  )
+
+  const addUnlockEvent = (eventId: string) => {
+    if (!eventId) return
+    setUnlockSelection((current) => [...current, { eventId, typeIds: null }])
+  }
+
+  const removeUnlockEvent = (eventId: string) => {
+    setUnlockSelection((current) => current.filter((s) => s.eventId !== eventId))
+  }
+
+  const setAllTypes = (eventId: string, all: boolean) => {
+    setUnlockSelection((current) =>
+      current.map((s) => (s.eventId === eventId ? { ...s, typeIds: all ? null : [] } : s))
+    )
+  }
+
+  const toggleType = (eventId: string, typeId: string) => {
+    setUnlockSelection((current) =>
+      current.map((s) => {
+        if (s.eventId !== eventId || s.typeIds === null) return s
+        const typeIds = s.typeIds.includes(typeId) ? s.typeIds.filter((id) => id !== typeId) : [...s.typeIds, typeId]
+        return { ...s, typeIds }
+      })
+    )
+  }
+
+  const eventWithoutTypes = unlockSelection.find((s) => s.typeIds !== null && s.typeIds.length === 0)
 
   const openCreateModal = () => {
     setEditingId(null)
@@ -138,6 +224,7 @@ export default function AdminFlashSales() {
       sort_order: String(sales.length + 1),
       is_active: true,
     })
+    setUnlockSelection([])
     setShowModal(true)
   }
 
@@ -152,6 +239,7 @@ export default function AdminFlashSales() {
       sort_order: String(sale.sort_order ?? 0),
       is_active: sale.is_active,
     })
+    setUnlockSelection(selectionFromUnlocks(sale.unlocks))
     setShowModal(true)
   }
 
@@ -167,6 +255,7 @@ export default function AdminFlashSales() {
         ends_at: data.ends_at ? new Date(data.ends_at).toISOString() : null,
         sort_order: parseInt(data.sort_order || '0', 10) || 0,
         is_active: Boolean(data.is_active),
+        unlocks: unlocksFromSelection(unlockSelection),
       }
 
       if (editingId) {
@@ -232,8 +321,9 @@ export default function AdminFlashSales() {
 
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
         Flash deals are only shown to customers for 24 hours after they buy an event ticket. A deal is shown to ticket
-        holders from the product's zones, or to everyone if the product has no zones (set zones on the product). To let
-        someone without a ticket in, create a share link below.
+        holders from the product's zones, or to everyone if the product has no zones (set zones on the product). Lock a
+        deal to specific events or ticket types with "Unlocked by" so only those ticket holders see it. To let someone
+        without a ticket in, create a share link below; share links only unlock deals that aren't locked to an event.
       </p>
 
       {error && (
@@ -253,11 +343,12 @@ export default function AdminFlashSales() {
             </div>
           }
           desktop={
-            <table className="w-full min-w-[900px]">
+            <table className="w-full min-w-[1040px]">
               <thead className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                 <tr>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Product</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Zones</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Unlocked by</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Normal</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Flash</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Sold / Limit</th>
@@ -272,6 +363,7 @@ export default function AdminFlashSales() {
                   <tr key={sale.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-900 dark:text-gray-100">
                     <td className="px-6 py-4 font-medium">{sale.product_name}</td>
                     <td className="px-6 py-4"><ZoneChips zones={sale.product_zones} /></td>
+                    <td className="px-6 py-4"><UnlockChips unlocks={sale.unlocks} /></td>
                     <td className="px-6 py-4 text-gray-500 dark:text-gray-400">KES {Number(sale.regular_price ?? 0).toLocaleString()}</td>
                     <td className="px-6 py-4">{priceCell(sale)}</td>
                     <td className="px-6 py-4">{stockLabel(sale)}</td>
@@ -309,6 +401,7 @@ export default function AdminFlashSales() {
             >
               <p className="font-semibold text-gray-900 dark:text-white">{sale.product_name}</p>
               <AdminMobileCardRow label="Zones" value={<ZoneChips zones={sale.product_zones} />} />
+              <AdminMobileCardRow label="Unlocked by" value={<UnlockChips unlocks={sale.unlocks} />} />
               <AdminMobileCardRow label="Normal" value={`KES ${Number(sale.regular_price ?? 0).toLocaleString()}`} />
               <AdminMobileCardRow label="Flash" value={priceCell(sale)} />
               <AdminMobileCardRow label="Sold / Limit" value={stockLabel(sale)} />
@@ -407,6 +500,86 @@ export default function AdminFlashSales() {
               </div>
 
               <div>
+                <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Unlocked by</label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  Leave empty to show to all ticket holders. Otherwise only people with a ticket to one of these events
+                  (or ticket types) see this deal.
+                </p>
+
+                <div className="space-y-3">
+                  {unlockSelection.map((selection) => {
+                    const event = eventsById.get(selection.eventId)
+                    const types = event?.ticket_types ?? []
+                    return (
+                      <div key={selection.eventId} className="border border-gray-200 dark:border-gray-600 rounded-lg p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
+                            {event?.title ?? 'Unknown event'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeUnlockEvent(selection.eventId)}
+                            className="text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
+                            aria-label={`Remove ${event?.title ?? 'event'}`}
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                        <label className="flex items-center gap-2 mt-2 text-sm text-gray-800 dark:text-gray-200">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4"
+                            checked={selection.typeIds === null}
+                            onChange={(e) => setAllTypes(selection.eventId, e.target.checked)}
+                          />
+                          All ticket types
+                        </label>
+                        {selection.typeIds !== null && (
+                          <div className="mt-2 ml-6 space-y-1">
+                            {types.length === 0 && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400">This event has no ticket types.</p>
+                            )}
+                            {types.map((type) => (
+                              <label key={type.id} className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
+                                <input
+                                  type="checkbox"
+                                  className="w-4 h-4"
+                                  checked={selection.typeIds?.includes(type.id) ?? false}
+                                  onChange={() => toggleType(selection.eventId, type.id)}
+                                />
+                                {type.name}
+                                {!type.is_active && <span className="text-xs text-gray-500">(inactive)</span>}
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+
+                  <select
+                    value=""
+                    onChange={(e) => addUnlockEvent(e.target.value)}
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  >
+                    <option value="">+ Add event</option>
+                    {addableEvents.map((event) => (
+                      <option key={event.id} value={event.id}>
+                        {event.title} — {new Date(event.event_date).toLocaleDateString('en-KE', { dateStyle: 'medium' })}
+                      </option>
+                    ))}
+                  </select>
+
+                  {eventWithoutTypes && (
+                    <p className="text-xs text-red-600 dark:text-red-400">
+                      Pick at least one ticket type for {eventsById.get(eventWithoutTypes.eventId)?.title ?? 'each event'}, or
+                      tick "All ticket types".
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div>
                 <label className="block text-sm font-semibold mb-1 text-gray-900 dark:text-gray-100">Sort Order</label>
                 <input
                   type="number"
@@ -432,7 +605,7 @@ export default function AdminFlashSales() {
                 </button>
                 <button
                   type="submit"
-                  disabled={saving || priceTooHigh}
+                  disabled={saving || priceTooHigh || Boolean(eventWithoutTypes)}
                   className="px-4 py-2 bg-primary dark:bg-primary-dark text-white dark:text-black rounded-lg hover:opacity-90 disabled:opacity-50"
                 >
                   {saving ? 'Saving...' : editingId ? 'Update' : 'Create'}

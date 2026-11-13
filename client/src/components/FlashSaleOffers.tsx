@@ -142,6 +142,11 @@ export default function FlashSaleOffers({
                 <h3 className={`font-barlow-condensed font-bold ${compact ? 'text-sm line-clamp-1' : 'text-base line-clamp-2'} tracking-wide text-chalk light:text-chalk-light leading-snug`}>
                   {offer.product_name}
                 </h3>
+                {offer.unlock_labels && offer.unlock_labels.length > 0 && (
+                  <p className={`font-barlow-condensed font-bold text-[10px] tracking-widest uppercase text-accent light:text-accent-light ${compact ? 'line-clamp-1' : 'line-clamp-2'}`}>
+                    Exclusive for {offer.unlock_labels.join(', ')} ticket holders
+                  </p>
+                )}
                 <div className={`flex items-baseline ${compact ? 'gap-1.5 flex-wrap' : 'gap-2'}`}>
                   <span className={`font-bebas ${compact ? 'text-xl' : 'text-2xl'} text-accent light:text-accent-light tracking-wider`}>
                     KES {sale.toLocaleString()}

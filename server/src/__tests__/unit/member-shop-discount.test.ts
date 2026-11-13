@@ -35,7 +35,7 @@ function mockDb(opts: { period?: boolean; usedOrder?: string | null; perk?: 'on'
     if (sql.includes('FROM products p')) return { rows: [PRODUCTS[String(params[0])]] }
     if (sql.includes('FROM product_variants')) return { rows: [] }
     if (sql.includes('FROM flash_sales fs') && sql.includes('FOR UPDATE')) {
-      return { rows: [{ product_id: 'jersey', sale_price: 1000, is_live: true, in_zone: true, quantity_limit: null }] }
+      return { rows: [{ product_id: 'jersey', sale_price: 1000, is_live: true, in_zone: true, unlocked: true, quantity_limit: null }] }
     }
     if (sql.includes('INSERT INTO orders')) return { rows: [{ id: 'order-1' }] }
     return { rows: [] }

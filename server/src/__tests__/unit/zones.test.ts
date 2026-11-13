@@ -124,7 +124,7 @@ describe('flash access zone', () => {
   it("uses the zone of the buyer's most recent open ticket, even through an older ticket", async () => {
     routeQueries((sql) => {
       if (sql.includes('FROM tickets t1')) {
-        expect(sql).toContain('ORDER BY t2.paid_at DESC')
+        expect(sql).toContain('ORDER BY b.paid_at DESC')
         expect(sql).toContain('t2.user_id = t1.user_id')
         expect(sql).toContain('LOWER(t2.email) = LOWER(t1.email)')
         return { rows: [{ zone_id: ZONE_B, zone_name: 'Mombasa' }] }
@@ -154,6 +154,8 @@ describe('getLiveFlashSales', () => {
       expiresAt: new Date('2026-10-10T00:00:00Z'),
       zoneId: ZONE_A,
       zoneName: 'Nairobi',
+      eventIds: [],
+      ticketTypeIds: [],
     })
     routeQueries(() => ({ rows: [] }))
     const res = makeRes()
@@ -162,7 +164,7 @@ describe('getLiveFlashSales', () => {
 
     const [sql, params] = vi.mocked(query).mock.calls[0]
     expect(String(sql)).toContain('pz.zone_id = $1::uuid')
-    expect(params).toEqual([ZONE_A])
+    expect(params).toEqual([ZONE_A, [], []])
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ zone: { id: ZONE_A, name: 'Nairobi' }, offers: [] }))
   })
 })
@@ -180,7 +182,17 @@ describe('createOrder flash zone check', () => {
         if (sql.includes('FROM product_variants')) return { rows: [] }
         if (sql.includes('FROM flash_sales fs') && sql.includes('FOR UPDATE')) {
           return {
-            rows: [{ id: SALE_ID, product_id: PRODUCT_ID, sale_price: 1000, quantity_limit: null, is_live: true, in_zone: inZone }],
+            rows: [
+              {
+                id: SALE_ID,
+                product_id: PRODUCT_ID,
+                sale_price: 1000,
+                quantity_limit: null,
+                is_live: true,
+                in_zone: inZone,
+                unlocked: true,
+              },
+            ],
           }
         }
         return { rows: [{ id: 'order-1' }] }
@@ -207,6 +219,8 @@ describe('createOrder flash zone check', () => {
       expiresAt: new Date(Date.now() + 3600_000),
       zoneId: ZONE_A,
       zoneName: 'Nairobi',
+      eventIds: [],
+      ticketTypeIds: [],
     })
   })
 
@@ -219,7 +233,7 @@ describe('createOrder flash zone check', () => {
     expect(res.status).toHaveBeenCalledWith(403)
     expect(res.json).toHaveBeenCalledWith({ error: 'The flash deal for Jersey is not available in your zone' })
     const lockCall = client.query.mock.calls.find(([sql]) => String(sql).includes('FOR UPDATE OF fs'))!
-    expect(lockCall[1]).toEqual([SALE_ID, ZONE_A])
+    expect(lockCall[1]).toEqual([SALE_ID, ZONE_A, [], []])
     expect(client.query).toHaveBeenCalledWith('ROLLBACK')
   })
 

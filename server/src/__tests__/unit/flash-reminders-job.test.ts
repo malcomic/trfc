@@ -75,7 +75,7 @@ describe('runFlashReminderTick', () => {
     const calls = setupDb([{ ticket_id: 't1', email: 'a@x.com', paid_at: minutesAgo(10), last_stage: 0, zone_id: 'z1' }])
 
     expect(await runFlashReminderTick(NOW)).toEqual({ sent: 0, failed: 0 })
-    expect(getCheapestLiveOffer).toHaveBeenCalledWith('z1')
+    expect(getCheapestLiveOffer).toHaveBeenCalledWith('z1', [], [])
     expect(inserts(calls)).toHaveLength(0)
     expect(sendEmail).not.toHaveBeenCalled()
   })
@@ -92,11 +92,42 @@ describe('runFlashReminderTick', () => {
     ])
 
     expect(await runFlashReminderTick(NOW)).toEqual({ sent: 3, failed: 0 })
-    expect(vi.mocked(getCheapestLiveOffer).mock.calls).toEqual([['z1'], ['z2'], [null]])
+    expect(vi.mocked(getCheapestLiveOffer).mock.calls).toEqual([
+      ['z1', [], []],
+      ['z2', [], []],
+      [null, [], []],
+    ])
     const recipients = vi.mocked(sendEmail).mock.calls.map(([arg]) => arg.to)
     expect(recipients).toEqual(['a@x.com', 'b@x.com', 'd@x.com'])
     expect(vi.mocked(sendEmail).mock.calls[0][0].text).toMatch(/1,?000/)
     expect(vi.mocked(sendEmail).mock.calls[0][0].text).not.toMatch(/1,?497/)
+  })
+
+  it('quotes each buyer the cheapest deal their events unlock, caching per zone and events', async () => {
+    vi.mocked(getCheapestLiveOffer).mockImplementation(async (_zoneId, eventIds = []) =>
+      eventIds.includes('ev-a') ? { salePrice: 800, regularPrice: 2000 } : null
+    )
+    setupDb([
+      { ticket_id: 't1', email: 'a@x.com', paid_at: minutesAgo(6), last_stage: 0, zone_id: 'z1', event_ids: ['ev-a'], ticket_type_ids: ['tt-1'] },
+      { ticket_id: 't2', email: 'b@x.com', paid_at: minutesAgo(6), last_stage: 0, zone_id: 'z1', event_ids: ['ev-a'], ticket_type_ids: ['tt-1'] },
+      { ticket_id: 't3', email: 'c@x.com', paid_at: minutesAgo(6), last_stage: 0, zone_id: 'z1', event_ids: ['ev-b'], ticket_type_ids: ['tt-2'] },
+    ])
+
+    expect(await runFlashReminderTick(NOW)).toEqual({ sent: 2, failed: 0 })
+    expect(vi.mocked(getCheapestLiveOffer).mock.calls).toEqual([
+      ['z1', ['ev-a'], ['tt-1']],
+      ['z1', ['ev-b'], ['tt-2']],
+    ])
+    expect(vi.mocked(sendEmail).mock.calls.map(([arg]) => arg.to)).toEqual(['a@x.com', 'b@x.com'])
+  })
+
+  it('collects the events and ticket types of all the buyer open tickets', async () => {
+    const calls = setupDb([])
+    await runFlashReminderTick(NOW)
+
+    const candidateSql = calls.find((c) => c.sql.includes('FROM tickets t'))?.sql ?? ''
+    expect(candidateSql).toContain('AS event_ids')
+    expect(candidateSql).toContain('AS ticket_type_ids')
   })
 
   it('takes the zone from the buyer latest open ticket', async () => {

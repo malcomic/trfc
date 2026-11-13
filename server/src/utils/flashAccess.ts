@@ -19,7 +19,17 @@ export interface FlashAccess {
   expiresAt: Date
   zoneId: string | null
   zoneName: string | null
+  /** Events and ticket types the buyer holds open tickets for; empty for share link guests. */
+  eventIds: string[]
+  ticketTypeIds: string[]
   guest?: GuestFlashAccess
+}
+
+export interface BuyerContext {
+  zoneId: string | null
+  zoneName: string | null
+  eventIds: string[]
+  ticketTypeIds: string[]
 }
 
 type EligibilityFilter =
@@ -50,34 +60,55 @@ const ELIGIBLE_SELECT = `
 `
 
 /**
- * Zone of the buyer's most recent ticket that still has flash access. The buyer is matched
- * by account or email, so an older ticket's link still shows deals for their latest zone.
+ * What the buyer's open tickets unlock: the zone of their most recent ticket, plus every event
+ * and ticket type they hold. The buyer is matched by account or email, so an older ticket's link
+ * still shows deals for their latest zone and for all the events they bought.
  */
-export async function resolveBuyerZone(ticketId: string): Promise<{ zoneId: string | null; zoneName: string | null }> {
+export async function resolveBuyerContext(ticketId: string): Promise<BuyerContext> {
   const result = await query(
-    `SELECT t2.zone_id, r.name AS zone_name
-     FROM tickets t1
-     JOIN tickets t2 ON t2.payment_status = 'paid'
-       AND t2.paid_at IS NOT NULL
-       AND t2.paid_at + INTERVAL '${FLASH_ACCESS_HOURS} hours' > NOW()
-       AND (
-         t2.id = t1.id
-         OR (t1.user_id IS NOT NULL AND t2.user_id = t1.user_id)
-         OR (NULLIF(TRIM(t1.email), '') IS NOT NULL AND LOWER(t2.email) = LOWER(t1.email))
-       )
-     LEFT JOIN regions r ON r.id = t2.zone_id
-     WHERE t1.id = $1
-     ORDER BY t2.paid_at DESC
-     LIMIT 1`,
+    `WITH buyer AS (
+       SELECT t2.zone_id, t2.event_id, t2.ticket_type_id, t2.paid_at
+       FROM tickets t1
+       JOIN tickets t2 ON t2.payment_status = 'paid'
+         AND t2.paid_at IS NOT NULL
+         AND t2.paid_at + INTERVAL '${FLASH_ACCESS_HOURS} hours' > NOW()
+         AND (
+           t2.id = t1.id
+           OR (t1.user_id IS NOT NULL AND t2.user_id = t1.user_id)
+           OR (NULLIF(TRIM(t1.email), '') IS NOT NULL AND LOWER(t2.email) = LOWER(t1.email))
+         )
+       WHERE t1.id = $1
+     ),
+     latest AS (
+       SELECT b.zone_id, r.name AS zone_name
+       FROM buyer b
+       LEFT JOIN regions r ON r.id = b.zone_id
+       ORDER BY b.paid_at DESC
+       LIMIT 1
+     )
+     SELECT
+       (SELECT zone_id FROM latest) AS zone_id,
+       (SELECT zone_name FROM latest) AS zone_name,
+       ARRAY(SELECT DISTINCT event_id FROM buyer WHERE event_id IS NOT NULL) AS event_ids,
+       ARRAY(SELECT DISTINCT ticket_type_id FROM buyer WHERE ticket_type_id IS NOT NULL) AS ticket_type_ids`,
     [ticketId]
   )
   const row = result.rows[0]
-  return { zoneId: row?.zone_id ?? null, zoneName: row?.zone_name ?? null }
+  return {
+    zoneId: row?.zone_id ?? null,
+    zoneName: row?.zone_name ?? null,
+    eventIds: toIdList(row?.event_ids),
+    ticketTypeIds: toIdList(row?.ticket_type_ids),
+  }
+}
+
+function toIdList(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string' && id.length > 0) : []
 }
 
 async function toAccess(row: { id: string; expires_at: Date | string }): Promise<FlashAccess> {
-  const zone = await resolveBuyerZone(row.id)
-  return { ticketId: row.id, expiresAt: new Date(row.expires_at), ...zone }
+  const context = await resolveBuyerContext(row.id)
+  return { ticketId: row.id, expiresAt: new Date(row.expires_at), ...context }
 }
 
 export async function findEligibleTicket(filter: EligibilityFilter): Promise<FlashAccess | null> {
@@ -181,6 +212,8 @@ export async function findGuestAccess(linkId: string, redemptionId: string): Pro
     expiresAt: new Date(row.expires_at),
     zoneId: row.zone_id ?? null,
     zoneName: row.zone_name ?? null,
+    eventIds: [],
+    ticketTypeIds: [],
     guest: { linkId, redemptionId, phone: row.phone, email: row.email },
   }
 }

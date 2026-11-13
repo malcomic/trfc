@@ -166,6 +166,16 @@ export interface FlashSale {
   regular_price?: number | string;
   product_active?: boolean;
   product_zones?: ZoneRef[];
+  /** Events / ticket types that unlock this sale; empty means every ticket holder. */
+  unlocks?: FlashSaleUnlock[];
+}
+
+export interface FlashSaleUnlock {
+  event_id: string;
+  event_title?: string;
+  /** Null when any ticket type of the event unlocks the sale. */
+  ticket_type_id: string | null;
+  ticket_type_name?: string | null;
 }
 
 export interface ZoneRef {
@@ -194,6 +204,8 @@ export interface FlashSaleOffer {
   category_slug?: string | null;
   product_variants?: ProductVariant[];
   distance_options?: string[];
+  /** Events (or "Event: Ticket type") this deal is exclusive to; empty for open deals. */
+  unlock_labels?: string[];
 }
 
 export interface FlashShareRedemption {

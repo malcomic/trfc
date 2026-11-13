@@ -6,7 +6,7 @@ import { resolveFlashAccess } from '../utils/flashAccess.js';
 import { decrementOrderStock } from '../utils/orderStock.js';
 import { sendOrderConfirmationEmail } from '../utils/orderEmail.js';
 import { recordCaptainCommission, reverseCaptainCommission } from '../utils/captainCommissions.js';
-import { FLASH_SOLD_UNITS_SQL } from './flashSalesController.js';
+import { FLASH_SOLD_UNITS_SQL, flashSaleUnlockedSql } from './flashSalesController.js';
 import { productInZoneSql } from '../utils/zones.js';
 import { ProductOptionsError, resolveSelectedOptions } from '../utils/productVariants.js';
 import { nextDeliveryWednesday } from '../utils/ticketRules.js';
@@ -42,6 +42,12 @@ class OrderValidationError extends Error {
   }
 }
 
+interface FlashBuyer {
+  zoneId: string | null;
+  eventIds: string[];
+  ticketTypeIds: string[];
+}
+
 /** Locks the flash sale row and returns its price after checking it is live and has stock left. */
 async function lockFlashSalePrice(
   client: DbClient,
@@ -49,17 +55,18 @@ async function lockFlashSalePrice(
   productId: string,
   productName: string,
   quantity: number,
-  zoneId: string | null
+  buyer: FlashBuyer
 ): Promise<number> {
   const saleResult = await client.query(
     `SELECT fs.*,
             (fs.is_active = true AND fs.starts_at <= NOW() AND (fs.ends_at IS NULL OR fs.ends_at > NOW())) AS is_live,
-            ${productInZoneSql('p', '$2')} AS in_zone
+            ${productInZoneSql('p', '$2')} AS in_zone,
+            ${flashSaleUnlockedSql('fs', '$3', '$4')} AS unlocked
      FROM flash_sales fs
      JOIN products p ON p.id = fs.product_id
      WHERE fs.id = $1
      FOR UPDATE OF fs`,
-    [flashSaleId, zoneId]
+    [flashSaleId, buyer.zoneId, buyer.eventIds, buyer.ticketTypeIds]
   );
   const sale = saleResult.rows[0];
   if (!sale || String(sale.product_id) !== String(productId)) {
@@ -67,6 +74,12 @@ async function lockFlashSalePrice(
   }
   if (!sale.in_zone) {
     throw new OrderValidationError(403, `The flash deal for ${productName} is not available in your zone`);
+  }
+  if (!sale.unlocked) {
+    throw new OrderValidationError(
+      403,
+      `The flash deal for ${productName} is only for ticket holders of selected events`
+    );
   }
   if (!sale.is_live) {
     throw new OrderValidationError(409, `The flash deal for ${productName} has ended`);
@@ -232,7 +245,7 @@ export const createOrder = async (req: Request, res: Response) => {
     }
 
     const hasFlashItems = items.some((item: { flash_sale_id?: unknown }) => Boolean(item.flash_sale_id));
-    let flashZoneId: string | null = null;
+    let flashBuyer: FlashBuyer = { zoneId: null, eventIds: [], ticketTypeIds: [] };
     let flashRedemptionId: string | null = null;
     if (hasFlashItems) {
       const access = await resolveFlashAccess(req);
@@ -240,7 +253,11 @@ export const createOrder = async (req: Request, res: Response) => {
         res.status(403).json({ error: 'Flash deal access expired or not eligible' });
         return;
       }
-      flashZoneId = access.zoneId;
+      flashBuyer = {
+        zoneId: access.zoneId,
+        eventIds: access.eventIds ?? [],
+        ticketTypeIds: access.ticketTypeIds ?? [],
+      };
       if (access.guest) {
         if (!phonesMatch(String(phone), access.guest.phone) || email !== access.guest.email) {
           res.status(403).json({ error: 'Use the phone and email you entered when unlocking this deal' });
@@ -341,7 +358,7 @@ export const createOrder = async (req: Request, res: Response) => {
         requestedByFlashSale.set(flashSaleId, flashTotal);
       }
       const unitPrice = flashSaleId
-        ? await lockFlashSalePrice(client, flashSaleId, product.id, product.name, flashTotal, flashZoneId)
+        ? await lockFlashSalePrice(client, flashSaleId, product.id, product.name, flashTotal, flashBuyer)
         : Number(product.price);
 
       if (Math.round(unitPrice) !== Math.round(Number(item.unit_price))) {
