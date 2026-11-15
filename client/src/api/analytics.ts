@@ -192,7 +192,7 @@ export interface CaptainRegionStat {
   purchases: number
 }
 
-/** Captains ranked by members who chose them; commission belongs to zones. */
+/** Captains ranked by members who chose them; shop commission goes to the chosen captain. */
 export interface TopCaptainStat {
   id: string
   name: string

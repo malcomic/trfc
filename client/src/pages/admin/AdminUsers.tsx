@@ -274,7 +274,7 @@ export default function AdminUsers() {
         {referredZone && (
           <span
             className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300"
-            title="Joined with this zone’s link — the zone earns commission"
+            title="Joined with this zone’s link — shop commission goes to the captain they chose"
           >
             Referred · {referredZone}
           </span>

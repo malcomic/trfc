@@ -8,16 +8,21 @@ import {
   getAdminCaptains,
   getAdminCommissions,
   getAdminPayouts,
+  getCaptainAccessLog,
   previewPayout,
   removeCaptainPhoto,
   reverseCommission,
   syncCommissions,
   updateCaptain,
+  ACCESS_ACTION_LABELS,
   type AdminCaptain,
+  type CaptainAccessLogEntry,
   type AdminCommission,
   type AdminPayout,
   type AdminPayoutSplit,
+  type CommissionKind,
   type PayoutPreview,
+  type PayoutTarget,
 } from '../../api/admin/captains'
 import { getRegions, type Region } from '../../api/admin/regions'
 import { getAllUsers, type AdminUser } from '../../api/users'
@@ -30,7 +35,14 @@ import CaptainsSectionTabs from '../../components/admin/CaptainsSectionTabs'
 import { COMMISSION_STATUS_STYLES, formatDate, formatKes, formatRate } from '../../utils/captainDisplay'
 import { downloadCsv } from '../../utils/csv'
 
-type View = 'captains' | 'commissions' | 'payouts'
+type View = 'captains' | 'commissions' | 'payouts' | 'access'
+
+const VIEW_LABELS: Record<View, string> = {
+  captains: 'Captains',
+  commissions: 'Commissions',
+  payouts: 'Payouts',
+  access: 'Access log',
+}
 
 const inputClass =
   'w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
@@ -377,6 +389,9 @@ function CaptainsView({
 
 // ---------- Commissions view ----------
 
+const commissionOwner = (r: Pick<AdminCommission, 'captain_id' | 'captain_name'>) =>
+  r.captain_id ? r.captain_name || 'Captain' : 'Zone share'
+
 function CommissionsView({
   regionId,
   onChanged,
@@ -389,6 +404,7 @@ function CommissionsView({
   setNotice: (msg: string) => void
 }) {
   const [status, setStatus] = useState<CommissionStatus | ''>('pending')
+  const [kind, setKind] = useState<CommissionKind | ''>('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [rows, setRows] = useState<AdminCommission[]>([])
@@ -400,14 +416,14 @@ function CommissionsView({
   const load = useCallback(async () => {
     try {
       setLoading(true)
-      setRows(await getAdminCommissions({ regionId: regionId || undefined, status, from, to }))
+      setRows(await getAdminCommissions({ regionId: regionId || undefined, kind, status, from, to }))
       setSelected(new Set())
     } catch {
       setError('Failed to load commissions')
     } finally {
       setLoading(false)
     }
-  }, [regionId, status, from, to, setError])
+  }, [regionId, kind, status, from, to, setError])
 
   useEffect(() => {
     load()
@@ -461,9 +477,11 @@ function CommissionsView({
 
   const exportCsv = () =>
     downloadCsv(
-      'zone-commissions',
+      'captain-commissions',
       rows.map((r) => ({
         Date: formatDate(r.created_at),
+        Type: r.captain_id ? 'Captain' : 'Zone share',
+        Captain: r.captain_name ?? '',
         Zone: r.region_name,
         'Zone code': r.referral_code,
         Customer: r.customer_name ?? '',
@@ -493,6 +511,11 @@ function CommissionsView({
           <option value="approved">Approved</option>
           <option value="paid">Paid</option>
           <option value="reversed">Reversed</option>
+        </select>
+        <select value={kind} onChange={(e) => setKind(e.target.value as CommissionKind | '')} className={selectClass} aria-label="Type">
+          <option value="">Captain and zone money</option>
+          <option value="personal">Captains' own commissions</option>
+          <option value="zone">Zone shares</option>
         </select>
         <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={selectClass} aria-label="From" />
         <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={selectClass} aria-label="To" />
@@ -536,7 +559,7 @@ function CommissionsView({
                       aria-label="Select all pending"
                     />
                   </th>
-                  {['Date', 'Zone', 'Customer', 'Source', 'Matched by', 'Purchase', 'Commission', 'Status', ''].map((h) => (
+                  {['Date', 'Captain', 'Zone', 'Customer', 'Source', 'Matched by', 'Purchase', 'Commission', 'Status', ''].map((h) => (
                     <th key={h} className={thClass}>
                       {h}
                     </th>
@@ -552,6 +575,7 @@ function CommissionsView({
                       )}
                     </td>
                     <td className={tdClass}>{formatDate(r.created_at)}</td>
+                    <td className={tdClass}>{commissionOwner(r)}</td>
                     <td className={tdClass}>
                       <RegionBadge name={r.region_name} code={r.region_code} />
                     </td>
@@ -584,6 +608,7 @@ function CommissionsView({
                 </label>
                 <CommissionStatusBadge status={r.status} />
               </div>
+              <AdminMobileCardRow label="Captain" value={commissionOwner(r)} />
               <AdminMobileCardRow label="Zone" value={r.region_name} />
               <AdminMobileCardRow label="Customer" value={r.customer_name ?? '—'} />
               <AdminMobileCardRow label="Source" value={`${SOURCE_LABELS[r.source_type]} · ${formatKes(r.base_amount)}`} />
@@ -597,7 +622,7 @@ function CommissionsView({
       <AdminConfirmDialog
         open={reverseId !== null}
         title="Reverse commission"
-        message="The zone will no longer be paid for this purchase. Use this for refunds, cancelled orders or suspected fraud."
+        message="Nobody will be paid this commission. Use this for refunds, cancelled orders or suspected fraud."
         confirmLabel="Reverse"
         variant="danger"
         onConfirm={confirmReverse}
@@ -608,6 +633,8 @@ function CommissionsView({
 }
 
 // ---------- Payouts view ----------
+
+type PayoutMode = 'captain' | 'zone'
 
 function SplitList({ splits }: { splits: AdminPayoutSplit[] }) {
   if (splits.length === 0) return <span>—</span>
@@ -637,7 +664,10 @@ function PayoutsView({
 }) {
   const [payouts, setPayouts] = useState<AdminPayout[]>([])
   const [loading, setLoading] = useState(true)
+  const [mode, setMode] = useState<PayoutMode>(initialRegionId ? 'zone' : 'captain')
   const [regionId, setRegionId] = useState(initialRegionId)
+  const [captainId, setCaptainId] = useState('')
+  const [captains, setCaptains] = useState<AdminCaptain[]>([])
   const [approved, setApproved] = useState<AdminCommission[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [preview, setPreview] = useState<PayoutPreview | null>(null)
@@ -645,12 +675,31 @@ function PayoutsView({
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const payable = regions.filter((r) => r.approved_amount > 0 || r.id === regionId)
+  const payable = regions.filter((r) => r.zone_approved_amount > 0 || r.id === regionId)
+  const payableCaptains = captains.filter((c) => c.approved_amount > 0 || c.user_id === captainId)
   const zone = regions.find((r) => r.id === regionId)
+  const captain = captains.find((c) => c.user_id === captainId)
+  const target = useMemo<PayoutTarget | null>(
+    () => (mode === 'captain' ? (captainId ? { captainId } : null) : regionId ? { regionId } : null),
+    [mode, captainId, regionId]
+  )
 
   useEffect(() => {
     setRegionId(initialRegionId)
+    if (initialRegionId) setMode('zone')
   }, [initialRegionId])
+
+  const loadCaptains = useCallback(async () => {
+    try {
+      setCaptains(await getAdminCaptains())
+    } catch {
+      setError('Failed to load captains')
+    }
+  }, [setError])
+
+  useEffect(() => {
+    loadCaptains()
+  }, [loadCaptains])
 
   const loadPayouts = useCallback(async () => {
     try {
@@ -668,28 +717,30 @@ function PayoutsView({
   }, [loadPayouts])
 
   useEffect(() => {
-    if (!regionId) {
+    if (!target) {
       setApproved([])
       setSelected(new Set())
       return
     }
-    getAdminCommissions({ regionId, status: 'approved' })
+    getAdminCommissions(
+      target.captainId ? { captainId: target.captainId, status: 'approved' } : { regionId: target.regionId, kind: 'zone', status: 'approved' }
+    )
       .then((rows) => {
         const unpaid = rows.filter((r) => !r.payout_id)
         setApproved(unpaid)
         setSelected(new Set(unpaid.map((r) => r.id)))
       })
       .catch(() => setError('Failed to load approved commissions'))
-  }, [regionId, setError])
+  }, [target, setError])
 
   const selectedKey = [...selected].sort().join(',')
   useEffect(() => {
-    if (!regionId) {
+    if (!target) {
       setPreview(null)
       return
     }
     let cancelled = false
-    previewPayout(regionId, selectedKey ? selectedKey.split(',') : [])
+    previewPayout(target, selectedKey ? selectedKey.split(',') : [])
       .then((data) => {
         if (!cancelled) setPreview(data)
       })
@@ -699,33 +750,43 @@ function PayoutsView({
     return () => {
       cancelled = true
     }
-  }, [regionId, selectedKey, setError])
+  }, [target, selectedKey, setError])
 
   const selectedTotal = approved.filter((r) => selected.has(r.id)).reduce((s, r) => s + r.amount, 0)
   const splits = preview?.splits ?? []
   const canPay = splits.length > 0
   const allReceipts = canPay && splits.every((s) => receipts[s.captain_id]?.trim())
 
+  const switchMode = (next: PayoutMode) => {
+    setMode(next)
+    setRegionId('')
+    setCaptainId('')
+    setReceipts({})
+  }
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!regionId || !allReceipts || selected.size === 0) return
+    if (!target || !allReceipts || selected.size === 0) return
     try {
       setSaving(true)
       const payout = await createPayout({
-        regionId,
+        ...target,
         commissionIds: [...selected],
         splits: splits.map((s) => ({ captainId: s.captain_id, mpesaReceipt: receipts[s.captain_id].trim() })),
         note: note.trim() || undefined,
       })
       setNotice(
-        `Payout of ${formatKes(payout.amount)} recorded for ${zone?.name ?? 'the zone'}, shared by ${payout.splits.length} captain${
-          payout.splits.length === 1 ? '' : 's'
-        }`
+        mode === 'captain'
+          ? `Payout of ${formatKes(payout.amount)} recorded for ${captain?.name ?? 'the captain'}`
+          : `Payout of ${formatKes(payout.amount)} recorded for ${zone?.name ?? 'the zone'}, shared by ${payout.splits.length} captain${
+              payout.splits.length === 1 ? '' : 's'
+            }`
       )
       setRegionId('')
+      setCaptainId('')
       setReceipts({})
       setNote('')
-      await loadPayouts()
+      await Promise.all([loadPayouts(), loadCaptains()])
       onChanged()
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to record payout')
@@ -736,12 +797,13 @@ function PayoutsView({
 
   const exportCsv = () =>
     downloadCsv(
-      'zone-payouts',
+      'captain-payouts',
       payouts.flatMap((p) =>
         p.splits.map((s) => ({
           Date: formatDate(p.paid_at),
+          Type: p.captain_id ? 'Captain' : 'Zone',
           Zone: p.region_name,
-          'Zone total': p.amount,
+          'Payout total': p.amount,
           Captain: s.name ?? '',
           'Payout phone': s.payout_phone ?? '',
           'Captain share': s.amount,
@@ -757,29 +819,71 @@ function PayoutsView({
     <div className="space-y-8">
       <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 space-y-4">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Record a zone payout</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Record a payout</h2>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Zone money is shared equally by the zone's active captains. Send each captain their share by M-Pesa first, then
-            record it here with each receipt number. Only approved commissions can be paid.
+            {mode === 'captain'
+              ? 'Shop commissions belong to the captain the member chose and are paid to that captain in full.'
+              : "Zone money (event profit shares and older zone commissions) is shared equally by the zone's active captains."}{' '}
+            Send the money by M-Pesa first, then record it here with each receipt number. Only approved commissions can be paid.
           </p>
         </div>
+        <div className="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
+          {(
+            [
+              ['captain', 'Captain payout'],
+              ['zone', 'Zone payout'],
+            ] as [PayoutMode, string][]
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => switchMode(value)}
+              className={`px-4 py-2 text-sm font-medium ${
+                mode === value
+                  ? 'bg-primary dark:bg-primary-dark text-white dark:text-black'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="grid gap-4 md:grid-cols-2">
-          <select
-            value={regionId}
-            onChange={(e) => {
-              setRegionId(e.target.value)
-              setReceipts({})
-            }}
-            className={inputClass}
-            aria-label="Zone"
-          >
-            <option value="">{payable.length ? 'Choose a zone' : 'No zones with approved commissions'}</option>
-            {payable.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name} · {formatKes(r.approved_amount)}
-              </option>
-            ))}
-          </select>
+          {mode === 'captain' ? (
+            <select
+              value={captainId}
+              onChange={(e) => {
+                setCaptainId(e.target.value)
+                setReceipts({})
+              }}
+              className={inputClass}
+              aria-label="Captain"
+            >
+              <option value="">{payableCaptains.length ? 'Choose a captain' : 'No captains with approved commissions'}</option>
+              {payableCaptains.map((c) => (
+                <option key={c.user_id} value={c.user_id}>
+                  {c.name} · {c.region_name} · {formatKes(c.approved_amount)}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <select
+              value={regionId}
+              onChange={(e) => {
+                setRegionId(e.target.value)
+                setReceipts({})
+              }}
+              className={inputClass}
+              aria-label="Zone"
+            >
+              <option value="">{payable.length ? 'Choose a zone' : 'No zones with approved zone money'}</option>
+              {payable.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name} · {formatKes(r.zone_approved_amount)}
+                </option>
+              ))}
+            </select>
+          )}
           <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional)" className={inputClass} aria-label="Note" />
         </div>
 
@@ -800,7 +904,8 @@ function PayoutsView({
                   }
                 />
                 <span className="flex-1">
-                  {formatDate(r.created_at)} · {SOURCE_LABELS[r.source_type]} · {r.customer_name ?? 'Customer'}
+                  {formatDate(r.created_at)} · {SOURCE_LABELS[r.source_type]}
+                  {r.source_type === 'event_share' ? '' : ` · ${r.customer_name ?? 'Customer'}`}
                 </span>
                 <span className="font-semibold">{formatKes(r.amount)}</span>
               </label>
@@ -808,7 +913,7 @@ function PayoutsView({
           </div>
         )}
 
-        {zone && preview && !canPay && (
+        {mode === 'zone' && zone && preview && !canPay && (
           <div className="text-sm text-amber-700 dark:text-amber-400">
             {zone.name} has no active captains. Add one on the Captains tab before recording a payout.
           </div>
@@ -817,7 +922,9 @@ function PayoutsView({
         {canPay && selected.size > 0 && (
           <div className="space-y-2">
             <h3 className="font-semibold text-gray-900 dark:text-white">
-              Pay each captain ({splits.length} captain{splits.length === 1 ? '' : 's'}, equal shares)
+              {mode === 'captain'
+                ? 'Pay the captain'
+                : `Pay each captain (${splits.length} captain${splits.length === 1 ? '' : 's'}, equal shares)`}
             </h3>
             {splits.map((s) => (
               <div key={s.captain_id} className="grid gap-2 md:grid-cols-[1fr_auto_220px] items-center text-sm text-gray-900 dark:text-gray-100">
@@ -846,7 +953,7 @@ function PayoutsView({
 
         <div className="flex items-center justify-between gap-4">
           <span className="text-gray-900 dark:text-white font-semibold">Total: {formatKes(selectedTotal)}</span>
-          <button type="submit" disabled={saving || !regionId || !allReceipts || selected.size === 0} className={primaryButton}>
+          <button type="submit" disabled={saving || !target || !allReceipts || selected.size === 0} className={primaryButton}>
             {saving ? 'Saving...' : 'Record payout'}
           </button>
         </div>
@@ -873,7 +980,7 @@ function PayoutsView({
               <table className="w-full min-w-[900px]">
                 <thead className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                   <tr>
-                    {['Date', 'Zone', 'Amount', 'Captains paid', 'Commissions', 'Note', 'Recorded by'].map((h) => (
+                    {['Date', 'Type', 'Zone', 'Amount', 'Captains paid', 'Commissions', 'Note', 'Recorded by'].map((h) => (
                       <th key={h} className={thClass}>
                         {h}
                       </th>
@@ -884,6 +991,7 @@ function PayoutsView({
                   {payouts.map((p) => (
                     <tr key={p.id} className={rowClass}>
                       <td className={tdClass}>{formatDate(p.paid_at)}</td>
+                      <td className={tdClass}>{p.captain_id ? 'Captain' : 'Zone'}</td>
                       <td className={tdClass}><RegionBadge name={p.region_name} /></td>
                       <td className={`${tdClass} font-semibold`}>{formatKes(p.amount)}</td>
                       <td className={tdClass}>
@@ -900,9 +1008,10 @@ function PayoutsView({
             mobile={payouts.map((p) => (
               <AdminMobileCard key={p.id}>
                 <div className="flex items-center justify-between font-semibold text-gray-900 dark:text-white">
-                  <span>{p.region_name}</span>
+                  <span>{p.captain_id ? p.captain_name || 'Captain' : p.region_name}</span>
                   <span>{formatKes(p.amount)}</span>
                 </div>
+                <AdminMobileCardRow label="Type" value={p.captain_id ? `Captain · ${p.region_name}` : 'Zone'} />
                 <AdminMobileCardRow label="Date" value={formatDate(p.paid_at)} />
                 <AdminMobileCardRow label="Commissions" value={p.commission_count} />
                 <SplitList splits={p.splits} />
@@ -915,11 +1024,114 @@ function PayoutsView({
   )
 }
 
+// ---------- Access log view ----------
+
+const formatDateTime = (value: string) =>
+  new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+
+function AccessLogView({ setError }: { setError: (msg: string) => void }) {
+  const [captains, setCaptains] = useState<AdminCaptain[]>([])
+  const [captainId, setCaptainId] = useState('')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const [rows, setRows] = useState<CaptainAccessLogEntry[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getAdminCaptains()
+      .then(setCaptains)
+      .catch(() => setError('Failed to load captains'))
+  }, [setError])
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    getCaptainAccessLog({ captainId: captainId || undefined, from, to })
+      .then((list) => !cancelled && setRows(list))
+      .catch(() => !cancelled && setError('Failed to load the access log'))
+      .finally(() => !cancelled && setLoading(false))
+    return () => {
+      cancelled = true
+    }
+  }, [captainId, from, to, setError])
+
+  return (
+    <div>
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+        Every time a captain opens their dashboard (at most once every 10 minutes) or copies or exports their member list.
+        Entries are kept for 12 months. Only admins can see this.
+      </p>
+      <div className="flex flex-wrap gap-2 items-end mb-4">
+        <select value={captainId} onChange={(e) => setCaptainId(e.target.value)} className={selectClass} aria-label="Captain">
+          <option value="">All captains</option>
+          {captains.map((c) => (
+            <option key={c.user_id} value={c.user_id}>
+              {c.name} · {c.region_name}
+            </option>
+          ))}
+        </select>
+        <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={selectClass} aria-label="From" />
+        <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={selectClass} aria-label="To" />
+      </div>
+      {!loading && rows.length >= 1000 && (
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Showing the latest 1000 entries.</p>
+      )}
+      {loading ? (
+        <div className="text-lg text-gray-600 dark:text-gray-400">Loading access log...</div>
+      ) : (
+        <AdminResponsiveData
+          isEmpty={rows.length === 0}
+          empty={
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center text-gray-600 dark:text-gray-400">
+              No captain activity matches these filters.
+            </div>
+          }
+          desktop={
+            <table className="w-full min-w-[700px]">
+              <thead className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                <tr>
+                  {['Date and time', 'Captain', 'Zone', 'Action', 'Rows'].map((h) => (
+                    <th key={h} className={thClass}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.id} className={rowClass}>
+                    <td className={tdClass}>{formatDateTime(r.created_at)}</td>
+                    <td className={tdClass}>{r.captain_name ?? 'Deleted user'}</td>
+                    <td className={tdClass}>{r.region_name ? <RegionBadge name={r.region_name} code={r.region_code ?? undefined} /> : '—'}</td>
+                    <td className={tdClass}>{ACCESS_ACTION_LABELS[r.action]}</td>
+                    <td className={tdClass}>{r.row_count ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          }
+          mobile={rows.map((r) => (
+            <AdminMobileCard key={r.id}>
+              <div className="flex items-center justify-between gap-2 font-semibold text-gray-900 dark:text-white">
+                <span>{r.captain_name ?? 'Deleted user'}</span>
+                <span className="text-sm font-normal">{ACCESS_ACTION_LABELS[r.action]}</span>
+              </div>
+              <AdminMobileCardRow label="When" value={formatDateTime(r.created_at)} />
+              <AdminMobileCardRow label="Zone" value={r.region_name ?? '—'} />
+              <AdminMobileCardRow label="Rows" value={r.row_count ?? '—'} />
+            </AdminMobileCard>
+          ))}
+        />
+      )}
+    </div>
+  )
+}
+
 // ---------- Page ----------
 
 export default function AdminCaptains() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const view = (['captains', 'commissions', 'payouts'].includes(searchParams.get('view') ?? '')
+  const view = (['captains', 'commissions', 'payouts', 'access'].includes(searchParams.get('view') ?? '')
     ? searchParams.get('view')
     : 'captains') as View
 
@@ -1053,7 +1265,7 @@ export default function AdminCaptains() {
     <div>
       <AdminPageHeader
         title="Captains"
-        subtitle="Referral links and commission belong to zones. Each zone's money is shared equally by its active captains; captains look after the members who choose them."
+        subtitle="Captains look after the members who choose them and earn commission on those members' shop purchases. Event profit shares belong to zones and are shared equally by each zone's active captains."
         actions={
           <>
             <button onClick={runSync} disabled={syncing} className={secondaryButton} title="Record any commissions missed in the last 90 days">
@@ -1099,21 +1311,21 @@ export default function AdminCaptains() {
 
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <div className="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
-          {(['captains', 'commissions', 'payouts'] as View[]).map((v) => (
+          {(Object.keys(VIEW_LABELS) as View[]).map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`px-4 py-2 text-sm font-medium capitalize ${
+              className={`px-4 py-2 text-sm font-medium ${
                 view === v
                   ? 'bg-primary dark:bg-primary-dark text-white dark:text-black'
                   : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
               }`}
             >
-              {v}
+              {VIEW_LABELS[v]}
             </button>
           ))}
         </div>
-        {view !== 'payouts' && (
+        {(view === 'captains' || view === 'commissions') && (
           <select value={regionId} onChange={(e) => setRegionId(e.target.value)} className={selectClass} aria-label="Zone">
             <option value="">All zones</option>
             {regions.map((r) => (
@@ -1158,6 +1370,8 @@ export default function AdminCaptains() {
         />
       )}
 
+      {view === 'access' && <AccessLogView setError={setError} />}
+
       {modal && (
         <CaptainFormModal
           regions={regions}
@@ -1177,7 +1391,7 @@ export default function AdminCaptains() {
         title={statusTarget?.status === 'active' ? 'Suspend captain' : 'Reactivate captain'}
         message={
           statusTarget?.status === 'active'
-            ? `${statusTarget?.name} will lose captain access.${statusTarget?.is_lead ? ` ${statusTarget?.region_name} will need a new lead captain.` : ''} They stop sharing in the zone's future payouts; the zone's commissions are kept.`
+            ? `${statusTarget?.name} will lose captain access.${statusTarget?.is_lead ? ` ${statusTarget?.region_name} will need a new lead captain.` : ''} They stop sharing in the zone's future payouts and stop earning on new purchases; commissions already earned are kept.`
             : `${statusTarget?.name} will regain captain access.`
         }
         confirmLabel={statusTarget?.status === 'active' ? 'Suspend' : 'Reactivate'}

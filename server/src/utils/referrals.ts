@@ -36,8 +36,9 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 
 /**
  * Ties a user to the zone owning `code`. Only applies when the user has no referring zone yet,
- * so a referral can never be overwritten. A zone link does not pick a personal captain, and a
- * captain is never referred to their own zone. Invalid codes are ignored.
+ * so a referral can never be overwritten. A zone link does not pick a personal captain (and so
+ * earns no shop commission by itself), and a captain is never referred to their own zone.
+ * Invalid codes are ignored.
  */
 export async function applyReferral(userId: string, code: unknown): Promise<ReferralZone | null> {
   const normalized = normalizeReferralCode(code)
@@ -62,9 +63,8 @@ export async function applyReferral(userId: string, code: unknown): Promise<Refe
 }
 
 /**
- * Sets the member's personal captain. This never touches the referral, so a chosen captain does
- * not earn commission. Unknown or inactive captains, and captains outside `regionId` when given,
- * are ignored.
+ * Sets the member's personal captain, who earns the commission on the member's shop purchases
+ * from now on. Unknown or inactive captains, and captains outside `regionId` when given, are ignored.
  */
 export async function assignChosenCaptain(
   userId: string,

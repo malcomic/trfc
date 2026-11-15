@@ -17,24 +17,37 @@ import {
   ClipboardCheck,
   Crown,
   ScanLine,
+  Search,
+  Link2,
+  UserPlus,
+  UserX,
 } from 'lucide-react'
 import { cardSurface } from '../../utils/themeClasses'
 import { useAuth } from '../../context/AuthContext'
 import {
+  exportMyTeam,
   getMyCaptainProfile,
   getMyCommissions,
+  getMyLinkStats,
   getMyPayouts,
   getMyReferralQr,
   getMyReferrals,
   getMyTeam,
+  getMyZoneOverview,
+  MEMBER_STATUS_OPTIONS,
   SOURCE_LABELS,
   type CaptainCommissionPage,
+  type CaptainLinkStats,
   type CaptainPayout,
   type CaptainProfile,
   type CaptainReferral,
+  type CaptainTeamExportRow,
   type CaptainTeamMember,
+  type CaptainZoneOverview,
   type CommissionStatus,
+  type MemberStatus,
 } from '../../api/captains'
+import { downloadCsv } from '../../utils/csv'
 import { buildReferralLink } from '../../utils/referral'
 import { COMMISSION_STATUS_STYLES, formatDate, formatKes, formatRate } from '../../utils/captainDisplay'
 import StatTile from '../../components/dashboard/StatTile'
@@ -55,7 +68,35 @@ const TAB_LABELS: Record<Tab, string> = {
   attendance: 'Scan lists',
 }
 
+const COMING_SOON_TABS = ['Finish times', 'Free program', 'Events', 'Messages and notes']
+
 const PAGE_SIZE = 20
+const SEARCH_DEBOUNCE_MS = 300
+
+const STATUS_BADGE_STYLES: Record<MemberStatus, string> = {
+  new: 'bg-sky-500/15 border-sky-500/30 text-sky-300 light:text-sky-700',
+  active: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300 light:text-emerald-700',
+  missing: 'bg-amber-500/15 border-amber-500/30 text-amber-300 light:text-amber-700',
+}
+
+function statusLabel(status: MemberStatus, missed: number): string {
+  if (status === 'missing') return `Missing - ${missed} Saturday${missed === 1 ? '' : 's'}`
+  return status === 'new' ? 'New' : 'Active'
+}
+
+function percent(part: number, whole: number): string {
+  return whole > 0 ? `${Math.round((part / whole) * 100)}%` : '—'
+}
+
+function exportRowsForCsv(rows: CaptainTeamExportRow[]) {
+  return rows.map((r) => ({
+    Name: r.name,
+    Status: statusLabel(r.status, r.missed_saturdays),
+    'Saturdays attended': r.saturdays_attended,
+    'Last seen': r.last_seen ?? '',
+    Joined: r.signed_up_at ? r.signed_up_at.slice(0, 10) : '',
+  }))
+}
 
 export default function MemberCaptain() {
   const { user } = useAuth()
@@ -80,6 +121,13 @@ function CaptainContent() {
   const [attendanceEvents, setAttendanceEvents] = useState<AttendanceEvent[] | null>(null)
   const [scanEventId, setScanEventId] = useState<string | null>(null)
   const [tabLoading, setTabLoading] = useState(false)
+  const [overview, setOverview] = useState<CaptainZoneOverview | null>(null)
+  const [linkStats, setLinkStats] = useState<CaptainLinkStats | null>(null)
+  const [teamSearch, setTeamSearch] = useState('')
+  const [teamQuery, setTeamQuery] = useState('')
+  const [teamStatus, setTeamStatus] = useState<MemberStatus | ''>('')
+  const [teamAction, setTeamAction] = useState<'' | 'copy' | 'export'>('')
+  const [teamNotice, setTeamNotice] = useState('')
 
   useEffect(() => {
     const load = async () => {
@@ -89,6 +137,12 @@ function CaptainContent() {
         getMyReferralQr(window.location.origin)
           .then(setQr)
           .catch(() => setQr(null))
+        getMyZoneOverview()
+          .then(setOverview)
+          .catch(() => setOverview(null))
+        getMyLinkStats(30)
+          .then(setLinkStats)
+          .catch(() => setLinkStats(null))
       } catch (err: any) {
         setError(err.response?.data?.error || 'Failed to load your captain dashboard')
       } finally {
@@ -116,13 +170,6 @@ function CaptainContent() {
         .catch(() => setReferrals([]))
         .finally(() => setTabLoading(false))
     }
-    if (tab === 'team' && team === null) {
-      setTabLoading(true)
-      getMyTeam()
-        .then(setTeam)
-        .catch(() => setTeam([]))
-        .finally(() => setTabLoading(false))
-    }
     if (tab === 'payouts' && payouts === null) {
       setTabLoading(true)
       getMyPayouts()
@@ -137,7 +184,46 @@ function CaptainContent() {
         .catch(() => setAttendanceEvents([]))
         .finally(() => setTabLoading(false))
     }
-  }, [profile, tab, referrals, team, payouts, attendanceEvents])
+  }, [profile, tab, referrals, payouts, attendanceEvents])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setTeamQuery(teamSearch.trim()), SEARCH_DEBOUNCE_MS)
+    return () => window.clearTimeout(timer)
+  }, [teamSearch])
+
+  useEffect(() => {
+    if (!profile || tab !== 'team') return
+    let cancelled = false
+    setTeam(null)
+    getMyTeam({ q: teamQuery || undefined, status: teamStatus || undefined })
+      .then((list) => !cancelled && setTeam(list))
+      .catch(() => !cancelled && setTeam([]))
+    return () => {
+      cancelled = true
+    }
+  }, [profile, tab, teamQuery, teamStatus])
+
+  const runTeamExport = async (action: 'copy' | 'export') => {
+    setTeamAction(action)
+    setTeamNotice('')
+    try {
+      const rows = await exportMyTeam(action, { q: teamQuery || undefined, status: teamStatus || undefined })
+      if (action === 'export') {
+        downloadCsv(`trfc-${profile?.zone.code.toLowerCase() ?? 'zone'}-members`, exportRowsForCsv(rows))
+        setTeamNotice(`Exported ${rows.length} member${rows.length === 1 ? '' : 's'}`)
+      } else {
+        const text = exportRowsForCsv(rows)
+          .map((r) => [r.Name, r.Status, `${r['Saturdays attended']} Saturdays`, r['Last seen'] ? `last seen ${r['Last seen']}` : 'never seen'].join(' · '))
+          .join('\n')
+        await navigator.clipboard.writeText(text)
+        setTeamNotice(`Copied ${rows.length} member${rows.length === 1 ? '' : 's'}`)
+      }
+    } catch {
+      setTeamNotice(action === 'copy' ? 'Could not copy the list' : 'Could not export the list')
+    } finally {
+      setTeamAction('')
+    }
+  }
 
   const referralLink = qr?.link ?? (profile ? buildReferralLink(profile.zone.referral_code) : '')
 
@@ -184,7 +270,7 @@ function CaptainContent() {
                 </span>
               )}
               <span>
-                The {profile.zone.name} zone earns {formatRate(profile.zone.commission_rate)} on referred purchases
+                You earn {formatRate(profile.zone.commission_rate)} on shop purchases by members who chose you
               </span>
             </div>
           )
@@ -205,6 +291,8 @@ function CaptainContent() {
 
         {profile && (
           <>
+            {overview && <ZoneOverviewCard overview={overview} zoneName={profile.zone.name} />}
+
             <CaptainPhotoCard
               name={profile.name.trim().split(/\s+/)[0] || 'Captain'}
               photoUrl={profile.photo_url}
@@ -215,10 +303,11 @@ function CaptainContent() {
               <div className="min-w-0">
                 <h2 className="font-barlow-condensed font-bold text-xl tracking-tighter mb-1">Your zone&apos;s referral link</h2>
                 <p className="text-sm text-fog light:text-fog-light mb-4">
-                  Every captain in {profile.zone.name} shares this link. Everyone who signs up with it joins the zone,
-                  and the zone earns on every product, medal and equipment hire they buy. Event tickets earn through
-                  each event&apos;s profit share. Earnings go to the {profile.zone.name} zone and are shared equally by
-                  its {activeCaptains === 1 ? 'captain' : `${activeCaptains} active captains`}.
+                  Every captain in {profile.zone.name} shares this link. Everyone who signs up with it joins the zone and
+                  chooses their captain. You earn on every product, medal and equipment hire bought by members who chose
+                  you, and that commission is yours alone. Event tickets earn through each event&apos;s profit share, which
+                  goes to the {profile.zone.name} zone and is shared equally by its{' '}
+                  {activeCaptains === 1 ? 'captain' : `${activeCaptains} active captains`}.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input
@@ -262,29 +351,31 @@ function CaptainContent() {
               )}
             </div>
 
+            {linkStats && <LinkStatsCard stats={linkStats} />}
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatTile label="Your team" value={profile.stats.team_members ?? 0} icon={UsersRound} />
+              <StatTile label="Members who chose you" value={profile.stats.team_members ?? 0} icon={UsersRound} />
               <StatTile label="Zone referrals" value={profile.stats.referred_customers} icon={Users} />
-              <StatTile label="Zone sales" value={formatKes(profile.stats.referred_sales)} icon={TrendingUp} />
-              <StatTile label="Zone pending" value={formatKes(profile.stats.pending_amount)} icon={Clock} />
-              <StatTile label="Zone approved" value={formatKes(profile.stats.approved_amount)} icon={BadgeCheck} />
+              <StatTile label="Your pending" value={formatKes(profile.stats.my_pending_amount ?? 0)} icon={Clock} />
+              <StatTile label="Your approved" value={formatKes(profile.stats.my_approved_amount ?? 0)} icon={BadgeCheck} />
+              <StatTile label="Zone shares pending" value={formatKes(profile.stats.zone_pending_amount ?? 0)} icon={TrendingUp} />
               <StatTile
-                label="Your share of approved"
-                value={formatKes(shareOf(profile.stats.approved_amount))}
+                label="Your share of zone approved"
+                value={formatKes(shareOf(profile.stats.zone_approved_amount ?? 0))}
                 icon={BadgeCheck}
               />
-              <StatTile label="Zone paid out" value={formatKes(profile.stats.paid_amount)} icon={Wallet} />
+              <StatTile label="Zone paid out" value={formatKes(profile.stats.zone_paid_amount ?? 0)} icon={Wallet} />
               <StatTile label="Paid to you" value={formatKes(profile.stats.my_paid_amount ?? 0)} icon={Wallet} />
             </div>
             {activeCaptains > 1 && (
               <p className="-mt-4 text-xs text-fog light:text-fog-light">
-                Your share is an estimate: the zone&apos;s money is split equally between its {activeCaptains} active
-                captains when it is paid, in whole shillings.
+                Your own commissions are paid to you in full. Your share of zone money is an estimate: it is split
+                equally between the zone&apos;s {activeCaptains} active captains when it is paid, in whole shillings.
               </p>
             )}
 
             <div>
-              <DashboardTabs tabs={TAB_LABELS} active={tab} onChange={setTab} />
+              <DashboardTabs tabs={TAB_LABELS} active={tab} onChange={setTab} comingSoon={COMING_SOON_TABS} />
 
               {tabLoading && (
                 <div className="flex justify-center py-10">
@@ -313,13 +404,18 @@ function CaptainContent() {
                   </div>
                   {commissions.commissions.length === 0 ? (
                     <p className="text-center py-10 text-fog light:text-fog-light">
-                      No zone commissions yet. Share the zone link to start earning.
+                      No commissions yet. Share the zone link and look after your members to start earning.
                     </p>
                   ) : (
                     commissions.commissions.map((c) => (
                       <div key={c.id} className={`${cardSurface} p-4 flex flex-wrap justify-between gap-3 items-center`}>
                         <div>
-                          <p className="font-barlow-condensed font-bold text-lg">{SOURCE_LABELS[c.source_type]}</p>
+                          <p className="font-barlow-condensed font-bold text-lg">
+                            {SOURCE_LABELS[c.source_type]}
+                            <span className="ml-2 text-xs font-normal text-fog light:text-fog-light">
+                              {c.kind === 'zone' ? 'Zone share' : 'Yours'}
+                            </span>
+                          </p>
                           <p className="text-sm text-fog light:text-fog-light">
                             {c.source_type === 'event_share'
                               ? `${c.event_title ?? 'Event'} · ${formatDate(c.created_at)} · ${c.used_tickets ?? 0} used referral ticket${
@@ -330,7 +426,7 @@ function CaptainContent() {
                         </div>
                         <div className="text-right">
                           <p className="font-bebas text-2xl text-accent light:text-accent-light">{formatKes(c.amount)}</p>
-                          {activeCaptains > 1 && (c.status === 'pending' || c.status === 'approved') && (
+                          {c.kind === 'zone' && activeCaptains > 1 && (c.status === 'pending' || c.status === 'approved') && (
                             <p className="text-xs text-fog light:text-fog-light">Your share about {formatKes(shareOf(c.amount))}</p>
                           )}
                           <span className={`inline-block px-2.5 py-0.5 text-xs font-bold uppercase ${COMMISSION_STATUS_STYLES[c.status]}`}>
@@ -383,22 +479,82 @@ function CaptainContent() {
                 </div>
               )}
 
-              {!tabLoading && tab === 'team' && team && (
+              {tab === 'team' && (
                 <div className="space-y-3">
                   <p className="text-sm text-fog light:text-fog-light">
                     Members in your zone and members who chose you. Follow up with them through the TRFC app. You see a WhatsApp
-                    number only while that member has turned it on for you, and it must never be used for promotions.
+                    button only while that member has turned it on for you, and it must never be used for promotions. Copying
+                    or exporting the list is recorded.
                   </p>
-                  {team.length === 0 ? (
-                    <p className="text-center py-10 text-fog light:text-fog-light">No team members yet.</p>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <label className="relative flex-1 min-w-[12rem]">
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-fog light:text-fog-light" />
+                      <input
+                        type="search"
+                        value={teamSearch}
+                        onChange={(e) => setTeamSearch(e.target.value)}
+                        placeholder="Search by name"
+                        aria-label="Search members by name"
+                        className="w-full bg-smoke light:bg-smoke-light border border-white/10 light:border-black/10 pl-9 pr-3 py-2 text-sm text-chalk light:text-chalk-light"
+                      />
+                    </label>
+                    <select
+                      value={teamStatus}
+                      onChange={(e) => setTeamStatus(e.target.value as MemberStatus | '')}
+                      className="bg-smoke light:bg-smoke-light border border-white/10 light:border-black/10 px-3 py-2 text-sm text-chalk light:text-chalk-light"
+                      aria-label="Filter by status"
+                    >
+                      <option value="">All statuses</option>
+                      {MEMBER_STATUS_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      disabled={teamAction !== ''}
+                      onClick={() => void runTeamExport('copy')}
+                      className="inline-flex items-center gap-2 px-3 py-2 border border-white/10 light:border-black/10 font-barlow-condensed font-bold text-sm tracking-widest uppercase disabled:opacity-50"
+                    >
+                      <Copy size={14} /> Copy list
+                    </button>
+                    <button
+                      type="button"
+                      disabled={teamAction !== ''}
+                      onClick={() => void runTeamExport('export')}
+                      className="inline-flex items-center gap-2 px-3 py-2 border border-white/10 light:border-black/10 font-barlow-condensed font-bold text-sm tracking-widest uppercase disabled:opacity-50"
+                    >
+                      <Download size={14} /> Export CSV
+                    </button>
+                  </div>
+                  {teamNotice && <p className="text-xs text-fog light:text-fog-light">{teamNotice}</p>}
+                  {team === null ? (
+                    <div className="flex justify-center py-10">
+                      <Loader className="w-8 h-8 animate-spin text-accent light:text-accent-light" />
+                    </div>
+                  ) : team.length === 0 ? (
+                    <p className="text-center py-10 text-fog light:text-fog-light">
+                      {teamQuery || teamStatus ? 'No members match these filters.' : 'No team members yet.'}
+                    </p>
                   ) : (
                     team.map((member) => (
                       <div key={member.id} className={`${cardSurface} p-4 flex flex-wrap justify-between gap-3 items-start`}>
                         <div className="min-w-0 space-y-1">
-                          <p className="font-barlow-condensed font-bold text-lg">{member.name}</p>
+                          <p className="font-barlow-condensed font-bold text-lg flex flex-wrap items-center gap-2">
+                            {member.name}
+                            <span
+                              className={`inline-block px-2 py-0.5 text-xs font-barlow-condensed font-bold tracking-widest uppercase border ${
+                                STATUS_BADGE_STYLES[member.status]
+                              }`}
+                            >
+                              {statusLabel(member.status, member.missed_saturdays)}
+                            </span>
+                          </p>
                           <p className="text-sm text-fog light:text-fog-light">
                             {member.zone ?? 'No zone'} · Joined {formatDate(member.joined_at)} · {member.saturdays_attended} Saturday
-                            {member.saturdays_attended === 1 ? '' : 's'}
+                            {member.saturdays_attended === 1 ? '' : 's'} · Last seen{' '}
+                            {member.last_seen ? formatDate(member.last_seen) : 'never'}
                           </p>
                           {member.programs.length > 0 && (
                             <ul className="text-sm text-fog light:text-fog-light">
@@ -443,8 +599,9 @@ function CaptainContent() {
                 <div className="space-y-3">
                   {payouts.length === 0 ? (
                     <p className="text-center py-10 text-fog light:text-fog-light">
-                      No zone payouts yet. Approved money is shared equally by the zone&apos;s active captains and sent to
-                      each captain&apos;s M-Pesa{profile.payout_phone ? ` (yours: ${profile.payout_phone})` : ''}.
+                      No payouts yet. Your approved commissions are paid to you in full, and zone money is shared equally
+                      by the zone&apos;s active captains. Payments go to your M-Pesa
+                      {profile.payout_phone ? ` (${profile.payout_phone})` : ''}.
                     </p>
                   ) : (
                     payouts.map((p) => (
@@ -454,8 +611,12 @@ function CaptainContent() {
                             {p.my_amount !== null ? `You got ${formatKes(p.my_amount)}` : 'Not shared with you'}
                           </p>
                           <p className="text-sm text-fog light:text-fog-light">
-                            {formatDate(p.paid_at)} · Zone got {formatKes(p.amount)}
-                            {p.captain_count > 0 ? `, split by ${p.captain_count} captain${p.captain_count === 1 ? '' : 's'}` : ''}
+                            {formatDate(p.paid_at)} ·{' '}
+                            {p.personal
+                              ? 'Your commissions'
+                              : `Zone got ${formatKes(p.amount)}${
+                                  p.captain_count > 0 ? `, split by ${p.captain_count} captain${p.captain_count === 1 ? '' : 's'}` : ''
+                                }`}
                             {' · '}
                             {p.commission_count} commission{p.commission_count === 1 ? '' : 's'}
                             {p.note ? ` · ${p.note}` : ''}
@@ -514,5 +675,90 @@ function CaptainContent() {
         />
       )}
     </>
+  )
+}
+
+function ZoneOverviewCard({ overview, zoneName }: { overview: CaptainZoneOverview; zoneName: string }) {
+  const maxAttended = Math.max(1, ...overview.last_four_saturdays.map((s) => s.attended))
+  return (
+    <div className={`${cardSurface} p-6 space-y-5`}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="font-barlow-condensed font-bold text-xl tracking-tighter">{zoneName} zone overview</h2>
+        <p className="text-xs text-fog light:text-fog-light">
+          {overview.new_count} new · {overview.active_count} active · {overview.missing_count} missing
+        </p>
+      </div>
+      <div className="grid gap-6 md:grid-cols-[1fr_auto] items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <StatTile
+            label={`Members · +${overview.joined_this_week} this week`}
+            value={overview.total_members}
+            icon={Users}
+          />
+          <StatTile label="Joined with the zone link" value={overview.joined_via_link} icon={UserPlus} />
+          <StatTile label="No captain yet" value={overview.no_captain_count} icon={UserX} />
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-fog light:text-fog-light mb-2">Last four Saturdays</p>
+          {overview.last_four_saturdays.length === 0 ? (
+            <p className="text-sm text-fog light:text-fog-light">No Saturday runs yet.</p>
+          ) : (
+            <div className="flex items-end gap-3 h-28">
+              {overview.last_four_saturdays.map((s) => (
+                <div key={s.date} className="flex flex-col items-center justify-end gap-1 h-full w-12">
+                  <span className="text-xs font-bold">{s.attended}</span>
+                  <div
+                    className="w-full bg-accent light:bg-accent-light"
+                    style={{ height: `${Math.max(4, (s.attended / maxAttended) * 64)}px` }}
+                    aria-hidden="true"
+                  />
+                  <span className="text-[10px] text-fog light:text-fog-light whitespace-nowrap">
+                    {new Date(`${s.date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function LinkStatsCard({ stats }: { stats: CaptainLinkStats }) {
+  const rows = [
+    { label: `Last ${stats.days} days`, opened: stats.opened, finished: stats.finished },
+    { label: 'All time', opened: stats.opened_total, finished: stats.finished_total },
+  ]
+  return (
+    <div className={`${cardSurface} p-6`}>
+      <h2 className="font-barlow-condensed font-bold text-xl tracking-tighter mb-1 flex items-center gap-2">
+        <Link2 size={18} /> Zone link results
+      </h2>
+      <p className="text-sm text-fog light:text-fog-light mb-4">
+        Opened counts each browser once a day. Finished counts people who signed up with the zone link.
+      </p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {rows.map((r) => (
+          <div key={r.label} className="border border-white/10 light:border-black/10 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-fog light:text-fog-light mb-2">{r.label}</p>
+            <div className="flex gap-6">
+              <div>
+                <p className="font-bebas text-3xl">{r.opened}</p>
+                <p className="text-xs text-fog light:text-fog-light">Opened</p>
+              </div>
+              <div>
+                <p className="font-bebas text-3xl">{r.finished}</p>
+                <p className="text-xs text-fog light:text-fog-light">Finished</p>
+              </div>
+              <div>
+                <p className="font-bebas text-3xl text-accent light:text-accent-light">{percent(r.finished, r.opened)}</p>
+                <p className="text-xs text-fog light:text-fog-light">Conversion</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }

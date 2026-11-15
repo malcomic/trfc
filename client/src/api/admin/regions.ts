@@ -9,8 +9,9 @@ export interface Region {
   is_active: boolean
   created_at: string
   captain_count: number
-  /** Zone referral code; every referral and commission belongs to the zone. */
+  /** Zone referral code; links using it place members in the zone. */
   referral_code: string
+  /** Rate of the shop commission each of the zone's captains earns on their own members' purchases. */
   commission_rate: number
   /** The zone's main contact; also receives any leftover shillings when a payout is split. */
   lead_captain_id: string | null
@@ -18,9 +19,12 @@ export interface Region {
   lead_captain_phone: string | null
   referred_customers: number
   referred_sales: number
+  /** Totals cover the zone's money and its captains' own commissions. */
   pending_amount: number
   approved_amount: number
   paid_amount: number
+  /** Approved zone money (event shares) waiting to be split between the zone's captains. */
+  zone_approved_amount: number
 }
 
 export interface RegionPayload {

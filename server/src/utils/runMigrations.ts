@@ -1741,6 +1741,32 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       CREATE INDEX IF NOT EXISTS idx_flash_sale_unlocks_sale ON flash_sale_unlocks(flash_sale_id);
     `,
   },
+  {
+    name: '069_captain_dashboard',
+    sql: `
+      -- Who opened the captain dashboard or exported/copied a member list. Admin-only; kept 12 months.
+      CREATE TABLE IF NOT EXISTS captain_access_log (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        region_id UUID REFERENCES regions(id) ON DELETE SET NULL,
+        action VARCHAR(10) NOT NULL CHECK (action IN ('open', 'export', 'copy')),
+        row_count INT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_captain_access_log_created ON captain_access_log(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_captain_access_log_user ON captain_access_log(user_id, created_at DESC);
+
+      -- One row per browser per day that opened a zone link; visitor_id is a random id kept by the browser.
+      CREATE TABLE IF NOT EXISTS referral_link_visits (
+        region_id UUID NOT NULL REFERENCES regions(id) ON DELETE CASCADE,
+        visitor_id VARCHAR(40) NOT NULL,
+        visit_date DATE NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (region_id, visitor_id, visit_date)
+      );
+      CREATE INDEX IF NOT EXISTS idx_referral_link_visits_region_date ON referral_link_visits(region_id, visit_date);
+    `,
+  },
 ]
 
 export async function runMigrations() {

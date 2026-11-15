@@ -111,6 +111,47 @@ export async function admitMemberCheckin(
   }
 }
 
+/**
+ * Members already scanned into an event, newest first. Staff see everyone; a captain sees only
+ * members of their zone (or who chose them) and anyone they scanned themselves.
+ */
+export async function listScannedMembers(actor: Actor, eventId: string) {
+  await loadEvent(eventId)
+  const staff = isStaff(actor)
+  if (!staff && !(await canActOnEvent(poolDb, actor, eventId))) {
+    throw new AttendanceError('This event is not in your zone', 403)
+  }
+  const captainFilter = staff
+    ? ''
+    : `AND (
+         ec.scanned_by = $2
+         OR u.captain_id = $2
+         OR COALESCE(u.referred_by_region_id, oc.region_id) = (SELECT region_id FROM captains WHERE user_id = $2)
+       )`
+  const result = await query(
+    `SELECT u.id, u.name, ec.scanned_at,
+            (SELECT COUNT(DISTINCT e.event_date::date)::int
+             FROM events e
+             WHERE e.cancelled_at IS NULL
+               AND EXTRACT(DOW FROM e.event_date) = 6
+               AND e.event_date <= (NOW() AT TIME ZONE 'Africa/Nairobi')
+               AND (
+                 EXISTS (SELECT 1 FROM event_checkins x WHERE x.event_id = e.id AND x.user_id = u.id)
+                 OR EXISTS (SELECT 1 FROM tickets t
+                            WHERE t.event_id = e.id AND t.user_id = u.id AND t.checked_in_at IS NOT NULL)
+               )) AS saturdays_attended
+     FROM event_checkins ec
+     JOIN users u ON u.id = ec.user_id
+     LEFT JOIN captains oc ON oc.user_id = u.captain_id
+     WHERE ec.event_id = $1
+       ${captainFilter}
+     ORDER BY ec.scanned_at DESC
+     LIMIT 500`,
+    staff ? [eventId] : [eventId, actor.id]
+  )
+  return result.rows
+}
+
 /** Recent and upcoming events this person can scan members into. */
 export async function listCheckinEvents(actor: Actor) {
   const zoneFilter = isStaff(actor)

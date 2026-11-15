@@ -260,21 +260,22 @@ describe('getMyTeam', () => {
     vi.clearAllMocks()
   })
 
-  it('lists zone members with Saturdays and progress, and WhatsApp only through an active share', async () => {
+  it('lists zone members with Saturdays and Couch to 5K only, and WhatsApp only through an active share', async () => {
     const rows = [
-      { id: 'a', name: 'Jane Wanjiku', zone: 'Thika', saturdays_attended: 3, programs: [], whatsapp: null },
-      { id: 'b', name: 'Tom', zone: 'Thika', saturdays_attended: 1, programs: [], whatsapp: '254712345678' },
+      { id: 'a', name: 'Jane Wanjiku', zone: 'Thika', saturdays_attended: 3, status: 'active', programs: [], whatsapp: null },
+      { id: 'b', name: 'Tom', zone: 'Thika', saturdays_attended: 1, status: 'new', programs: [], whatsapp: '254712345678' },
     ]
     vi.mocked(query).mockResolvedValueOnce({ rows } as any)
     const res = makeRes()
-    await getMyTeam({ user: { id: CAPTAIN_ID } } as any, res)
+    await getMyTeam({ user: { id: CAPTAIN_ID }, query: {} } as any, res)
 
     const [sql, params] = vi.mocked(query).mock.calls[0]
-    expect(String(sql)).toContain('captain_whatsapp_shares s ON s.member_id = u.id AND s.captain_id = $1')
+    expect(String(sql)).toContain('captain_whatsapp_shares s ON s.member_id = m.id AND s.captain_id = $1')
     expect(String(sql)).toContain('CASE WHEN s.enabled THEN')
+    expect(String(sql)).toContain('pe.program = $2')
     expect(String(sql)).toContain('u.deletion_requested_at IS NULL')
     expect(String(sql)).not.toMatch(/base_amount|total_spent/)
-    expect(params).toEqual([CAPTAIN_ID])
+    expect(params).toEqual([CAPTAIN_ID, 'foundations'])
     expect(res.json).toHaveBeenCalledWith(rows)
   })
 })

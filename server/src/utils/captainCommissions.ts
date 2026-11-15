@@ -1,7 +1,10 @@
 import { query } from '../config/db.js'
 import { toKenyanMsisdn } from './phone.js'
 
-/** Tickets earn no referral commission; zones are paid for tickets through the event profit share. */
+/**
+ * Shop purchases earn commission for the buyer's chosen captain alone; it is never shared with the zone.
+ * Tickets earn no referral commission; zones are paid for tickets through the event profit share.
+ */
 export type CommissionSourceType = 'order' | 'medal' | 'equipment_hire'
 export type CommissionMatchMethod = 'account' | 'email' | 'phone'
 
@@ -66,10 +69,12 @@ export async function resolveReferredCustomer(
 }
 
 /**
- * Creates the zone commission for one paid purchase if its buyer was referred by an active zone.
- * Captains of that zone never earn the zone commission on their own purchases.
+ * Creates the commission for one paid purchase for the buyer's chosen captain, at that captain's
+ * zone rate. Buyers without an active chosen captain earn nobody a commission, captains never earn
+ * on their own purchases, and purchases made before the captain was chosen don't count.
  * Safe to call repeatedly: (source_type, source_id) is unique. A reversed commission stays
- * reversed unless `reinstate` is set (admin explicitly re-marked the purchase as paid).
+ * reversed unless `reinstate` is set (admin explicitly re-marked the purchase as paid), in which
+ * case it goes to the buyer's current captain.
  */
 export async function recordCaptainCommission(
   sourceType: CommissionSourceType,
@@ -90,24 +95,24 @@ export async function recordCaptainCommission(
     const table = SOURCE_TABLES[sourceType]
     const onConflict = options.reinstate
       ? `ON CONFLICT (source_type, source_id) DO UPDATE
-           SET status = 'pending', approved_at = NULL
+           SET status = 'pending', approved_at = NULL,
+               captain_id = EXCLUDED.captain_id, region_id = EXCLUDED.region_id,
+               rate = EXCLUDED.rate, amount = EXCLUDED.amount
            WHERE captain_commissions.status = 'reversed'`
       : 'ON CONFLICT (source_type, source_id) DO NOTHING'
 
     const inserted = await query(
       `INSERT INTO captain_commissions
-         (region_id, referred_user_id, source_type, source_id, match_method, base_amount, rate, amount)
-       SELECT r.id, u.id, $2, s.id, $3, $4::numeric, r.commission_rate,
+         (captain_id, region_id, referred_user_id, source_type, source_id, match_method, base_amount, rate, amount)
+       SELECT c.user_id, c.region_id, u.id, $2, s.id, $3, $4::numeric, r.commission_rate,
               ROUND($4::numeric * r.commission_rate, 2)
        FROM users u
-       JOIN regions r ON r.id = u.referred_by_region_id
+       JOIN captains c ON c.user_id = u.captain_id AND c.status = 'active'
+       JOIN regions r ON r.id = c.region_id AND r.is_active = true
        JOIN ${table} s ON s.id = $5
        WHERE u.id = $1
-         AND r.is_active = true
-         AND NOT EXISTS (
-           SELECT 1 FROM captains own WHERE own.user_id = u.id AND own.region_id = r.id AND own.status = 'active'
-         )
-         AND s.created_at >= COALESCE(u.referred_at, '-infinity'::timestamptz)
+         AND c.user_id <> u.id
+         AND s.created_at >= COALESCE(u.captain_chosen_at, '-infinity'::timestamptz)
        ${onConflict}
        RETURNING id`,
       [customer.userId, sourceType, customer.method, baseAmount, sourceId]

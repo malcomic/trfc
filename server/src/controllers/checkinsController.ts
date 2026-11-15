@@ -4,6 +4,7 @@ import {
   admitMemberCheckin,
   codeFromInput,
   listCheckinEvents,
+  listScannedMembers,
   lookupMemberCheckin,
 } from '../utils/memberCheckins.js'
 
@@ -23,6 +24,14 @@ export async function getCheckinEvents(req: Request, res: Response) {
     res.json(await listCheckinEvents(req.user!))
   } catch (error) {
     sendError(res, error, 'Failed to load events')
+  }
+}
+
+export async function getScannedMembers(req: Request, res: Response) {
+  try {
+    res.json(await listScannedMembers(req.user!, req.params.id))
+  } catch (error) {
+    sendError(res, error, 'Failed to load scanned members')
   }
 }
 

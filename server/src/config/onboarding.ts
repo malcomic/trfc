@@ -11,6 +11,9 @@ export const PROGRAM_NAMES: Record<ProgramId, string> = {
   hiking: 'Hiking',
 }
 
+/** Couch to 5K. The only program captains may see, for any member. */
+export const FREE_PROGRAM_ID: ProgramId = 'foundations'
+
 export const PRICES = { plusReturning: 197, plusNew: 497, elite: 2000 }
 export const PAID_PROGRAMS: ProgramId[] = ['fat_loss', 'endurance', 'hiking']
 export const ELITE_DAYS = 30

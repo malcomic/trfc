@@ -104,7 +104,8 @@ const longDate = (date: Date) =>
   date.toLocaleDateString('en-KE', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Nairobi' })
 
 /**
- * Sets the member's personal captain. Never touches the referral, so commission stays with the zone.
+ * Sets the member's personal captain, who earns the commission on the member's shop purchases made
+ * from now on; earlier purchases stay with the previous captain. Never touches the zone referral.
  * The checks are repeated in the UPDATE so two quick requests cannot get around the 30-day limit.
  */
 export async function changeMyCaptain(userId: string, captainId: unknown): Promise<{ captainId: string; previousCaptainId: string | null }> {

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { getClient, query } from '../config/db.js';
+import { FREE_PROGRAM_ID } from '../config/onboarding.js';
 import { blankProgramContent, placeholderWeek } from '../config/programSeed.js';
 import type { ProgramContent, ProgramWeekContent } from '../types/programContent.js';
 import { clearProgramCache, type ProgramRow } from '../utils/programCatalog.js';
@@ -54,7 +55,6 @@ async function inTransaction<T>(fn: (client: DbClient) => Promise<T>): Promise<T
 }
 
 const PROGRAM_COLUMNS = 'id, slug, name, status, is_core, sort_order, created_at, updated_at';
-const FREE_PROGRAM_ID = 'foundations';
 
 async function lockProgram(client: DbClient, id: string): Promise<ProgramRow> {
   const result = await client.query(`SELECT ${PROGRAM_COLUMNS} FROM programs WHERE id = $1 FOR UPDATE`, [id]);

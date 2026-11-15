@@ -108,7 +108,8 @@ import MemberMembership from './pages/member/MemberMembership'
 import MemberPoints from './pages/member/MemberPoints'
 import MemberGuides from './pages/member/MemberGuides'
 import MemberVote from './pages/member/MemberVote'
-import { captureReferralFromUrl } from './utils/referral'
+import { captureReferralFromUrl, getVisitorId } from './utils/referral'
+import { recordReferralVisit } from './api/captains'
 import { identifyTikTokUser } from './utils/tiktokPixel'
 import { useAuth } from './context/AuthContext'
 
@@ -144,7 +145,10 @@ function TikTokPixelTracker() {
 function ReferralCapture() {
   const { search } = useLocation()
   useEffect(() => {
-    captureReferralFromUrl(search)
+    const code = captureReferralFromUrl(search)
+    if (!code) return
+    const visitorId = getVisitorId()
+    if (visitorId) recordReferralVisit(code, visitorId)
   }, [search])
   return null
 }

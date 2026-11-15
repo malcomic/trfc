@@ -1467,6 +1467,7 @@ export function buildCaptainMemberJoinedEmailHTML(data: CaptainMemberChangeEmail
       ${paragraph(
         `<strong>${escapeHtml(data.memberName)}</strong> chose you as their captain. Say hello this week and help them get started.`
       )}
+      ${paragraph('From now on you earn commission on their shop purchases: products, medals and equipment hire.')}
       ${actionButton('SEE MY TEAM', captainDashboardUrl())}`
   )
 }
@@ -1475,6 +1476,7 @@ export function buildCaptainMemberJoinedEmailText(data: CaptainMemberChangeEmail
   return [
     greeting(data.name),
     `${data.memberName} chose you as their captain. Say hello this week and help them get started.`,
+    'From now on you earn commission on their shop purchases: products, medals and equipment hire.',
     `See your team: ${captainDashboardUrl()}`,
     footerText(),
   ].join('\n\n')
@@ -1489,6 +1491,7 @@ export function buildCaptainMemberLeftEmailHTML(data: CaptainMemberChangeEmailDa
       ${paragraph(
         `<strong>${escapeHtml(data.memberName)}</strong> has chosen another captain, so they are no longer on your team. Thank you for looking after them.`
       )}
+      ${paragraph('Commission you already earned on their purchases stays yours; their new purchases earn for their new captain.')}
       ${actionButton('SEE MY TEAM', captainDashboardUrl())}`
   )
 }
@@ -1497,6 +1500,7 @@ export function buildCaptainMemberLeftEmailText(data: CaptainMemberChangeEmailDa
   return [
     greeting(data.name),
     `${data.memberName} has chosen another captain, so they are no longer on your team. Thank you for looking after them.`,
+    'Commission you already earned on their purchases stays yours; their new purchases earn for their new captain.',
     `See your team: ${captainDashboardUrl()}`,
     footerText(),
   ].join('\n\n')

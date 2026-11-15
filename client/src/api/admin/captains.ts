@@ -17,11 +17,21 @@ export interface AdminCaptain {
   region_code: string
   is_lead: boolean
   team_members: number
+  /** The captain's own shop commissions, which are never shared with the zone. */
+  pending_amount: number
+  /** Approved and not yet paid. */
+  approved_amount: number
+  paid_amount: number
 }
+
+export type CommissionKind = 'personal' | 'zone'
 
 export interface AdminCommission {
   id: string
   region_id: string
+  /** Set for a captain's own shop commission; null for zone money split between the zone's captains. */
+  captain_id: string | null
+  captain_name: string | null
   referred_user_id: string | null
   source_type: CommissionSourceType
   source_id: string
@@ -52,6 +62,9 @@ export interface AdminPayoutSplit {
 export interface AdminPayout {
   id: string
   region_id: string
+  /** Set when the payout was one captain's own commissions; null for a zone payout. */
+  captain_id: string | null
+  captain_name: string | null
   amount: number
   note: string | null
   paid_at: string
@@ -81,9 +94,37 @@ export interface UpdateCaptainPayload {
 
 export interface CommissionFilters {
   regionId?: string
+  captainId?: string
+  kind?: CommissionKind | ''
   status?: CommissionStatus | ''
   from?: string
   to?: string
+}
+
+export type CaptainAccessAction = 'open' | 'export' | 'copy'
+
+export interface CaptainAccessLogEntry {
+  id: string
+  user_id: string | null
+  region_id: string | null
+  action: CaptainAccessAction
+  row_count: number | null
+  created_at: string
+  captain_name: string | null
+  region_name: string | null
+  region_code: string | null
+}
+
+export interface AccessLogFilters {
+  captainId?: string
+  from?: string
+  to?: string
+}
+
+export const ACCESS_ACTION_LABELS: Record<CaptainAccessAction, string> = {
+  open: 'Opened dashboard',
+  export: 'Exported list',
+  copy: 'Copied list',
 }
 
 const compact = <T extends object>(params: T) =>
@@ -136,20 +177,27 @@ export const syncCommissions = async (days = 90) => {
   return response.data as { created: number; days: number }
 }
 
+export const getCaptainAccessLog = async (filters: AccessLogFilters = {}): Promise<CaptainAccessLogEntry[]> => {
+  const response = await api.get('/admin/captain-access-log', { params: compact(filters) })
+  return response.data
+}
+
 export const getAdminPayouts = async (regionId?: string): Promise<AdminPayout[]> => {
   const response = await api.get('/admin/captain-payouts', { params: compact({ regionId }) })
   return response.data
 }
 
-export const previewPayout = async (regionId: string, commissionIds: string[]): Promise<PayoutPreview> => {
+/** A captain's own commissions (`captainId`) or a zone's shared money (`regionId`). */
+export type PayoutTarget = { captainId: string; regionId?: never } | { regionId: string; captainId?: never }
+
+export const previewPayout = async (target: PayoutTarget, commissionIds: string[]): Promise<PayoutPreview> => {
   const response = await api.get('/admin/captain-payouts/preview', {
-    params: { regionId, commissionIds: commissionIds.join(',') },
+    params: { ...target, commissionIds: commissionIds.join(',') },
   })
   return response.data
 }
 
-export const createPayout = async (data: {
-  regionId: string
+export const createPayout = async (data: PayoutTarget & {
   commissionIds: string[]
   splits: { captainId: string; mpesaReceipt: string }[]
   note?: string

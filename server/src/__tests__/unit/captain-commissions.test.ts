@@ -91,10 +91,10 @@ describe('recordCaptainCommission', () => {
     const [sql, params] = insertCall()!
     expect(params).toEqual([CUSTOMER_ID, 'order', 'account', 2500, ORDER_ID])
     expect(String(sql)).toContain('ROUND($4::numeric * r.commission_rate, 2)')
-    expect(String(sql)).toContain('(region_id, referred_user_id,')
+    expect(String(sql)).toContain('(captain_id, region_id, referred_user_id,')
   })
 
-  it('credits the referring zone only while active, never a captain of that zone, and only after the referral date', async () => {
+  it("credits the buyer's chosen captain alone, at that captain's zone rate", async () => {
     routeQueries((sql) => {
       if (sql.includes('FROM orders o')) return { rows: [{ user_id: CUSTOMER_ID, email: null, phone: null, base_amount: 100 }] }
       return undefined
@@ -103,11 +103,39 @@ describe('recordCaptainCommission', () => {
     await recordCaptainCommission('order', ORDER_ID)
 
     const sql = String(insertCall()![0])
-    expect(sql).toContain('JOIN regions r ON r.id = u.referred_by_region_id')
-    expect(sql).toContain('r.is_active = true')
-    expect(sql).toContain('own.user_id = u.id AND own.region_id = r.id')
-    expect(sql).toContain('s.created_at >= COALESCE(u.referred_at')
+    expect(sql).toContain('SELECT c.user_id, c.region_id, u.id')
+    expect(sql).toContain('JOIN captains c ON c.user_id = u.captain_id')
+    expect(sql).toContain('JOIN regions r ON r.id = c.region_id')
     expect(sql).toContain('JOIN orders s ON s.id = $5')
+    expect(sql).not.toContain('referred_by_region_id')
+  })
+
+  it('pays nobody when the buyer has no chosen captain: the captain join yields no row', async () => {
+    routeQueries((sql) => {
+      if (sql.includes('FROM orders o')) return { rows: [{ user_id: CUSTOMER_ID, email: null, phone: null, base_amount: 100 }] }
+      if (sql.includes('INSERT INTO captain_commissions')) {
+        expect(sql).toMatch(/\bJOIN captains c ON c\.user_id = u\.captain_id/)
+        expect(sql).not.toMatch(/LEFT JOIN captains/)
+        return { rows: [] }
+      }
+      return undefined
+    })
+    expect(await recordCaptainCommission('order', ORDER_ID)).toBe(false)
+  })
+
+  it('skips suspended captains, inactive zones, self-purchases and purchases from before the captain was chosen', async () => {
+    routeQueries((sql) => {
+      if (sql.includes('FROM orders o')) return { rows: [{ user_id: CUSTOMER_ID, email: null, phone: null, base_amount: 100 }] }
+      return undefined
+    })
+
+    await recordCaptainCommission('order', ORDER_ID)
+
+    const sql = String(insertCall()![0])
+    expect(sql).toContain("c.status = 'active'")
+    expect(sql).toContain('r.is_active = true')
+    expect(sql).toContain('c.user_id <> u.id')
+    expect(sql).toContain('s.created_at >= COALESCE(u.captain_chosen_at')
   })
 
   it('is idempotent: a second call hits ON CONFLICT DO NOTHING and reports no new commission', async () => {
@@ -134,6 +162,19 @@ describe('recordCaptainCommission', () => {
     expect(sql).toContain("WHERE captain_commissions.status = 'reversed'")
   })
 
+  it("gives a reinstated commission to the buyer's current captain", async () => {
+    routeQueries((sql) => {
+      if (sql.includes('FROM orders o')) return { rows: [{ user_id: CUSTOMER_ID, email: null, phone: null, base_amount: 100 }] }
+      if (sql.includes('INSERT INTO captain_commissions')) return { rows: [{ id: 'c1' }] }
+      return undefined
+    })
+    await recordCaptainCommission('order', ORDER_ID, { reinstate: true })
+    const sql = String(insertCall()![0])
+    expect(sql).toContain('captain_id = EXCLUDED.captain_id')
+    expect(sql).toContain('region_id = EXCLUDED.region_id')
+    expect(sql).toContain('amount = EXCLUDED.amount')
+  })
+
   it('uses the medal option price and the equipment total cost as the base', async () => {
     routeQueries((sql) => {
       if (sql.includes('FROM medal_purchases p')) {
@@ -156,7 +197,8 @@ describe('recordCaptainCommission', () => {
     expect(inserts[1][1]).toEqual([CUSTOMER_ID, 'equipment_hire', 'account', 3500, ORDER_ID])
   })
 
-  it('never treats tickets as a commission source; zones earn on tickets through the event profit share', () => {
+  it('never treats tickets or event shares as a shop commission source', () => {
+    expect(isCommissionSourceType('event_share')).toBe(false)
     expect(isCommissionSourceType('ticket')).toBe(false)
     expect(isCommissionSourceType('order')).toBe(true)
   })
@@ -344,6 +386,7 @@ describe('createPayout', () => {
     const client = mockClient((sql, params) => {
       if (sql.includes('FROM captain_commissions')) {
         expect(sql).toContain('region_id = $2')
+        expect(sql).toContain('captain_id IS NULL')
         expect(params[1]).toBe(REGION_ID)
         return { rows: [{ id: C1, amount: '100' }] }
       }
@@ -393,6 +436,108 @@ describe('createPayout', () => {
       res
     )
     expect(res.status).toHaveBeenCalledTimes(4)
+    expect(res.status.mock.calls.every(([code]: [number]) => code === 400)).toBe(true)
+    expect(getClient).not.toHaveBeenCalled()
+  })
+})
+
+describe("createPayout for one captain's own commissions", () => {
+  const CAPTAIN_ID = '77777777-7777-4777-8777-777777777777'
+  const OTHER_ID = '66666666-6666-4666-8666-666666666666'
+  const REGION_ID = '33333333-3333-4333-8333-333333333333'
+  const C1 = '44444444-4444-4444-8444-444444444444'
+  const C2 = '55555555-5555-4555-8555-555555555555'
+  const makeRes = () => ({ status: vi.fn().mockReturnThis(), json: vi.fn() }) as any
+  const body = (overrides: Record<string, unknown> = {}) => ({
+    body: {
+      captainId: CAPTAIN_ID,
+      commissionIds: [C1, C2],
+      splits: [{ captainId: CAPTAIN_ID, mpesaReceipt: 'qcd789' }],
+      ...overrides,
+    },
+    user: { id: 'admin' },
+  })
+
+  function mockClient(handler: Handler) {
+    const client = {
+      query: vi.fn(async (sql: string, params: any[] = []) => handler(sql, params) ?? { rows: [] }),
+      release: vi.fn(),
+    }
+    vi.mocked(getClient).mockResolvedValue(client as any)
+    return client
+  }
+  const captainRow = (sql: string) =>
+    sql.includes('FROM captains c JOIN users u')
+      ? { rows: [{ user_id: CAPTAIN_ID, name: 'Jane', phone: '254700000001', region_id: REGION_ID }] }
+      : undefined
+  const inserted = (client: ReturnType<typeof mockClient>, table: string) =>
+    client.query.mock.calls.filter(([sql]) => String(sql).includes(`INSERT INTO ${table}`))
+
+  beforeEach(() => vi.clearAllMocks())
+
+  it('pays the whole amount to the captain with one receipt and marks the commissions paid', async () => {
+    const client = mockClient((sql, params) => {
+      if (sql.includes('FROM captain_commissions')) {
+        expect(sql).toContain('captain_id = $2')
+        expect(params[1]).toBe(CAPTAIN_ID)
+        return { rows: [{ id: C1, amount: '100.50' }, { id: C2, amount: '50.25' }] }
+      }
+      if (sql.includes('INSERT INTO captain_payouts')) return { rows: [{ id: 'p1', amount: 150.75 }] }
+      return captainRow(sql)
+    })
+    const res = makeRes()
+
+    await createPayout(body({ note: ' Nov ' }) as any, res)
+
+    expect(inserted(client, 'captain_payouts')[0][1]).toEqual([REGION_ID, CAPTAIN_ID, 150.75, 'QCD789', 'Nov', 'admin'])
+    expect(inserted(client, 'captain_payout_splits').map(([, p]) => p)).toEqual([
+      ['p1', CAPTAIN_ID, 150.75, '254700000001', 'QCD789'],
+    ])
+    expect(client.query.mock.calls.some(([sql]) => String(sql).includes('ORDER BY is_lead DESC'))).toBe(false)
+    expect(client.query.mock.calls.some(([sql]) => String(sql).includes("SET status = 'paid'"))).toBe(true)
+    expect(client.query).toHaveBeenCalledWith('COMMIT')
+    expect(res.status).toHaveBeenCalledWith(201)
+  })
+
+  it("refuses zone money or another captain's commissions", async () => {
+    const client = mockClient((sql) => {
+      if (sql.includes('FROM captain_commissions')) return { rows: [{ id: C1, amount: '100' }] }
+      return captainRow(sql)
+    })
+    const res = makeRes()
+
+    await createPayout(body() as any, res)
+
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(client.query).toHaveBeenCalledWith('ROLLBACK')
+    expect(inserted(client, 'captain_payouts')).toHaveLength(0)
+    expect(client.release).toHaveBeenCalled()
+  })
+
+  it('refuses an unknown captain', async () => {
+    const client = mockClient(() => undefined)
+    const res = makeRes()
+
+    await createPayout(body() as any, res)
+
+    expect(res.status).toHaveBeenCalledWith(404)
+    expect(inserted(client, 'captain_payouts')).toHaveLength(0)
+  })
+
+  it('requires exactly one receipt, for that captain', async () => {
+    const res = makeRes()
+    await createPayout(body({ splits: [{ captainId: OTHER_ID, mpesaReceipt: 'QCD789' }] }) as any, res)
+    await createPayout(
+      body({
+        splits: [
+          { captainId: CAPTAIN_ID, mpesaReceipt: 'QCD789' },
+          { captainId: OTHER_ID, mpesaReceipt: 'QCD790' },
+        ],
+      }) as any,
+      res
+    )
+    await createPayout(body({ captainId: 'not-a-uuid' }) as any, res)
+    expect(res.status).toHaveBeenCalledTimes(3)
     expect(res.status.mock.calls.every(([code]: [number]) => code === 400)).toBe(true)
     expect(getClient).not.toHaveBeenCalled()
   })

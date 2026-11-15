@@ -33,10 +33,58 @@ export interface CaptainTeamMember {
   joined_via: 'zone_link' | 'chosen'
   /** True when the member chose this captain; otherwise they are in the captain's zone. */
   is_my_member: boolean
+  signed_up_at: string
   saturdays_attended: number
+  /** The last Saturday (YYYY-MM-DD) the member was checked in, if ever. */
+  last_seen: string | null
+  /** Saturdays with a run since the member was last seen (or signed up). */
+  missed_saturdays: number
+  status: MemberStatus
+  /** Couch to 5K only. */
   programs: CaptainTeamProgram[]
   /** Only present while the member has turned on WhatsApp sharing with this captain. */
   whatsapp: string | null
+}
+
+export type MemberStatus = 'new' | 'active' | 'missing'
+
+export const MEMBER_STATUS_OPTIONS: { value: MemberStatus; label: string }[] = [
+  { value: 'new', label: 'New' },
+  { value: 'active', label: 'Active' },
+  { value: 'missing', label: 'Missing' },
+]
+
+export interface TeamFilters {
+  q?: string
+  status?: MemberStatus
+}
+
+export interface CaptainTeamExportRow {
+  name: string
+  status: MemberStatus
+  missed_saturdays: number
+  saturdays_attended: number
+  last_seen: string | null
+  signed_up_at: string
+}
+
+export interface CaptainZoneOverview {
+  total_members: number
+  joined_this_week: number
+  joined_via_link: number
+  no_captain_count: number
+  new_count: number
+  active_count: number
+  missing_count: number
+  last_four_saturdays: { date: string; attended: number }[]
+}
+
+export interface CaptainLinkStats {
+  days: number
+  opened: number
+  opened_total: number
+  finished: number
+  finished_total: number
 }
 
 export interface CaptainZoneSummary {
@@ -51,14 +99,24 @@ export interface CaptainZoneSummary {
 
 export interface CaptainStats {
   referred_customers: number
+  /** Members who chose this captain; their shop purchases earn this captain commission. */
   team_members: number
+  /** Totals of this captain's own commissions plus the zone's shared money. */
   referred_sales: number
   pending_amount: number
   approved_amount: number
   paid_amount: number
+  /** This captain's own shop commissions, never shared. */
+  my_pending_amount: number
+  my_approved_amount: number
+  my_commission_paid_amount: number
+  /** Zone money (event profit shares), split equally between the zone's active captains. */
+  zone_pending_amount: number
+  zone_approved_amount: number
+  zone_paid_amount: number
   /** Active captains sharing the zone's payouts equally. */
   active_captains: number
-  /** Total paid to this captain from zone payouts. */
+  /** Total paid to this captain, from their own commissions and their share of zone payouts. */
   my_paid_amount: number
 }
 
@@ -94,6 +152,8 @@ export interface CaptainCommission {
   status: CommissionStatus
   created_at: string
   approved_at: string | null
+  /** `personal`: this captain's own commission. `zone`: split between the zone's captains. */
+  kind: 'personal' | 'zone'
   customer_name: string
   event_title?: string | null
   used_tickets?: number | null
@@ -108,8 +168,9 @@ export interface CaptainCommissionPage {
 
 export interface CaptainPayout {
   id: string
-  /** The zone's total for this payout. */
+  /** The payout's total: the zone's total, or this captain's own commissions when `personal`. */
   amount: number
+  personal: boolean
   note: string | null
   paid_at: string
   commission_count: number
@@ -137,8 +198,32 @@ export const getCaptainDirectory = async (): Promise<CaptainDirectoryEntry[]> =>
   return response.data
 }
 
-export const getMyTeam = async (): Promise<CaptainTeamMember[]> => {
-  const response = await api.get('/captains/me/team')
+/** Counts one open of a zone link for this browser. Fire-and-forget; failures are ignored. */
+export const recordReferralVisit = (code: string, visitorId: string): void => {
+  api.post(`/captains/ref/${encodeURIComponent(code)}/visit`, { visitorId }).catch(() => {})
+}
+
+export const getMyTeam = async (filters: TeamFilters = {}): Promise<CaptainTeamMember[]> => {
+  const response = await api.get('/captains/me/team', { params: filters })
+  return response.data
+}
+
+/** The list to copy or export. The server logs every call for the admin access log. */
+export const exportMyTeam = async (
+  action: 'copy' | 'export',
+  filters: TeamFilters = {}
+): Promise<CaptainTeamExportRow[]> => {
+  const response = await api.get('/captains/me/team/export', { params: { ...filters, action } })
+  return response.data
+}
+
+export const getMyZoneOverview = async (): Promise<CaptainZoneOverview> => {
+  const response = await api.get('/captains/me/overview')
+  return response.data
+}
+
+export const getMyLinkStats = async (days = 30): Promise<CaptainLinkStats> => {
+  const response = await api.get('/captains/me/link-stats', { params: { days } })
   return response.data
 }
 

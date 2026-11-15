@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
-import { ArrowLeft, Keyboard, Loader, X } from 'lucide-react'
+import { ArrowLeft, Keyboard, Loader, Timer, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import MemberPageHeader from '../../components/member/MemberPageHeader'
 import ScannerView from '../../components/scan/ScannerView'
@@ -9,10 +9,12 @@ import {
   admitMemberCheckin,
   isMemberPayload,
   listCheckinEvents,
+  listScannedMembers,
   lookupMemberCheckin,
   MEMBER_STATUS_LABELS,
   type CheckinEvent,
   type MemberCheckinResult,
+  type ScannedMember,
 } from '../../api/checkins'
 import { formatEventDate } from '../../utils/eventDate'
 import { nairobiToday } from '../../utils/calendarGrid'
@@ -20,12 +22,6 @@ import { nairobiToday } from '../../utils/calendarGrid'
 const EVENT_KEY = 'trfc_captain_scan_event_id'
 const SUCCESS_DISMISS_MS = 1200
 const ERROR_DISMISS_MS = 2000
-
-interface SessionEntry {
-  id: string
-  name: string
-  at: string
-}
 
 function statusTone(status: string, flash: boolean) {
   if (flash || status === 'valid') return 'bg-emerald-600'
@@ -61,7 +57,7 @@ function CaptainScanContent() {
   const [error, setError] = useState('')
   const [manualOpen, setManualOpen] = useState(false)
   const [manualCode, setManualCode] = useState('')
-  const [session, setSession] = useState<SessionEntry[]>([])
+  const [scanned, setScanned] = useState<ScannedMember[] | null>(null)
   const busyRef = useRef(false)
   const eventIdRef = useRef('')
   const resetTimeoutRef = useRef<number | undefined>(undefined)
@@ -77,10 +73,22 @@ function CaptainScanContent() {
     return () => clearTimeout(resetTimeoutRef.current)
   }, [])
 
+  const refreshScanned = useCallback(async (id: string) => {
+    try {
+      const list = await listScannedMembers(id)
+      if (eventIdRef.current === id) setScanned(list)
+    } catch {
+      if (eventIdRef.current === id) setScanned([])
+    }
+  }, [])
+
   useEffect(() => {
     eventIdRef.current = eventId
-    if (eventId) sessionStorage.setItem(EVENT_KEY, eventId)
-  }, [eventId])
+    if (!eventId) return
+    sessionStorage.setItem(EVENT_KEY, eventId)
+    setScanned(null)
+    void refreshScanned(eventId)
+  }, [eventId, refreshScanned])
 
   const resetScan = useCallback(() => {
     clearTimeout(resetTimeoutRef.current)
@@ -122,13 +130,8 @@ function CaptainScanContent() {
         const admitted = await admitMemberCheckin(body)
         setResult(admitted)
         if (admitted.status === 'valid' && admitted.member) {
-          const member = admitted.member
           setFlash('Checked in')
-          setSession((prev) =>
-            prev.some((entry) => entry.id === member.id)
-              ? prev
-              : [{ id: member.id, name: member.name || 'Member', at: admitted.checkedInAt || new Date().toISOString() }, ...prev]
-          )
+          void refreshScanned(currentEventId)
           setEvents((prev) => prev?.map((ev) => (ev.id === currentEventId ? { ...ev, checked_in: ev.checked_in + 1 } : ev)) ?? prev)
           scheduleReset(SUCCESS_DISMISS_MS)
         } else {
@@ -148,7 +151,7 @@ function CaptainScanContent() {
         setBusy(null)
       }
     },
-    [scheduleReset]
+    [scheduleReset, refreshScanned]
   )
 
   const selected = events?.find((ev) => ev.id === eventId)
@@ -203,7 +206,7 @@ function CaptainScanContent() {
             hint="Point the scanner gun at the member's TRFC pass"
           />
 
-          <div className="mx-auto">
+          <div className="mx-auto flex flex-wrap justify-center gap-3">
             <button
               type="button"
               onClick={() => setManualOpen(true)}
@@ -212,21 +215,42 @@ function CaptainScanContent() {
               <Keyboard size={18} />
               Type a code
             </button>
+            <button
+              type="button"
+              disabled
+              title="Coming soon"
+              className="flex items-center gap-2 min-h-[48px] px-5 rounded-lg bg-gray-800 border border-gray-700 font-semibold opacity-50 cursor-not-allowed"
+            >
+              <Timer size={18} />
+              Record finish time
+              <span className="text-[10px] uppercase tracking-wider text-gray-400">Coming soon</span>
+            </button>
           </div>
 
           <div className="w-full max-w-md mx-auto">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">This session ({session.length})</p>
-            {session.length === 0 ? (
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+              Scanned for this event{scanned ? ` (${scanned.length})` : ''}
+            </p>
+            {scanned === null ? (
+              <div className="flex justify-center py-4">
+                <Loader className="w-5 h-5 animate-spin text-gray-500" />
+              </div>
+            ) : scanned.length === 0 ? (
               <p className="text-sm text-gray-500 text-center py-4 border border-dashed border-gray-800 rounded-xl">
-                Members you check in will appear here
+                Members checked in to this event will appear here
               </p>
             ) : (
               <ul className="space-y-2 max-h-[40vh] overflow-y-auto">
-                {session.map((entry) => (
+                {scanned.map((entry) => (
                   <li key={entry.id} className="rounded-xl border border-gray-800 bg-gray-900 px-4 py-3 flex justify-between gap-3">
-                    <p className="font-semibold truncate">{entry.name}</p>
+                    <div className="min-w-0">
+                      <p className="font-semibold truncate">{entry.name || 'Member'}</p>
+                      <p className="text-xs text-gray-500">
+                        {entry.saturdays_attended} Saturday{entry.saturdays_attended === 1 ? '' : 's'} attended
+                      </p>
+                    </div>
                     <p className="text-xs text-gray-500 shrink-0">
-                      {new Date(entry.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(entry.scanned_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </li>
                 ))}

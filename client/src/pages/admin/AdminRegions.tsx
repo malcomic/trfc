@@ -141,7 +141,7 @@ export default function AdminRegions({ standalone = false }: { standalone?: bool
   const leadLabel = (region: Region) => region.lead_captain_name ?? <span className="text-amber-600 dark:text-amber-400">Not set</span>
 
   const payLink = (region: Region, mobile = false) =>
-    region.approved_amount > 0 && (
+    region.zone_approved_amount > 0 && (
       <Link
         to={`/admin/captains?view=payouts&region=${region.id}`}
         className={`flex items-center gap-1 text-green-700 dark:text-green-400 min-h-[44px] ${mobile ? 'px-3' : ''}`}
@@ -155,7 +155,7 @@ export default function AdminRegions({ standalone = false }: { standalone?: bool
     <div>
       <AdminPageHeader
         title={standalone ? 'Zones & Regions' : 'Captains'}
-        subtitle="Each zone has one referral link and commission rate. Everything its link earns goes to the zone and is shared equally by its active captains. Ticket buyers also pick their zone, and products can be limited to zones."
+        subtitle="Each zone has one referral link and commission rate. Shop commission goes to the captain each member chose, at the zone's rate; event profit shares go to the zone and are shared equally by its active captains. Ticket buyers also pick their zone, and products can be limited to zones."
         actions={
           <button
             onClick={openCreate}

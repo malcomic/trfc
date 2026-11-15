@@ -30,6 +30,16 @@ export function looksLikeMemberCode(value: string): boolean {
 
 export const listCheckinEvents = async (): Promise<CheckinEvent[]> => (await api.get('/checkins/events')).data
 
+export interface ScannedMember {
+  id: string
+  name: string | null
+  scanned_at: string
+  saturdays_attended: number
+}
+
+export const listScannedMembers = async (eventId: string): Promise<ScannedMember[]> =>
+  (await api.get(`/checkins/events/${encodeURIComponent(eventId)}/scanned`)).data
+
 type CheckinBody = { eventId: string; payload?: string; code?: string }
 
 export const lookupMemberCheckin = async (body: CheckinBody): Promise<MemberCheckinResult> => ({

@@ -53,6 +53,24 @@ export function clearReferral(): void {
   }
 }
 
+const VISITOR_KEY = 'trfc_visitor'
+
+/** A random id kept in this browser so a link opened twice the same day counts once. Null if storage is unavailable. */
+export function getVisitorId(): string | null {
+  try {
+    const existing = localStorage.getItem(VISITOR_KEY)
+    if (existing && /^[A-Za-z0-9-]{8,40}$/.test(existing)) return existing
+    const id =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`
+    localStorage.setItem(VISITOR_KEY, id)
+    return id
+  } catch {
+    return null
+  }
+}
+
 export function buildReferralLink(code: string, origin: string = window.location.origin): string {
   return `${origin}/register?ref=${encodeURIComponent(code)}`
 }

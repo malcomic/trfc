@@ -128,5 +128,13 @@ export async function runRetention(now = new Date()) {
   const accounts = await anonymiseDeletedAccounts(now)
   const applications = await purgeExpiredApplications(now)
   await anonymiseOldPaymentRecords(now)
+  await runEach(
+    [
+      `DELETE FROM captain_access_log WHERE created_at < NOW() - INTERVAL '12 months'`,
+      `DELETE FROM referral_link_visits WHERE visit_date < CURRENT_DATE - INTERVAL '24 months'`,
+    ],
+    [],
+    'captain dashboard'
+  )
   return { accounts, applications }
 }
