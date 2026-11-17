@@ -267,14 +267,26 @@ describe('referrals', () => {
     expect(normalizeReferralCode(42)).toBeNull()
   })
 
-  it('resolves a zone code first and falls back to an old personal captain code', async () => {
+  it('resolves a zone code first and falls back to a personal captain code', async () => {
     routeQueries((sql, params) => {
       expect(sql).toContain('r.is_active = true')
       expect(sql).toContain('r.referral_code = $1')
       expect(sql).toContain('SELECT c.region_id FROM captains c WHERE c.referral_code = $1')
       expect(sql).toContain('ORDER BY (r.referral_code = $1) DESC')
+      expect(sql).toContain('cap.user_id AS captain_id')
       expect(params).toEqual(['NRB-JANE24'])
-      return { rows: [{ region_id: 'zone-nrb', region_name: 'Nairobi', region_code: 'NRB', referral_code: 'NRB' }] }
+      return {
+        rows: [
+          {
+            region_id: 'zone-nrb',
+            region_name: 'Nairobi',
+            region_code: 'NRB',
+            referral_code: 'NRB',
+            captain_id: '66666666-6666-4666-8666-666666666666',
+            captain_name: 'Jane Wanjiku',
+          },
+        ],
+      }
     })
     expect(await findActiveZoneByCode(' nrb-jane24 ')).toEqual({
       region_id: 'zone-nrb',
@@ -284,18 +296,52 @@ describe('referrals', () => {
     })
   })
 
-  it('ties the user to the zone only when they have no referring zone yet, and never sets a captain', async () => {
-    const zone = { region_id: 'zone-nrb', region_name: 'Nairobi', region_code: 'NRB', referral_code: 'NRB' }
+  it('ties the user to the zone only when they have no referring zone yet, and a zone code never sets a captain', async () => {
+    const zone = {
+      region_id: 'zone-nrb',
+      region_name: 'Nairobi',
+      region_code: 'NRB',
+      referral_code: 'NRB',
+      captain_id: null,
+      captain_name: null,
+    }
     routeQueries((sql, params) => {
       if (sql.includes('FROM regions r')) return { rows: [zone] }
       expect(sql).toContain('SET referred_by_region_id = $2')
       expect(sql).toContain('u.referred_by_region_id IS NULL')
       expect(sql).toContain('c.user_id = u.id AND c.region_id = $2')
-      expect(sql).not.toContain('captain_id')
+      expect(sql).not.toContain('SET captain_id')
       expect(params).toEqual([CUSTOMER_ID, 'zone-nrb'])
       return { rows: [{ id: CUSTOMER_ID }] }
     })
     expect(await applyReferral(CUSTOMER_ID, 'nrb')).toEqual(zone)
+    expect(sqlCalls().some((sql) => sql.includes('SET captain_id'))).toBe(false)
+  })
+
+  it('a personal captain code joins the zone and chooses that captain', async () => {
+    const CAPTAIN = '66666666-6666-4666-8666-666666666666'
+    const referral = {
+      region_id: 'zone-nrb',
+      region_name: 'Nairobi',
+      region_code: 'NRB',
+      referral_code: 'NRB',
+      captain_id: CAPTAIN,
+      captain_name: 'Jane',
+    }
+    routeQueries((sql, params) => {
+      if (sql.includes('FROM regions r')) return { rows: [referral] }
+      if (sql.includes('SET referred_by_region_id')) {
+        expect(params).toEqual([CUSTOMER_ID, 'zone-nrb'])
+        return { rows: [{ id: CUSTOMER_ID }] }
+      }
+      if (sql.includes('SET captain_id')) {
+        expect(params).toEqual([CUSTOMER_ID, CAPTAIN, 'zone-nrb'])
+        return { rows: [{ id: CUSTOMER_ID }] }
+      }
+      return undefined
+    })
+    expect(await applyReferral(CUSTOMER_ID, 'NRB-JANE24')).toEqual(referral)
+    expect(sqlCalls().some((sql) => sql.includes('SET captain_id'))).toBe(true)
   })
 
   it('does nothing for an unknown or inactive zone code', async () => {
@@ -371,8 +417,18 @@ describe('createPayout', () => {
     expect(client.release).toHaveBeenCalled()
   })
 
-  it("refuses when the receipts don't match the zone's active captains", async () => {
-    const client = mockClient((sql) => zoneCaptains(sql))
+  it('refuses when the receipts do not match the captains who are owed money', async () => {
+    const client = mockClient((sql) => {
+      if (sql.includes('FROM captain_commissions')) {
+        return {
+          rows: [
+            { id: C1, amount: '100.50', source_type: 'order', event_id: null },
+            { id: C2, amount: '50.50', source_type: 'order', event_id: null },
+          ],
+        }
+      }
+      return zoneCaptains(sql)
+    })
     const res = makeRes()
 
     await createPayout(body({ splits: [bothSplits[0]] }) as any, res)
@@ -384,7 +440,7 @@ describe('createPayout', () => {
 
   it('rejects commissions that are not approved or belong to another zone', async () => {
     const client = mockClient((sql, params) => {
-      if (sql.includes('FROM captain_commissions')) {
+      if (sql.includes('FROM captain_commissions') && sql.includes('FOR UPDATE')) {
         expect(sql).toContain('region_id = $2')
         expect(sql).toContain('captain_id IS NULL')
         expect(params[1]).toBe(REGION_ID)
@@ -402,11 +458,16 @@ describe('createPayout', () => {
     expect(client.release).toHaveBeenCalled()
   })
 
-  it("records the zone payout, splits it equally between the zone's captains and marks the commissions paid", async () => {
+  it('records a legacy zone payout with an equal split and marks the commissions paid', async () => {
     const client = mockClient((sql) => {
       if (sql.includes('FROM captain_commissions')) {
         expect(sql).toContain("status = 'approved'")
-        return { rows: [{ id: C1, amount: '100.50' }, { id: C2, amount: '50.50' }] }
+        return {
+          rows: [
+            { id: C1, amount: '100.50', source_type: 'order', event_id: null },
+            { id: C2, amount: '50.50', source_type: 'order', event_id: null },
+          ],
+        }
       }
       if (sql.includes('INSERT INTO captain_payouts')) return { rows: [{ id: 'p1', amount: 151 }] }
       return zoneCaptains(sql)
@@ -416,7 +477,7 @@ describe('createPayout', () => {
     await createPayout(body({ note: ' Oct ' }) as any, res)
 
     expect(inserted(client, 'captain_payouts')[0][1]).toEqual([REGION_ID, 151, 'Oct', 'admin'])
-    // 151 split two ways: 75 each, the leftover shilling to the lead captain.
+    // Legacy zone money: 151 split equally, leftover shilling to the lead.
     expect(inserted(client, 'captain_payout_splits').map(([, p]) => p)).toEqual([
       ['p1', LEAD_ID, 76, '254700000001', 'QAB123'],
       ['p1', OTHER_ID, 75, '254700000002', 'QAB456'],
@@ -426,7 +487,67 @@ describe('createPayout', () => {
     expect(res.status).toHaveBeenCalledWith(201)
   })
 
-  it('requires a zone, a receipt for every captain and a different receipt for each', async () => {
+  it('splits an event_share payout by each captain’s members’ used tickets', async () => {
+    const EVENT_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+    const client = mockClient((sql) => {
+      if (sql.includes('FROM captain_commissions')) {
+        return {
+          rows: [{ id: C1, amount: '300', source_type: 'event_share', event_id: EVENT_ID }],
+        }
+      }
+      if (sql.includes('AS tickets') || sql.includes('GROUP BY 1')) {
+        return {
+          rows: [
+            { captain_id: LEAD_ID, tickets: 2 },
+            { captain_id: OTHER_ID, tickets: 1 },
+          ],
+        }
+      }
+      if (sql.includes('INSERT INTO captain_payouts')) return { rows: [{ id: 'p1', amount: 300 }] }
+      return zoneCaptains(sql)
+    })
+    const res = makeRes()
+
+    await createPayout(body({ commissionIds: [C1], note: null }) as any, res)
+
+    expect(inserted(client, 'captain_payout_splits').map(([, p]) => p)).toEqual([
+      ['p1', LEAD_ID, 200, '254700000001', 'QAB123'],
+      ['p1', OTHER_ID, 100, '254700000002', 'QAB456'],
+    ])
+    expect(res.status).toHaveBeenCalledWith(201)
+  })
+
+  it('only requires receipts for captains who are owed money after weighting', async () => {
+    const EVENT_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+    const client = mockClient((sql) => {
+      if (sql.includes('FROM captain_commissions')) {
+        return {
+          rows: [{ id: C1, amount: '300', source_type: 'event_share', event_id: EVENT_ID }],
+        }
+      }
+      if (sql.includes('AS tickets') || sql.includes('GROUP BY 1')) {
+        return { rows: [{ captain_id: LEAD_ID, tickets: 3 }] }
+      }
+      if (sql.includes('INSERT INTO captain_payouts')) return { rows: [{ id: 'p1', amount: 300 }] }
+      return zoneCaptains(sql)
+    })
+    const res = makeRes()
+
+    await createPayout(
+      body({
+        commissionIds: [C1],
+        splits: [{ captainId: LEAD_ID, mpesaReceipt: 'qab123' }],
+      }) as any,
+      res
+    )
+
+    expect(inserted(client, 'captain_payout_splits').map(([, p]) => p)).toEqual([
+      ['p1', LEAD_ID, 300, '254700000001', 'QAB123'],
+    ])
+    expect(res.status).toHaveBeenCalledWith(201)
+  })
+
+  it('requires a zone, a receipt for every owed captain and a different receipt for each', async () => {
     const res = makeRes()
     await createPayout({ body: { commissionIds: [C1], splits: bothSplits } } as any, res)
     await createPayout(body({ splits: [{ captainId: LEAD_ID, mpesaReceipt: ' ' }] }) as any, res)

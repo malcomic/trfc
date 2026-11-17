@@ -32,7 +32,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
       conditions.push(`(u.name ILIKE $${params.length} OR u.email ILIKE $${params.length} OR u.phone ILIKE $${params.length})`);
     }
 
-    if (role === 'member' || role === 'admin' || role === 'scanner' || role === 'captain') {
+    if (role === 'member' || role === 'admin' || role === 'scanner' || role === 'captain' || role === 'coach') {
       params.push(role);
       conditions.push(`u.role = $${params.length}`);
     }
@@ -446,12 +446,17 @@ export const updateUserRole = async (req: Request, res: Response) => {
     const { role } = req.body;
 
     if (!['member', 'admin', 'scanner'].includes(role)) {
-      return res.status(400).json({ error: 'Invalid role. Captains are managed from the Captains page.' });
+      return res.status(400).json({
+        error: 'Invalid role. Captains are managed from the Captains page; coaches from Hiring and Coaches.',
+      });
     }
 
     const current = await query('SELECT role FROM users WHERE id = $1', [id]);
     if (current.rows[0]?.role === 'captain') {
       return res.status(400).json({ error: 'This user is a captain. Change their status from the Captains page.' });
+    }
+    if (current.rows[0]?.role === 'coach') {
+      return res.status(400).json({ error: 'This user is a coach. Change their status from the Coaches page.' });
     }
 
     if (role !== 'admin' && !(await ensureNotLastAdmin(id))) {

@@ -32,7 +32,7 @@ async function isSessionRevoked(decoded: DecodedToken): Promise<boolean> {
 
 /** Paths a member can still use before agreeing to the current terms. */
 const CONSENT_EXEMPT_PREFIXES = ['/api/auth/', '/api/policies', '/api/me/privacy'];
-const CONSENT_EXEMPT_ROLES = new Set(['admin', 'scanner']);
+const CONSENT_EXEMPT_ROLES = new Set(['admin', 'scanner', 'coach']);
 
 export function isConsentExempt(path: string, role: string | undefined): boolean {
   if (role && CONSENT_EXEMPT_ROLES.has(role)) return true;
@@ -120,6 +120,27 @@ export const captainMiddleware = async (req: Request, res: Response, next: NextF
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Failed to verify captain access' });
+  }
+};
+
+export const coachMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+  if (!req.user) {
+    return res.status(403).json({ error: 'Coach access required' });
+  }
+  try {
+    // Checked against the database rather than the JWT so suspensions apply immediately.
+    const result = await query(
+      `SELECT c.status FROM coaches c JOIN users u ON u.id = c.user_id
+       WHERE c.user_id = $1 AND u.role = 'coach'`,
+      [req.user.id]
+    );
+    if (result.rows[0]?.status !== 'active') {
+      return res.status(403).json({ error: 'Coach access required' });
+    }
+    next();
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Failed to verify coach access' });
   }
 };
 

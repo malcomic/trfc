@@ -29,7 +29,7 @@ export type CommissionKind = 'personal' | 'zone'
 export interface AdminCommission {
   id: string
   region_id: string
-  /** Set for a captain's own shop commission; null for zone money split between the zone's captains. */
+  /** Set for a captain's own shop commission; null for zone money paid by members' used tickets. */
   captain_id: string | null
   captain_name: string | null
   referred_user_id: string | null

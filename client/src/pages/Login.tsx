@@ -25,6 +25,7 @@ export default function Login() {
   const defaultPathForRole = (role?: string) => {
     if (role === 'scanner') return '/admin/scan'
     if (role === 'admin') return '/admin'
+    if (role === 'coach') return '/dashboard/coach'
     return '/dashboard'
   }
 

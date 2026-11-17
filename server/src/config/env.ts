@@ -43,7 +43,7 @@ export const config = {
     pass: process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS || '',
   },
   frontendUrl:
-    process.env.FRONTEND_URL || 'https://trfc-website-d41f18cf654e.herokuapp.com',
+    process.env.FRONTEND_URL || 'https://www.thikaroadfitnesscommunity.co.ke/',
   contact: {
     email:
       process.env.CONTACT_EMAIL ||

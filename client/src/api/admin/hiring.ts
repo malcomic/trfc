@@ -50,6 +50,11 @@ export interface CoachApplication {
   coaching_ended_at: string | null
   /** When the retention job deletes this application; null while the coach is hired and coaching. */
   delete_after: string | null
+  /** Set when the coach has activated their account. */
+  user_id: string | null
+  invite_expires_at: string | null
+  invite_used_at: string | null
+  invite_sent_at: string | null
   created_at: string
   updated_at: string
 }
@@ -90,6 +95,11 @@ export async function updateApplication(
 
 export async function deleteApplication(id: string): Promise<void> {
   await api.delete(`/admin/hiring/${id}`)
+}
+
+export async function resendCoachInvite(id: string): Promise<CoachApplication> {
+  const { data } = await api.post<{ application: CoachApplication }>(`/admin/hiring/${id}/resend-invite`)
+  return data.application
 }
 
 export async function getHiringSettings(): Promise<HiringSettings> {

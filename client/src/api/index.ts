@@ -2,7 +2,8 @@ import axios from 'axios';
 import { metaRequestHeaders } from '../utils/metaPixel';
 
 /** Requests that start or complete a payment; these carry the Meta browser identifiers. */
-const PAYMENT_PATHS = /^\/?(payments\/mpesa\/stkpush|wallet\/checkout|wallet\/plans\/[^/]+\/(pay|move))/;
+const PAYMENT_PATHS =
+  /^\/?(payments\/mpesa\/stkpush|wallet\/checkout|wallet\/checkout-order|wallet\/checkout-medal|wallet\/plans\/[^/]+\/(pay|move))/;
 
 /** Fired when the server refuses a request until the member agrees to a changed policy. */
 export const CONSENT_REQUIRED_EVENT = 'trfc:consent-required';

@@ -18,27 +18,54 @@ export interface FakeHold {
   purchase_batch_id: string | null
   plan_id: string | null
   payment_tx_id: string | null
+  order_id: string | null
+  medal_batch_id: string | null
   amount: number
   status: string
 }
 
-export function createFakeCreditDb(credits: FakeCredit[], batches: Record<string, any[]> = {}) {
+export function createFakeCreditDb(
+  credits: FakeCredit[],
+  batches: Record<string, any[]> = {},
+  extras: {
+    orders?: Record<string, any>
+    medalBatches?: Record<string, any[]>
+  } = {}
+) {
   const state = {
     credits: credits.map((c) => ({ amount: c.remaining, region_id: null, status: 'active', available: true, ...c })),
     holds: [] as FakeHold[],
     ledger: [] as { id: string; type: string; amount: number; mpesa_amount?: number }[],
     paidTickets: [] as unknown[][],
+    paidOrders: [] as unknown[][],
+    paidMedals: [] as unknown[][],
     linkedTx: [] as unknown[][],
     regionUpdates: [] as unknown[][],
+    orders: { ...(extras.orders ?? {}) } as Record<string, any>,
+    medalBatches: { ...(extras.medalBatches ?? {}) } as Record<string, any[]>,
   }
   const heldOn = (creditId: string) =>
     state.holds.filter((h) => h.credit_id === creditId && h.status === 'held').reduce((s, h) => s + h.amount, 0)
   const total = () => state.credits.filter((c) => c.status === 'active').reduce((s, c) => s + c.remaining, 0)
-  const scopeColumn = (sql: string): keyof FakeHold =>
-    sql.includes('u.payment_tx_id = $1') ? 'payment_tx_id' : sql.includes('u.purchase_batch_id = $1') ? 'purchase_batch_id' : 'plan_id'
+  const scopeColumn = (sql: string): keyof FakeHold => {
+    if (sql.includes('u.payment_tx_id = $1')) return 'payment_tx_id'
+    if (sql.includes('u.purchase_batch_id = $1')) return 'purchase_batch_id'
+    if (sql.includes('u.order_id = $1')) return 'order_id'
+    if (sql.includes('u.medal_batch_id = $1')) return 'medal_batch_id'
+    return 'plan_id'
+  }
 
   const run = async (sql: string, params: any[] = []) => {
-    if (sql.includes('WHERE t.purchase_batch_id = $1')) return { rows: batches[params[0]] ?? [] }
+    if (sql.includes('WHERE t.purchase_batch_id = $1') && sql.includes('FROM tickets')) {
+      return { rows: batches[params[0]] ?? [] }
+    }
+    if (sql.includes('FROM orders') && sql.includes('WHERE id = $1') && sql.includes('FOR UPDATE')) {
+      const order = state.orders[params[0]]
+      return { rows: order ? [order] : [] }
+    }
+    if (sql.includes('FROM medal_purchases') && sql.includes('purchase_batch_id = $1') && sql.includes('FOR UPDATE')) {
+      return { rows: state.medalBatches[params[0]] ?? [] }
+    }
     if (sql.includes('AS free') && sql.includes('FROM ticket_credits c')) {
       const rows = state.credits
         .filter((c) => c.user_id === params[0] && c.status === 'active' && c.available)
@@ -50,10 +77,12 @@ export function createFakeCreditDb(credits: FakeCredit[], batches: Record<string
       state.holds.push({
         id: `hold-${state.holds.length + 1}`,
         credit_id: params[0],
-        purchase_batch_id: params[1],
-        plan_id: params[2],
-        payment_tx_id: params[3],
-        amount: Number(params[4]),
+        purchase_batch_id: params[1] ?? null,
+        plan_id: params[2] ?? null,
+        payment_tx_id: params[3] ?? null,
+        order_id: params[4] ?? null,
+        medal_batch_id: params[5] ?? null,
+        amount: Number(params[params.length - 1]),
         status: 'held',
       })
       return { rows: [] }
@@ -81,9 +110,12 @@ export function createFakeCreditDb(credits: FakeCredit[], batches: Record<string
     if (sql.includes('UPDATE ticket_credit_uses SET payment_tx_id')) {
       state.linkedTx.push(params)
       for (const h of state.holds) {
-        if (h.status === 'held' && !h.payment_tx_id && (params[1] as string[]).includes(h.purchase_batch_id ?? '')) {
-          h.payment_tx_id = params[0]
-        }
+        if (h.status !== 'held' || h.payment_tx_id) continue
+        const matchBatch =
+          Array.isArray(params[1]) && (params[1] as string[]).includes(h.purchase_batch_id ?? '')
+        const matchOrder = h.order_id && h.order_id === params[1]
+        const matchMedal = h.medal_batch_id && h.medal_batch_id === params[1]
+        if (matchBatch || matchOrder || matchMedal) h.payment_tx_id = params[0]
       }
       return { rows: [] }
     }
@@ -106,6 +138,33 @@ export function createFakeCreditDb(credits: FakeCredit[], batches: Record<string
     if (sql.includes("UPDATE tickets SET payment_status = 'paid'")) {
       state.paidTickets.push(params)
       return { rows: [], rowCount: 1 }
+    }
+    if (sql.includes('UPDATE orders SET') && sql.includes("payment_status = 'paid'")) {
+      state.paidOrders.push(params)
+      const order = state.orders[params[params.length - 1]] ?? state.orders[params[1]]
+      if (order) order.payment_status = 'paid'
+      return { rows: [], rowCount: 1 }
+    }
+    if (sql.includes('UPDATE orders SET checkout_request_id')) {
+      const order = state.orders[params[params.length - 1]]
+      if (order) {
+        order.checkout_request_id = params[0]
+      }
+      return { rows: [], rowCount: order ? 1 : 0 }
+    }
+    if (sql.includes('UPDATE medal_purchases SET') && sql.includes("payment_status = 'paid'")) {
+      state.paidMedals.push(params)
+      const batchId = params[params.length - 1]
+      for (const row of state.medalBatches[batchId] ?? []) row.payment_status = 'paid'
+      return { rows: [], rowCount: (state.medalBatches[batchId] ?? []).length || 1 }
+    }
+    if (sql.includes('UPDATE medal_purchases SET checkout_request_id')) {
+      const batchId = params[params.length - 1]
+      for (const row of state.medalBatches[batchId] ?? []) {
+        row.checkout_request_id = params[0]
+        if (params[1]) row.payment_provider = params[1]
+      }
+      return { rows: [], rowCount: (state.medalBatches[batchId] ?? []).length || 1 }
     }
     return { rows: [] }
   }

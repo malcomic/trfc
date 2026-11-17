@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { getMedalBySlug, createMedalPurchases, MedalTier, MedalOption } from '../api/medals'
 import { initiateMedalPayment } from '../api/payments'
+import { getWallet, payMedalWithCredit, TICKET_VALUE_NOTE } from '../api/wallet'
 import PaymentStatusModal from '../components/PaymentStatusModal'
 import { AlertCircle, Loader, ArrowLeft } from 'lucide-react'
 import { pageRoot, cardSurface, inputField } from '../utils/themeClasses'
 import { useAuth } from '../context/AuthContext'
 import { MPESA_PHONE_PLACEHOLDER, localPhoneOrEmpty, mpesaPhoneRules, toKenyanMsisdn } from '../utils/phone'
 import { identifyTikTokUser } from '../utils/tiktokPixel'
+import { formatKes } from '../utils/captainDisplay'
 
 type CheckoutForm = {
   quantity: number
@@ -53,6 +55,10 @@ export default function MedalCheckout() {
 
   const quantity = watch('quantity')
   const totalPrice = option ? Number(option.price) * Number(quantity) : 0
+  const [ticketValue, setTicketValue] = useState(0)
+  const [useCredit, setUseCredit] = useState(true)
+  const creditApplied = user && useCredit ? Math.min(ticketValue, totalPrice) : 0
+  const mpesaDue = Math.max(0, totalPrice - creditApplied)
 
   useEffect(() => {
     if (user?.name) setValue('buyerName', user.name)
@@ -60,6 +66,19 @@ export default function MedalCheckout() {
     const savedPhone = localPhoneOrEmpty(user?.phone)
     if (savedPhone) setValue('phone', savedPhone)
   }, [user, setValue])
+
+  useEffect(() => {
+    if (!user) {
+      setTicketValue(0)
+      return
+    }
+    getWallet()
+      .then((w) => {
+        setTicketValue(w.ticketValue)
+        if (w.ticketValue > 0) setUseCredit(true)
+      })
+      .catch(() => setTicketValue(0))
+  }, [user])
 
   useEffect(() => {
     const fetchTier = async () => {
@@ -106,6 +125,47 @@ export default function MedalCheckout() {
         buyerName: normalizedName,
       })
 
+      setPurchaseMeta({
+        tierName: purchaseResult.tierName,
+        distanceKm: purchaseResult.distanceKm,
+        quantity: purchaseResult.quantity,
+        totalPrice: purchaseResult.totalPrice,
+      })
+
+      const applyCredit = Boolean(user && useCredit && ticketValue > 0)
+      if (applyCredit) {
+        const creditResult = await payMedalWithCredit({
+          medalBatchId: purchaseResult.purchaseBatchId,
+          useCredit: true,
+          phone: data.phone,
+        })
+        if (creditResult.status === 'paid') {
+          const params = new URLSearchParams({
+            email: normalizedEmail,
+            phone: data.phone,
+            paid: '1',
+          })
+          navigate(`/medal-confirmation/${creditResult.references[0]}?${params.toString()}`, {
+            state: {
+              email: normalizedEmail,
+              phone: data.phone,
+              tierName: purchaseResult.tierName,
+              distanceKm: purchaseResult.distanceKm,
+              quantity: purchaseResult.quantity,
+              totalPrice: purchaseResult.totalPrice,
+            },
+          })
+          return
+        }
+        if (creditResult.checkoutRequestId) {
+          setCheckoutRequestId(creditResult.checkoutRequestId)
+          setShowPaymentModal(true)
+          return
+        }
+        setError('Failed to initiate payment. Please try again.')
+        return
+      }
+
       const paymentResponse = await initiateMedalPayment({
         phone: data.phone,
         amount: Math.round(purchaseResult.totalPrice),
@@ -114,12 +174,6 @@ export default function MedalCheckout() {
 
       if (paymentResponse.checkoutRequestId) {
         setCheckoutRequestId(paymentResponse.checkoutRequestId)
-        setPurchaseMeta({
-          tierName: purchaseResult.tierName,
-          distanceKm: purchaseResult.distanceKm,
-          quantity: purchaseResult.quantity,
-          totalPrice: purchaseResult.totalPrice,
-        })
         setShowPaymentModal(true)
       } else {
         setError('Failed to initiate payment. Please try again.')
@@ -267,11 +321,17 @@ export default function MedalCheckout() {
             disabled={submitting}
             className="w-full bg-cta text-cta-ink py-4 font-barlow-condensed font-black text-sm tracking-widest uppercase clip-angled disabled:opacity-60"
           >
-            {submitting ? 'Processing…' : 'Pay with M-Pesa'}
+            {submitting
+              ? 'Processing…'
+              : creditApplied > 0 && mpesaDue <= 0
+                ? `Use ${formatKes(creditApplied)} ticket value`
+                : creditApplied > 0
+                  ? `Pay ${formatKes(mpesaDue)} with M-Pesa`
+                  : 'Pay with M-Pesa'}
           </button>
         </form>
 
-        <div className={`${cardSurface} p-6 h-fit`}>
+        <div className={`${cardSurface} p-6 h-fit space-y-3`}>
           <h2 className="font-barlow-condensed font-bold text-sm tracking-widest uppercase text-accent light:text-accent-light mb-4">
             Summary
           </h2>
@@ -280,9 +340,44 @@ export default function MedalCheckout() {
           <p className="text-sm text-fog light:text-fog-light">
             KES {Number(option.price).toLocaleString()} × {quantity}
           </p>
+          {user && ticketValue > 0 && (
+            <label className="flex items-start gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={useCredit}
+                onChange={(e) => setUseCredit(e.target.checked)}
+              />
+              <span>
+                Use my ticket value ({formatKes(ticketValue)})
+                <span className="block text-xs text-fog light:text-fog-light mt-0.5">
+                  The oldest value is used first. {TICKET_VALUE_NOTE}
+                </span>
+              </span>
+            </label>
+          )}
+          {!user && (
+            <p className="text-xs text-fog light:text-fog-light">
+              <Link to="/login" className="text-accent light:text-accent-light">
+                Log in
+              </Link>{' '}
+              to use ticket value.
+            </p>
+          )}
+          {creditApplied > 0 && (
+            <p className="flex justify-between text-sm">
+              <span>Ticket value</span>
+              <span>−{formatKes(creditApplied)}</span>
+            </p>
+          )}
           <p className="font-bebas text-3xl text-accent light:text-accent-light mt-2">
-            KES {totalPrice.toLocaleString()}
+            {creditApplied > 0 ? formatKes(mpesaDue) : `KES ${totalPrice.toLocaleString()}`}
           </p>
+          {creditApplied > 0 && (
+            <p className="text-xs text-fog light:text-fog-light">
+              {mpesaDue <= 0 ? 'Paid from ticket value. Your medals are issued immediately.' : 'M-Pesa due'}
+            </p>
+          )}
         </div>
       </div>
 

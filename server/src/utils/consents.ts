@@ -7,7 +7,13 @@ type Queryable = Pick<PoolClient, 'query'>
 
 const defaultDb: Queryable = { query: query as unknown as Queryable['query'] }
 
-export type ConsentType = 'terms_privacy' | 'age_18_plus' | 'marketing_email' | 'applicant_privacy' | 'captain_whatsapp'
+export type ConsentType =
+  | 'terms_privacy'
+  | 'age_18_plus'
+  | 'marketing_email'
+  | 'applicant_privacy'
+  | 'captain_whatsapp'
+  | 'coach_terms'
 export type ConsentSource =
   | 'signup'
   | 'google_signup'
@@ -15,6 +21,7 @@ export type ConsentSource =
   | 'settings'
   | 'unsubscribe_link'
   | 'coach_form'
+  | 'coach_activation'
   | 'account_deleted'
 
 export class ConsentError extends Error {

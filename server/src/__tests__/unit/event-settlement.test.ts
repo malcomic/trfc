@@ -91,8 +91,42 @@ describe('approveSettlement', () => {
     const mails = vi.mocked(sendEmail).mock.calls.map(([m]) => m as { to: string; text: string })
     expect(mails.map((m) => m.to)).toEqual(['cap-1@example.com', 'cap-3@example.com', 'cap-2@example.com'])
     expect(mails[0].text).toContain('Thika zone')
-    expect(mails[0].text).toContain("shared equally by the zone's 2 captains, so your share is about KSh 150")
-    expect(mails[2].text).not.toContain('shared equally')
+    // No ticket attribution in this mock → equal fallback, 0 credited tickets each.
+    expect(mails[0].text).toContain('Your members used 0 of those tickets, so your share is about KSh 150')
+    expect(mails[2].text).not.toContain('Your members used')
+  })
+
+  it('emails ticket-weighted shares when members chose captains', async () => {
+    settlementDb()
+    vi.mocked(query).mockImplementation((async (sql: string, params: any[] = []) => {
+      if (sql.includes('FROM events WHERE id = $1')) {
+        return { rows: [{ id: 'ev-1', title: 'Thika Hike', cancelled_at: null, starts_at: EVENT_START }] }
+      }
+      if (sql.includes('AS used_count')) return { rows: [{ used_count: 10, revenue: 10000 }] }
+      if (sql.includes('FROM event_costs WHERE event_id')) return { rows: [{ total: 5000 }] }
+      if (sql.includes('AS used_tickets') && sql.includes('GROUP BY r.id')) {
+        return {
+          rows: [{ region_id: 'zone-thika', region_name: 'Thika', captain_count: 2, used_tickets: 3 }],
+        }
+      }
+      if (sql.includes('ORDER BY is_lead DESC')) return { rows: ZONE_CAPTAINS['zone-thika'] }
+      if (sql.includes('AS tickets') || sql.includes('GROUP BY 1')) {
+        return {
+          rows: [
+            { captain_id: 'cap-1', tickets: 2 },
+            { captain_id: 'cap-3', tickets: 1 },
+          ],
+        }
+      }
+      return { rows: [] }
+    }) as any)
+
+    await approveSettlement('ev-1', 'admin-1')
+
+    const mails = vi.mocked(sendEmail).mock.calls.map(([m]) => m as { to: string; text: string })
+    expect(mails).toHaveLength(2)
+    expect(mails[0].text).toContain('Your members used 2 of those tickets, so your share is about KSh 200')
+    expect(mails[1].text).toContain('Your members used 1 of those tickets, so your share is about KSh 100')
   })
 
   it('refuses an event that is already settled and saves nothing', async () => {
@@ -138,7 +172,7 @@ describe('remindUnpaidSettlements', () => {
     expect(sendEmail).toHaveBeenCalledTimes(2)
     const mail = vi.mocked(sendEmail).mock.calls[0][0] as { subject: string; text: string }
     expect(mail.subject).toBe('Captain payouts due: Thika Hike')
-    expect(mail.text).toContain('Thika (split equally by 2 captains): KSh 300')
+    expect(mail.text).toContain("Thika (split by members' used tickets among 2 captains): KSh 300")
     expect(mail.text).toContain('Ruiru (no active captains): KSh 100')
     expect(mail.text).toContain('10 October 2026')
   })

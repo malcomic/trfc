@@ -10,42 +10,75 @@ export interface ReferralZone {
   region_id: string
   region_name: string
   region_code: string
+  /** The zone's own referral code (not necessarily the code that was looked up). */
   referral_code: string
+  /** Set when the looked-up code was an active captain's personal code. */
+  captain_id?: string | null
+  captain_name?: string | null
 }
 
 /**
- * SQL resolving a referral code ($1) to an active zone: the zone's own code first, then a legacy
- * personal captain code, which now credits that captain's current zone.
+ * Resolves a referral code ($1) to an active zone. Zone codes win over personal captain codes.
+ * When the code is a personal captain code, captain_id / captain_name are the active captain who owns it.
  */
-const ZONE_BY_CODE_SQL = `
-  SELECT r.id AS region_id, r.name AS region_name, r.code AS region_code, r.referral_code
+const REFERRAL_BY_CODE_SQL = `
+  SELECT r.id AS region_id, r.name AS region_name, r.code AS region_code, r.referral_code,
+         cap.user_id AS captain_id, cap.name AS captain_name
   FROM regions r
+  LEFT JOIN LATERAL (
+    SELECT c.user_id, u.name
+    FROM captains c
+    JOIN users u ON u.id = c.user_id
+    WHERE c.referral_code = $1 AND c.region_id = r.id AND c.status = 'active'
+    LIMIT 1
+  ) cap ON true
   WHERE r.is_active = true
     AND (r.referral_code = $1 OR r.id = (SELECT c.region_id FROM captains c WHERE c.referral_code = $1))
   ORDER BY (r.referral_code = $1) DESC
   LIMIT 1`
 
+/** @deprecated Prefer findReferralByCode; kept as an alias that drops captain fields for older callers. */
 export async function findActiveZoneByCode(code: unknown): Promise<ReferralZone | null> {
+  const referral = await findReferralByCode(code)
+  if (!referral) return null
+  return {
+    region_id: referral.region_id,
+    region_name: referral.region_name,
+    region_code: referral.region_code,
+    referral_code: referral.referral_code,
+  }
+}
+
+export async function findReferralByCode(code: unknown): Promise<ReferralZone | null> {
   const normalized = normalizeReferralCode(code)
   if (!normalized) return null
-  const result = await query(ZONE_BY_CODE_SQL, [normalized])
-  return (result.rows[0] as ReferralZone | undefined) ?? null
+  const result = await query(REFERRAL_BY_CODE_SQL, [normalized])
+  const row = result.rows[0]
+  if (!row) return null
+  return {
+    region_id: row.region_id,
+    region_name: row.region_name,
+    region_code: row.region_code,
+    referral_code: row.referral_code,
+    captain_id: row.captain_id ?? null,
+    captain_name: row.captain_name ?? null,
+  }
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /**
  * Ties a user to the zone owning `code`. Only applies when the user has no referring zone yet,
- * so a referral can never be overwritten. A zone link does not pick a personal captain (and so
- * earns no shop commission by itself), and a captain is never referred to their own zone.
- * Invalid codes are ignored.
+ * so a referral can never be overwritten. A zone link does not pick a personal captain. A personal
+ * captain link also chooses that captain (shop commission and ticket-weighted event share). A
+ * captain is never referred to their own zone. Invalid codes are ignored.
  */
 export async function applyReferral(userId: string, code: unknown): Promise<ReferralZone | null> {
   const normalized = normalizeReferralCode(code)
   if (!normalized) return null
   try {
-    const zone = await findActiveZoneByCode(normalized)
-    if (!zone) return null
+    const referral = await findReferralByCode(normalized)
+    if (!referral) return null
     const result = await query(
       `UPDATE users u
        SET referred_by_region_id = $2, referred_at = NOW()
@@ -53,9 +86,13 @@ export async function applyReferral(userId: string, code: unknown): Promise<Refe
          AND u.referred_by_region_id IS NULL
          AND NOT EXISTS (SELECT 1 FROM captains c WHERE c.user_id = u.id AND c.region_id = $2)
        RETURNING u.id`,
-      [userId, zone.region_id]
+      [userId, referral.region_id]
     )
-    return result.rows.length > 0 ? zone : null
+    if (result.rows.length === 0) return null
+    if (referral.captain_id) {
+      await assignChosenCaptain(userId, referral.captain_id, referral.region_id)
+    }
+    return referral
   } catch (error) {
     console.error(`Failed to apply referral code ${normalized} to user ${userId}:`, error)
     return null

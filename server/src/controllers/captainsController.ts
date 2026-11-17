@@ -1,11 +1,11 @@
 import { Request, Response } from 'express'
 import { query, getClient } from '../config/db.js'
-import { findActiveZoneByCode, normalizeReferralCode } from '../utils/referrals.js'
+import { findActiveZoneByCode, findReferralByCode, normalizeReferralCode } from '../utils/referrals.js'
 import { toKenyanMsisdn } from '../utils/phone.js'
 import { slugify } from '../utils/slugify.js'
 import { syncCaptainCommissions } from '../utils/captainCommissions.js'
 import { generateTextQRCodeDataUrl } from '../utils/qrCodeGenerator.js'
-import { loadZoneCaptains, splitEqually } from '../utils/payoutSplit.js'
+import { loadZoneCaptains, splitZoneCommissions } from '../utils/payoutSplit.js'
 import {
   isMemberStatus,
   loadZoneOverview,
@@ -59,7 +59,7 @@ async function referralCodeTaken(code: string, exceptRegionId?: string): Promise
   return result.rows.length > 0
 }
 
-/** Captains keep a unique personal code only so it can never clash; referrals resolve it to their zone. */
+/** Unique personal code for this captain's referral link; also reserved so it cannot clash with a zone code. */
 async function generateReferralCode(regionCode: string, name: string): Promise<string> {
   const first = (name.trim().split(/\s+/)[0] || 'CAPT').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 8) || 'CAPT'
   for (let attempt = 0; attempt < 25; attempt++) {
@@ -97,11 +97,22 @@ async function getCaptainZone(captainId: string): Promise<CaptainZone | null> {
 
 export async function getReferrer(req: Request, res: Response) {
   try {
-    const zone = await findActiveZoneByCode(req.params.code)
-    if (!zone) {
+    const referral = await findReferralByCode(req.params.code)
+    if (!referral) {
       return res.status(404).json({ error: 'Referral code not found' })
     }
-    res.json({ code: zone.referral_code, zone: zone.region_name, region_id: zone.region_id })
+    const code = normalizeReferralCode(req.params.code) ?? referral.referral_code
+    const captainName = referral.captain_name
+      ? (referral.captain_name.trim().split(/\s+/)[0] || null)
+      : null
+    res.json({
+      code,
+      zone_code: referral.referral_code,
+      zone: referral.region_name,
+      region_id: referral.region_id,
+      captain_id: referral.captain_id ?? null,
+      captain_name: captainName,
+    })
   } catch (error) {
     console.error(error)
     res.status(500).json({ error: 'Failed to look up referral code' })
@@ -230,7 +241,7 @@ export async function getMyCaptainProfile(req: Request, res: Response) {
   try {
     const captainId = req.user!.id
     const profile = await query(
-      `SELECT c.user_id, c.payout_phone, c.photo_url, c.status, c.created_at, u.name, u.email, u.phone,
+      `SELECT c.user_id, c.referral_code, c.payout_phone, c.photo_url, c.status, c.created_at, u.name, u.email, u.phone,
               r.id AS region_id, r.name AS region_name, r.code AS region_code
        FROM captains c
        JOIN users u ON u.id = c.user_id
@@ -356,10 +367,26 @@ export async function getMyReferralQr(req: Request, res: Response) {
     } catch {
       return res.status(400).json({ error: 'A valid origin is required' })
     }
-    const zone = await getCaptainZone(req.user!.id)
+    const captainId = req.user!.id
+    const zone = await getCaptainZone(captainId)
     if (!zone) return res.status(404).json({ error: 'Captain profile not found' })
-    const link = `${origin}/register?ref=${encodeURIComponent(zone.referral_code)}`
-    res.json({ link, dataUrl: await generateTextQRCodeDataUrl(link) })
+    const personal = await query('SELECT referral_code FROM captains WHERE user_id = $1', [captainId])
+    const personalCode = personal.rows[0]?.referral_code as string | undefined
+    if (!personalCode) return res.status(404).json({ error: 'Captain profile not found' })
+
+    const zoneLink = `${origin}/register?ref=${encodeURIComponent(zone.referral_code)}`
+    const personalLink = `${origin}/register?ref=${encodeURIComponent(personalCode)}`
+    const [zoneDataUrl, personalDataUrl] = await Promise.all([
+      generateTextQRCodeDataUrl(zoneLink),
+      generateTextQRCodeDataUrl(personalLink),
+    ])
+    res.json({
+      // Back-compat: zone link was the only link before personal links existed.
+      link: zoneLink,
+      dataUrl: zoneDataUrl,
+      zone: { code: zone.referral_code, link: zoneLink, dataUrl: zoneDataUrl },
+      personal: { code: personalCode, link: personalLink, dataUrl: personalDataUrl },
+    })
   } catch (error) {
     console.error(error)
     res.status(500).json({ error: 'Failed to generate QR code' })
@@ -929,7 +956,7 @@ async function loadPayoutCaptain(captainId: string, db: Queryable = { query }, l
 
 /**
  * Shows who would receive the selected approved commissions. A captain's own shop commissions go
- * wholly to that captain; zone money (event shares) is split equally between the zone's active captains.
+ * wholly to that captain; zone event shares are split by each captain's members' used tickets.
  */
 export async function previewPayout(req: Request, res: Response) {
   const ids = parseCommissionIds(req.query.commissionIds)
@@ -964,19 +991,11 @@ export async function previewPayout(req: Request, res: Response) {
     return res.status(400).json({ error: 'A valid regionId is required' })
   }
   try {
-    const total = ids.length
-      ? await query(
-          `SELECT COALESCE(SUM(amount), 0)::float AS total FROM captain_commissions
-           WHERE id = ANY($1::uuid[]) AND region_id = $2 AND captain_id IS NULL
-             AND status = 'approved' AND payout_id IS NULL`,
-          [ids, regionId]
-        )
-      : { rows: [{ total: 0 }] }
-    const amount = Math.round(Number(total.rows[0].total) * 100) / 100
     const captains = await loadZoneCaptains(regionId)
+    const { amount, shares } = await splitZoneCommissions(ids, regionId, captains)
     res.json({
       amount,
-      splits: splitEqually(amount, captains).map((s) => ({
+      splits: shares.map((s) => ({
         captain_id: s.captainId,
         name: s.name,
         payout_phone: s.phone,
@@ -992,8 +1011,8 @@ export async function previewPayout(req: Request, res: Response) {
 
 /**
  * Records a payout the admin has already sent by M-Pesa. With `captainId` it pays that captain's own
- * shop commissions in full; otherwise it pays zone money, split equally between the zone's captains.
- * Personal and zone commissions are never paid together.
+ * shop commissions in full; otherwise it pays zone money, split by each captain's members' used tickets
+ * for event shares (legacy zone commissions stay equal). Personal and zone commissions are never paid together.
  */
 export async function createPayout(req: Request, res: Response) {
   const { regionId, captainId, commissionIds, splits, note } = req.body ?? {}
@@ -1009,14 +1028,14 @@ export async function createPayout(req: Request, res: Response) {
 
   const receipts = new Map<string, string>()
   for (const split of Array.isArray(splits) ? splits : []) {
-    const captainId = typeof split?.captainId === 'string' ? split.captainId : ''
+    const splitCaptainId = typeof split?.captainId === 'string' ? split.captainId : ''
     const receipt = typeof split?.mpesaReceipt === 'string' ? split.mpesaReceipt.trim().toUpperCase() : ''
-    if (!UUID_PATTERN.test(captainId)) return res.status(400).json({ error: 'Each payment needs a valid captain' })
-    if (!receipt) return res.status(400).json({ error: 'Enter the M-Pesa receipt for every captain' })
-    if (receipts.has(captainId)) return res.status(400).json({ error: 'Each captain can only be paid once per payout' })
-    receipts.set(captainId, receipt)
+    if (!UUID_PATTERN.test(splitCaptainId)) return res.status(400).json({ error: 'Each payment needs a valid captain' })
+    if (!receipt) return res.status(400).json({ error: 'Enter the M-Pesa receipt for every captain who is owed money' })
+    if (receipts.has(splitCaptainId)) return res.status(400).json({ error: 'Each captain can only be paid once per payout' })
+    receipts.set(splitCaptainId, receipt)
   }
-  if (receipts.size === 0) return res.status(400).json({ error: 'Enter the M-Pesa receipt for every captain' })
+  if (receipts.size === 0) return res.status(400).json({ error: 'Enter the M-Pesa receipt for every captain who is owed money' })
   if (new Set(receipts.values()).size !== receipts.size) {
     return res.status(400).json({ error: 'Each captain must have their own M-Pesa receipt' })
   }
@@ -1039,12 +1058,6 @@ export async function createPayout(req: Request, res: Response) {
       await client.query('ROLLBACK')
       return res.status(400).json({ error: 'This zone has no active captains to pay' })
     }
-    if (captains.length !== receipts.size || captains.some((c) => !receipts.has(c.captainId))) {
-      await client.query('ROLLBACK')
-      return res
-        .status(409)
-        .json({ error: "The zone's captains have changed. Reload the payout and enter a receipt for each captain." })
-    }
     const commissions = await client.query(
       `SELECT id, amount FROM captain_commissions
        WHERE id = ANY($1::uuid[]) AND region_id = $2 AND captain_id IS NULL
@@ -1058,14 +1071,23 @@ export async function createPayout(req: Request, res: Response) {
         error: "All selected commissions must be approved, unpaid zone money of this zone (not a captain's own commission)",
       })
     }
-    const amount = Math.round(commissions.rows.reduce((sum, row) => sum + Number(row.amount), 0) * 100) / 100
+    const { amount, shares } = await splitZoneCommissions(ids, regionId, captains, client)
+    if (shares.length === 0) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: 'Nothing to pay for these commissions' })
+    }
+    if (shares.length !== receipts.size || shares.some((s) => !receipts.has(s.captainId))) {
+      await client.query('ROLLBACK')
+      return res.status(409).json({
+        error: 'The captains owed money have changed. Reload the payout and enter a receipt for each captain who is owed.',
+      })
+    }
     const payout = await client.query(
       `INSERT INTO captain_payouts (region_id, captain_id, amount, mpesa_receipt, note, paid_by)
        VALUES ($1, NULL, $2, NULL, $3, $4)
        RETURNING id, amount::float AS amount, paid_at`,
       [regionId, amount, paidNote, req.user?.id ?? null]
     )
-    const shares = splitEqually(amount, captains)
     for (const share of shares) {
       await client.query(
         `INSERT INTO captain_payout_splits (payout_id, captain_id, amount, payout_phone, mpesa_receipt)

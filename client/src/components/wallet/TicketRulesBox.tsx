@@ -29,7 +29,8 @@ export default function TicketRulesBox({ rules = DEFAULT_RULES, accepted, onChan
         </li>
         <li>
           Ticket value lasts {rules.credit_days} days, counted from the day after the event, until 11:59 pm on the last day.
-          It is for event tickets only, cannot be transferred or cashed out, and cannot be extended.
+          It works on event tickets, medals, and shop orders, cannot be transferred or cashed out, and cannot be
+          extended.
         </li>
         {showPlanRules && (
           <li>

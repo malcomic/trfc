@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
+import { Link, Navigate, Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import {
   ArrowLeft,
   CalendarSearch,
@@ -249,6 +249,11 @@ function MemberShell() {
 }
 
 export default function MemberLayout() {
+  const { user } = useAuth()
+  if (user?.role === 'coach') {
+    return <Navigate to="/dashboard/coach" replace />
+  }
+
   return (
     <MemberDashboardProvider>
       <MemberShell />

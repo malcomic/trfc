@@ -65,6 +65,7 @@ describe('adminNavEntries', () => {
       '/admin/captains',
       '/admin/zones',
       '/admin/hiring',
+      '/admin/coaches',
       '/admin/membership',
       '/admin/testimonials',
       '/admin/equipment',

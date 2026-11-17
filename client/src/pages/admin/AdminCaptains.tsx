@@ -823,7 +823,7 @@ function PayoutsView({
           <p className="text-sm text-gray-600 dark:text-gray-400">
             {mode === 'captain'
               ? 'Shop commissions belong to the captain the member chose and are paid to that captain in full.'
-              : "Zone money (event profit shares and older zone commissions) is shared equally by the zone's active captains."}{' '}
+              : "Zone event profit shares are paid by each captain's members' used tickets; older zone commissions stay equal."}{' '}
             Send the money by M-Pesa first, then record it here with each receipt number. Only approved commissions can be paid.
           </p>
         </div>
@@ -924,7 +924,7 @@ function PayoutsView({
             <h3 className="font-semibold text-gray-900 dark:text-white">
               {mode === 'captain'
                 ? 'Pay the captain'
-                : `Pay each captain (${splits.length} captain${splits.length === 1 ? '' : 's'}, equal shares)`}
+                : `Pay each captain owed (${splits.length} captain${splits.length === 1 ? '' : 's'}, by used tickets)`}
             </h3>
             {splits.map((s) => (
               <div key={s.captain_id} className="grid gap-2 md:grid-cols-[1fr_auto_220px] items-center text-sm text-gray-900 dark:text-gray-100">
@@ -1265,7 +1265,7 @@ export default function AdminCaptains() {
     <div>
       <AdminPageHeader
         title="Captains"
-        subtitle="Captains look after the members who choose them and earn commission on those members' shop purchases. Event profit shares belong to zones and are shared equally by each zone's active captains."
+        subtitle="Captains look after the members who choose them and earn commission on those members' shop purchases. Event profit shares belong to zones and are paid to captains by how many of their members' tickets were used."
         actions={
           <>
             <button onClick={runSync} disabled={syncing} className={secondaryButton} title="Record any commissions missed in the last 90 days">

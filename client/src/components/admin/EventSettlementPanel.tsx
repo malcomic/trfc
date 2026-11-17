@@ -22,7 +22,7 @@ const lineUsed = (l: SettlementLine) => l.usedTickets ?? l.used_tickets ?? 0
 /**
  * Captains' share of an event's profit: pct% of (used-ticket revenue − costs), divided by every used ticket,
  * times each zone's used referral tickets. Approving adds the shares as approved zone commissions for payout,
- * split equally between each zone's active captains.
+ * paid to each zone's captains by their members' used tickets.
  */
 export default function EventSettlementPanel({ eventId, onClose }: { eventId: string; onClose: () => void }) {
   const [view, setView] = useState<EventSettlementView | null>(null)
@@ -73,7 +73,7 @@ export default function EventSettlementPanel({ eventId, onClose }: { eventId: st
     }
     if (
       !window.confirm(
-        "Approve the captains' share? Each zone's share is added to its commissions and split equally between the zone's active captains."
+        "Approve the captains' share? Each zone's share is added to its commissions and paid to captains by their members' used tickets."
       )
     ) {
       return
@@ -215,7 +215,7 @@ export default function EventSettlementPanel({ eventId, onClose }: { eventId: st
                             {!saved && (
                               <span className="block text-xs text-gray-500">
                                 {line.captainCount
-                                  ? `Split equally between ${line.captainCount} captain${line.captainCount === 1 ? '' : 's'}`
+                                  ? `Split by members' used tickets among ${line.captainCount} captain${line.captainCount === 1 ? '' : 's'}`
                                   : 'No active captains in this zone'}
                               </span>
                             )}
@@ -247,8 +247,9 @@ export default function EventSettlementPanel({ eventId, onClose }: { eventId: st
               <p className="text-sm text-green-600 dark:text-green-400">
                 Approved {new Date(saved.approved_at).toLocaleString()}
                 {saved.approved_by_name ? ` by ${saved.approved_by_name}` : ''}. Statements were emailed to every captain in each zone. Pay
-                each captain their equal share by M-Pesa from Captains → Payouts by {new Date(saved.payout_due).toLocaleDateString()}; admins get a reminder
-                if any are still unpaid 5 days after the event.
+                each captain their ticket-weighted share by M-Pesa from Captains → Payouts by{' '}
+                {new Date(saved.payout_due).toLocaleDateString()}; admins get a reminder if any are still unpaid 5 days
+                after the event.
               </p>
             ) : (
               <>

@@ -1123,7 +1123,8 @@ const longDate = (date: Date) =>
     year: 'numeric',
     timeZone: 'Africa/Nairobi',
   })
-const CREDIT_RULES_NOTE = 'Ticket value works for event tickets only. It cannot be transferred or cashed out.'
+const CREDIT_RULES_NOTE =
+  'Ticket value works on event tickets, medals, and shop orders. It cannot be transferred or cashed out.'
 
 export interface TicketCancelledEmailData {
   name: string | null
@@ -1289,7 +1290,7 @@ export function buildCreditExpiringEmailHTML(data: CreditExpiringEmailData): str
       ${paragraph(escapeHtml(greeting(data.name)))}
       ${paragraph(
         `You have <strong>${kes(data.amount)}</strong> ticket value that ends on <strong>${longDate(data.expiresAt)}</strong> (11:59 pm Nairobi time).
-        Use it on an event ticket before then. It cannot be extended.`
+        Use it on event tickets, medals, or shop orders before then. It cannot be extended.`
       )}
       ${actionButton('USE ON AN EVENT', siteUrl('/events'))}`
   )
@@ -1298,7 +1299,7 @@ export function buildCreditExpiringEmailHTML(data: CreditExpiringEmailData): str
 export function buildCreditExpiringEmailText(data: CreditExpiringEmailData): string {
   return [
     greeting(data.name),
-    `You have ${kes(data.amount)} ticket value that ends on ${longDate(data.expiresAt)} (11:59 pm Nairobi time). Use it on an event ticket before then. It cannot be extended.`,
+    `You have ${kes(data.amount)} ticket value that ends on ${longDate(data.expiresAt)} (11:59 pm Nairobi time). Use it on event tickets, medals, or shop orders before then. It cannot be extended.`,
     `Use on an event: ${siteUrl('/events')}`,
     footerText(),
   ].join('\n\n')
@@ -1413,17 +1414,19 @@ export interface CaptainStatementEmailData {
   zoneName: string
   eventTitle: string
   usedTickets: number
+  /** Used referral tickets whose buyers chose this captain. */
+  yourTickets: number
   perTicketValue: number
   amount: number
-  /** Active captains sharing the zone's amount equally. */
+  /** Active captains in the zone when the statement was sent. */
   captainCount: number
-  /** This captain's equal share of `amount`. */
+  /** This captain's share of `amount`, by their members' used tickets. */
   yourShare: number
 }
 
 const statementPayLine = (data: CaptainStatementEmailData) =>
   data.captainCount > 1
-    ? `It is shared equally by the zone's ${data.captainCount} captains, so your share is about ${kes(data.yourShare)}. It will be paid to your M-Pesa within 7 days after the event.`
+    ? `Your members used ${data.yourTickets} of those tickets, so your share is about ${kes(data.yourShare)}. It will be paid to your M-Pesa within 7 days after the event.`
     : `It will be paid to your M-Pesa within 7 days after the event.`
 
 export function buildCaptainStatementEmailHTML(data: CaptainStatementEmailData): string {
@@ -1515,7 +1518,7 @@ export interface SettlementPayoutReminderData {
 const unpaidLabel = (line: SettlementPayoutReminderData['unpaid'][number]) =>
   `${line.zoneName} (${
     line.captainCount > 0
-      ? `split equally by ${line.captainCount} captain${line.captainCount === 1 ? '' : 's'}`
+      ? `split by members' used tickets among ${line.captainCount} captain${line.captainCount === 1 ? '' : 's'}`
       : 'no active captains'
   })`
 
@@ -1679,6 +1682,39 @@ export function buildCoachApplicationNoticeText(data: CoachApplicationEmailData)
       .map(([label, value]) => `${label}: ${value}`)
       .join('\n'),
     `Open in Hiring: ${coachApplicationAdminUrl(data.id)}`,
+  ].join('\n\n')
+}
+
+export interface CoachInvitationEmailData {
+  fullName: string
+  email: string
+  activateUrl: string
+  expiresInDays: number
+}
+
+export const COACH_INVITATION_SUBJECT = 'You are invited to coach with TRFC'
+
+export function buildCoachInvitationEmailHTML(data: CoachInvitationEmailData): string {
+  return accountEmailShell(
+    COACH_INVITATION_SUBJECT,
+    'Welcome to the coaching team',
+    `
+      ${paragraph(escapeHtml(greeting(data.fullName)))}
+      ${paragraph('Your coach application with TRFC has been approved. Create your coach account with the link below.')}
+      ${paragraph(`This link works for <strong>${data.expiresInDays} days</strong> and can only be used once.`)}
+      ${actionButton('ACTIVATE COACH ACCOUNT', data.activateUrl)}
+      ${paragraph('After you activate, sign in at the member login page to open your coach workspace.')}`
+  )
+}
+
+export function buildCoachInvitationEmailText(data: CoachInvitationEmailData): string {
+  return [
+    greeting(data.fullName),
+    'Your coach application with TRFC has been approved. Create your coach account with the link below.',
+    `This link works for ${data.expiresInDays} days and can only be used once.`,
+    `Activate coach account: ${data.activateUrl}`,
+    'After you activate, sign in at the member login page to open your coach workspace.',
+    footerText(),
   ].join('\n\n')
 }
 

@@ -186,7 +186,9 @@ export default function RegisterForm({ googleSignup }: RegisterFormProps = {}) {
     if (code) {
       getReferrer(code)
         .then((result) => {
-          if (!cancelled) setReferrer(result)
+          if (cancelled) return
+          setReferrer(result)
+          if (result.captain_id) setValue('captainId', result.captain_id)
         })
         .catch((error) => {
           if (error?.response?.status === 404) clearReferral()
@@ -225,8 +227,10 @@ export default function RegisterForm({ googleSignup }: RegisterFormProps = {}) {
     try {
       setLoading(true)
       setErrorMessage('')
-      const referralCode = referrer?.code ?? getStoredReferral() ?? undefined
-      const captainId = values.captainId && values.captainId !== NO_CAPTAIN ? values.captainId : undefined
+      const referralCode = getStoredReferral() ?? referrer?.code ?? undefined
+      const captainId =
+        referrer?.captain_id ||
+        (values.captainId && values.captainId !== NO_CAPTAIN ? values.captainId : undefined)
       const shared = {
         phone: values.phone.trim(),
         whatsapp: whatsappSame ? values.phone.trim() : values.whatsapp.trim(),
@@ -460,29 +464,50 @@ export default function RegisterForm({ googleSignup }: RegisterFormProps = {}) {
                 <MapPin size={15} className="flex-shrink-0 text-accent light:text-accent-light" />
                 <span>
                   Joining the <strong>{referrer.zone}</strong> zone
+                  {referrer.captain_name ? (
+                    <>
+                      {' '}
+                      with <strong>{referrer.captain_name}</strong> as your captain
+                    </>
+                  ) : null}
                 </span>
               </div>
             </div>
           )}
 
-          {showCaptainSelect && (
+          {referrer?.captain_id ? (
             <div>
               <span className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-chalk/60 light:text-chalk-light/60 mb-2 flex items-center gap-2">
                 <Users size={14} aria-hidden="true" /> Your captain
               </span>
-              <p className="m-0 mb-3 text-sm text-fog light:text-fog-light">
-                {referrer ? `Choose your ${referrer.zone} captain.` : 'Choose your captain.'} You can change later from your
-                dashboard.
-              </p>
-              <CaptainCardPicker
-                captains={captainChoices}
-                value={captainIdValue}
-                onChange={(id) => setValue('captainId', id)}
-                label={referrer ? `Choose your ${referrer.zone} captain` : 'Choose your captain'}
-                showZone={!referrer}
-                noneOption={{ value: NO_CAPTAIN, label: "I don't have one yet" }}
-              />
+              <div className="flex items-center gap-2.5 bg-ash light:bg-smoke-light border border-white/10 light:border-black/10 px-4 py-3 text-sm text-chalk light:text-chalk-light">
+                <User size={15} className="flex-shrink-0 text-accent light:text-accent-light" />
+                <span>
+                  <strong>{referrer.captain_name || 'Your captain'}</strong> invited you. You can change captain later from
+                  your dashboard.
+                </span>
+              </div>
             </div>
+          ) : (
+            showCaptainSelect && (
+              <div>
+                <span className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-chalk/60 light:text-chalk-light/60 mb-2 flex items-center gap-2">
+                  <Users size={14} aria-hidden="true" /> Your captain
+                </span>
+                <p className="m-0 mb-3 text-sm text-fog light:text-fog-light">
+                  {referrer ? `Choose your ${referrer.zone} captain.` : 'Choose your captain.'} You can change later from
+                  your dashboard.
+                </p>
+                <CaptainCardPicker
+                  captains={captainChoices}
+                  value={captainIdValue}
+                  onChange={(id) => setValue('captainId', id)}
+                  label={referrer ? `Choose your ${referrer.zone} captain` : 'Choose your captain'}
+                  showZone={!referrer}
+                  noneOption={{ value: NO_CAPTAIN, label: "I don't have one yet" }}
+                />
+              </div>
+            )
           )}
 
           <p className="m-0 text-sm text-fog light:text-fog-light">

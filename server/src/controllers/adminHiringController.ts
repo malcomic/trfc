@@ -13,6 +13,12 @@ import { toCsv } from '../utils/reachOut.js'
 import { isUuid } from '../utils/zones.js'
 import { getNumberSetting } from '../utils/policies.js'
 import { deleteCoachApplication } from '../utils/retention.js'
+import {
+  createCoachInvitation,
+  getLatestInvitation,
+  invalidateCoachInvitations,
+} from '../utils/coachInvitations.js'
+import { sendCoachInvitationEmail } from '../utils/coachInvitationEmail.js'
 
 const PAGE_SIZE = 25
 const EXPORT_MAX_ROWS = 10_000
@@ -21,8 +27,14 @@ const LIST_FIELDS = `a.id, a.full_name, a.phone, a.email, a.location, a.social_u
   a.can_give_3_hours, a.hours, a.worked_harder, a.answers, a.video_url, a.video_source, a.cv_url, a.cv_file_name,
   a.status, a.handled_by, h.name AS handled_by_name, a.notes, a.status_changed_at,
   a.agreed_standards_at, a.agreed_storage_at, a.privacy_version_accepted, a.privacy_agreed_at,
-  a.hired_at, a.coaching_ended_at, a.delete_after, a.created_at, a.updated_at`
-const FROM = 'FROM coach_applications a LEFT JOIN users h ON h.id = a.handled_by'
+  a.hired_at, a.coaching_ended_at, a.delete_after, a.user_id, a.created_at, a.updated_at,
+  inv.expires_at AS invite_expires_at, inv.used_at AS invite_used_at, inv.created_at AS invite_sent_at`
+const FROM = `FROM coach_applications a
+  LEFT JOIN users h ON h.id = a.handled_by
+  LEFT JOIN LATERAL (
+    SELECT expires_at, used_at, created_at FROM coach_invitations
+    WHERE application_id = a.id ORDER BY created_at DESC LIMIT 1
+  ) inv ON true`
 
 async function isAdminUser(userId: string): Promise<boolean> {
   const result = await query("SELECT 1 FROM users WHERE id = $1 AND role = 'admin'", [userId])
@@ -101,14 +113,38 @@ export async function getApplication(req: Request, res: Response) {
   }
 }
 
+async function issueAndSendInvite(application: {
+  id: string
+  full_name: string
+  email: string
+  user_id?: string | null
+}, createdBy?: string | null) {
+  if (application.user_id) return { sent: false, skipped: 'already_activated' as const }
+  const { token } = await createCoachInvitation({
+    applicationId: application.id,
+    email: application.email,
+    createdBy,
+  })
+  const sent = await sendCoachInvitationEmail({
+    fullName: application.full_name,
+    email: application.email,
+    token,
+  })
+  return { sent, skipped: null }
+}
+
 export async function updateApplication(req: Request, res: Response) {
   try {
     const { id } = req.params
     if (!isUuid(id)) return res.status(404).json({ error: 'Application not found' })
     const body = req.body ?? {}
 
-    const current = await query('SELECT status, handled_by FROM coach_applications WHERE id = $1', [id])
+    const current = await query(
+      'SELECT status, handled_by, user_id, full_name, email FROM coach_applications WHERE id = $1',
+      [id]
+    )
     if (current.rows.length === 0) return res.status(404).json({ error: 'Application not found' })
+    const row = current.rows[0]
 
     const sets: string[] = []
     const params: unknown[] = []
@@ -117,7 +153,9 @@ export async function updateApplication(req: Request, res: Response) {
       sets.push(`${column} = $${params.length}`)
     }
 
-    const statusChanged = body.status !== undefined && body.status !== current.rows[0].status
+    const statusChanged = body.status !== undefined && body.status !== row.status
+    let becomingAccepted = false
+    let leavingAccepted = false
     if (body.status !== undefined) {
       if (!isHiringStatus(body.status)) return res.status(400).json({ error: 'Choose a valid status' })
       if (statusChanged) {
@@ -125,8 +163,10 @@ export async function updateApplication(req: Request, res: Response) {
         sets.push('status_changed_at = NOW()')
         // Hired applications move into the coach file and are kept while they coach.
         if (body.status === 'accepted') {
+          becomingAccepted = true
           sets.push('hired_at = COALESCE(hired_at, NOW())', 'delete_after = NULL')
-        } else if (current.rows[0].status === 'accepted') {
+        } else if (row.status === 'accepted') {
+          leavingAccepted = true
           const months = await getNumberSetting('coach_app_retention_months')
           params.push(months)
           sets.push('hired_at = NULL', 'coaching_ended_at = NULL', `delete_after = created_at + make_interval(months => $${params.length})`)
@@ -135,7 +175,7 @@ export async function updateApplication(req: Request, res: Response) {
     }
 
     if (body.coachingEnded !== undefined) {
-      if (current.rows[0].status !== 'accepted' && body.status !== 'accepted') {
+      if (row.status !== 'accepted' && body.status !== 'accepted') {
         return res.status(400).json({ error: 'Only hired coaches can be marked as no longer coaching' })
       }
       sets.push(body.coachingEnded === true ? 'coaching_ended_at = COALESCE(coaching_ended_at, NOW())' : 'coaching_ended_at = NULL')
@@ -166,10 +206,59 @@ export async function updateApplication(req: Request, res: Response) {
       await query(`UPDATE coach_applications SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${params.length}`, params)
     }
 
+    if (leavingAccepted) {
+      await invalidateCoachInvitations(id)
+    }
+
+    if (becomingAccepted) {
+      try {
+        const result = await issueAndSendInvite(row, req.user?.id)
+        if (!result.sent && !result.skipped) {
+          console.error(`Coach invite email failed for application ${id}`)
+        }
+      } catch (error) {
+        console.error(`Coach invite create/send failed for application ${id}:`, error)
+      }
+    }
+
     res.json(await findApplication(id))
   } catch (error) {
     console.error(error)
     res.status(500).json({ error: 'Failed to update application' })
+  }
+}
+
+export async function resendCoachInvite(req: Request, res: Response) {
+  try {
+    const { id } = req.params
+    if (!isUuid(id)) return res.status(404).json({ error: 'Application not found' })
+    const current = await query(
+      'SELECT id, status, user_id, full_name, email FROM coach_applications WHERE id = $1',
+      [id]
+    )
+    const row = current.rows[0]
+    if (!row) return res.status(404).json({ error: 'Application not found' })
+    if (row.status !== 'accepted') {
+      return res.status(400).json({ error: 'Only accepted applications can receive an activation invite' })
+    }
+    if (row.user_id) {
+      return res.status(400).json({ error: 'This coach has already activated their account' })
+    }
+
+    const result = await issueAndSendInvite(row, req.user?.id)
+    if (!result.sent) {
+      return res.status(502).json({ error: 'Invitation was created but the email could not be sent. Try again.' })
+    }
+    const latest = await getLatestInvitation(id)
+    res.json({
+      ok: true,
+      inviteExpiresAt: latest?.expires_at ?? null,
+      inviteSentAt: latest?.created_at ?? null,
+      application: await findApplication(id),
+    })
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: 'Failed to resend invitation' })
   }
 }
 

@@ -155,7 +155,7 @@ export default function AdminRegions({ standalone = false }: { standalone?: bool
     <div>
       <AdminPageHeader
         title={standalone ? 'Zones & Regions' : 'Captains'}
-        subtitle="Each zone has one referral link and commission rate. Shop commission goes to the captain each member chose, at the zone's rate; event profit shares go to the zone and are shared equally by its active captains. Ticket buyers also pick their zone, and products can be limited to zones."
+        subtitle="Each zone has one referral link and commission rate. Shop commission goes to the captain each member chose, at the zone's rate; event profit shares go to the zone and are paid by each captain's members' used tickets. Ticket buyers also pick their zone, and products can be limited to zones."
         actions={
           <button
             onClick={openCreate}
@@ -337,8 +337,8 @@ export default function AdminRegions({ standalone = false }: { standalone?: bool
                     ))}
                   </select>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    The zone's main contact. Payouts are shared equally by all active captains in the zone; the lead
-                    captain also gets any leftover shillings. Only active captains in this zone can lead it.
+                    The zone's main contact. Event profit shares are paid by each captain's members' used tickets; the
+                    lead captain also gets any leftover shillings. Only active captains in this zone can lead it.
                   </p>
                 </div>
               )}

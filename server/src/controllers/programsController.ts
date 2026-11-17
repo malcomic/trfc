@@ -104,6 +104,34 @@ function findWeek(content: ProgramContent, weekNumber: number): ProgramWeekConte
   return content.weeks.find((w) => w.week === weekNumber);
 }
 
+/** Feedback left by coaches for the logged-in member in this program. */
+export const getCoachingFeedback = async (req: Request, res: Response) => {
+  try {
+    const found = await enrolledProgram(req, res);
+    if (!found) return;
+    const result = await query(
+      `SELECT f.id, f.body, f.related_review_id, f.created_at, u.name AS coach_name
+       FROM coach_feedback f
+       JOIN users u ON u.id = f.coach_id
+       WHERE f.participant_id = $1 AND f.program_id = $2
+       ORDER BY f.created_at DESC`,
+      [req.user!.id, found.row.id]
+    );
+    res.json({
+      feedback: result.rows.map((r) => ({
+        id: r.id,
+        body: r.body,
+        relatedReviewId: r.related_review_id ?? null,
+        createdAt: r.created_at,
+        coachName: r.coach_name,
+      })),
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to load coaching feedback' });
+  }
+};
+
 export const getProgramPlan = async (req: Request, res: Response) => {
   try {
     const found = await enrolledProgram(req, res);

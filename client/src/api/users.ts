@@ -2,7 +2,7 @@ import api from './index';
 import type { ProgramId } from '../content/programs';
 
 export type StaffRole = 'member' | 'admin' | 'scanner';
-export type UserRole = StaffRole | 'captain';
+export type UserRole = StaffRole | 'captain' | 'coach';
 
 export interface AdminUser {
   id: string;

@@ -23,7 +23,7 @@ export interface Region {
   pending_amount: number
   approved_amount: number
   paid_amount: number
-  /** Approved zone money (event shares) waiting to be split between the zone's captains. */
+  /** Approved zone money (event shares) waiting to be paid by members' used tickets. */
   zone_approved_amount: number
 }
 

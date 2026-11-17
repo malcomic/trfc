@@ -82,7 +82,16 @@ import AdminAnnouncements from './pages/admin/AdminAnnouncements'
 import AdminPrograms from './pages/admin/AdminPrograms'
 import AdminProgramEditor from './pages/admin/AdminProgramEditor'
 import AdminHiring from './pages/admin/AdminHiring'
+import AdminCoaches from './pages/admin/AdminCoaches'
 import AdminMembership from './pages/admin/AdminMembership'
+import CoachActivate from './pages/CoachActivate'
+import CoachLayout from './components/coach/CoachLayout'
+import CoachOverview from './pages/coach/CoachOverview'
+import CoachInbox from './pages/coach/CoachInbox'
+import CoachPrograms from './pages/coach/CoachPrograms'
+import CoachProgramDetailPage from './pages/coach/CoachProgramDetail'
+import CoachParticipantPage from './pages/coach/CoachParticipant'
+import CoachProfile from './pages/coach/CoachProfile'
 import AdminPolicies from './pages/admin/AdminPolicies'
 import AdminPrivacySettings from './pages/admin/AdminPrivacySettings'
 import Unsubscribe from './pages/Unsubscribe'
@@ -210,6 +219,7 @@ const router = createBrowserRouter(
           <Route path="signups" element={<AdminSignups />} />
           <Route path="reach-out" element={<AdminReachOut />} />
           <Route path="hiring" element={<AdminHiring />} />
+          <Route path="coaches" element={<AdminCoaches />} />
           <Route path="membership" element={<AdminMembership />} />
           <Route path="policies" element={<AdminPolicies />} />
           <Route path="privacy-settings" element={<AdminPrivacySettings />} />
@@ -218,6 +228,23 @@ const router = createBrowserRouter(
           <Route path="captains" element={<AdminCaptains />} />
           <Route path="captains/regions" element={<AdminRegions />} />
           <Route path="zones" element={<AdminRegions standalone />} />
+        </Route>
+
+        <Route
+          path="/dashboard/coach"
+          element={
+            <PrivateRoute roles={['coach']}>
+              <CoachLayout />
+            </PrivateRoute>
+          }
+        >
+          <Route index element={<CoachOverview />} />
+          <Route path="programs" element={<CoachPrograms />} />
+          <Route path="programs/:slug" element={<CoachProgramDetailPage />} />
+          <Route path="programs/:slug/participants/:userId" element={<CoachParticipantPage />} />
+          <Route path="inbox" element={<CoachInbox />} />
+          <Route path="profile" element={<CoachProfile />} />
+          <Route path="*" element={<Navigate to="/dashboard/coach" replace />} />
         </Route>
 
         <Route
@@ -298,6 +325,7 @@ const router = createBrowserRouter(
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/coach/activate" element={<CoachActivate />} />
           <Route path="/unsubscribe" element={<Unsubscribe />} />
         </Route>
 

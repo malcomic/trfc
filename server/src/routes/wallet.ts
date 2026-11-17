@@ -10,6 +10,8 @@ import {
   releasePaymentPlan,
   movePaymentPlan,
   walletCheckout,
+  walletCheckoutMedal,
+  walletCheckoutOrder,
 } from '../controllers/walletController.js'
 import { authMiddleware } from '../middleware/auth.js'
 import { simpleRateLimit } from '../middleware/simpleRateLimit.js'
@@ -22,6 +24,8 @@ router.get('/', getWallet)
 router.get('/transactions', listWalletTransactions)
 router.get('/payable', listPayableBatches)
 router.post('/checkout', simpleRateLimit(10, 10 * 60_000), walletCheckout)
+router.post('/checkout-order', simpleRateLimit(10, 10 * 60_000), walletCheckoutOrder)
+router.post('/checkout-medal', simpleRateLimit(10, 10 * 60_000), walletCheckoutMedal)
 router.get('/plans/preview', previewPlan)
 router.get('/plans', listPaymentPlans)
 router.post('/plans', simpleRateLimit(10, 10 * 60_000), createPaymentPlan)

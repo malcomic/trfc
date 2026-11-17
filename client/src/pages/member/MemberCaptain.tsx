@@ -41,6 +41,7 @@ import {
   type CaptainPayout,
   type CaptainProfile,
   type CaptainReferral,
+  type CaptainReferralQr,
   type CaptainTeamExportRow,
   type CaptainTeamMember,
   type CaptainZoneOverview,
@@ -106,10 +107,10 @@ export default function MemberCaptain() {
 
 function CaptainContent() {
   const [profile, setProfile] = useState<CaptainProfile | null>(null)
-  const [qr, setQr] = useState<{ link: string; dataUrl: string } | null>(null)
+  const [qr, setQr] = useState<CaptainReferralQr | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState<'zone' | 'personal' | null>(null)
   const [tab, setTab] = useState<Tab>('commissions')
 
   const [commissionStatus, setCommissionStatus] = useState<CommissionStatus | ''>('')
@@ -225,25 +226,29 @@ function CaptainContent() {
     }
   }
 
-  const referralLink = qr?.link ?? (profile ? buildReferralLink(profile.zone.referral_code) : '')
+  const zoneLink = qr?.zone.link ?? (profile ? buildReferralLink(profile.zone.referral_code) : '')
+  const personalCode = qr?.personal.code ?? profile?.referral_code ?? ''
+  const personalLink = qr?.personal.link ?? (personalCode ? buildReferralLink(personalCode) : '')
 
-  const copyLink = async () => {
+  const copyLink = async (kind: 'zone' | 'personal', link: string) => {
     try {
-      await navigator.clipboard.writeText(referralLink)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      await navigator.clipboard.writeText(link)
+      setCopied(kind)
+      setTimeout(() => setCopied(null), 2000)
     } catch {
       /* clipboard unavailable */
     }
   }
 
-  const whatsappHref = `https://wa.me/?text=${encodeURIComponent(
-    `Join me at TRFC - Kenya's fitness and wellness community! Sign up with our ${profile?.zone.name ?? ''} zone link: ${referralLink}`
+  const zoneWhatsappHref = `https://wa.me/?text=${encodeURIComponent(
+    `Join me at TRFC - Kenya's fitness and wellness community! Sign up with our ${profile?.zone.name ?? ''} zone link: ${zoneLink}`
+  )}`
+  const personalWhatsappHref = `https://wa.me/?text=${encodeURIComponent(
+    `Join me at TRFC - Kenya's fitness and wellness community! Sign up with my captain link and I'll be your captain: ${personalLink}`
   )}`
 
   const totalPages = commissions ? Math.max(1, Math.ceil(commissions.total / PAGE_SIZE)) : 1
   const activeCaptains = Math.max(1, profile?.stats.active_captains ?? 1)
-  const shareOf = (amount: number) => (activeCaptains === 1 ? amount : Math.floor(amount / activeCaptains))
 
   return (
     <>
@@ -304,28 +309,27 @@ function CaptainContent() {
                 <h2 className="font-barlow-condensed font-bold text-xl tracking-tighter mb-1">Your zone&apos;s referral link</h2>
                 <p className="text-sm text-fog light:text-fog-light mb-4">
                   Every captain in {profile.zone.name} shares this link. Everyone who signs up with it joins the zone and
-                  chooses their captain. You earn on every product, medal and equipment hire bought by members who chose
-                  you, and that commission is yours alone. Event tickets earn through each event&apos;s profit share, which
-                  goes to the {profile.zone.name} zone and is shared equally by its{' '}
-                  {activeCaptains === 1 ? 'captain' : `${activeCaptains} active captains`}.
+                  chooses their captain. Shop commission goes to whoever they choose. Event profit share goes to the zone
+                  and is paid by how many of each captain&apos;s members&apos; tickets were used
+                  {activeCaptains > 1 ? ` (among ${activeCaptains} active captains)` : ''}.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     readOnly
-                    value={referralLink}
+                    value={zoneLink}
                     onFocus={(e) => e.currentTarget.select()}
                     className="flex-1 min-w-0 bg-smoke light:bg-smoke-light border border-white/10 light:border-black/10 px-3 py-2.5 text-sm text-chalk light:text-chalk-light"
-                    aria-label="Referral link"
+                    aria-label="Zone referral link"
                   />
                   <button
                     type="button"
-                    onClick={copyLink}
+                    onClick={() => void copyLink('zone', zoneLink)}
                     className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-cta text-cta-ink font-barlow-condensed font-bold text-sm tracking-widest uppercase"
                   >
-                    {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copied' : 'Copy'}
+                    {copied === 'zone' ? <Check size={14} /> : <Copy size={14} />} {copied === 'zone' ? 'Copied' : 'Copy'}
                   </button>
                   <a
-                    href={whatsappHref}
+                    href={zoneWhatsappHref}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white font-barlow-condensed font-bold text-sm tracking-widest uppercase no-underline"
@@ -334,15 +338,70 @@ function CaptainContent() {
                   </a>
                 </div>
                 <p className="mt-3 text-xs text-fog light:text-fog-light">
-                  Zone referral code: <strong className="text-chalk light:text-chalk-light tracking-wider">{profile.zone.referral_code}</strong>
+                  Zone referral code:{' '}
+                  <strong className="text-chalk light:text-chalk-light tracking-wider">{profile.zone.referral_code}</strong>
                 </p>
               </div>
-              {qr && (
+              {qr?.zone && (
                 <div className="flex flex-col items-center gap-2">
-                  <img src={qr.dataUrl} alt="Referral QR code" className="w-36 h-36 bg-white p-1" />
+                  <img src={qr.zone.dataUrl} alt="Zone referral QR code" className="w-36 h-36 bg-white p-1" />
                   <a
-                    href={qr.dataUrl}
+                    href={qr.zone.dataUrl}
                     download={`trfc-referral-${profile.zone.referral_code}.png`}
+                    className="inline-flex items-center gap-1.5 text-xs text-accent light:text-accent-light no-underline hover:underline"
+                  >
+                    <Download size={12} /> Download QR
+                  </a>
+                </div>
+              )}
+            </div>
+
+            <div className={`${cardSurface} p-6 grid gap-6 md:grid-cols-[1fr_auto] items-center`}>
+              <div className="min-w-0">
+                <h2 className="font-barlow-condensed font-bold text-xl tracking-tighter mb-1">Your personal referral link</h2>
+                <p className="text-sm text-fog light:text-fog-light mb-4">
+                  Share this when you want people to join {profile.zone.name} <em>and</em> choose you as their captain. You
+                  earn shop commission on their purchases, and their used event tickets count toward your share of the
+                  zone&apos;s event profit.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    readOnly
+                    value={personalLink}
+                    onFocus={(e) => e.currentTarget.select()}
+                    className="flex-1 min-w-0 bg-smoke light:bg-smoke-light border border-white/10 light:border-black/10 px-3 py-2.5 text-sm text-chalk light:text-chalk-light"
+                    aria-label="Personal referral link"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void copyLink('personal', personalLink)}
+                    disabled={!personalLink}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-cta text-cta-ink font-barlow-condensed font-bold text-sm tracking-widest uppercase disabled:opacity-50"
+                  >
+                    {copied === 'personal' ? <Check size={14} /> : <Copy size={14} />}{' '}
+                    {copied === 'personal' ? 'Copied' : 'Copy'}
+                  </button>
+                  <a
+                    href={personalWhatsappHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white font-barlow-condensed font-bold text-sm tracking-widest uppercase no-underline"
+                  >
+                    <MessageCircle size={14} /> WhatsApp
+                  </a>
+                </div>
+                {personalCode && (
+                  <p className="mt-3 text-xs text-fog light:text-fog-light">
+                    Your code: <strong className="text-chalk light:text-chalk-light tracking-wider">{personalCode}</strong>
+                  </p>
+                )}
+              </div>
+              {qr?.personal && (
+                <div className="flex flex-col items-center gap-2">
+                  <img src={qr.personal.dataUrl} alt="Personal referral QR code" className="w-36 h-36 bg-white p-1" />
+                  <a
+                    href={qr.personal.dataUrl}
+                    download={`trfc-referral-${qr.personal.code}.png`}
                     className="inline-flex items-center gap-1.5 text-xs text-accent light:text-accent-light no-underline hover:underline"
                   >
                     <Download size={12} /> Download QR
@@ -360,19 +419,18 @@ function CaptainContent() {
               <StatTile label="Your approved" value={formatKes(profile.stats.my_approved_amount ?? 0)} icon={BadgeCheck} />
               <StatTile label="Zone shares pending" value={formatKes(profile.stats.zone_pending_amount ?? 0)} icon={TrendingUp} />
               <StatTile
-                label="Your share of zone approved"
-                value={formatKes(shareOf(profile.stats.zone_approved_amount ?? 0))}
+                label="Zone approved (total)"
+                value={formatKes(profile.stats.zone_approved_amount ?? 0)}
                 icon={BadgeCheck}
               />
               <StatTile label="Zone paid out" value={formatKes(profile.stats.zone_paid_amount ?? 0)} icon={Wallet} />
               <StatTile label="Paid to you" value={formatKes(profile.stats.my_paid_amount ?? 0)} icon={Wallet} />
             </div>
-            {activeCaptains > 1 && (
-              <p className="-mt-4 text-xs text-fog light:text-fog-light">
-                Your own commissions are paid to you in full. Your share of zone money is an estimate: it is split
-                equally between the zone&apos;s {activeCaptains} active captains when it is paid, in whole shillings.
-              </p>
-            )}
+            <p className="-mt-4 text-xs text-fog light:text-fog-light">
+              Your own commissions are paid to you in full. Zone event shares are paid by how many of your members&apos;
+              tickets were used at the event
+              {activeCaptains > 1 ? ` (among the zone's ${activeCaptains} active captains)` : ''}.
+            </p>
 
             <div>
               <DashboardTabs tabs={TAB_LABELS} active={tab} onChange={setTab} comingSoon={COMING_SOON_TABS} />
@@ -426,8 +484,10 @@ function CaptainContent() {
                         </div>
                         <div className="text-right">
                           <p className="font-bebas text-2xl text-accent light:text-accent-light">{formatKes(c.amount)}</p>
-                          {c.kind === 'zone' && activeCaptains > 1 && (c.status === 'pending' || c.status === 'approved') && (
-                            <p className="text-xs text-fog light:text-fog-light">Your share about {formatKes(shareOf(c.amount))}</p>
+                          {c.kind === 'zone' && (c.status === 'pending' || c.status === 'approved') && (
+                            <p className="text-xs text-fog light:text-fog-light">
+                              Zone total — your cut depends on your members&apos; used tickets
+                            </p>
                           )}
                           <span className={`inline-block px-2.5 py-0.5 text-xs font-bold uppercase ${COMMISSION_STATUS_STYLES[c.status]}`}>
                             {c.status}
@@ -599,8 +659,8 @@ function CaptainContent() {
                 <div className="space-y-3">
                   {payouts.length === 0 ? (
                     <p className="text-center py-10 text-fog light:text-fog-light">
-                      No payouts yet. Your approved commissions are paid to you in full, and zone money is shared equally
-                      by the zone&apos;s active captains. Payments go to your M-Pesa
+                      No payouts yet. Your approved commissions are paid to you in full, and zone event shares are paid
+                      by how many of your members&apos; tickets were used. Payments go to your M-Pesa
                       {profile.payout_phone ? ` (${profile.payout_phone})` : ''}.
                     </p>
                   ) : (

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   enrollProgram,
+  getCoachingFeedback,
   getMyPrograms,
   getProgramPlan,
   getProgramProgress,
@@ -8,6 +9,11 @@ import {
   setSessionProgress,
   submitCheckin,
 } from '../controllers/programsController.js';
+import {
+  getProgramMessages,
+  getProgramMessagesUnreadCount,
+  postProgramMessage,
+} from '../controllers/programMessagingController.js';
 import { getProgramBySlug, getProgramCatalog } from '../controllers/programCatalogController.js';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth.js';
 
@@ -17,6 +23,10 @@ router.get('/catalog', getProgramCatalog);
 router.get('/by-slug/:slug', optionalAuthMiddleware, getProgramBySlug);
 router.get('/mine', authMiddleware, getMyPrograms);
 router.post('/enroll', authMiddleware, enrollProgram);
+router.get('/:program/coaching-feedback', authMiddleware, getCoachingFeedback);
+router.get('/:program/messages/unread-count', authMiddleware, getProgramMessagesUnreadCount);
+router.get('/:program/messages', authMiddleware, getProgramMessages);
+router.post('/:program/messages', authMiddleware, postProgramMessage);
 router.get('/:program/plan', authMiddleware, getProgramPlan);
 router.get('/:program/progress', authMiddleware, getProgramProgress);
 router.get('/:program/weeks/:week', authMiddleware, getProgramWeek);

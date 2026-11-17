@@ -24,6 +24,8 @@ export type WalletTxType =
   | 'credit_expired'
   | 'credit_voided'
   | 'ticket_payment_mpesa'
+  | 'order_payment_mpesa'
+  | 'medal_payment_mpesa'
   | 'installment'
   // Older history rows
   | 'topup'
@@ -52,6 +54,8 @@ export const WALLET_TX_LABELS: Record<WalletTxType, string> = {
   credit_expired: 'Ticket value ended',
   credit_voided: 'Ticket value removed',
   ticket_payment_mpesa: 'Tickets paid by M-Pesa',
+  order_payment_mpesa: 'Shop order paid by M-Pesa',
+  medal_payment_mpesa: 'Medals paid by M-Pesa',
   installment: 'Part payment for a ticket',
   topup: 'Earlier M-Pesa payment',
   ticket_payment: 'Tickets paid with ticket value',
@@ -152,14 +156,6 @@ export async function initiateMedalPayment(data: {
     ...data,
     medalBatchId: data.medalBatchId,
   })
-}
-
-export async function initiateSignupPayment(data: {
-  phone: string
-  amount: number
-  signupId: string
-}) {
-  return initiateSTKPush(data)
 }
 
 export async function initiateEquipmentPayment(data: {

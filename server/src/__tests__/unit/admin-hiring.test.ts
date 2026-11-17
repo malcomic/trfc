@@ -44,10 +44,12 @@ function mockDb() {
     if (sql.includes("WHERE id = $1 AND role = 'admin'")) {
       return { rows: [ADMIN_ID, OTHER_ADMIN].includes(String(params?.[0])) ? [{ '?column?': 1 }] : [] }
     }
-    if (sql.startsWith('SELECT status, handled_by FROM coach_applications')) return { rows: [{ status: 'new', handled_by: null }] }
+    if (sql.includes('SELECT status, handled_by, user_id, full_name, email FROM coach_applications')) {
+      return { rows: [{ status: 'new', handled_by: null, user_id: null, full_name: APP_ROW.full_name, email: APP_ROW.email }] }
+    }
     if (sql.includes('COUNT(*)::int AS total')) return { rows: [{ total: 1 }] }
     if (sql.includes('GROUP BY a.status')) return { rows: [{ status: 'new', count: 3 }, { status: 'accepted', count: 1 }] }
-    if (sql.includes('FROM coach_applications a LEFT JOIN users h')) return { rows: [APP_ROW] }
+    if (sql.includes('FROM coach_applications a')) return { rows: [APP_ROW] }
     if (sql.includes('FROM hiring_settings')) return { rows: [{ notify_user_id: OTHER_ADMIN, updated_at: null }] }
     if (sql.includes("FROM users WHERE role = 'admin'")) {
       return { rows: [{ id: ADMIN_ID, name: 'Amy', email: 'amy@trfc.co.ke' }, { id: OTHER_ADMIN, name: 'Ben', email: 'ben@trfc.co.ke' }] }

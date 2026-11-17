@@ -7,7 +7,12 @@ import {
   buildSettlementPayoutReminderEmailText,
 } from './emailTemplates.js'
 import { getTicketRules } from './ticketRules.js'
-import { loadZoneCaptains, splitEqually } from './payoutSplit.js'
+import {
+  buildCaptainTicketWeights,
+  loadZoneCaptains,
+  loadZoneTicketAttribution,
+  splitZonePayoutAmount,
+} from './payoutSplit.js'
 
 export class SettlementError extends Error {
   constructor(message: string, public status = 400) {
@@ -18,7 +23,7 @@ export class SettlementError extends Error {
 export interface ZoneUsage {
   regionId: string
   regionName: string
-  /** Active captains who will share the zone's amount equally. */
+  /** Active captains who will share the zone's amount by members' used tickets. */
   captainCount: number
   usedTickets: number
 }
@@ -250,23 +255,34 @@ export async function approveSettlement(eventId: string, userId: string) {
   }
 
   for (const line of breakdown.lines) {
-    await sendZoneStatements(line, event.title, breakdown.perTicketValue).catch((error) =>
+    await sendZoneStatements(eventId, line, event.title, breakdown.perTicketValue).catch((error) =>
       console.error('Failed to send captain statements:', error)
     )
   }
   return breakdown
 }
 
-/** Emails every active captain of the zone the zone's amount and their estimated equal share. */
-async function sendZoneStatements(line: SettlementLine, eventTitle: string, perTicketValue: number) {
+/** Emails every active captain of the zone the zone's amount and their ticket-weighted share. */
+async function sendZoneStatements(
+  eventId: string,
+  line: SettlementLine,
+  eventTitle: string,
+  perTicketValue: number
+) {
   const captains = await loadZoneCaptains(line.regionId)
-  for (const share of splitEqually(line.amount, captains)) {
-    if (!share.email) continue
+  if (captains.length === 0) return
+  const attribution = await loadZoneTicketAttribution(eventId, line.regionId)
+  const weights = buildCaptainTicketWeights(captains, attribution)
+  const shares = splitZonePayoutAmount(line.amount, captains, attribution)
+  const ticketsByCaptain = new Map((weights ?? []).map((w) => [w.captainId, w.creditedTickets]))
+  for (const share of shares) {
+    if (!share.email || share.amount <= 0) continue
     const data = {
       name: share.name,
       zoneName: line.regionName,
       eventTitle,
       usedTickets: line.usedTickets,
+      yourTickets: ticketsByCaptain.get(share.captainId) ?? 0,
       perTicketValue,
       amount: line.amount,
       captainCount: captains.length,

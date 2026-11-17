@@ -4,8 +4,8 @@ import { creditExpiry, daysLeft, getTicketRules, nairobiDay } from './ticketRule
 
 /**
  * Ticket credit ("ticket value"). TRFC never holds cash for members: value only comes from event tickets
- * a member did not use, can only be spent on event tickets, and lapses `creditDays` after the event.
- * Each credit is its own row in ticket_credits; wallet_transactions is the member-facing history.
+ * a member did not use, can be spent on event tickets, shop orders and medals, and lapses `creditDays`
+ * after the event. Each credit is its own row in ticket_credits; wallet_transactions is the member-facing history.
  */
 
 export type CreditReason =
@@ -24,6 +24,8 @@ export type WalletTxType =
   | 'credit_expired'
   | 'credit_voided'
   | 'ticket_payment_mpesa'
+  | 'order_payment_mpesa'
+  | 'medal_payment_mpesa'
   | 'installment'
   // Older ledger rows, kept so history still renders.
   | 'topup'
@@ -239,7 +241,14 @@ export interface HoldResult {
 export async function holdCredit(
   client: Queryable,
   userId: string,
-  target: { maxAmount: number; purchaseBatchId?: string | null; planId?: string | null; paymentTxId?: string | null },
+  target: {
+    maxAmount: number
+    purchaseBatchId?: string | null
+    planId?: string | null
+    paymentTxId?: string | null
+    orderId?: string | null
+    medalBatchId?: string | null
+  },
   now = new Date()
 ): Promise<HoldResult> {
   let left = roundKes(target.maxAmount)
@@ -253,9 +262,18 @@ export async function holdCredit(
     const take = roundKes(Math.min(left, Number(credit.free)))
     if (take <= 0) continue
     await client.query(
-      `INSERT INTO ticket_credit_uses (credit_id, purchase_batch_id, plan_id, payment_tx_id, amount, status)
-       VALUES ($1, $2, $3, $4, $5, 'held')`,
-      [credit.id, target.purchaseBatchId ?? null, target.planId ?? null, target.paymentTxId ?? null, take]
+      `INSERT INTO ticket_credit_uses
+         (credit_id, purchase_batch_id, plan_id, payment_tx_id, order_id, medal_batch_id, amount, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'held')`,
+      [
+        credit.id,
+        target.purchaseBatchId ?? null,
+        target.planId ?? null,
+        target.paymentTxId ?? null,
+        target.orderId ?? null,
+        target.medalBatchId ?? null,
+        take,
+      ]
     )
     if (held === 0) regionId = credit.region_id
     held = roundKes(held + take)
@@ -264,11 +282,18 @@ export async function holdCredit(
   return { held, regionId }
 }
 
-type HoldScope = { paymentTxId: string } | { purchaseBatchId: string } | { planId: string }
+export type HoldScope =
+  | { paymentTxId: string }
+  | { purchaseBatchId: string }
+  | { planId: string }
+  | { orderId: string }
+  | { medalBatchId: string }
 
 function scopeWhere(scope: HoldScope): [string, string] {
   if ('paymentTxId' in scope) return ['u.payment_tx_id = $1', scope.paymentTxId]
   if ('purchaseBatchId' in scope) return ['u.purchase_batch_id = $1', scope.purchaseBatchId]
+  if ('orderId' in scope) return ['u.order_id = $1', scope.orderId]
+  if ('medalBatchId' in scope) return ['u.medal_batch_id = $1', scope.medalBatchId]
   return ['u.plan_id = $1', scope.planId]
 }
 
@@ -444,7 +469,7 @@ export async function createPendingMpesaTx(
   db: Queryable,
   userId: string,
   params: {
-    type: 'ticket_payment_mpesa' | 'installment'
+    type: 'ticket_payment_mpesa' | 'order_payment_mpesa' | 'medal_payment_mpesa' | 'installment'
     mpesaAmount: number
     phone: string
     referenceType?: string

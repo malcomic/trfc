@@ -9,6 +9,7 @@ import {
   DELIVERY_RULE,
 } from '../api/orders'
 import { initiateSTKPush } from '../api/payments'
+import { getWallet, payOrderWithCredit, TICKET_VALUE_NOTE } from '../api/wallet'
 import { useCart, cartLineKey, cartLinePrice } from '../store/cartStore'
 import type { CartItem } from '../types'
 import { getGrandTotal } from '../utils/shipping'
@@ -23,6 +24,7 @@ import { useAuth } from '../context/AuthContext'
 import { MPESA_PHONE_PLACEHOLDER, mpesaPhoneRules, toKenyanMsisdn } from '../utils/phone'
 import { getShopDiscount, type ShopDiscount } from '../api/membership'
 import { MEMBERSHIP_COPY, kes, shopDiscountFor } from '../content/membership'
+import { formatKes } from '../utils/captainDisplay'
 
 export default function Checkout() {
   const { user } = useAuth()
@@ -65,9 +67,26 @@ export default function Checkout() {
   const memberDiscount = useMemberDiscount ? discountAvailable : 0
   const grandTotal =
     getGrandTotal(items.reduce((sum, item) => sum + cartLinePrice(item) * item.quantity, 0)) - memberDiscount
+  const [ticketValue, setTicketValue] = useState(0)
+  const [useCredit, setUseCredit] = useState(true)
+  const creditApplied = user && useCredit ? Math.min(ticketValue, Math.max(0, grandTotal)) : 0
+  const mpesaDue = Math.max(0, grandTotal - creditApplied)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [deliveryDate, setDeliveryDate] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!user) {
+      setTicketValue(0)
+      return
+    }
+    getWallet()
+      .then((w) => {
+        setTicketValue(w.ticketValue)
+        if (w.ticketValue > 0) setUseCredit(true)
+      })
+      .catch(() => setTicketValue(0))
+  }, [user])
 
   useEffect(() => {
     let cancelled = false
@@ -184,6 +203,29 @@ export default function Checkout() {
       })
 
       setOrderId(createdOrder.id)
+      setSubmittedItems(items)
+      if (isBuyNow) clearBuyNow()
+      else clearCart()
+
+      const applyCredit = Boolean(user && useCredit && ticketValue > 0)
+      if (applyCredit) {
+        const creditResult = await payOrderWithCredit({
+          orderId: createdOrder.id,
+          useCredit: true,
+          phone: data.phone,
+        })
+        if (creditResult.status === 'paid') {
+          navigate(`/order-confirmation/${createdOrder.id}`, { state: { phone: data.phone, email: normalizedEmail } })
+          return
+        }
+        if (creditResult.checkoutRequestId) {
+          setCheckoutRequestId(creditResult.checkoutRequestId)
+          setShowPaymentModal(true)
+          return
+        }
+        setError('Failed to initiate payment. Please try again.')
+        return
+      }
 
       const paymentResponse = await initiateSTKPush({
         phone: data.phone,
@@ -193,10 +235,7 @@ export default function Checkout() {
 
       if (paymentResponse.checkoutRequestId) {
         setCheckoutRequestId(paymentResponse.checkoutRequestId)
-        setSubmittedItems(items)
         setShowPaymentModal(true)
-        if (isBuyNow) clearBuyNow()
-        else clearCart()
       } else {
         setError('Failed to initiate payment. Please try again.')
       }
@@ -355,7 +394,11 @@ export default function Checkout() {
               </Button>
 
               <p className="text-xs text-fog light:text-fog-light text-center">
-                💡 After clicking proceed, an M-Pesa prompt will appear on your phone. Enter your PIN to complete payment.
+                {creditApplied > 0 && mpesaDue <= 0
+                  ? 'Your ticket value covers this order. It is confirmed as soon as you proceed.'
+                  : creditApplied > 0
+                    ? `Pay the remaining ${formatKes(mpesaDue)} on the M-Pesa prompt after you proceed.`
+                    : 'After clicking proceed, an M-Pesa prompt will appear on your phone. Enter your PIN to complete payment.'}
               </p>
             </form>
           </div>
@@ -418,11 +461,49 @@ export default function Checkout() {
                   <p className="text-xs text-fog light:text-fog-light mb-4">{MEMBERSHIP_COPY.shopDiscount.usedNote}</p>
                 )}
 
+                {user && ticketValue > 0 && (
+                  <div className="mb-6 pb-6 border-b border-white/10 light:border-black/10 space-y-2">
+                    <label className="flex items-start gap-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={useCredit}
+                        onChange={(e) => setUseCredit(e.target.checked)}
+                        disabled={Boolean(submittedItems)}
+                        className="w-4 h-4 mt-0.5"
+                      />
+                      <span>
+                        Use my ticket value ({formatKes(ticketValue)})
+                        <span className="block text-xs text-fog light:text-fog-light mt-0.5">
+                          The oldest value is used first. {TICKET_VALUE_NOTE}
+                        </span>
+                      </span>
+                    </label>
+                    {creditApplied > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span>Ticket value</span>
+                        <span className="font-bebas text-lg text-accent light:text-accent-light">
+                          −{creditApplied.toFixed(0)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {!user && (
+                  <p className="text-xs text-fog light:text-fog-light mb-4">
+                    <Link to="/login" className="text-accent light:text-accent-light">
+                      Log in
+                    </Link>{' '}
+                    to use ticket value on this order.
+                  </p>
+                )}
+
                 {/* Total */}
                 <div className="flex justify-between items-baseline mb-6 pb-6 border-b border-white/10 light:border-black/10">
-                  <span className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-fog light:text-fog-light">Total</span>
+                  <span className="font-barlow-condensed font-bold text-sm letter-spacing-widest text-transform-uppercase text-fog light:text-fog-light">
+                    {creditApplied > 0 ? 'M-Pesa' : 'Total'}
+                  </span>
                   <span className="font-bebas text-4xl text-accent light:text-accent-light letter-spacing-tighter">
-                    {grandTotal.toFixed(0)}
+                    {(creditApplied > 0 ? mpesaDue : grandTotal).toFixed(0)}
                   </span>
                 </div>
 
@@ -440,7 +521,9 @@ export default function Checkout() {
                   </div>
                   <div className="flex justify-between">
                     <span>🔒 Secure</span>
-                    <span className="font-bold text-accent light:text-accent-light">M-Pesa</span>
+                    <span className="font-bold text-accent light:text-accent-light">
+                      {creditApplied > 0 && mpesaDue <= 0 ? 'Ticket value' : 'M-Pesa'}
+                    </span>
                   </div>
                 </div>
               </Card.Body>

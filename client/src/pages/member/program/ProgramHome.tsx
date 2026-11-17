@@ -1,3 +1,4 @@
+import { FormEvent, useEffect, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { MessageCircle } from 'lucide-react'
 import { useMemberDashboard } from '../../../context/MemberDashboardContext'
@@ -19,8 +20,155 @@ import {
 } from '../../../components/member/program/ProgramBits'
 import { dashCard, dashHeading, dashLink, dashMuted } from '../../../components/member/dashboard/ui'
 import { ctaButton } from '../../../utils/themeClasses'
+import {
+  getCoachingFeedback,
+  getProgramMessages,
+  postProgramMessage,
+  type CoachingFeedbackItem,
+  type ProgramCoachMessage,
+} from '../../../api/programs'
 
 const copy = PROGRAM_COPY.home
+
+function CoachFeedbackSection({ programId }: { programId: string }) {
+  const [items, setItems] = useState<CoachingFeedbackItem[] | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    getCoachingFeedback(programId)
+      .then((rows) => !cancelled && setItems(rows))
+      .catch(() => !cancelled && setItems([]))
+    return () => {
+      cancelled = true
+    }
+  }, [programId])
+
+  if (items === null) return null
+
+  return (
+    <section className={dashCard}>
+      <h2 className={dashHeading}>Coach feedback</h2>
+      {items.length === 0 ? (
+        <p className={`${dashMuted} mt-3`}>No coaching feedback yet. Your coach’s notes will show up here.</p>
+      ) : (
+        <ul className="mt-3 m-0 p-0 list-none space-y-3">
+          {items.map((item) => (
+            <li key={item.id} className="border-t border-mist/40 light:border-mist-light/40 pt-3 first:border-0 first:pt-0">
+              <div className="font-barlow text-xs uppercase tracking-widest text-fog light:text-fog-light">
+                {item.coachName} · {new Date(item.createdAt).toLocaleDateString()}
+              </div>
+              <p className="m-0 mt-1 font-barlow text-chalk light:text-chalk-light whitespace-pre-wrap">{item.body}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+function MessageYourCoachSection({ programId }: { programId: string }) {
+  const [messages, setMessages] = useState<ProgramCoachMessage[] | null>(null)
+  const [coach, setCoach] = useState<{ userId: string; name: string } | null>(null)
+  const [body, setBody] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [unreadHint, setUnreadHint] = useState(false)
+
+  const load = () =>
+    getProgramMessages(programId).then((data) => {
+      setCoach(data.coach)
+      setMessages(data.messages)
+      setUnreadHint((data.unreadCount ?? 0) > 0)
+    })
+
+  useEffect(() => {
+    let cancelled = false
+    getProgramMessages(programId)
+      .then((data) => {
+        if (cancelled) return
+        setCoach(data.coach)
+        setMessages(data.messages)
+        setUnreadHint((data.unreadCount ?? 0) > 0)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setMessages([])
+        setCoach(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [programId])
+
+  const send = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!body.trim()) {
+      setError('Write a message before sending.')
+      return
+    }
+    try {
+      setBusy(true)
+      setError('')
+      await postProgramMessage(programId, body)
+      setBody('')
+      await load()
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Could not send message')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (messages === null) return null
+
+  return (
+    <section className={dashCard}>
+      <h2 className={dashHeading}>Message your coach</h2>
+      {!coach ? (
+        <p className={`${dashMuted} mt-3`}>No coach assigned yet.</p>
+      ) : (
+        <>
+          <p className={`${dashMuted} mt-2`}>
+            Chat with {coach.name}
+            {unreadHint ? ' · New replies waiting' : ''}
+          </p>
+          {messages.length === 0 ? (
+            <p className={`${dashMuted} mt-3`}>No messages yet. Say hello below.</p>
+          ) : (
+            <ul className="mt-3 m-0 p-0 list-none space-y-3 max-h-72 overflow-y-auto">
+              {messages.map((m) => (
+                <li
+                  key={m.id}
+                  className={`border-t border-mist/40 light:border-mist-light/40 pt-3 first:border-0 first:pt-0 ${
+                    m.mine ? 'pl-4' : ''
+                  }`}
+                >
+                  <div className="font-barlow text-xs uppercase tracking-widest text-fog light:text-fog-light">
+                    {m.mine ? 'You' : coach.name} · {new Date(m.createdAt).toLocaleString()}
+                  </div>
+                  <p className="m-0 mt-1 font-barlow text-chalk light:text-chalk-light whitespace-pre-wrap">{m.body}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+          <form onSubmit={send} className="mt-4 space-y-3">
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              rows={3}
+              placeholder={`Message ${coach.name}`}
+              className="w-full px-3 py-2 bg-ash light:bg-smoke-light border border-mist/40 light:border-mist-light/40 text-chalk light:text-chalk-light font-barlow text-sm outline-none focus:border-accent/50"
+            />
+            {error && <p className="m-0 text-red-500 text-sm font-barlow">{error}</p>}
+            <button type="submit" disabled={busy} className={`${ctaButton} disabled:opacity-50`}>
+              {busy ? 'Sending…' : 'Send message'}
+            </button>
+          </form>
+        </>
+      )}
+    </section>
+  )
+}
 
 export default function ProgramHome() {
   const { slug } = useParams()
@@ -57,6 +205,9 @@ export default function ProgramHome() {
             </CtaButton>
           )}
         </section>
+
+        <CoachFeedbackSection programId={plan.program} />
+        <MessageYourCoachSection programId={plan.program} />
 
         <div className="grid gap-6 md:grid-cols-2">
           <section className={dashCard}>

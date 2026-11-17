@@ -39,6 +39,7 @@ import { getAdminSignups } from '../controllers/signupsController.js'
 import * as reachOut from '../controllers/reachOutController.js'
 import * as programs from '../controllers/adminProgramsController.js'
 import * as hiring from '../controllers/adminHiringController.js'
+import * as adminCoaches from '../controllers/adminCoachesController.js'
 import * as membership from '../controllers/adminMembershipController.js'
 import * as guides from '../controllers/adminGuidesController.js'
 import * as liveQa from '../controllers/adminLiveQaController.js'
@@ -200,7 +201,12 @@ router.get('/hiring/settings', hiring.getHiringSettings)
 router.put('/hiring/settings', hiring.updateHiringSettings)
 router.get('/hiring/:id', hiring.getApplication)
 router.patch('/hiring/:id', hiring.updateApplication)
+router.post('/hiring/:id/resend-invite', hiring.resendCoachInvite)
 router.delete('/hiring/:id', hiring.deleteApplication)
+
+router.get('/coaches', adminCoaches.listCoaches)
+router.patch('/coaches/:userId', adminCoaches.updateCoach)
+router.put('/coaches/:userId/programs', adminCoaches.setCoachPrograms)
 
 router.get('/membership/summary', membership.getSummary)
 router.get('/membership/members', membership.listMembers)

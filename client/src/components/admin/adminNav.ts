@@ -92,6 +92,7 @@ export const adminNavEntries: AdminNavEntry[] = [
       { path: '/admin/captains', label: 'Captains', icon: Flag },
       { path: '/admin/zones', label: 'Zones', icon: MapPin },
       { path: '/admin/hiring', label: 'Hiring', icon: Briefcase },
+      { path: '/admin/coaches', label: 'Coaches', icon: Dumbbell },
     ],
   },
   {

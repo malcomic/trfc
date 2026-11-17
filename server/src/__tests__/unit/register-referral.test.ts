@@ -25,38 +25,70 @@ import { register } from '../../controllers/authController.js'
 
 const USER = { id: '22222222-2222-4222-8222-222222222222', name: 'Jane', email: 'jane@example.com', phone: '0712345678', role: 'member' }
 
-function mockDb() {
+const CAPTAIN_ID = '33333333-3333-4333-8333-333333333333'
+
+function mockDb(opts: { captainId?: string | null } = {}) {
   vi.mocked(query).mockImplementation((async (sql: string) => {
     if (sql.includes('FROM users WHERE phone_normalized')) return { rows: [] }
     if (sql.includes('FROM users WHERE LOWER(email)')) return { rows: [] }
     if (sql.includes('INSERT INTO users')) return { rows: [USER] }
-    if (sql.includes('FROM regions r')) return { rows: [{ region_id: 'zone-nrb', region_name: 'Nairobi', region_code: 'NRB', referral_code: 'NRB' }] }
-    if (sql.includes('UPDATE users u')) return { rows: [{ id: USER.id }] }
+    if (sql.includes('FROM regions r')) {
+      return {
+        rows: [
+          {
+            region_id: 'zone-nrb',
+            region_name: 'Nairobi',
+            region_code: 'NRB',
+            referral_code: 'NRB',
+            captain_id: opts.captainId ?? null,
+            captain_name: opts.captainId ? 'Jane' : null,
+          },
+        ],
+      }
+    }
+    if (sql.includes('SET referred_by_region_id') || sql.includes('SET captain_id')) {
+      return { rows: [{ id: USER.id }] }
+    }
     return { rows: [] }
   }) as any)
 }
 
 const makeRes = () => ({ status: vi.fn().mockReturnThis(), json: vi.fn() }) as any
 const referralCalls = () => vi.mocked(query).mock.calls.filter(([sql]) => String(sql).includes('SET referred_by_region_id'))
+const captainCalls = () => vi.mocked(query).mock.calls.filter(([sql]) => String(sql).includes('SET captain_id'))
 
 describe('register with a referral code', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockDb()
   })
 
-  it('links the new user to the zone and stores a normalized phone', async () => {
+  it('a zone code links the user to the zone without choosing a captain', async () => {
+    mockDb()
     const res = makeRes()
-    await register({ body: { ...USER, password: 'Password123', referralCode: 'nrb-jane24' } } as any, res)
+    await register({ body: { ...USER, password: 'Password123', referralCode: 'NRB' } } as any, res)
 
     expect(res.status).toHaveBeenCalledWith(201)
     const insert = vi.mocked(query).mock.calls.find(([sql]) => String(sql).includes('INSERT INTO users'))!
     expect(insert[1]).toContain('254712345678')
     expect(referralCalls()).toHaveLength(1)
     expect(referralCalls()[0][1]).toEqual([USER.id, 'zone-nrb'])
+    expect(captainCalls()).toHaveLength(0)
+  })
+
+  it('a personal captain code joins the zone and chooses that captain', async () => {
+    mockDb({ captainId: CAPTAIN_ID })
+    const res = makeRes()
+    await register({ body: { ...USER, password: 'Password123', referralCode: 'nrb-jane24' } } as any, res)
+
+    expect(res.status).toHaveBeenCalledWith(201)
+    expect(referralCalls()).toHaveLength(1)
+    expect(referralCalls()[0][1]).toEqual([USER.id, 'zone-nrb'])
+    expect(captainCalls()).toHaveLength(1)
+    expect(captainCalls()[0][1]).toEqual([USER.id, CAPTAIN_ID, 'zone-nrb'])
   })
 
   it('still registers the user when the code is invalid', async () => {
+    mockDb()
     const res = makeRes()
     await register({ body: { ...USER, password: 'password123', referralCode: '<script>' } } as any, res)
 
@@ -65,6 +97,7 @@ describe('register with a referral code', () => {
   })
 
   it('does not attempt a referral without a code', async () => {
+    mockDb()
     const res = makeRes()
     await register({ body: { ...USER, password: 'password123' } } as any, res)
 

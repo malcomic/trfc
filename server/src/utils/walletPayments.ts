@@ -1,7 +1,11 @@
 import { query } from '../config/db.js'
 import { addCredit, failWalletTxByCheckoutId, withWallet } from './wallet.js'
 import { applyInstallmentPaymentByCheckoutId } from './installments.js'
-import { settleCreditTicketPayment } from './walletCheckout.js'
+import {
+  settleCreditMedalPayment,
+  settleCreditOrderPayment,
+  settleCreditTicketPayment,
+} from './walletCheckout.js'
 
 /**
  * Top-ups were removed, but an M-Pesa top-up started before the change can still confirm late.
@@ -39,12 +43,14 @@ async function settleLegacyTopup(checkoutRequestId: string, mpesaReceipt: string
   return settled
 }
 
-/** Applies a confirmed M-Pesa payment that belongs to the wallet (tickets part-paid with credit, plans). */
+/** Applies a confirmed M-Pesa payment that belongs to the wallet (tickets/shop/medals part-paid with credit, plans). */
 export async function settleWalletCheckout(checkoutRequestId: string, mpesaReceipt: string | null): Promise<number> {
   const tickets = await settleCreditTicketPayment(checkoutRequestId, mpesaReceipt)
+  const orders = await settleCreditOrderPayment(checkoutRequestId, mpesaReceipt)
+  const medals = await settleCreditMedalPayment(checkoutRequestId, mpesaReceipt)
   const installments = await applyInstallmentPaymentByCheckoutId(checkoutRequestId, mpesaReceipt)
   const legacy = await settleLegacyTopup(checkoutRequestId, mpesaReceipt)
-  return tickets + installments + legacy
+  return tickets + orders + medals + installments + legacy
 }
 
 export async function failWalletCheckout(checkoutRequestId: string): Promise<void> {

@@ -16,6 +16,9 @@ vi.mock('../../utils/cloudinary.js', () => ({
   deletePublicRaw: vi.fn(),
   deleteVideo: vi.fn(),
 }))
+vi.mock('../../utils/qrCodeGenerator.js', () => ({
+  generateTextQRCodeDataUrl: vi.fn(async (text: string) => `data:image/png;base64,${Buffer.from(text).toString('base64')}`),
+}))
 
 import { query } from '../../config/db.js'
 import { FREE_PROGRAM_ID } from '../../config/onboarding.js'
@@ -33,7 +36,9 @@ import {
   exportMyTeam,
   getCaptainAccessLog,
   getMyCaptainProfile,
+  getMyReferralQr,
   getMyTeam,
+  getReferrer,
   recordLinkVisit,
 } from '../../controllers/captainsController.js'
 import { listScannedMembers } from '../../utils/memberCheckins.js'
@@ -162,6 +167,7 @@ describe('export and access logging', () => {
           rows: [
             {
               user_id: CAPTAIN_ID,
+              referral_code: 'THK-IRENE1',
               payout_phone: null,
               photo_url: null,
               status: 'active',
@@ -231,6 +237,101 @@ describe('getMyTeam endpoint', () => {
     expect(params).toEqual([CAPTAIN_ID, FREE_PROGRAM_ID, '%Tom%', 'new'])
     expect(String(sql)).toContain('pe.program = $2')
     expect(res.json).toHaveBeenCalledWith([])
+  })
+})
+
+describe('getReferrer', () => {
+  it('returns captain fields for a personal code and nulls for a zone code', async () => {
+    routeQueries(() => ({
+      rows: [
+        {
+          region_id: ZONE_ID,
+          region_name: 'Thika',
+          region_code: 'THK',
+          referral_code: 'THK',
+          captain_id: CAPTAIN_ID,
+          captain_name: 'Irene Wanjiku',
+        },
+      ],
+    }))
+    const personal = makeRes()
+    await getReferrer({ params: { code: 'thk-irene1' } } as any, personal)
+    expect(personal.json).toHaveBeenCalledWith({
+      code: 'THK-IRENE1',
+      zone_code: 'THK',
+      zone: 'Thika',
+      region_id: ZONE_ID,
+      captain_id: CAPTAIN_ID,
+      captain_name: 'Irene',
+    })
+
+    vi.clearAllMocks()
+    routeQueries(() => ({
+      rows: [
+        {
+          region_id: ZONE_ID,
+          region_name: 'Thika',
+          region_code: 'THK',
+          referral_code: 'THK',
+          captain_id: null,
+          captain_name: null,
+        },
+      ],
+    }))
+    const zone = makeRes()
+    await getReferrer({ params: { code: 'THK' } } as any, zone)
+    expect(zone.json).toHaveBeenCalledWith({
+      code: 'THK',
+      zone_code: 'THK',
+      zone: 'Thika',
+      region_id: ZONE_ID,
+      captain_id: null,
+      captain_name: null,
+    })
+  })
+})
+
+describe('getMyReferralQr', () => {
+  it('returns both the zone and personal links', async () => {
+    routeQueries((sql) => {
+      if (sql.includes('FROM captains c') && sql.includes('JOIN regions r')) {
+        return {
+          rows: [
+            {
+              id: ZONE_ID,
+              name: 'Thika',
+              code: 'THK',
+              referral_code: 'THK',
+              commission_rate: 0.05,
+              lead_captain_id: CAPTAIN_ID,
+              lead_captain_name: 'Irene',
+            },
+          ],
+        }
+      }
+      if (sql.includes('SELECT referral_code FROM captains')) {
+        return { rows: [{ referral_code: 'THK-IRENE1' }] }
+      }
+      return undefined
+    })
+    const res = makeRes()
+    await getMyReferralQr(
+      { user: { id: CAPTAIN_ID }, query: { origin: 'https://trfc.example' } } as any,
+      res
+    )
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        link: 'https://trfc.example/register?ref=THK',
+        zone: expect.objectContaining({
+          code: 'THK',
+          link: 'https://trfc.example/register?ref=THK',
+        }),
+        personal: expect.objectContaining({
+          code: 'THK-IRENE1',
+          link: 'https://trfc.example/register?ref=THK-IRENE1',
+        }),
+      })
+    )
   })
 })
 

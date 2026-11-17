@@ -1,7 +1,13 @@
 import { Request, Response } from 'express'
 import { query } from '../config/db.js'
 import { toKenyanMsisdn } from '../utils/phone.js'
-import { WalletCheckoutError, getPayableBatches, payBatchesWithCredit } from '../utils/walletCheckout.js'
+import {
+  WalletCheckoutError,
+  getPayableBatches,
+  payBatchesWithCredit,
+  payMedalBatchWithCredit,
+  payOrderWithCredit,
+} from '../utils/walletCheckout.js'
 import { MpesaStartError } from '../utils/walletMpesa.js'
 import { CreditError, getTicketValue, getWalletTransactions } from '../utils/wallet.js'
 import { captureMetaContext, saveMetaContext } from '../utils/metaConversions.js'
@@ -81,6 +87,46 @@ export async function walletCheckout(req: Request, res: Response) {
     res.json(result)
   } catch (error) {
     sendWalletError(res, error, 'Failed to pay for your tickets')
+  }
+}
+
+/** Pays a pending shop order with ticket value first and M-Pesa for any difference. */
+export async function walletCheckoutOrder(req: Request, res: Response) {
+  try {
+    const orderId = typeof req.body?.orderId === 'string' ? req.body.orderId : ''
+    const phone = req.body?.phone ? toKenyanMsisdn(req.body.phone) : null
+    if (req.body?.phone && !phone) {
+      return res.status(400).json({ error: 'Enter a valid M-Pesa number, e.g. 07XX XXX XXX' })
+    }
+    const result = await payOrderWithCredit(req.user!.id, {
+      orderId,
+      useCredit: req.body?.useCredit !== false,
+      phone,
+      context: captureMetaContext(req),
+    })
+    res.json(result)
+  } catch (error) {
+    sendWalletError(res, error, 'Failed to pay for your order')
+  }
+}
+
+/** Pays a pending medal batch with ticket value first and M-Pesa for any difference. */
+export async function walletCheckoutMedal(req: Request, res: Response) {
+  try {
+    const medalBatchId = typeof req.body?.medalBatchId === 'string' ? req.body.medalBatchId : ''
+    const phone = req.body?.phone ? toKenyanMsisdn(req.body.phone) : null
+    if (req.body?.phone && !phone) {
+      return res.status(400).json({ error: 'Enter a valid M-Pesa number, e.g. 07XX XXX XXX' })
+    }
+    const result = await payMedalBatchWithCredit(req.user!.id, {
+      medalBatchId,
+      useCredit: req.body?.useCredit !== false,
+      phone,
+      context: captureMetaContext(req),
+    })
+    res.json(result)
+  } catch (error) {
+    sendWalletError(res, error, 'Failed to pay for your medals')
   }
 }
 

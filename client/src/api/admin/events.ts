@@ -159,7 +159,7 @@ export interface SettlementLine {
   region_id?: string;
   regionName?: string;
   region_name?: string;
-  /** Active captains who will share the zone's amount equally (preview only). */
+  /** Active captains who will share the zone's amount by members' used tickets (preview only). */
   captainCount?: number;
   /** Captain on a line settled before shares moved to zones. */
   captain_name?: string | null;

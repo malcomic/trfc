@@ -23,7 +23,8 @@ export const CREDIT_REASON_LABELS: Record<CreditReason, string> = {
   admin: 'Added by TRFC',
 }
 
-export const TICKET_VALUE_NOTE = 'Event tickets only. Cannot be transferred or cashed out.'
+export const TICKET_VALUE_NOTE =
+  'Works on event tickets, medals, and shop orders. Cannot be transferred or cashed out.'
 
 export interface WalletTransaction {
   id: string
@@ -156,6 +157,20 @@ export const payWithCredit = async (data: {
   useCredit?: boolean
   phone?: string
 }): Promise<CreditCheckoutResult> => (await api.post('/wallet/checkout', data)).data
+
+/** Pays a shop order with ticket value first; any difference is asked for by M-Pesa. */
+export const payOrderWithCredit = async (data: {
+  orderId: string
+  useCredit?: boolean
+  phone?: string
+}): Promise<CreditCheckoutResult> => (await api.post('/wallet/checkout-order', data)).data
+
+/** Pays a medal batch with ticket value first; any difference is asked for by M-Pesa. */
+export const payMedalWithCredit = async (data: {
+  medalBatchId: string
+  useCredit?: boolean
+  phone?: string
+}): Promise<CreditCheckoutResult> => (await api.post('/wallet/checkout-medal', data)).data
 
 /** `dates` are the member's chosen dates for the payments after the first ('YYYY-MM-DD'). */
 export const previewPlanSchedule = async (params: {

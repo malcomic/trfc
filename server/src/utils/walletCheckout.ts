@@ -1,9 +1,17 @@
 import { query } from '../config/db.js'
 import { sendTicketBatchEmail } from './ticketEmail.js'
-import { recordCaptainCommissionsForCheckout } from './captainCommissions.js'
+import { sendMedalBatchEmail } from './medalEmail.js'
+import { sendOrderConfirmationEmail } from './orderEmail.js'
+import { decrementOrderStock } from './orderStock.js'
+import {
+  recordCaptainCommission,
+  recordCaptainCommissionsForCheckout,
+  recordCaptainCommissionsForMedalBatch,
+} from './captainCommissions.js'
 import { reportMetaPurchase, saveMetaContext, type MetaBrowserContext } from './metaConversions.js'
 import { commitHolds, createPendingMpesaTx, holdCredit, poolDb, releaseHolds, roundKes, withWallet } from './wallet.js'
 import { startMpesaForTx } from './walletMpesa.js'
+import type { PoolClient } from 'pg'
 
 export class WalletCheckoutError extends Error {
   constructor(message: string, public status = 400) {
@@ -243,4 +251,303 @@ export async function getPayableBatches(userId: string) {
     [userId]
   )
   return result.rows
+}
+
+async function reholdLapsedCredit(client: PoolClient, userId: string, paymentTxId: string) {
+  const lapsed = await client.query(
+    `SELECT COALESCE(SUM(amount), 0)::float AS amount FROM ticket_credit_uses
+     WHERE payment_tx_id = $1 AND status = 'released'`,
+    [paymentTxId]
+  )
+  const lapsedAmount = Number(lapsed.rows[0]?.amount ?? 0)
+  if (lapsedAmount > 0) {
+    await client.query(`UPDATE ticket_credit_uses SET status = 'lapsed' WHERE payment_tx_id = $1 AND status = 'released'`, [
+      paymentTxId,
+    ])
+    await holdCredit(client, userId, { maxAmount: lapsedAmount, paymentTxId })
+  }
+}
+
+/**
+ * Pays a pending shop order with ticket value first and M-Pesa for any difference.
+ * `orders.total_amount` is already net of any member discount.
+ */
+export async function payOrderWithCredit(
+  userId: string,
+  opts: { orderId: string; useCredit?: boolean; phone?: string | null; context?: MetaBrowserContext }
+): Promise<CreditCheckoutResult> {
+  if (!opts.orderId) throw new WalletCheckoutError('Choose an order to pay for')
+  const useCredit = opts.useCredit !== false
+
+  const prepared = await withWallet(userId, async (client) => {
+    const orderResult = await client.query(
+      `SELECT id, user_id, payment_status, checkout_request_id, total_amount::float AS total_amount
+       FROM orders WHERE id = $1 FOR UPDATE`,
+      [opts.orderId]
+    )
+    const order = orderResult.rows[0]
+    if (!order || order.user_id !== userId) throw new WalletCheckoutError('Order not found', 404)
+    if (order.payment_status !== 'pending') {
+      throw new WalletCheckoutError('This order is no longer awaiting payment', 409)
+    }
+    if (order.checkout_request_id) {
+      throw new WalletCheckoutError('An M-Pesa payment was already started for this order. Complete it or place a new order.', 409)
+    }
+    const total = roundKes(Number(order.total_amount))
+    if (!(total > 0)) throw new WalletCheckoutError('This order has nothing left to pay', 400)
+
+    let creditUsed = 0
+    if (useCredit) {
+      const hold = await holdCredit(client, userId, { maxAmount: total, orderId: opts.orderId })
+      creditUsed = hold.held
+    }
+    const mpesaAmount = roundKes(total - creditUsed)
+
+    if (mpesaAmount <= 0) {
+      const spent = await commitHolds(client, userId, { orderId: opts.orderId }, {
+        note: 'Shop order',
+        referenceType: 'order',
+        referenceId: opts.orderId,
+      })
+      const reference = spent.txId ? `WALLET-${spent.txId}` : `WALLET-FREE-${opts.orderId}`
+      await client.query(
+        `UPDATE orders SET payment_status = 'paid', checkout_request_id = $1 WHERE id = $2`,
+        [reference, opts.orderId]
+      )
+      return { kind: 'paid' as const, references: [reference], total, creditUsed }
+    }
+
+    if (!opts.phone) throw new WalletCheckoutError('Enter your M-Pesa number to pay the rest')
+    const txId = await createPendingMpesaTx(client, userId, {
+      type: 'order_payment_mpesa',
+      mpesaAmount,
+      phone: opts.phone,
+      referenceType: 'order',
+      referenceId: opts.orderId,
+      note: 'Shop order',
+    })
+    await client.query(
+      `UPDATE ticket_credit_uses SET payment_tx_id = $1
+       WHERE order_id = $2 AND status = 'held' AND payment_tx_id IS NULL`,
+      [txId, opts.orderId]
+    )
+    return { kind: 'mpesa' as const, txId, total, creditUsed, mpesaAmount }
+  })
+
+  if (prepared.kind === 'paid') {
+    await decrementOrderStock(opts.orderId)
+    await recordCaptainCommission('order', opts.orderId)
+    reportMetaPurchase(prepared.references[0], opts.context)
+    sendOrderConfirmationEmail(opts.orderId).catch((error: Error) => {
+      console.error(`Error sending order confirmation email for ${opts.orderId}: ${error.message}`)
+    })
+    return { status: 'paid', references: prepared.references, total: prepared.total, creditUsed: prepared.creditUsed }
+  }
+
+  let stk
+  try {
+    stk = await startMpesaForTx(prepared.txId, opts.phone!, prepared.mpesaAmount, `WALLET-${prepared.txId}`)
+  } catch (error) {
+    await releaseHolds(poolDb, { paymentTxId: prepared.txId })
+    throw error
+  }
+  await query(
+    `UPDATE orders SET checkout_request_id = $1 WHERE id = $2 AND payment_status = 'pending'`,
+    [stk.checkoutRequestId, opts.orderId]
+  )
+  if (opts.context) await saveMetaContext(stk.checkoutRequestId, opts.context)
+  return {
+    status: 'mpesa',
+    checkoutRequestId: stk.checkoutRequestId,
+    customerMessage: stk.customerMessage,
+    total: prepared.total,
+    creditUsed: prepared.creditUsed,
+    mpesaAmount: prepared.mpesaAmount,
+  }
+}
+
+/**
+ * Pays a pending medal purchase batch with ticket value first and M-Pesa for any difference.
+ */
+export async function payMedalBatchWithCredit(
+  userId: string,
+  opts: { medalBatchId: string; useCredit?: boolean; phone?: string | null; context?: MetaBrowserContext }
+): Promise<CreditCheckoutResult> {
+  if (!opts.medalBatchId) throw new WalletCheckoutError('Choose a medal purchase to pay for')
+  const useCredit = opts.useCredit !== false
+
+  const prepared = await withWallet(userId, async (client) => {
+    const rows = (
+      await client.query(
+        `SELECT p.id, p.user_id, p.payment_status, p.checkout_request_id, o.price::float AS price,
+                t.name AS tier_name
+         FROM medal_purchases p
+         JOIN medal_options o ON o.id = p.medal_option_id
+         JOIN medal_tiers t ON t.id = o.tier_id
+         WHERE p.purchase_batch_id = $1
+         FOR UPDATE OF p`,
+        [opts.medalBatchId]
+      )
+    ).rows
+    if (rows.length === 0 || rows.some((r) => r.user_id !== userId)) {
+      throw new WalletCheckoutError('Medal purchase not found', 404)
+    }
+    if (rows.some((r) => r.payment_status !== 'pending')) {
+      throw new WalletCheckoutError('These medals are no longer awaiting payment', 409)
+    }
+    if (rows.some((r) => r.checkout_request_id)) {
+      throw new WalletCheckoutError(
+        'An M-Pesa payment was already started for these medals. Complete it or buy again.',
+        409
+      )
+    }
+    const total = roundKes(rows.reduce((sum, r) => sum + Number(r.price || 0), 0))
+    const note = `${rows.length} medal${rows.length === 1 ? '' : 's'} — ${rows[0].tier_name}`
+
+    let creditUsed = 0
+    if (useCredit) {
+      const hold = await holdCredit(client, userId, { maxAmount: total, medalBatchId: opts.medalBatchId })
+      creditUsed = hold.held
+    }
+    const mpesaAmount = roundKes(total - creditUsed)
+
+    if (mpesaAmount <= 0) {
+      const spent = await commitHolds(client, userId, { medalBatchId: opts.medalBatchId }, {
+        note,
+        referenceType: 'medal_batch',
+        referenceId: opts.medalBatchId,
+      })
+      const reference = spent.txId ? `WALLET-${spent.txId}` : `WALLET-FREE-${opts.medalBatchId}`
+      await client.query(
+        `UPDATE medal_purchases SET payment_status = 'paid', payment_provider = 'credit', checkout_request_id = $1
+         WHERE purchase_batch_id = $2`,
+        [reference, opts.medalBatchId]
+      )
+      return { kind: 'paid' as const, references: [reference], total, creditUsed }
+    }
+
+    if (!opts.phone) throw new WalletCheckoutError('Enter your M-Pesa number to pay the rest')
+    const txId = await createPendingMpesaTx(client, userId, {
+      type: 'medal_payment_mpesa',
+      mpesaAmount,
+      phone: opts.phone,
+      referenceType: 'medal_batch',
+      referenceId: opts.medalBatchId,
+      note,
+    })
+    await client.query(
+      `UPDATE ticket_credit_uses SET payment_tx_id = $1
+       WHERE medal_batch_id = $2 AND status = 'held' AND payment_tx_id IS NULL`,
+      [txId, opts.medalBatchId]
+    )
+    return { kind: 'mpesa' as const, txId, total, creditUsed, mpesaAmount }
+  })
+
+  if (prepared.kind === 'paid') {
+    await recordCaptainCommissionsForMedalBatch(opts.medalBatchId)
+    reportMetaPurchase(prepared.references[0], opts.context)
+    sendMedalBatchEmail(prepared.references[0]).catch((error: Error) => {
+      console.error(`Error sending medal email for ${prepared.references[0]}: ${error.message}`)
+    })
+    return { status: 'paid', references: prepared.references, total: prepared.total, creditUsed: prepared.creditUsed }
+  }
+
+  let stk
+  try {
+    stk = await startMpesaForTx(prepared.txId, opts.phone!, prepared.mpesaAmount, `WALLET-${prepared.txId}`)
+  } catch (error) {
+    await releaseHolds(poolDb, { paymentTxId: prepared.txId })
+    throw error
+  }
+  await query(
+    `UPDATE medal_purchases SET checkout_request_id = $1, payment_provider = 'mpesa'
+     WHERE purchase_batch_id = $2 AND payment_status = 'pending'`,
+    [stk.checkoutRequestId, opts.medalBatchId]
+  )
+  if (opts.context) await saveMetaContext(stk.checkoutRequestId, opts.context)
+  return {
+    status: 'mpesa',
+    checkoutRequestId: stk.checkoutRequestId,
+    customerMessage: stk.customerMessage,
+    total: prepared.total,
+    creditUsed: prepared.creditUsed,
+    mpesaAmount: prepared.mpesaAmount,
+  }
+}
+
+/** Settles M-Pesa remainder for a shop order part-paid with ticket value. */
+export async function settleCreditOrderPayment(checkoutRequestId: string, mpesaReceipt: string | null): Promise<number> {
+  const pending = await query(
+    `SELECT id, user_id FROM wallet_transactions
+     WHERE checkout_request_id = $1 AND type = 'order_payment_mpesa' AND status = 'pending'`,
+    [checkoutRequestId]
+  )
+  let settled = 0
+  for (const row of pending.rows as { id: string; user_id: string }[]) {
+    const paidOrderIds = await withWallet(row.user_id, async (client) => {
+      const tx = await client.query(
+        `SELECT note FROM wallet_transactions WHERE id = $1 AND status = 'pending' FOR UPDATE`,
+        [row.id]
+      )
+      if (tx.rows.length === 0) return [] as string[]
+      await reholdLapsedCredit(client, row.user_id, row.id)
+      await commitHolds(client, row.user_id, { paymentTxId: row.id }, {
+        note: tx.rows[0].note ?? 'Shop order',
+        referenceType: 'wallet_transaction',
+        referenceId: row.id,
+      })
+      await client.query(
+        `UPDATE wallet_transactions SET status = 'completed', mpesa_receipt = COALESCE($2, mpesa_receipt) WHERE id = $1`,
+        [row.id, mpesaReceipt]
+      )
+      const paid = await client.query(
+        `UPDATE orders SET payment_status = 'paid', mpesa_receipt = COALESCE($2, mpesa_receipt)
+         WHERE checkout_request_id = $1 AND payment_status IN ('pending', 'failed')
+         RETURNING id`,
+        [checkoutRequestId, mpesaReceipt]
+      )
+      return (paid.rows as { id: string }[]).map((r) => r.id)
+    })
+    for (const orderId of paidOrderIds) {
+      await decrementOrderStock(orderId)
+    }
+    if (paidOrderIds.length > 0 || settled === 0) settled += Math.max(1, paidOrderIds.length)
+  }
+  return settled
+}
+
+/** Settles M-Pesa remainder for a medal batch part-paid with ticket value. */
+export async function settleCreditMedalPayment(checkoutRequestId: string, mpesaReceipt: string | null): Promise<number> {
+  const pending = await query(
+    `SELECT id, user_id FROM wallet_transactions
+     WHERE checkout_request_id = $1 AND type = 'medal_payment_mpesa' AND status = 'pending'`,
+    [checkoutRequestId]
+  )
+  let settled = 0
+  for (const row of pending.rows as { id: string; user_id: string }[]) {
+    settled += await withWallet(row.user_id, async (client) => {
+      const tx = await client.query(
+        `SELECT note FROM wallet_transactions WHERE id = $1 AND status = 'pending' FOR UPDATE`,
+        [row.id]
+      )
+      if (tx.rows.length === 0) return 0
+      await reholdLapsedCredit(client, row.user_id, row.id)
+      await commitHolds(client, row.user_id, { paymentTxId: row.id }, {
+        note: tx.rows[0].note ?? 'Medals',
+        referenceType: 'wallet_transaction',
+        referenceId: row.id,
+      })
+      await client.query(
+        `UPDATE wallet_transactions SET status = 'completed', mpesa_receipt = COALESCE($2, mpesa_receipt) WHERE id = $1`,
+        [row.id, mpesaReceipt]
+      )
+      const paid = await client.query(
+        `UPDATE medal_purchases SET payment_status = 'paid', mpesa_receipt = COALESCE($2, mpesa_receipt)
+         WHERE checkout_request_id = $1 AND payment_status IN ('pending', 'failed')`,
+        [checkoutRequestId, mpesaReceipt]
+      )
+      return Math.max(1, paid.rowCount || 0)
+    })
+  }
+  return settled
 }

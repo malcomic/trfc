@@ -1767,6 +1767,158 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       CREATE INDEX IF NOT EXISTS idx_referral_link_visits_region_date ON referral_link_visits(region_id, visit_date);
     `,
   },
+  {
+    name: '070_coach_role',
+    sql: `
+      CREATE TABLE IF NOT EXISTS coaches (
+        user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        application_id UUID UNIQUE REFERENCES coach_applications(id) ON DELETE SET NULL,
+        status VARCHAR(12) NOT NULL DEFAULT 'active'
+          CHECK (status IN ('active', 'suspended')),
+        phone VARCHAR(20),
+        terms_accepted_at TIMESTAMPTZ NOT NULL,
+        terms_version VARCHAR(20),
+        activated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_coaches_status ON coaches(status);
+
+      CREATE TABLE IF NOT EXISTS coach_invitations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        application_id UUID NOT NULL REFERENCES coach_applications(id) ON DELETE CASCADE,
+        email VARCHAR(255) NOT NULL,
+        token_hash VARCHAR(64) NOT NULL UNIQUE,
+        expires_at TIMESTAMPTZ NOT NULL,
+        used_at TIMESTAMPTZ,
+        created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_coach_invitations_application ON coach_invitations(application_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_coach_invitations_token ON coach_invitations(token_hash)
+        WHERE used_at IS NULL;
+
+      CREATE TABLE IF NOT EXISTS coach_program_assignments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        coach_id UUID NOT NULL REFERENCES coaches(user_id) ON DELETE CASCADE,
+        program_id VARCHAR(40) NOT NULL REFERENCES programs(id) ON DELETE CASCADE,
+        assigned_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (coach_id, program_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_coach_program_assignments_program ON coach_program_assignments(program_id);
+
+      ALTER TABLE coach_applications
+        ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE SET NULL;
+      CREATE INDEX IF NOT EXISTS idx_coach_applications_user ON coach_applications(user_id)
+        WHERE user_id IS NOT NULL;
+
+      ALTER TABLE consent_records DROP CONSTRAINT IF EXISTS consent_records_consent_type_check;
+      ALTER TABLE consent_records ADD CONSTRAINT consent_records_consent_type_check
+        CHECK (consent_type IN (
+          'terms_privacy', 'age_18_plus', 'marketing_email', 'applicant_privacy',
+          'captain_whatsapp', 'coach_terms'
+        ));
+    `,
+  },
+  {
+    name: '071_coach_reviews',
+    sql: `
+      CREATE TABLE IF NOT EXISTS coach_activity_reviews (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        coach_id UUID NOT NULL REFERENCES coaches(user_id) ON DELETE CASCADE,
+        participant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        program_id VARCHAR(40) NOT NULL REFERENCES programs(id) ON DELETE CASCADE,
+        activity_type VARCHAR(12) NOT NULL CHECK (activity_type IN ('session', 'checkin')),
+        week INT NOT NULL CHECK (week > 0),
+        day INT CHECK (day IS NULL OR day > 0),
+        review_status VARCHAR(24) NOT NULL
+          CHECK (review_status IN ('reviewed', 'needs_clarification', 'flagged')),
+        note TEXT,
+        reviewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        CONSTRAINT coach_activity_reviews_day_shape CHECK (
+          (activity_type = 'session' AND day IS NOT NULL)
+          OR (activity_type = 'checkin' AND day IS NULL)
+        )
+      );
+      -- Separate unique indexes: NULL day on check-ins would not conflict under a plain UNIQUE.
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_coach_reviews_session
+        ON coach_activity_reviews (coach_id, participant_id, program_id, week, day)
+        WHERE activity_type = 'session';
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_coach_reviews_checkin
+        ON coach_activity_reviews (coach_id, participant_id, program_id, week)
+        WHERE activity_type = 'checkin';
+      CREATE INDEX IF NOT EXISTS idx_coach_reviews_participant
+        ON coach_activity_reviews (program_id, participant_id, reviewed_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_coach_reviews_queue
+        ON coach_activity_reviews (coach_id, review_status, reviewed_at DESC);
+
+      CREATE TABLE IF NOT EXISTS coach_feedback (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        coach_id UUID NOT NULL REFERENCES coaches(user_id) ON DELETE CASCADE,
+        participant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        program_id VARCHAR(40) NOT NULL REFERENCES programs(id) ON DELETE CASCADE,
+        body TEXT NOT NULL,
+        related_review_id UUID REFERENCES coach_activity_reviews(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_coach_feedback_participant
+        ON coach_feedback (program_id, participant_id, created_at DESC);
+    `,
+  },
+  {
+    name: '072_coach_messaging',
+    sql: `
+      -- One coach per program: keep newest assignment when duplicates exist
+      DELETE FROM coach_program_assignments a
+      USING coach_program_assignments b
+      WHERE a.program_id = b.program_id
+        AND (
+          a.assigned_at < b.assigned_at
+          OR (a.assigned_at = b.assigned_at AND a.id::text < b.id::text)
+        );
+
+      ALTER TABLE coach_program_assignments
+        DROP CONSTRAINT IF EXISTS coach_program_assignments_coach_id_program_id_key;
+
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_coach_program_assignments_program
+        ON coach_program_assignments(program_id);
+
+      CREATE TABLE IF NOT EXISTS coach_conversations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        program_id VARCHAR(40) NOT NULL REFERENCES programs(id) ON DELETE CASCADE,
+        participant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        last_message_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (program_id, participant_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS coach_messages (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        conversation_id UUID NOT NULL REFERENCES coach_conversations(id) ON DELETE CASCADE,
+        sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        body TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        read_at TIMESTAMPTZ
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_coach_messages_conversation
+        ON coach_messages(conversation_id, created_at);
+      CREATE INDEX IF NOT EXISTS idx_coach_conversations_last
+        ON coach_conversations(last_message_at DESC);
+    `,
+  },
+  {
+    name: '073_credit_spend_targets',
+    sql: `
+      -- Ticket value can also be held against shop orders and medal batches.
+      ALTER TABLE ticket_credit_uses
+        ADD COLUMN IF NOT EXISTS order_id UUID REFERENCES orders(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS medal_batch_id UUID;
+      CREATE INDEX IF NOT EXISTS idx_credit_uses_order ON ticket_credit_uses(order_id) WHERE order_id IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_credit_uses_medal_batch ON ticket_credit_uses(medal_batch_id) WHERE medal_batch_id IS NOT NULL;
+    `,
+  },
 ]
 
 export async function runMigrations() {

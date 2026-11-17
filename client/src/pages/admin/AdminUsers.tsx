@@ -20,7 +20,7 @@ import AdminMobileCard, { AdminMobileCardRow } from '../../components/admin/Admi
 import AdminResponsiveData from '../../components/admin/AdminResponsiveData'
 import ConsentHistoryDialog from '../../components/admin/ConsentHistoryDialog'
 
-type RoleFilter = '' | 'member' | 'admin' | 'scanner' | 'captain'
+type RoleFilter = '' | 'member' | 'admin' | 'scanner' | 'captain' | 'coach'
 type ModalMode = 'create' | 'edit' | null
 
 interface UserFormData {
@@ -103,7 +103,12 @@ export default function AdminUsers() {
   const openEditModal = (user: AdminUser) => {
     setEditingUser(user)
     setModalMode('edit')
-    reset({ name: user.name, email: user.email, phone: user.phone, role: user.role === 'captain' ? 'member' : user.role })
+    reset({
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role === 'captain' || user.role === 'coach' ? 'member' : user.role,
+    })
   }
 
   const closeModal = () => {
@@ -251,7 +256,9 @@ export default function AdminUsers() {
             ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300'
             : role === 'captain'
               ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300'
-              : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
+              : role === 'coach'
+                ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300'
+                : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
       }`}
     >
       {role}
@@ -295,7 +302,14 @@ export default function AdminUsers() {
 
   const userActions = (user: AdminUser) => (
     <div className="flex flex-wrap items-center gap-2">
-      {user.role === 'captain' ? (
+      {user.role === 'coach' ? (
+        <Link
+          to="/admin/coaches"
+          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-semibold bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300"
+        >
+          Manage coach
+        </Link>
+      ) : user.role === 'captain' ? (
         <Link
           to="/admin/captains"
           className="flex items-center gap-1 px-3 py-2 min-h-[44px] border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-semibold text-emerald-700 dark:text-emerald-300"
@@ -406,6 +420,7 @@ export default function AdminUsers() {
           <option value="scanner">Scanners</option>
           <option value="admin">Admins</option>
           <option value="captain">Captains</option>
+          <option value="coach">Coaches</option>
         </select>
         <select
           value={captainFilter}

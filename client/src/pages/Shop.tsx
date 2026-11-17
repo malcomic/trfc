@@ -37,7 +37,7 @@ function CategoryTile({ to, name, imageUrl, fallback, countLabel, description, b
       to={to}
       className="group relative block no-underline overflow-hidden bg-ash light:bg-ash-light border border-white/8 light:border-black/10 hover:border-accent/40 light:hover:border-accent-light/40 transition-all duration-250 hover:-translate-y-0.75"
     >
-      <div className="relative aspect-[4/3] overflow-hidden bg-smoke light:bg-smoke-light">
+      <div className="relative aspect-square sm:aspect-[4/3] overflow-hidden bg-smoke light:bg-smoke-light">
         <img
           src={imageUrl}
           alt={name}
@@ -47,15 +47,15 @@ function CategoryTile({ to, name, imageUrl, fallback, countLabel, description, b
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-        {badge && <div className="absolute top-3 left-3 z-1">{badge}</div>}
-        <div className="absolute bottom-0 left-0 right-0 p-5">
-          <h2 className="font-bebas text-4xl text-white tracking-tight leading-none uppercase">{name}</h2>
-          <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-white/70 mt-1.5">
+        {badge && <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-1">{badge}</div>}
+        <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-5">
+          <h2 className="font-bebas text-2xl sm:text-4xl text-white tracking-tight leading-none uppercase">{name}</h2>
+          <p className="font-barlow-condensed font-bold text-[10px] sm:text-xs tracking-widest uppercase text-white/70 mt-1 sm:mt-1.5">
             {countLabel}
           </p>
         </div>
       </div>
-      <div className="px-5 py-4 flex items-center justify-between gap-3 border-t border-white/5 light:border-black/8">
+      <div className="hidden sm:flex px-5 py-4 items-center justify-between gap-3 border-t border-white/5 light:border-black/8">
         <p className="text-sm text-fog light:text-fog-light line-clamp-1">
           {description || `Shop ${name.toLowerCase()}`}
         </p>
@@ -115,22 +115,22 @@ export default function Shop() {
     <div className={pageRoot}>
 
       {/* ── Hero ── */}
-      <section className="bg-ink light:bg-ink-light border-b border-white/5 light:border-black/8 px-[6%] pt-16 pb-12 relative overflow-hidden">
+      <section className="bg-ink light:bg-ink-light border-b border-white/5 light:border-black/8 px-[6%] pt-10 pb-8 sm:pt-16 sm:pb-12 relative overflow-hidden">
         <div className="absolute right-[-2%] top-1/2 -translate-y-1/2 font-bebas text-clamp-2xl text-accent/5 light:text-accent-light/5 leading-none pointer-events-none select-none tracking-tighter">MERCH</div>
         <div className="max-w-5xl mx-auto relative z-1 flex items-end justify-between gap-6 flex-wrap">
           <div>
-            <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light flex items-center gap-2 mb-3.5 before:block before:w-5 before:h-0.5 before:bg-accent light:before:bg-accent-light">Official Merchandise</div>
+            <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light flex items-center gap-2 mb-2.5 sm:mb-3.5 before:block before:w-5 before:h-0.5 before:bg-accent light:before:bg-accent-light">Official Merchandise</div>
             <h1 className="font-bebas text-clamp-lg leading-tight text-chalk light:text-chalk-light tracking-tighter">
               TRFC<br /><span className="text-accent light:text-accent-light">SHOP</span>
             </h1>
-            <p className="text-fog light:text-fog-light mt-4 max-w-md leading-relaxed">
-              Represent the movement with official TRFC merchandise and challenge medals. Pick a category to start shopping.
+            <p className="text-fog light:text-fog-light mt-3 sm:mt-4 max-w-md leading-relaxed text-sm sm:text-base">
+              Official TRFC merch and challenge medals. Pick a category to start shopping.
             </p>
-            <p className="mt-3 inline-flex items-center gap-2 font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light">
+            <p className="mt-2.5 sm:mt-3 inline-flex items-center gap-2 font-barlow-condensed font-bold text-xs tracking-widest uppercase text-accent light:text-accent-light">
               <Truck size={14} aria-hidden="true" /> {DELIVERY_RULE_SHORT}
             </p>
           </div>
-          <div className="pb-2">
+          <div className="pb-2 hidden sm:block">
             {categoryNames.length > 0 && (
               <p className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light mb-2">
                 {categoryNames.join(' · ')}
@@ -161,8 +161,8 @@ export default function Shop() {
       </div>
 
       {/* ── Categories ── */}
-      <div className="max-w-5xl mx-auto px-[6%] py-12 pb-20">
-        <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light mb-6">
+      <div className="max-w-5xl mx-auto px-[6%] py-8 sm:py-12 pb-20">
+        <div className="font-barlow-condensed font-bold text-xs tracking-widest uppercase text-fog light:text-fog-light mb-4 sm:mb-6">
           Shop by category
         </div>
 
@@ -174,9 +174,9 @@ export default function Shop() {
         )}
 
         {loading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
             {Array(6).fill(null).map((_, i) => (
-              <div key={i} className="bg-ash light:bg-ash-light animate-pulse" style={{ aspectRatio: '4/3.6' }} />
+              <div key={i} className="bg-ash light:bg-ash-light animate-pulse aspect-square sm:aspect-[4/3.6]" />
             ))}
           </div>
         )}
@@ -194,7 +194,7 @@ export default function Shop() {
         )}
 
         {!loading && !error && totalCategories > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
             {categories.map((category) => {
               const count = category.product_count ?? 0
               return (
@@ -219,8 +219,8 @@ export default function Shop() {
                 countLabel={`${medals.length} tier${medals.length !== 1 ? 's' : ''}`}
                 description="Challenge medals — Bronze, Silver and Gold"
                 badge={
-                  <span className="flex items-center gap-1.5 font-barlow-condensed font-black text-xs tracking-widest uppercase px-2.5 py-1 bg-accent light:bg-accent-light text-black light:text-white">
-                    <Award size={12} /> Challenge
+                  <span className="flex items-center gap-1 font-barlow-condensed font-black text-[10px] sm:text-xs tracking-widest uppercase px-1.5 py-0.5 sm:px-2.5 sm:py-1 bg-accent light:bg-accent-light text-black light:text-white">
+                    <Award size={12} className="hidden sm:block" /> Challenge
                   </span>
                 }
               />

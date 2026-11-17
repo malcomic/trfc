@@ -9,7 +9,7 @@ export interface GoogleProfile {
   picture: string | null;
 }
 
-export const GOOGLE_BLOCKED_ROLES = ['admin', 'scanner'];
+export const GOOGLE_BLOCKED_ROLES = ['admin', 'scanner', 'coach'];
 
 export const isGoogleBlockedRole = (role: string | null | undefined): boolean =>
   GOOGLE_BLOCKED_ROLES.includes(role ?? '');

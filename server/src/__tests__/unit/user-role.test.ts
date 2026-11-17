@@ -43,4 +43,24 @@ describe('updateUserRole', () => {
     expect(updateCall()![1]).toEqual([role, USER_ID, dropGoogle])
     expect(res.json).toHaveBeenCalledWith({ id: USER_ID })
   })
+
+  it('rejects coach role changes from the users page', async () => {
+    const res = makeRes()
+    await updateUserRole(makeReq('coach'), res)
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(updateCall()).toBeUndefined()
+  })
+
+  it('rejects changing an existing coach via updateUserRole', async () => {
+    vi.mocked(query).mockImplementation((async (sql: string) => {
+      if (sql.includes('SELECT role FROM users')) return { rows: [{ role: 'coach' }] }
+      return { rows: [] }
+    }) as any)
+    const res = makeRes()
+    await updateUserRole(makeReq('member'), res)
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.stringMatching(/coach/i) })
+    )
+  })
 })

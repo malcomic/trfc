@@ -152,3 +152,58 @@ export const sendCheckin = async (
   const response = await api.post(`/programs/${program}/checkins/${week}`, { answers });
   return response.data;
 };
+
+export interface CoachingFeedbackItem {
+  id: string
+  body: string
+  relatedReviewId: string | null
+  createdAt: string
+  coachName: string
+}
+
+export const getCoachingFeedback = async (program: ProgramId): Promise<CoachingFeedbackItem[]> => {
+  const response = await api.get<{ feedback: CoachingFeedbackItem[] }>(`/programs/${program}/coaching-feedback`)
+  return response.data.feedback
+}
+
+export interface ProgramCoachMessage {
+  id: string
+  senderId: string
+  body: string
+  createdAt: string
+  readAt: string | null
+  mine: boolean
+}
+
+export interface ProgramMessagesResponse {
+  conversation: {
+    id: string
+    programId: string
+    participantId: string
+    lastMessageAt: string
+  } | null
+  messages: ProgramCoachMessage[]
+  coach: { userId: string; name: string } | null
+  unreadCount?: number
+}
+
+export const getProgramMessages = async (program: ProgramId): Promise<ProgramMessagesResponse> => {
+  const response = await api.get<ProgramMessagesResponse>(`/programs/${program}/messages`)
+  return response.data
+}
+
+export const postProgramMessage = async (
+  program: ProgramId,
+  body: string
+): Promise<{ message: ProgramCoachMessage; coach: { userId: string; name: string } }> => {
+  const response = await api.post<{ message: ProgramCoachMessage; coach: { userId: string; name: string } }>(
+    `/programs/${program}/messages`,
+    { body }
+  )
+  return response.data
+}
+
+export const getProgramMessagesUnreadCount = async (program: ProgramId): Promise<number> => {
+  const response = await api.get<{ count: number }>(`/programs/${program}/messages/unread-count`)
+  return response.data.count
+}

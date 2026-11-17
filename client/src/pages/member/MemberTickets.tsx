@@ -69,7 +69,8 @@ export default function MemberTickets() {
           )}
           <p className="text-xs text-fog light:text-fog-light">
             Can't make it? Give up your ticket by 11:59 pm, 3 days before the event, and its value becomes ticket credit
-            for 60 days, for event tickets only. After that it can't be cancelled, and not turning up gets no credit.
+            for 60 days, for event tickets, medals, and shop orders. After that it can't be cancelled, and not turning up
+            gets no credit.
           </p>
         </div>
       )}

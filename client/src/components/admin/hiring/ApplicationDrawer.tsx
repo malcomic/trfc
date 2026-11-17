@@ -1,10 +1,12 @@
 import { FormEvent, ReactNode, useEffect, useState } from 'react'
 import { ExternalLink, FileText, Loader, Mail, MessageCircle, Trash2, X } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import {
   HIRING_STATUSES,
   HIRING_STATUS_LABELS,
   deleteApplication,
   getApplication,
+  resendCoachInvite,
   updateApplication,
   type AdminOption,
   type CoachApplication,
@@ -49,6 +51,7 @@ export default function ApplicationDrawer({
   const [savedAt, setSavedAt] = useState<number | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [resending, setResending] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -103,6 +106,22 @@ export default function ApplicationDrawer({
       setError(err.response?.data?.error || 'Could not save')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const resendInvite = async () => {
+    if (!app) return
+    try {
+      setResending(true)
+      setError('')
+      const updated = await resendCoachInvite(app.id)
+      setApp(updated)
+      onSaved(updated)
+      setSavedAt(Date.now())
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Could not resend invitation')
+    } finally {
+      setResending(false)
     }
   }
 
@@ -263,6 +282,39 @@ export default function ApplicationDrawer({
                 )}
               </dl>
             </section>
+
+            {app.status === 'accepted' && (
+              <section className="space-y-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                <h3 className="text-sm font-semibold m-0">Coach account</h3>
+                {app.user_id ? (
+                  <p className="text-sm text-gray-600 dark:text-gray-300 m-0">
+                    Account active.{' '}
+                    <Link to="/admin/coaches" className="font-semibold text-blue-600 dark:text-blue-400">
+                      Open Coaches
+                    </Link>{' '}
+                    to assign programs.
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 m-0">
+                      {app.invite_sent_at
+                        ? `Invitation sent ${formatDate(app.invite_sent_at, true)}${
+                            app.invite_expires_at ? ` · expires ${formatDate(app.invite_expires_at, true)}` : ''
+                          }.`
+                        : 'No invitation has been sent yet.'}
+                    </p>
+                    <button
+                      type="button"
+                      disabled={resending || busy}
+                      onClick={resendInvite}
+                      className="px-4 min-h-[44px] rounded-lg border border-gray-300 dark:border-gray-600 font-semibold disabled:opacity-50"
+                    >
+                      {resending ? 'Sending…' : 'Resend invite'}
+                    </button>
+                  </>
+                )}
+              </section>
+            )}
 
             <section className="space-y-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
               <h3 className="text-sm font-semibold m-0">Keeping this application</h3>

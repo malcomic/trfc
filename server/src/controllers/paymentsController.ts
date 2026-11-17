@@ -33,6 +33,7 @@ import { recordCaptainCommissionsForCheckout } from '../utils/captainCommissions
 import { settleWalletCheckout } from '../utils/walletPayments.js'
 import { MEMBERSHIP_ACCOUNT_PREFIX, settleMembershipByCheckoutId } from '../utils/membership.js'
 import { captureMetaContext, reportMetaPurchase, saveMetaContext } from '../utils/metaConversions.js'
+import { checkDuplicateCallback, storeCbResponse } from '../utils/idempotency.js'
 
 const MPESA_QUERY_GRACE_MS = 10_000
 const MPESA_QUERY_INTERVAL_MS = 12_000
@@ -384,25 +385,17 @@ export async function handleCallback(req: Request, res: Response) {
 
     const mpesaReceipt = callback.mpesaReceiptNumber
 
-    const existingCallback = await query(
-      'SELECT id FROM payment_callbacks WHERE checkout_request_id = $1',
-      [checkoutRequestId]
-    )
-
-    if (existingCallback.rows.length > 0) {
+    if (await checkDuplicateCallback(checkoutRequestId)) {
       logDuplicateCallback(checkoutRequestId)
       return res.json({ ResultCode: 0, ResultDesc: 'Received' })
     }
 
-    await query(
-      'INSERT INTO payment_callbacks (checkout_request_id, mpesa_receipt_number, merchant_request_id, response_body, payment_status) VALUES ($1, $2, $3, $4, $5)',
-      [
-        checkoutRequestId,
-        mpesaReceipt || null,
-        callback.merchantRequestId,
-        JSON.stringify(payload),
-        'paid',
-      ]
+    await storeCbResponse(
+      checkoutRequestId,
+      mpesaReceipt || null,
+      callback.merchantRequestId,
+      payload,
+      'paid'
     )
 
     const metadataItems = payload.Body?.stkCallback?.CallbackMetadata?.Item

@@ -3,11 +3,17 @@ import api from './index'
 export type CommissionStatus = 'pending' | 'approved' | 'paid' | 'reversed'
 export type CommissionSourceType = 'order' | 'medal' | 'equipment_hire' | 'ticket' | 'event_share'
 
-/** The zone a referral link belongs to. */
+/** Resolved referral: a zone link, or a captain's personal link (which also joins that zone). */
 export interface Referrer {
+  /** The code from the link (zone or personal). Send this back on register. */
   code: string
+  /** The zone's own referral code. */
+  zone_code: string
   zone: string
   region_id: string
+  /** Set when the link is a captain's personal code. */
+  captain_id: string | null
+  captain_name: string | null
 }
 
 export interface CaptainDirectoryEntry {
@@ -110,11 +116,11 @@ export interface CaptainStats {
   my_pending_amount: number
   my_approved_amount: number
   my_commission_paid_amount: number
-  /** Zone money (event profit shares), split equally between the zone's active captains. */
+  /** Zone money (event profit shares), paid by each captain's members' used tickets. */
   zone_pending_amount: number
   zone_approved_amount: number
   zone_paid_amount: number
-  /** Active captains sharing the zone's payouts equally. */
+  /** Active captains in the zone who can receive zone event-share payouts. */
   active_captains: number
   /** Total paid to this captain, from their own commissions and their share of zone payouts. */
   my_paid_amount: number
@@ -122,6 +128,8 @@ export interface CaptainStats {
 
 export interface CaptainProfile {
   user_id: string
+  /** This captain's personal referral code (their own link). */
+  referral_code: string
   payout_phone: string | null
   /** Shown to members when they choose a captain. */
   photo_url: string | null
@@ -135,6 +143,20 @@ export interface CaptainProfile {
   region_code: string
   zone: CaptainZoneSummary
   stats: CaptainStats
+}
+
+export interface ReferralQr {
+  code: string
+  link: string
+  dataUrl: string
+}
+
+export interface CaptainReferralQr {
+  /** Zone link (also exposed as link/dataUrl for older callers). */
+  link: string
+  dataUrl: string
+  zone: ReferralQr
+  personal: ReferralQr
 }
 
 export interface CaptainReferral {
@@ -244,7 +266,7 @@ export const getMyCommissions = async (
   return response.data
 }
 
-export const getMyReferralQr = async (origin: string): Promise<{ link: string; dataUrl: string }> => {
+export const getMyReferralQr = async (origin: string): Promise<CaptainReferralQr> => {
   const response = await api.get('/captains/me/qr', { params: { origin } })
   return response.data
 }
