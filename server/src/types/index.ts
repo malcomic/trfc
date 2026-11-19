@@ -16,6 +16,9 @@ export interface EventTicketType {
   capacity?: number | null;
   sort_order: number;
   is_active: boolean;
+  members_only?: boolean;
+  is_private?: boolean;
+  private_url?: string | null;
   remaining?: number | null;
   is_sold_out?: boolean;
 }

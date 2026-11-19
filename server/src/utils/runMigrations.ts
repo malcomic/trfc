@@ -1919,6 +1919,25 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       CREATE INDEX IF NOT EXISTS idx_credit_uses_medal_batch ON ticket_credit_uses(medal_batch_id) WHERE medal_batch_id IS NOT NULL;
     `,
   },
+  {
+    name: '074_memberships_over_limit',
+    sql: `
+      -- Older local DBs created memberships before over_limit existed in 062_membership.
+      ALTER TABLE memberships
+        ADD COLUMN IF NOT EXISTS over_limit BOOLEAN NOT NULL DEFAULT false;
+    `,
+  },
+  {
+    name: '075_private_ticket_types',
+    sql: `
+      -- Hidden ticket types reachable only via a stable /t/:token link (not listed on the public site).
+      ALTER TABLE event_ticket_types
+        ADD COLUMN IF NOT EXISTS is_private BOOLEAN NOT NULL DEFAULT false,
+        ADD COLUMN IF NOT EXISTS private_token TEXT;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_event_ticket_types_private_token
+        ON event_ticket_types(private_token) WHERE private_token IS NOT NULL;
+    `,
+  },
 ]
 
 export async function runMigrations() {

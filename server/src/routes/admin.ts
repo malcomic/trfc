@@ -10,6 +10,7 @@ import {
   createEventTicketType,
   updateEventTicketType,
   deleteEventTicketType,
+  regeneratePrivateTicketLink,
 } from '../controllers/eventsController.js'
 import {
   getAdminMedals,
@@ -105,6 +106,10 @@ router.delete('/events/:id/costs/:costId', removeEventCost)
 router.post('/events/:id/settlement/approve', approveEventSettlement)
 router.post('/events/:eventId/ticket-types', createEventTicketType)
 router.put('/events/:eventId/ticket-types/:typeId', updateEventTicketType)
+router.post(
+  '/events/:eventId/ticket-types/:typeId/regenerate-private-link',
+  regeneratePrivateTicketLink
+)
 router.delete('/events/:eventId/ticket-types/:typeId', deleteEventTicketType)
 router.get('/products', getAdminProducts)
 router.get('/product-categories', getAdminProductCategories)

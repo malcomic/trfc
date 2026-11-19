@@ -2,6 +2,7 @@ import { Router } from 'express'
 import {
   getEvents,
   getEventById,
+  getPrivateTicketTypeByToken,
   createEvent,
   updateEvent,
   deleteEvent,
@@ -24,6 +25,11 @@ import { simpleRateLimit } from '../middleware/simpleRateLimit.js'
 const router = Router()
 
 router.get('/', optionalAuthMiddleware, getEvents)
+router.get(
+  '/ticket-types/private/:token',
+  optionalAuthMiddleware,
+  getPrivateTicketTypeByToken
+)
 router.post('/tickets/find', simpleRateLimit(5, 15 * 60_000), findTickets)
 router.post('/tickets/update-email', simpleRateLimit(5, 15 * 60_000), updateTicketEmail)
 router.get('/tickets/list/user', authMiddleware, getUserTickets)

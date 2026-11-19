@@ -11,6 +11,9 @@ export interface AdminTicketType {
   sort_order: number;
   is_active: boolean;
   members_only?: boolean;
+  is_private?: boolean;
+  /** Stable share URL when is_private; admin-only. */
+  private_url?: string | null;
   remaining: number | null;
   is_sold_out: boolean;
 }
@@ -111,6 +114,7 @@ export const createEventTicketType = async (
     sort_order?: number;
     is_active?: boolean;
     members_only?: boolean;
+    is_private?: boolean;
   }
 ) => {
   const response = await api.post<AdminTicketType>(
@@ -131,11 +135,19 @@ export const updateEventTicketType = async (
     sort_order?: number;
     is_active?: boolean;
     members_only?: boolean;
+    is_private?: boolean;
   }
 ) => {
   const response = await api.put<AdminTicketType>(
     `/admin/events/${eventId}/ticket-types/${typeId}`,
     data
+  );
+  return response.data;
+};
+
+export const regeneratePrivateTicketLink = async (eventId: string, typeId: string) => {
+  const response = await api.post<AdminTicketType>(
+    `/admin/events/${eventId}/ticket-types/${typeId}/regenerate-private-link`
   );
   return response.data;
 };

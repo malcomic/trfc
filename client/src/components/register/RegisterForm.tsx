@@ -19,6 +19,8 @@ import { safeRedirect } from '../../utils/safeRedirect'
 import { PasswordToggle } from '../ui'
 import { SIGNUP_ANCHOR } from './SignupCta'
 import SignupQuestions from './SignupQuestions'
+import AuthModeTabs, { type AuthMode } from './AuthModeTabs'
+import RegisterLoginPanel from './RegisterLoginPanel'
 import CaptainCardPicker from '../captain/CaptainCardPicker'
 import GoogleButton, { isGoogleEnabled } from '../auth/GoogleButton'
 import { clearPendingGoogleSignup, useGoogleSignIn, type PendingGoogleSignup } from '../auth/useGoogleSignIn'
@@ -153,11 +155,6 @@ export default function RegisterForm({ googleSignup }: RegisterFormProps = {}) {
   const { login } = useAuth()
   const redirectTo = safeRedirect(searchParams.get('redirect'), '/dashboard')
   const prefillEmail = searchParams.get('email')?.trim() ?? ''
-  const loginParams = new URLSearchParams()
-  if (searchParams.get('redirect')) loginParams.set('redirect', redirectTo)
-  if (prefillEmail) loginParams.set('email', prefillEmail)
-  const loginQuery = loginParams.toString()
-  const loginPath = loginQuery ? `/login?${loginQuery}` : '/login'
   const isPrefilled = hasPrefill(searchParams)
 
   const [loading, setLoading] = useState(false)
@@ -172,6 +169,7 @@ export default function RegisterForm({ googleSignup }: RegisterFormProps = {}) {
   const [captains, setCaptains] = useState<CaptainDirectoryEntry[] | null>(null)
   const [zones, setZones] = useState<Zone[]>([])
   const [answers, setAnswers] = useState<SignupAnswers>(EMPTY_ANSWERS)
+  const [authMode, setAuthMode] = useState<AuthMode>('new')
 
   const redirectParam = searchParams.get('redirect')
   const { handleCredential, handleGoogleError, googleLoading, googleError } = useGoogleSignIn({
@@ -272,14 +270,34 @@ export default function RegisterForm({ googleSignup }: RegisterFormProps = {}) {
     : [...(captains ?? [])].sort((a, b) => Number(b.region_id === answeredZoneId) - Number(a.region_id === answeredZoneId))
   const showCaptainSelect = captainChoices.length > 0
 
+  const isSignup = authMode === 'new' || !!googleSignup
+
   return (
     <section id={SIGNUP_ANCHOR} className="px-6 md:px-10 py-20 scroll-mt-20">
       <div className="max-w-xl mx-auto flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <h2 className="font-bebas text-4xl md:text-5xl tracking-tight text-accent light:text-accent-light m-0">Make your free account</h2>
-          <p className="m-0 text-fog light:text-fog-light">{SIGNUP_QUESTIONS_COPY.subtitle}</p>
+          <h2 className="font-bebas text-4xl md:text-5xl tracking-tight text-accent light:text-accent-light m-0">
+            {isSignup ? 'Make your free account' : 'Welcome back'}
+          </h2>
+          <p className="m-0 text-fog light:text-fog-light">
+            {isSignup ? SIGNUP_QUESTIONS_COPY.subtitle : 'Sign in to access events, track your progress, and connect with the community.'}
+          </p>
         </div>
 
+        {!googleSignup && (
+          <AuthModeTabs
+            mode={authMode}
+            onChange={(mode) => {
+              setAuthMode(mode)
+              setErrorMessage('')
+            }}
+          />
+        )}
+
+        {!isSignup ? (
+          <RegisterLoginPanel defaultEmail={prefillEmail} />
+        ) : (
+          <>
         {shownError && (
           <div className="flex items-start gap-2.5 bg-red-500/10 border border-red-500/25 border-l-4 border-l-red-500 px-4 py-3.5 text-sm text-red-600 dark:text-red-400" role="alert">
             <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
@@ -288,7 +306,13 @@ export default function RegisterForm({ googleSignup }: RegisterFormProps = {}) {
               {/Sign in (instead|with)/.test(shownError) && (
                 <>
                   {' '}
-                  <Link to={loginPath} className="font-bold underline text-current">Sign in</Link>
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode('existing')}
+                    className="font-bold underline text-current bg-transparent border-0 p-0 cursor-pointer"
+                  >
+                    Sign in
+                  </button>
                 </>
               )}
             </span>
@@ -547,12 +571,8 @@ export default function RegisterForm({ googleSignup }: RegisterFormProps = {}) {
             We could not load the Privacy and Confidentiality Terms. Please refresh the page to sign up.
           </p>
         )}
-        <p className="m-0 text-sm text-fog light:text-fog-light">
-          Already have an account?{' '}
-          <Link to={loginPath} className="font-barlow-condensed font-black tracking-widest uppercase text-accent light:text-accent-light no-underline hover:underline">
-            Sign in
-          </Link>
-        </p>
+          </>
+        )}
       </div>
     </section>
   )

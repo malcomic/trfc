@@ -28,6 +28,9 @@ export interface EventTicketType {
   is_active: boolean;
   /** Only paid members can buy this type. */
   members_only?: boolean;
+  /** Hidden from the public site; only reachable via private link. */
+  is_private?: boolean;
+  private_url?: string | null;
   remaining: number | null;
   is_sold_out: boolean;
 }

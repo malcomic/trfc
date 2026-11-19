@@ -4,6 +4,7 @@ import {
   attachTicketTypesToEvents,
   getEventTicketTypes,
 } from '../utils/eventTicketTypes.js'
+import { generatePrivateToken } from '../utils/privateTicketLinks.js'
 import { isActiveMember, loadSeatState, publicSeatInfo } from '../utils/seatPriority.js'
 import { getTicketRules } from '../utils/ticketRules.js'
 import { WaitlistError, joinWaitlist, listWaitlist, waitlistCounts } from '../utils/waitlist.js'
@@ -109,6 +110,88 @@ export const getEventById = async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error)
     res.status(500).json({ error: 'Failed to fetch event' })
+  }
+}
+
+/** Resolve a private ticket type by its stable share token (hidden from public event listings). */
+export async function getPrivateTicketTypeByToken(req: Request, res: Response) {
+  try {
+    const token = String(req.params.token || '').trim()
+    if (!token) {
+      return res.status(404).json({ error: 'Private ticket link not found' })
+    }
+
+    const typeResult = await query(
+      `SELECT
+         ett.id, ett.event_id, ett.name, ett.description, ett.price, ett.capacity,
+         ett.sort_order, ett.is_active, ett.members_only, ett.is_private,
+         COALESCE(sold.cnt, 0)::int AS sold_count
+       FROM event_ticket_types ett
+       LEFT JOIN (
+         SELECT ticket_type_id, COUNT(*)::int AS cnt
+         FROM tickets
+         WHERE payment_status IN ('pending', 'paid', 'reserved')
+           AND ticket_type_id IS NOT NULL
+         GROUP BY ticket_type_id
+       ) sold ON sold.ticket_type_id = ett.id
+       WHERE ett.private_token = $1
+         AND ett.is_private = true
+         AND ett.is_active = true`,
+      [token]
+    )
+    if (typeResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Private ticket link not found' })
+    }
+
+    const row = typeResult.rows[0]
+    const eventResult = await query('SELECT * FROM events WHERE id = $1', [row.event_id])
+    if (eventResult.rows.length === 0 || eventResult.rows[0].cancelled_at) {
+      return res.status(404).json({ error: 'Private ticket link not found' })
+    }
+
+    const capacity = row.capacity != null ? Number(row.capacity) : null
+    const sold = Number(row.sold_count) || 0
+    const remaining = capacity != null ? Math.max(0, capacity - sold) : null
+    const ticketType = {
+      id: row.id,
+      event_id: row.event_id,
+      name: row.name,
+      description: row.description,
+      price: Number(row.price),
+      capacity,
+      sort_order: Number(row.sort_order) || 0,
+      is_active: Boolean(row.is_active),
+      members_only: Boolean(row.members_only),
+      is_private: true,
+      remaining,
+      is_sold_out: capacity != null && remaining === 0,
+    }
+
+    const [event] = await withPublicSeats(
+      [
+        {
+          ...eventResult.rows[0],
+          ticket_types: [ticketType],
+          min_price: ticketType.price,
+          all_types_sold_out: ticketType.is_sold_out,
+        },
+      ],
+      req.user?.id
+    )
+    const rules = await getTicketRules()
+    res.json({
+      ...event,
+      payment_rules: {
+        credit_days: rules.creditDays,
+        deposit_pct: rules.depositPct,
+        deadline_days: event.payment_deadline_days ?? rules.defaultDeadlineDays,
+        cancel_deadline_days: rules.cancelDeadlineDays,
+        terms_version: rules.termsVersion,
+      },
+    })
+  } catch (error) {
+    console.error('Error resolving private ticket type:', error)
+    res.status(500).json({ error: 'Failed to load private ticket' })
   }
 }
 
@@ -287,13 +370,26 @@ export async function createEventTicketType(req: Request, res: Response) {
     const order = Number.isFinite(Number(sort_order)) ? Number(sort_order) : 0
     const active = typeof is_active === 'boolean' ? is_active : true
     const membersOnly = req.body.members_only === true
+    const isPrivate = req.body.is_private === true
+    const privateToken = isPrivate ? generatePrivateToken() : null
 
     const result = await query(
       `INSERT INTO event_ticket_types
-         (event_id, name, description, price, capacity, sort_order, is_active, members_only)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         (event_id, name, description, price, capacity, sort_order, is_active, members_only, is_private, private_token)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
-      [eventId, trimmedName, description || null, typePrice, cap, order, active, membersOnly]
+      [
+        eventId,
+        trimmedName,
+        description || null,
+        typePrice,
+        cap,
+        order,
+        active,
+        membersOnly,
+        isPrivate,
+        privateToken,
+      ]
     )
 
     const types = await getEventTicketTypes(eventId, false)
@@ -335,14 +431,47 @@ export async function updateEventTicketType(req: Request, res: Response) {
     const order = Number.isFinite(Number(sort_order)) ? Number(sort_order) : 0
     const active = typeof is_active === 'boolean' ? is_active : true
     const membersOnly = typeof req.body.members_only === 'boolean' ? req.body.members_only : null
+    const isPrivate =
+      typeof req.body.is_private === 'boolean' ? req.body.is_private : null
+
+    const existing = await query(
+      `SELECT id, is_private, private_token FROM event_ticket_types
+       WHERE id = $1 AND event_id = $2`,
+      [typeId, eventId]
+    )
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'Ticket type not found' })
+    }
+
+    const current = existing.rows[0]
+    const nextPrivate = isPrivate === null ? Boolean(current.is_private) : isPrivate
+    let nextToken: string | null = current.private_token ?? null
+    if (nextPrivate) {
+      if (!nextToken) nextToken = generatePrivateToken()
+    } else {
+      nextToken = null
+    }
 
     const result = await query(
       `UPDATE event_ticket_types
        SET name = $1, description = $2, price = $3, capacity = $4,
-           sort_order = $5, is_active = $6, members_only = COALESCE($9, members_only)
+           sort_order = $5, is_active = $6, members_only = COALESCE($9, members_only),
+           is_private = $10, private_token = $11
        WHERE id = $7 AND event_id = $8
        RETURNING *`,
-      [trimmedName, description || null, typePrice, cap, order, active, typeId, eventId, membersOnly]
+      [
+        trimmedName,
+        description || null,
+        typePrice,
+        cap,
+        order,
+        active,
+        typeId,
+        eventId,
+        membersOnly,
+        nextPrivate,
+        nextToken,
+      ]
     )
 
     if (result.rows.length === 0) {
@@ -359,6 +488,38 @@ export async function updateEventTicketType(req: Request, res: Response) {
       return res.status(400).json({ error: 'A ticket type with this name already exists for the event' })
     }
     res.status(500).json({ error: 'Failed to update ticket type' })
+  }
+}
+
+export async function regeneratePrivateTicketLink(req: Request, res: Response) {
+  try {
+    const { eventId, typeId } = req.params
+    const existing = await query(
+      `SELECT id, is_private FROM event_ticket_types WHERE id = $1 AND event_id = $2`,
+      [typeId, eventId]
+    )
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'Ticket type not found' })
+    }
+    if (!existing.rows[0].is_private) {
+      return res.status(400).json({ error: 'Only private ticket types have a private link' })
+    }
+
+    const token = generatePrivateToken()
+    await query(
+      `UPDATE event_ticket_types SET private_token = $1 WHERE id = $2 AND event_id = $3`,
+      [token, typeId, eventId]
+    )
+
+    const types = await getEventTicketTypes(eventId, false)
+    const updated = types.find((t) => t.id === typeId)
+    if (!updated) {
+      return res.status(404).json({ error: 'Ticket type not found' })
+    }
+    res.json(updated)
+  } catch (error) {
+    console.error('Error regenerating private ticket link:', error)
+    res.status(500).json({ error: 'Failed to regenerate private link' })
   }
 }
 

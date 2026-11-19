@@ -31,6 +31,11 @@ export const joinEventWaitlist = async (
   data: { name?: string; email: string; phone?: string }
 ): Promise<{ position: number }> => (await api.post(`/events/${eventId}/waitlist`, data)).data;
 
+export const getPrivateTicketType = async (token: string) => {
+  const response = await api.get(`/events/ticket-types/private/${encodeURIComponent(token)}`)
+  return response.data as Event
+}
+
 export const buyEventTickets = async (
   eventId: string,
   data: {
@@ -42,6 +47,8 @@ export const buyEventTickets = async (
     zoneId: string
     /** The buyer accepted the ticket rules shown at checkout. */
     termsAccepted: boolean
+    /** Required when booking a private ticket type. */
+    privateToken?: string
   }
 ) => {
   const response = await api.post(`/events/${eventId}/tickets`, data);

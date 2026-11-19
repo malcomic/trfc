@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
+import { useParams, useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
-import { getEventById, buyEventTickets, joinEventWaitlist } from '../api/events'
+import { getEventById, getPrivateTicketType, buyEventTickets, joinEventWaitlist } from '../api/events'
 import { initiateTicketPayment } from '../api/payments'
 import { getZones, type Zone } from '../api/zones'
 import {
@@ -70,10 +70,19 @@ export default function EventCheckout() {
   const { eventId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   const { user } = useAuth()
-  const locationState = location.state as { quantity?: number; ticketTypeId?: string } | null
+  const locationState = location.state as {
+    quantity?: number
+    ticketTypeId?: string
+    privateToken?: string
+  } | null
   const initialQty = locationState?.quantity || 1
   const initialTypeId = locationState?.ticketTypeId
+  const privateToken =
+    (typeof locationState?.privateToken === 'string' && locationState.privateToken.trim()) ||
+    searchParams.get('privateToken')?.trim() ||
+    ''
 
   const { register, handleSubmit, formState: { errors }, watch, setValue, getValues } = useForm<CheckoutForm>({
     defaultValues: {
@@ -194,15 +203,45 @@ export default function EventCheckout() {
     const fetchEvent = async () => {
       try {
         setLoading(true)
-        if (!eventId) {
+        if (!eventId && !privateToken) {
           setError('Event ID not found')
           return
         }
-        const data: Event = await getEventById(eventId)
+        const data: Event = privateToken
+          ? await getPrivateTicketType(privateToken)
+          : await getEventById(eventId!)
+        if (privateToken && eventId && data.id !== eventId) {
+          setError('This private ticket link does not match this event')
+          return
+        }
         setEvent(data)
         const isMember = Boolean(data.viewer_is_member)
         const bookable = (t: EventTicketType) => !t.is_sold_out && (!t.members_only || isMember)
         const types = (data.ticket_types || []).filter((t: EventTicketType) => t.is_active)
+        if (privateToken) {
+          const privateType = types[0] || null
+          if (!privateType) {
+            setError('This private ticket is no longer available')
+            setSelectedType(null)
+          } else if (!bookable(privateType)) {
+            setSelectedType(privateType)
+            if (privateType.members_only && !isMember) {
+              setError(MEMBERSHIP_COPY.membersOnly.locked)
+            } else if (privateType.is_sold_out) {
+              setError('This ticket type is sold out')
+            }
+          } else {
+            setSelectedType(privateType)
+          }
+          if (data.member_early_until && !isMember) {
+            setError(MEMBERSHIP_COPY.early.nonMember(memberDateTime(data.member_early_until)))
+            setSelectedType(null)
+          } else if (data.sold_out_for_you) {
+            setError('No seats are open to you right now. Join the waiting list and we will tell you when one opens.')
+            setCanWaitlist(true)
+          }
+          return
+        }
         const fromState = types.find((t: EventTicketType) => t.id === initialTypeId)
         const firstAvailable = (fromState && bookable(fromState) ? fromState : null) || types.find(bookable) || null
         setSelectedType(firstAvailable)
@@ -222,7 +261,7 @@ export default function EventCheckout() {
       }
     }
     fetchEvent()
-  }, [eventId, initialTypeId])
+  }, [eventId, initialTypeId, privateToken])
 
   useEffect(() => {
     if (!event || !selectedType) return
@@ -254,6 +293,7 @@ export default function EventCheckout() {
       attendeeName: data.attendeeName.trim(),
       zoneId: data.zoneId,
       termsAccepted: true,
+      ...(privateToken ? { privateToken } : {}),
     })
     storeZone(data.zoneId)
     const booking: PendingBooking = {
@@ -387,6 +427,7 @@ export default function EventCheckout() {
         attendeeName: data.attendeeName.trim(),
         zoneId: data.zoneId,
         termsAccepted: true,
+        ...(privateToken ? { privateToken } : {}),
       })
       storeZone(data.zoneId)
 

@@ -17,6 +17,7 @@ import About from './pages/About'
 import Events from './pages/Events'
 import EventDetail from './pages/EventDetail'
 import EventCheckout from './pages/EventCheckout'
+import PrivateTicketLink from './pages/PrivateTicketLink'
 import TicketConfirmation from './pages/TicketConfirmation'
 import FindTickets from './pages/FindTickets'
 import MedalDetail from './pages/MedalDetail'
@@ -294,6 +295,7 @@ const router = createBrowserRouter(
           <Route path="/events" element={<Events />} />
           <Route path="/events/:eventId/checkout" element={<EventCheckout />} />
           <Route path="/events/:id" element={<EventDetail />} />
+          <Route path="/t/:token" element={<PrivateTicketLink />} />
           <Route path="/ticket-confirmation/:checkoutRequestId" element={<TicketConfirmation />} />
           <Route path="/find-tickets" element={<FindTickets />} />
           <Route path="/medals" element={<Medals />} />

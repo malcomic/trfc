@@ -16,6 +16,10 @@ interface DashboardGreetingProps {
 
 export default function DashboardGreeting({ name, membership, onWatchWelcome }: DashboardGreetingProps) {
   const first = firstName(name)
+  const until = membership.until ? formatDate(membership.until) : ''
+  const memberLine = membership.active
+    ? (membership.isFounding ? copy.foundingPill : copy.memberPill)(until)
+    : null
   return (
     <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
       <div className="min-w-0">
@@ -24,6 +28,9 @@ export default function DashboardGreeting({ name, membership, onWatchWelcome }: 
           {first ? `, ${first}` : ''}
         </h1>
         <p className="mt-2 text-fog light:text-fog-light">{copy.subtitle}</p>
+        {memberLine && (
+          <p className="mt-1 text-sm font-semibold text-gold">{memberLine}</p>
+        )}
         {onWatchWelcome && (
           <button
             type="button"

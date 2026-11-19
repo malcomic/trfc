@@ -151,6 +151,17 @@ export async function buyTicket(req: Request, res: Response) {
       if (typeResult.rows.length === 0) throw new BookingError('Ticket type not found or inactive', 404)
       const ticketType = typeResult.rows[0]
 
+      if (ticketType.is_private) {
+        const privateToken =
+          typeof req.body.privateToken === 'string' ? req.body.privateToken.trim() : ''
+        if (!privateToken || privateToken !== ticketType.private_token) {
+          throw new BookingError(
+            'This ticket is only available via its private link',
+            403
+          )
+        }
+      }
+
       const member = await isActiveMember(client, userId)
       if (ticketType.members_only && !member) {
         throw new BookingError('This ticket is for TRFC members. Become a member to book it.', 403)

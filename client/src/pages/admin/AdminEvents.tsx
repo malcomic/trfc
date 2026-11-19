@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { Trash2, Edit2, Plus, Ticket, ClipboardCheck, Coins, Ban } from 'lucide-react'
+import { Trash2, Edit2, Plus, Ticket, ClipboardCheck, Coins, Ban, Copy, RefreshCw } from 'lucide-react'
 import {
   getEventsForAdmin,
   createEvent,
@@ -9,6 +9,7 @@ import {
   createEventTicketType,
   updateEventTicketType,
   deleteEventTicketType,
+  regeneratePrivateTicketLink,
   cancelEventByTrfc,
   AdminEvent,
   AdminTicketType,
@@ -72,9 +73,12 @@ export default function AdminEvents() {
     capacity: '' as string | number,
     is_active: true,
     members_only: false,
+    is_private: false,
   })
   const [savingType, setSavingType] = useState(false)
   const [deleteType, setDeleteType] = useState<{ eventId: string; typeId: string } | null>(null)
+  const [regenerateType, setRegenerateType] = useState<{ eventId: string; typeId: string } | null>(null)
+  const [copiedTypeId, setCopiedTypeId] = useState<string | null>(null)
   const [zones, setZones] = useState<Zone[]>([])
   const [zoneIds, setZoneIds] = useState<string[]>([])
   const [scanEventId, setScanEventId] = useState<string | null>(null)
@@ -235,8 +239,21 @@ export default function AdminEvents() {
       capacity: type?.capacity ?? '',
       is_active: type?.is_active ?? true,
       members_only: type?.members_only ?? false,
+      is_private: type?.is_private ?? false,
     })
     setShowTypeModal(true)
+  }
+
+  const copyPrivateLink = async (type: AdminTicketType) => {
+    if (!type.private_url) return
+    try {
+      await navigator.clipboard.writeText(type.private_url)
+      setCopiedTypeId(type.id)
+      setNotice('Private ticket link copied')
+      setTimeout(() => setCopiedTypeId((id) => (id === type.id ? null : id)), 2000)
+    } catch {
+      setError('Could not copy the private link')
+    }
   }
 
   const saveType = async () => {
@@ -258,15 +275,17 @@ export default function AdminEvents() {
             : Number(typeForm.capacity),
         is_active: typeForm.is_active,
         members_only: typeForm.members_only,
+        is_private: typeForm.is_private,
       }
-      if (editingType) {
-        await updateEventTicketType(typesEvent.id, editingType.id, payload)
-      } else {
-        await createEventTicketType(typesEvent.id, payload)
-      }
+      const saved = editingType
+        ? await updateEventTicketType(typesEvent.id, editingType.id, payload)
+        : await createEventTicketType(typesEvent.id, payload)
       setShowTypeModal(false)
       setEditingType(null)
       await fetchEvents()
+      if (saved.is_private && saved.private_url) {
+        setNotice('Private ticket type saved — copy the link from the list to share it')
+      }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to save ticket type')
     } finally {
@@ -283,6 +302,20 @@ export default function AdminEvents() {
       setError(err.response?.data?.error || 'Failed to delete ticket type')
     } finally {
       setDeleteType(null)
+    }
+  }
+
+  const confirmRegenerateLink = async () => {
+    if (!regenerateType) return
+    try {
+      setError('')
+      await regeneratePrivateTicketLink(regenerateType.eventId, regenerateType.typeId)
+      await fetchEvents()
+      setNotice('Private link regenerated — the old link no longer works')
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to regenerate private link')
+    } finally {
+      setRegenerateType(null)
     }
   }
 
@@ -715,6 +748,11 @@ export default function AdminEvents() {
                           {!type.is_active && (
                             <span className="text-xs font-normal text-gray-500">(inactive)</span>
                           )}
+                          {type.is_private && (
+                            <span className="ml-2 text-xs font-semibold text-violet-700 dark:text-violet-300">
+                              Private
+                            </span>
+                          )}
                           {type.members_only && (
                             <span className="ml-2 text-xs font-semibold text-amber-700 dark:text-amber-300">
                               Members only
@@ -734,8 +772,37 @@ export default function AdminEvents() {
                               }`
                             : ' · Unlimited'}
                         </p>
+                        {type.is_private && type.private_url && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 break-all">
+                            {type.private_url}
+                          </p>
+                        )}
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
+                        {type.is_private && type.private_url && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => copyPrivateLink(type)}
+                              className="flex items-center gap-1 text-violet-700 dark:text-violet-300 min-h-[44px] px-2 text-sm"
+                              title="Copy private link"
+                            >
+                              <Copy size={16} />
+                              {copiedTypeId === type.id ? 'Copied' : 'Copy link'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setRegenerateType({ eventId: typesEvent.id, typeId: type.id })
+                              }
+                              className="flex items-center gap-1 text-gray-600 dark:text-gray-300 min-h-[44px] px-2 text-sm"
+                              title="Regenerate private link"
+                            >
+                              <RefreshCw size={16} />
+                              Regenerate
+                            </button>
+                          </>
+                        )}
                         <button
                           type="button"
                           onClick={() => openTypeModal(typesEvent, type)}
@@ -821,6 +888,21 @@ export default function AdminEvents() {
                   <span className="block text-sm font-semibold text-gray-900 dark:text-gray-100">Members only</span>
                   <span className="block text-xs text-gray-500 dark:text-gray-400">
                     Only paid members can buy it, e.g. a members' early bird. Others see it locked.
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  checked={typeForm.is_private}
+                  onChange={(e) => setTypeForm({ ...typeForm, is_private: e.target.checked })}
+                  className="w-4 h-4 mt-0.5"
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-gray-900 dark:text-gray-100">Private</span>
+                  <span className="block text-xs text-gray-500 dark:text-gray-400">
+                    Hidden from the website. Only reachable via a private link you can copy after saving.
+                    Can be combined with Members only.
                   </span>
                 </span>
               </label>
@@ -916,6 +998,15 @@ export default function AdminEvents() {
         variant="danger"
         onConfirm={confirmDeleteType}
         onCancel={() => setDeleteType(null)}
+      />
+      <AdminConfirmDialog
+        open={regenerateType !== null}
+        title="Regenerate private link"
+        message="Create a new private link? The old link will stop working immediately."
+        confirmLabel="Regenerate"
+        variant="danger"
+        onConfirm={confirmRegenerateLink}
+        onCancel={() => setRegenerateType(null)}
       />
     </div>
   )

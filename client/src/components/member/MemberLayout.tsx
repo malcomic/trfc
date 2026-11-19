@@ -27,11 +27,24 @@ const linkBase =
   'flex items-center gap-3 px-4 py-3 min-h-[44px] font-barlow-condensed font-bold text-sm tracking-widest uppercase no-underline transition-colors'
 const linkIdle =
   'text-fog light:text-fog-light hover:text-chalk light:hover:text-chalk-light hover:bg-white/5 light:hover:bg-black/5'
-const linkActive = 'bg-cta text-cta-ink'
+const linkActiveFree = 'bg-cta text-cta-ink'
+const linkActivePaid = 'bg-gold text-ink'
 const linkDisabled = 'text-mist light:text-mist-light cursor-not-allowed'
+const sidebarStripPaid = 'border-l-4 border-gold'
 
-function NavEntry({ item, pathname, onNavigate }: { item: MemberNavItem; pathname: string; onNavigate: () => void }) {
+function NavEntry({
+  item,
+  pathname,
+  onNavigate,
+  isMember,
+}: {
+  item: MemberNavItem
+  pathname: string
+  onNavigate: () => void
+  isMember: boolean
+}) {
   const Icon = item.icon
+  const linkActive = isMember ? linkActivePaid : linkActiveFree
   if (item.disabled) {
     return (
       <div aria-disabled="true" className={`${linkBase} ${linkDisabled}`}>
@@ -97,7 +110,7 @@ function SidebarContent({ onNavigate, onLogout }: { onNavigate: () => void; onLo
 
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {memberNavItems(user?.role, isMember, supportLink(data?.captain)).map((item) => (
-          <NavEntry key={item.label} item={item} pathname={pathname} onNavigate={onNavigate} />
+          <NavEntry key={item.label} item={item} pathname={pathname} onNavigate={onNavigate} isMember={isMember} />
         ))}
         <div className="px-4 pt-5 pb-1 font-barlow text-xs tracking-[2px] uppercase text-mist light:text-fog-light">
           {navCopy.explore}
@@ -106,11 +119,13 @@ function SidebarContent({ onNavigate, onLogout }: { onNavigate: () => void; onLo
           item={{ path: '/programs', label: navCopy.browsePrograms, icon: Globe }}
           pathname={pathname}
           onNavigate={onNavigate}
+          isMember={isMember}
         />
         <NavEntry
           item={{ path: '/events', label: 'Browse events', icon: CalendarSearch }}
           pathname={pathname}
           onNavigate={onNavigate}
+          isMember={isMember}
         />
       </nav>
 
@@ -132,14 +147,16 @@ function SidebarContent({ onNavigate, onLogout }: { onNavigate: () => void; onLo
           <div className="flex items-center gap-3 px-2 pt-3 mt-2 border-t border-white/5 light:border-black/8">
             <div
               aria-hidden="true"
-              className="w-10 h-10 shrink-0 rounded-full bg-cta text-cta-ink font-barlow font-semibold flex items-center justify-center"
+              className={`w-10 h-10 shrink-0 rounded-full bg-cta text-cta-ink font-barlow font-semibold flex items-center justify-center ${
+                isMember ? 'ring-2 ring-gold ring-offset-2 ring-offset-ink light:ring-offset-ink-light' : ''
+              }`}
             >
               {initials(name)}
             </div>
             <div className="min-w-0">
               <div className="font-barlow font-semibold leading-tight text-chalk light:text-chalk-light truncate">{name}</div>
               {isMember ? (
-                <span className="inline-flex items-center gap-1 text-sm font-semibold text-cta light:text-chalk-light">
+                <span className="inline-flex items-center gap-1 text-sm font-semibold text-gold">
                   <Crown size={13} aria-hidden="true" />
                   {data?.membership.isFounding ? navCopy.foundingMember : navCopy.member}
                 </span>
@@ -165,8 +182,13 @@ function MemberShell() {
   const navigate = useNavigate()
   const navigationType = useNavigationType()
   const { logout } = useAuth()
+  const { data, isMember } = useMemberDashboard()
   const [navOpen, setNavOpen] = useState(false)
   const mainRef = useRef<HTMLElement>(null)
+  const navCopy = DASHBOARD_COPY.nav
+  const memberLabel = data?.membership.isFounding ? navCopy.foundingMember : navCopy.member
+  const asideBase = 'flex flex-col bg-ink light:bg-ink-light'
+  const asidePaid = isMember ? sidebarStripPaid : ''
 
   useEffect(() => {
     setNavOpen(false)
@@ -195,7 +217,9 @@ function MemberShell() {
 
   return (
     <div className={`${pageRoot} flex`}>
-      <aside className="hidden lg:flex w-64 shrink-0 flex-col bg-ink light:bg-ink-light border-r border-white/5 light:border-black/8 sticky top-0 h-screen">
+      <aside
+        className={`hidden lg:flex w-64 shrink-0 sticky top-0 h-screen border-r border-white/5 light:border-black/8 ${asideBase} ${asidePaid}`}
+      >
         <SidebarContent onNavigate={closeNav} onLogout={handleLogout} />
       </aside>
 
@@ -207,7 +231,7 @@ function MemberShell() {
           onClick={closeNav}
         />
         <aside
-          className={`absolute top-0 left-0 bottom-0 w-[min(280px,85vw)] flex flex-col bg-ink light:bg-ink-light shadow-2xl transform transition-transform duration-300 pointer-events-auto ${
+          className={`absolute top-0 left-0 bottom-0 w-[min(280px,85vw)] shadow-2xl transform transition-transform duration-300 pointer-events-auto ${asideBase} ${asidePaid} ${
             navOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
@@ -236,6 +260,12 @@ function MemberShell() {
           <span className="font-bebas text-2xl text-chalk light:text-chalk-light">
             MY <span className="text-accent light:text-accent-light">DASHBOARD</span>
           </span>
+          {isMember && (
+            <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-gold/50 px-2.5 py-1 font-barlow font-semibold text-[11px] text-gold">
+              <Crown size={12} aria-hidden="true" />
+              {memberLabel}
+            </span>
+          )}
         </header>
 
         <main ref={mainRef} className="flex-1 min-w-0">
