@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
+import { getMyCaptainOptions } from '../../api/users'
+import CaptainPicker from './CaptainPicker'
+import MemberPageHeader from './MemberPageHeader'
+import { dashCard, dashHeading, dashMuted } from './dashboard/ui'
 import {
   ArrowLeft,
   CalendarSearch,
@@ -270,9 +274,68 @@ function MemberShell() {
 
         <main ref={mainRef} className="flex-1 min-w-0">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-10 py-6 lg:py-10 pb-20">
-            <Outlet />
+            <CaptainGate>
+              <Outlet />
+            </CaptainGate>
           </div>
         </main>
+      </div>
+    </div>
+  )
+}
+
+/** Blocks the dashboard until a normal member has picked a zone captain. */
+function CaptainGate({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth()
+  const location = useLocation()
+  const [needsCaptain, setNeedsCaptain] = useState<boolean | null>(null)
+  const skip =
+    !user ||
+    user.role === 'admin' ||
+    user.role === 'captain' ||
+    user.role === 'coach' ||
+    user.role === 'scanner' ||
+    location.pathname.startsWith('/dashboard/zone')
+
+  useEffect(() => {
+    if (skip) {
+      setNeedsCaptain(false)
+      return
+    }
+    let cancelled = false
+    getMyCaptainOptions()
+      .then((opts) => {
+        if (!cancelled) setNeedsCaptain(!opts.current_captain_id)
+      })
+      .catch(() => {
+        if (!cancelled) setNeedsCaptain(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [skip, location.pathname])
+
+  if (skip) return <>{children}</>
+  if (needsCaptain === null) {
+    return <p className={dashMuted}>Loading…</p>
+  }
+  if (!needsCaptain) return <>{children}</>
+
+  return (
+    <div className="space-y-6">
+      <MemberPageHeader title="Pick your captain" subtitle="Choose a zone captain before using the rest of your dashboard." />
+      <div className={dashCard}>
+        <h2 className={dashHeading}>Your zone captain</h2>
+        <p className={`${dashMuted} mt-2`}>
+          Every account needs a captain. Tickets you buy after this are credited to the person you pick.
+        </p>
+        <CaptainPicker
+          startOpen
+          onChanged={() => {
+            setNeedsCaptain(false)
+            window.location.assign('/dashboard')
+          }}
+        />
       </div>
     </div>
   )

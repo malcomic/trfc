@@ -9,6 +9,7 @@ import {
   getMyPayouts,
   getMyReferralQr,
   getMyOverview,
+  getMyScorecard,
   getMyLinkStats,
   exportMyTeam,
   recordLinkVisit,
@@ -28,6 +29,7 @@ router.get('/ref/:code', getReferrer)
 router.post('/ref/:code/visit', simpleRateLimit(30, 60_000), recordLinkVisit)
 router.get('/me', authMiddleware, captainMiddleware, getMyCaptainProfile)
 router.get('/me/overview', authMiddleware, captainMiddleware, getMyOverview)
+router.get('/me/scorecard', authMiddleware, captainMiddleware, getMyScorecard)
 router.get('/me/link-stats', authMiddleware, captainMiddleware, getMyLinkStats)
 router.get('/me/referrals', authMiddleware, captainMiddleware, getMyReferrals)
 router.get('/me/team', authMiddleware, captainMiddleware, getMyTeam)

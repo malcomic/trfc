@@ -139,9 +139,11 @@ function CheckRow({
 interface RegisterFormProps {
   /** Set when finishing a Google sign-up: name, email and password come from Google instead of the form. */
   googleSignup?: PendingGoogleSignup
+  /** When set, wins over `?redirect=` (e.g. membership funnel stays on `/join`). */
+  redirectTo?: string
 }
 
-export default function RegisterForm({ googleSignup }: RegisterFormProps = {}) {
+export default function RegisterForm({ googleSignup, redirectTo: redirectOverride }: RegisterFormProps = {}) {
   const [searchParams] = useSearchParams()
   const {
     register,
@@ -153,7 +155,8 @@ export default function RegisterForm({ googleSignup }: RegisterFormProps = {}) {
   } = useForm<RegisterFormValues>({ defaultValues: { captainId: '', ...readPrefill(searchParams) } })
   const navigate = useNavigate()
   const { login } = useAuth()
-  const redirectTo = safeRedirect(searchParams.get('redirect'), '/dashboard')
+  const redirectParam = redirectOverride ?? searchParams.get('redirect')
+  const redirectTo = safeRedirect(redirectParam, '/dashboard')
   const prefillEmail = searchParams.get('email')?.trim() ?? ''
   const isPrefilled = hasPrefill(searchParams)
 
@@ -171,10 +174,9 @@ export default function RegisterForm({ googleSignup }: RegisterFormProps = {}) {
   const [answers, setAnswers] = useState<SignupAnswers>(EMPTY_ANSWERS)
   const [authMode, setAuthMode] = useState<AuthMode>('new')
 
-  const redirectParam = searchParams.get('redirect')
   const { handleCredential, handleGoogleError, googleLoading, googleError } = useGoogleSignIn({
     redirectFor: () => redirectTo,
-    completeSearch: redirectParam ? `?redirect=${encodeURIComponent(redirectParam)}` : '',
+    completeSearch: redirectParam ? `?redirect=${encodeURIComponent(redirectTo)}` : '',
   })
   const shownError = errorMessage || googleError
 
@@ -295,7 +297,7 @@ export default function RegisterForm({ googleSignup }: RegisterFormProps = {}) {
         )}
 
         {!isSignup ? (
-          <RegisterLoginPanel defaultEmail={prefillEmail} />
+          <RegisterLoginPanel defaultEmail={prefillEmail} redirectTo={redirectOverride} />
         ) : (
           <>
         {shownError && (

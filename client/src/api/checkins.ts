@@ -7,9 +7,20 @@ export interface CheckinEvent {
   location: string | null
   is_community_run: boolean
   checked_in: number
+  points_kind?: string
+  ends_at?: string | null
+  headcount?: number | null
 }
 
-export type MemberCheckinStatus = 'valid' | 'already_checked_in' | 'not_found' | 'wrong_zone'
+export type MemberCheckinStatus =
+  | 'valid'
+  | 'already_checked_in'
+  | 'not_found'
+  | 'wrong_zone'
+  | 'not_eligible'
+  | 'outside_window'
+  | 'self_scan'
+  | 'season_frozen'
 
 export interface MemberCheckinResult {
   kind: 'member'
@@ -17,10 +28,12 @@ export interface MemberCheckinResult {
   member: { id: string; name: string | null; zone: string | null; paidMember?: boolean } | null
   checkedInAt: string | null
   ticketCheckedIn?: boolean
+  pointsAwarded?: number
 }
 
 export function isMemberPayload(value: string): boolean {
-  return value.trim().toLowerCase().startsWith('member:')
+  const v = value.trim().toLowerCase()
+  return v.startsWith('member:') || v.startsWith('memberpass:')
 }
 
 /** A typed member code: 10 characters with no 0/O/1/I, e.g. ABCDE-FGHJK. Ticket short codes are 8. */
@@ -39,6 +52,12 @@ export interface ScannedMember {
 
 export const listScannedMembers = async (eventId: string): Promise<ScannedMember[]> =>
   (await api.get(`/checkins/events/${encodeURIComponent(eventId)}/scanned`)).data
+
+export const setCheckinHeadcount = async (eventId: string, count: number) =>
+  (await api.put(`/checkins/events/${encodeURIComponent(eventId)}/headcount`, { count })).data
+
+export const recordFinishTime = async (eventId: string, userId: string, seconds: number) =>
+  (await api.post(`/checkins/events/${encodeURIComponent(eventId)}/finish-time`, { userId, seconds })).data
 
 type CheckinBody = { eventId: string; payload?: string; code?: string }
 
@@ -63,4 +82,8 @@ export const MEMBER_STATUS_LABELS: Record<MemberCheckinStatus, string> = {
   already_checked_in: 'Already checked in',
   not_found: 'Member not found',
   wrong_zone: 'Not your zone',
+  not_eligible: 'Membership not active',
+  outside_window: 'Outside scan window',
+  self_scan: 'Cannot scan yourself',
+  season_frozen: 'Season is frozen',
 }

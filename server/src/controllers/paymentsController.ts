@@ -34,6 +34,43 @@ import { settleWalletCheckout } from '../utils/walletPayments.js'
 import { MEMBERSHIP_ACCOUNT_PREFIX, settleMembershipByCheckoutId } from '../utils/membership.js'
 import { captureMetaContext, reportMetaPurchase, saveMetaContext } from '../utils/metaConversions.js'
 import { checkDuplicateCallback, storeCbResponse } from '../utils/idempotency.js'
+import { earnFromSpend } from '../utils/rewardLedger.js'
+
+async function awardSpendRewards(kind: 'order' | 'ticket' | 'ticket-batch', id: string) {
+  try {
+    if (kind === 'order') {
+      const row = await query(
+        `SELECT user_id, total_amount FROM orders WHERE id = $1 AND user_id IS NOT NULL`,
+        [id]
+      )
+      if (row.rows[0]) {
+        await earnFromSpend(row.rows[0].user_id, Number(row.rows[0].total_amount), `order:${id}`)
+      }
+      return
+    }
+    if (kind === 'ticket') {
+      const row = await query(
+        `SELECT user_id, unit_price FROM tickets WHERE id = $1 AND user_id IS NOT NULL`,
+        [id]
+      )
+      if (row.rows[0]) {
+        await earnFromSpend(row.rows[0].user_id, Number(row.rows[0].unit_price), `ticket:${id}`)
+      }
+      return
+    }
+    const rows = await query(
+      `SELECT user_id, SUM(unit_price)::float AS amount
+       FROM tickets WHERE purchase_batch_id = $1 AND user_id IS NOT NULL
+       GROUP BY user_id`,
+      [id]
+    )
+    for (const row of rows.rows) {
+      await earnFromSpend(row.user_id, Number(row.amount), `ticket-batch:${id}:${row.user_id}`)
+    }
+  } catch (error: any) {
+    console.error('Reward points earn failed:', error?.message || error)
+  }
+}
 
 const MPESA_QUERY_GRACE_MS = 10_000
 const MPESA_QUERY_INTERVAL_MS = 12_000
@@ -131,6 +168,7 @@ async function applyPaymentFromAccountRef(
        WHERE purchase_batch_id = $4 AND payment_status IN ('pending', 'failed')`,
       ['paid', mpesaReceipt, checkoutRequestId, batchId]
     )
+    if ((result.rowCount || 0) > 0) void awardSpendRewards('ticket-batch', batchId)
     return result.rowCount || 0
   }
 
@@ -173,6 +211,7 @@ async function applyPaymentFromAccountRef(
     )
     if ((result.rowCount || 0) > 0) {
       await decrementOrderStock(refId)
+      void awardSpendRewards('order', refId)
     }
     return result.rowCount || 0
   }
@@ -181,6 +220,7 @@ async function applyPaymentFromAccountRef(
       'UPDATE tickets SET payment_status = $1, mpesa_receipt = $2, checkout_request_id = $3 WHERE id = $4',
       ['paid', mpesaReceipt, checkoutRequestId, refId]
     )
+    if ((result.rowCount || 0) > 0) void awardSpendRewards('ticket', refId)
     return result.rowCount || 0
   }
   if (type === 'HIRE') {

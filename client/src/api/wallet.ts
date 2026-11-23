@@ -156,6 +156,7 @@ export const payWithCredit = async (data: {
   purchaseBatchIds: string[]
   useCredit?: boolean
   phone?: string
+  rewardPoints?: number
 }): Promise<CreditCheckoutResult> => (await api.post('/wallet/checkout', data)).data
 
 /** Pays a shop order with ticket value first; any difference is asked for by M-Pesa. */
@@ -163,6 +164,7 @@ export const payOrderWithCredit = async (data: {
   orderId: string
   useCredit?: boolean
   phone?: string
+  rewardPoints?: number
 }): Promise<CreditCheckoutResult> => (await api.post('/wallet/checkout-order', data)).data
 
 /** Pays a medal batch with ticket value first; any difference is asked for by M-Pesa. */

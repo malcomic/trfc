@@ -18,6 +18,8 @@ import {
   receiptFilename,
   renderOrderReceiptPDF,
 } from '../utils/orderReceipt.js';
+import { redeemRewardPoints } from '../utils/rewardLedger.js';
+import { resolveRewardKes } from '../utils/rewardRedeem.js';
 
 type DbClient = Awaited<ReturnType<typeof getClient>>;
 
@@ -395,15 +397,25 @@ export const createOrder = async (req: Request, res: Response) => {
       discountMembershipId = discount.membershipId;
     }
 
-    const expectedTotal = getGrandTotal(subtotal) - memberDiscount;
+    let expectedTotal = getGrandTotal(subtotal) - memberDiscount;
+    let rewardPointsApplied = 0;
+    const requestedReward = Number(req.body.rewardPoints);
+    if (Number.isInteger(requestedReward) && requestedReward > 0) {
+      if (!userId) throw new OrderValidationError(401, 'Log in to redeem reward points');
+      const reward = await resolveRewardKes(requestedReward, expectedTotal);
+      if (reward.points > 0) {
+        rewardPointsApplied = reward.points;
+        expectedTotal = Math.max(0, expectedTotal - reward.kes);
+      }
+    }
     if (Math.round(Number(total_amount)) !== Math.round(expectedTotal)) {
       throw new OrderValidationError(400, `Order total must be KES ${expectedTotal}`);
     }
 
     const orderResult = await client.query(
-      `INSERT INTO orders (user_id, total_amount, phone, delivery_address, email, flash_share_redemption_id, delivery_date)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *, to_char(delivery_date, 'YYYY-MM-DD') AS delivery_date`,
-      [userId, expectedTotal, phone, delivery_address, email, flashRedemptionId, nextDeliveryWednesday(new Date())]
+      `INSERT INTO orders (user_id, total_amount, phone, delivery_address, email, flash_share_redemption_id, delivery_date, reward_points_applied)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *, to_char(delivery_date, 'YYYY-MM-DD') AS delivery_date`,
+      [userId, expectedTotal, phone, delivery_address, email, flashRedemptionId, nextDeliveryWednesday(new Date()), rewardPointsApplied]
     );
     if (discountMembershipId) {
       await client.query(
@@ -415,6 +427,10 @@ export const createOrder = async (req: Request, res: Response) => {
     }
 
     const orderId = orderResult.rows[0].id;
+    if (rewardPointsApplied > 0 && userId) {
+      const err = await redeemRewardPoints(userId, rewardPointsApplied, `order-redeem:${orderId}`, client);
+      if (err) throw new OrderValidationError(400, err);
+    }
 
     for (const line of lines) {
       await client.query(

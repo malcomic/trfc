@@ -211,10 +211,27 @@ export async function markEntitiesPaidByCheckoutId(
 }
 
 async function markEntitiesFailedByCheckoutId(checkoutRequestId: string) {
-  await query(
-    `UPDATE orders SET payment_status = 'failed' WHERE checkout_request_id = $1 AND payment_status = 'pending'`,
+  const failedOrders = await query(
+    `UPDATE orders SET payment_status = 'failed'
+     WHERE checkout_request_id = $1 AND payment_status = 'pending'
+     RETURNING id, user_id, reward_points_applied`,
     [checkoutRequestId]
   )
+  for (const row of failedOrders.rows) {
+    const pts = Number(row.reward_points_applied || 0)
+    if (pts > 0 && row.user_id) {
+      const { appendRewardPoints } = await import('./rewardLedger.js')
+      await appendRewardPoints({
+        userId: row.user_id,
+        points: pts,
+        kind: 'adjustment',
+        sourceRef: `reverse:order-redeem:${row.id}`,
+        reason: 'Order payment failed — restore reward points',
+      }).catch(() => undefined)
+      await query(`UPDATE orders SET reward_points_applied = 0 WHERE id = $1`, [row.id]).catch(() => undefined)
+    }
+  }
+  // tickets fail below (reward reverse for batches handled at STK start failure in walletCheckout)
   await query(
     `UPDATE tickets SET payment_status = 'failed' WHERE checkout_request_id = $1 AND payment_status = 'pending'`,
     [checkoutRequestId]

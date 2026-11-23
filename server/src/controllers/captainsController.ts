@@ -189,6 +189,44 @@ export async function getMyOverview(req: Request, res: Response) {
   }
 }
 
+/** Monthly captain scorecard for the captain's zone + Jan–Jul CotY average. */
+export async function getMyScorecard(req: Request, res: Response) {
+  try {
+    const zone = await getCaptainZone(req.user!.id)
+    if (!zone) return res.status(404).json({ error: 'Captain profile not found' })
+    const { getCurrentSeason } = await import('../utils/pointsEligibility.js')
+    const { captainOfTheYear } = await import('../utils/pointsAwards.js')
+    const season = await getCurrentSeason()
+    if (!season) return res.status(404).json({ error: 'No active season' })
+    const scores = await query(
+      `SELECT month, attendance_growth, new_members, feedback, clean_scans, total
+       FROM captain_scores
+       WHERE season_id = $1 AND zone_id = $2
+       ORDER BY month DESC
+       LIMIT 12`,
+      [season.id, zone.id]
+    )
+    const year = new Date(season.starts_at).getFullYear()
+    const months = Array.from({ length: 7 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`)
+    const avg = await query(
+      `SELECT AVG(total)::float AS avg FROM captain_scores
+       WHERE season_id = $1 AND zone_id = $2 AND month = ANY($3::text[])`,
+      [season.id, zone.id, months]
+    )
+    const coty = await captainOfTheYear(season.id)
+    res.json({
+      zoneId: zone.id,
+      zoneName: zone.name,
+      scores: scores.rows,
+      cotyAverage: avg.rows[0]?.avg != null ? Math.round(Number(avg.rows[0].avg) * 10) / 10 : null,
+      captainOfTheYear: coty,
+    })
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: 'Failed to load scorecard' })
+  }
+}
+
 /** How many browsers opened the zone link, and how many people finished signing up with it. */
 export async function getMyLinkStats(req: Request, res: Response) {
   try {

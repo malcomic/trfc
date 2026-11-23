@@ -4,6 +4,8 @@ import { InvalidMpesaPhoneError, sendStkPush, stkErrorMessage } from '../control
 import { describeMpesaError } from './mpesa.js'
 import { logError } from './paymentLogger.js'
 import { sendMembershipWelcome } from './membershipEmail.js'
+import { ensureFullyPaidAt } from './pointsEligibility.js'
+import { grantReferralRewardIfDue } from './rewardLedger.js'
 
 type Queryable = Pick<PoolClient, 'query'>
 const poolDb = { query } as unknown as Queryable
@@ -337,6 +339,8 @@ export async function settleMembershipByCheckoutId(
       `UPDATE users SET member_until = GREATEST(COALESCE(member_until, $2), $2) WHERE id = $1`,
       [row.user_id, endsAt]
     )
+    await ensureFullyPaidAt(row.user_id, now, db)
+    await grantReferralRewardIfDue(row.user_id, db)
     return row.id as string
   })
   if (!settled) return 0
@@ -383,6 +387,8 @@ export async function grantMembership(adminId: string, userId: string, months: n
       `UPDATE users SET member_until = GREATEST(COALESCE(member_until, $2), $2) WHERE id = $1`,
       [userId, endsAt]
     )
+    await ensureFullyPaidAt(userId, now, db)
+    await grantReferralRewardIfDue(userId, db)
     return inserted.rows[0] as { id: string; starts_at: Date; ends_at: Date }
   })
 }

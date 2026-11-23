@@ -48,8 +48,10 @@ import coachApplicationsRoutes from './routes/coachApplications.js';
 import coachInvitationsRoutes from './routes/coachInvitations.js';
 import coachesRoutes from './routes/coaches.js';
 import membershipRoutes from './routes/membership.js';
+import pointsRoutes from './routes/points.js';
 import policiesRoutes from './routes/policies.js';
 import privacyRoutes from './routes/privacy.js';
+import { startPointsScheduler } from './jobs/pointsJobs.js';
 
 dotenv.config();
 
@@ -100,6 +102,7 @@ app.use('/api/coach-applications', coachApplicationsRoutes);
 app.use('/api/coach-invitations', coachInvitationsRoutes);
 app.use('/api/coaches', coachesRoutes);
 app.use('/api/membership', membershipRoutes);
+app.use('/api/points', pointsRoutes);
 app.use('/api/policies', policiesRoutes);
 app.use('/api/me/privacy', privacyRoutes);
 
@@ -125,6 +128,7 @@ const startServer = async () => {
       startAnnouncementEmailScheduler();
       startMembershipScheduler();
       startRetentionScheduler();
+      startPointsScheduler();
     });
   } catch (error) {
     console.error('✗ Failed to connect to database:', error);

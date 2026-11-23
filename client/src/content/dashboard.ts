@@ -71,7 +71,7 @@ export const DASHBOARD_COPY = {
     program: { label: (name: string) => `Your ${name} program`, none: 'Pick a program', noneNote: 'Explore programs' },
     nextEvent: { label: 'Next event', fallback: 'Saturday community run', none: 'None yet', noneNote: 'See the calendar' },
     captain: { label: 'Your zone captain', none: 'Choose a captain', noneNote: 'Pick one in My Zone' },
-    points: { label: 'Points this season', value: '[0]', note: '[Earning rule to be decided]' },
+    points: { label: 'Points this season', value: '0', note: 'Finish Saturdays to earn season points' },
     pendingPayments: (n: number) => `${n} payment${n === 1 ? ' is' : 's are'} still pending.`,
     viewPayments: 'View payments',
   },
@@ -140,7 +140,7 @@ export const DASHBOARD_COPY = {
   },
   points: {
     heading: 'Points and awards',
-    body: '[Points and season awards show here once the earning rules are decided.]',
+    body: 'Season points from Saturday finishes, streaks, and awards. Reward points from spending stay separate.',
   },
   perks: {
     heading: 'Member perks',

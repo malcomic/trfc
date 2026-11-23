@@ -37,6 +37,7 @@ import EquipmentCheckout from './pages/EquipmentCheckout'
 import HireConfirmation from './pages/HireConfirmation'
 import Register from './pages/Register'
 import RegisterComplete from './pages/RegisterComplete'
+import Join from './pages/Join'
 import Login from './pages/Login'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
@@ -85,6 +86,7 @@ import AdminProgramEditor from './pages/admin/AdminProgramEditor'
 import AdminHiring from './pages/admin/AdminHiring'
 import AdminCoaches from './pages/admin/AdminCoaches'
 import AdminMembership from './pages/admin/AdminMembership'
+import AdminPoints from './pages/admin/AdminPoints'
 import CoachActivate from './pages/CoachActivate'
 import CoachLayout from './components/coach/CoachLayout'
 import CoachOverview from './pages/coach/CoachOverview'
@@ -222,6 +224,7 @@ const router = createBrowserRouter(
           <Route path="hiring" element={<AdminHiring />} />
           <Route path="coaches" element={<AdminCoaches />} />
           <Route path="membership" element={<AdminMembership />} />
+          <Route path="points" element={<AdminPoints />} />
           <Route path="policies" element={<AdminPolicies />} />
           <Route path="privacy-settings" element={<AdminPrivacySettings />} />
           <Route path="wallets" element={<AdminWallets />} />
@@ -324,6 +327,7 @@ const router = createBrowserRouter(
           <Route path="/hire-confirmation/:id" element={<HireConfirmation />} />
           <Route path="/register" element={<Register />} />
           <Route path="/register/complete" element={<RegisterComplete />} />
+          <Route path="/join" element={<Join />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />

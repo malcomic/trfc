@@ -10,6 +10,7 @@ import {
 } from '../api/orders'
 import { initiateSTKPush } from '../api/payments'
 import { getWallet, payOrderWithCredit, TICKET_VALUE_NOTE } from '../api/wallet'
+import { getMyPoints } from '../api/points'
 import { useCart, cartLineKey, cartLinePrice } from '../store/cartStore'
 import type { CartItem } from '../types'
 import { getGrandTotal } from '../utils/shipping'
@@ -65,10 +66,22 @@ export default function Checkout() {
     shopDiscount
   )
   const memberDiscount = useMemberDiscount ? discountAvailable : 0
-  const grandTotal =
+  const afterDiscount =
     getGrandTotal(items.reduce((sum, item) => sum + cartLinePrice(item) * item.quantity, 0)) - memberDiscount
+  const REDEEM_KES_PER_POINT = 2
   const [ticketValue, setTicketValue] = useState(0)
   const [useCredit, setUseCredit] = useState(true)
+  const [rewardBalance, setRewardBalance] = useState(0)
+  const [useRewards, setUseRewards] = useState(false)
+  const [rewardPointsInput, setRewardPointsInput] = useState(0)
+  const maxRewardPoints = Math.min(
+    rewardBalance,
+    Math.floor(Math.max(0, afterDiscount) / REDEEM_KES_PER_POINT)
+  )
+  const rewardPoints =
+    user && useRewards ? Math.max(0, Math.min(maxRewardPoints, Math.floor(rewardPointsInput) || 0)) : 0
+  const rewardKes = rewardPoints * REDEEM_KES_PER_POINT
+  const grandTotal = Math.max(0, afterDiscount - rewardKes)
   const creditApplied = user && useCredit ? Math.min(ticketValue, Math.max(0, grandTotal)) : 0
   const mpesaDue = Math.max(0, grandTotal - creditApplied)
   const [loading, setLoading] = useState(false)
@@ -78,6 +91,7 @@ export default function Checkout() {
   useEffect(() => {
     if (!user) {
       setTicketValue(0)
+      setRewardBalance(0)
       return
     }
     getWallet()
@@ -86,7 +100,17 @@ export default function Checkout() {
         if (w.ticketValue > 0) setUseCredit(true)
       })
       .catch(() => setTicketValue(0))
+    getMyPoints()
+      .then((p) => {
+        setRewardBalance(p.rewards.balance)
+        if (p.rewards.balance > 0) setUseRewards(true)
+      })
+      .catch(() => setRewardBalance(0))
   }, [user])
+
+  useEffect(() => {
+    if (rewardPointsInput > maxRewardPoints) setRewardPointsInput(maxRewardPoints)
+  }, [maxRewardPoints, rewardPointsInput])
 
   useEffect(() => {
     let cancelled = false
@@ -200,6 +224,7 @@ export default function Checkout() {
         delivery_address: data.address,
         ...(hasFlashItems ? { flash_token: loadFlashAccess()?.token } : {}),
         ...(memberDiscount > 0 ? { member_discount: true } : {}),
+        ...(rewardPoints > 0 ? { rewardPoints } : {}),
       })
 
       setOrderId(createdOrder.id)
@@ -207,11 +232,11 @@ export default function Checkout() {
       if (isBuyNow) clearBuyNow()
       else clearCart()
 
-      const applyCredit = Boolean(user && useCredit && ticketValue > 0)
-      if (applyCredit) {
+      const applyWalletPay = Boolean(user && (useCredit || rewardPoints > 0 || grandTotal <= 0))
+      if (applyWalletPay && user) {
         const creditResult = await payOrderWithCredit({
           orderId: createdOrder.id,
-          useCredit: true,
+          useCredit: useCredit && ticketValue > 0,
           phone: data.phone,
         })
         if (creditResult.status === 'paid') {
@@ -461,6 +486,44 @@ export default function Checkout() {
                   <p className="text-xs text-fog light:text-fog-light mb-4">{MEMBERSHIP_COPY.shopDiscount.usedNote}</p>
                 )}
 
+                {user && rewardBalance > 0 && (
+                  <div className="mb-6 pb-6 border-b border-white/10 light:border-black/10 space-y-2">
+                    <label className="flex items-start gap-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={useRewards}
+                        onChange={(e) => {
+                          setUseRewards(e.target.checked)
+                          if (e.target.checked && rewardPointsInput <= 0) setRewardPointsInput(maxRewardPoints)
+                        }}
+                        disabled={Boolean(submittedItems)}
+                        className="w-4 h-4 mt-0.5"
+                      />
+                      <span>
+                        Use reward points ({rewardBalance} pts · {REDEEM_KES_PER_POINT} KSh each)
+                      </span>
+                    </label>
+                    {useRewards && (
+                      <input
+                        type="number"
+                        min={0}
+                        max={maxRewardPoints}
+                        value={rewardPoints}
+                        disabled={Boolean(submittedItems)}
+                        onChange={(e) => setRewardPointsInput(Number(e.target.value))}
+                        className="w-full rounded border px-3 py-2 text-sm dark:bg-gray-900"
+                      />
+                    )}
+                    {rewardKes > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span>Reward points</span>
+                        <span className="font-bebas text-lg text-accent light:text-accent-light">
+                          −{rewardKes.toFixed(0)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {user && ticketValue > 0 && (
                   <div className="mb-6 pb-6 border-b border-white/10 light:border-black/10 space-y-2">
                     <label className="flex items-start gap-2 text-sm cursor-pointer">

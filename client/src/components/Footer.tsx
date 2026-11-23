@@ -80,6 +80,7 @@ export default function Footer() {
       title: 'Community',
       links: [
         { to: '/register', label: 'Join the Community' },
+        { to: '/join', label: 'Become a Member' },
         { to: '/contact', label: 'Contact' },
         { to: '/coach-with-us', label: 'Work with us' },
         staffLink,

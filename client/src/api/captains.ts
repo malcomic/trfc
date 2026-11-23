@@ -239,6 +239,26 @@ export const exportMyTeam = async (
   return response.data
 }
 
+export interface CaptainScorecard {
+  zoneId: string
+  zoneName: string
+  scores: Array<{
+    month: string
+    attendance_growth: number
+    new_members: number
+    feedback: number
+    clean_scans: number
+    total: number
+  }>
+  cotyAverage: number | null
+  captainOfTheYear: { zoneId: string; zoneName: string; avg: number } | null
+}
+
+export const getMyCaptainScorecard = async (): Promise<CaptainScorecard> => {
+  const { data } = await api.get('/captains/me/scorecard')
+  return data
+}
+
 export const getMyZoneOverview = async (): Promise<CaptainZoneOverview> => {
   const response = await api.get('/captains/me/overview')
   return response.data

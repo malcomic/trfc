@@ -1827,6 +1827,149 @@ export function buildMembershipReminderEmailText(kind: MembershipReminderKind, d
   ].join('\n\n')
 }
 
+export interface PointsRankEmailData {
+  name: string | null
+  rank: number
+  points: number
+  eventTitle?: string | null
+}
+
+export function buildPointsRankEmailHTML(data: PointsRankEmailData): string {
+  return accountEmailShell(
+    'Your TRFC points rank',
+    'You scored',
+    `
+      ${paragraph(escapeHtml(greeting(data.name)))}
+      ${paragraph(
+        data.eventTitle
+          ? `After <strong>${escapeHtml(data.eventTitle)}</strong>, you are rank <strong>#${data.rank}</strong> with <strong>${data.points}</strong> season points.`
+          : `You are rank <strong>#${data.rank}</strong> with <strong>${data.points}</strong> season points.`
+      )}
+      ${actionButton('VIEW MY POINTS', siteUrl('/dashboard/points'))}`
+  )
+}
+
+export function buildPointsRankEmailText(data: PointsRankEmailData): string {
+  return [
+    greeting(data.name),
+    data.eventTitle
+      ? `After ${data.eventTitle}, you are rank #${data.rank} with ${data.points} season points.`
+      : `You are rank #${data.rank} with ${data.points} season points.`,
+    `View my points: ${siteUrl('/dashboard/points')}`,
+    footerText(),
+  ].join('\n\n')
+}
+
+export interface PointsWithin10EmailData {
+  name: string | null
+  rank: number
+  gap: number
+  pointsAbove: number
+}
+
+export function buildPointsWithin10EmailHTML(data: PointsWithin10EmailData): string {
+  return accountEmailShell(
+    'You are close on the TRFC board',
+    'Almost there',
+    `
+      ${paragraph(escapeHtml(greeting(data.name)))}
+      ${paragraph(
+        `You are rank <strong>#${data.rank}</strong> — only <strong>${data.gap}</strong> points behind the runner above you (${data.pointsAbove} pts).`
+      )}
+      ${actionButton('VIEW MY POINTS', siteUrl('/dashboard/points'))}`
+  )
+}
+
+export function buildPointsWithin10EmailText(data: PointsWithin10EmailData): string {
+  return [
+    greeting(data.name),
+    `You are rank #${data.rank} — only ${data.gap} points behind the runner above you (${data.pointsAbove} pts).`,
+    `View my points: ${siteUrl('/dashboard/points')}`,
+    footerText(),
+  ].join('\n\n')
+}
+
+export interface PointsWeeklySummaryEmailData {
+  name: string | null
+  weekPoints: number
+  streakProgress: number
+  streakLength: number
+  total: number
+  rank: number | null
+}
+
+export function buildPointsWeeklySummaryEmailHTML(data: PointsWeeklySummaryEmailData): string {
+  return accountEmailShell(
+    'Your TRFC week in points',
+    'Weekly summary',
+    `
+      ${paragraph(escapeHtml(greeting(data.name)))}
+      ${paragraph(
+        `This week you earned <strong>${data.weekPoints}</strong> points. Season total: <strong>${data.total}</strong>${
+          data.rank != null ? ` (rank #${data.rank})` : ''
+        }.`
+      )}
+      ${paragraph(`Streak: ${data.streakProgress} of ${data.streakLength} Saturdays toward the next bonus.`)}
+      ${actionButton('VIEW MY POINTS', siteUrl('/dashboard/points'))}`
+  )
+}
+
+export function buildPointsWeeklySummaryEmailText(data: PointsWeeklySummaryEmailData): string {
+  return [
+    greeting(data.name),
+    `This week you earned ${data.weekPoints} points. Season total: ${data.total}${
+      data.rank != null ? ` (rank #${data.rank})` : ''
+    }.`,
+    `Streak: ${data.streakProgress} of ${data.streakLength} Saturdays toward the next bonus.`,
+    `View my points: ${siteUrl('/dashboard/points')}`,
+    footerText(),
+  ].join('\n\n')
+}
+
+export interface PointsAdminDigestEmailData {
+  openFlags: number
+  scanGaps: string[]
+  doubleScans: string[]
+  hotCaptains: string[]
+}
+
+export function buildPointsAdminDigestEmailHTML(data: PointsAdminDigestEmailData): string {
+  const list = (items: string[]) =>
+    items.length
+      ? `<ul style="margin:0 0 16px;padding-left:20px;color:#374151;font-size:14px;line-height:1.5;">${items
+          .map((i) => `<li>${escapeHtml(i)}</li>`)
+          .join('')}</ul>`
+      : paragraph('None')
+  return accountEmailShell(
+    'TRFC points Monday digest',
+    'Monday digest',
+    `
+      ${paragraph(`Open fairness flags: <strong>${data.openFlags}</strong>`)}
+      ${paragraph('<strong>Scans vs headcount</strong>')}
+      ${list(data.scanGaps)}
+      ${paragraph('<strong>Members scanned at overlapping events</strong>')}
+      ${list(data.doubleScans)}
+      ${paragraph('<strong>Captains scanning &gt;2× their 4-week average</strong>')}
+      ${list(data.hotCaptains)}
+      ${actionButton('OPEN ADMIN POINTS', siteUrl('/admin/points'))}`
+  )
+}
+
+export function buildPointsAdminDigestEmailText(data: PointsAdminDigestEmailData): string {
+  return [
+    'TRFC points Monday digest',
+    `Open fairness flags: ${data.openFlags}`,
+    'Scans vs headcount:',
+    ...(data.scanGaps.length ? data.scanGaps : ['None']),
+    'Overlapping scans:',
+    ...(data.doubleScans.length ? data.doubleScans : ['None']),
+    'Hot captains:',
+    ...(data.hotCaptains.length ? data.hotCaptains : ['None']),
+    `Admin: ${siteUrl('/admin/points')}`,
+    footerText(),
+  ].join('\n\n')
+}
+
 export default {
   buildTicketEmailHTML,
   buildTicketEmailText,

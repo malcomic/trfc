@@ -62,6 +62,7 @@ describe('isPageVideoSlot', () => {
     expect(isPageVideoSlot('find_results')).toBe(true)
     expect(isPageVideoSlot('register_hero')).toBe(true)
     expect(isPageVideoSlot('dashboard_welcome')).toBe(true)
+    expect(isPageVideoSlot('join_hero')).toBe(true)
     expect(isPageVideoSlot('home_hero')).toBe(false)
   })
 })

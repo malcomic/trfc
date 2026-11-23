@@ -2,7 +2,7 @@ import { Request, Response } from 'express'
 import { query } from '../config/db.js'
 import { isHttpsUrl, isVerticalVideoLink, parseVideoLink } from '../utils/videoLink.js'
 
-export const PAGE_VIDEO_SLOTS = ['find_hero', 'find_results', 'register_hero', 'dashboard_welcome'] as const
+export const PAGE_VIDEO_SLOTS = ['find_hero', 'find_results', 'register_hero', 'dashboard_welcome', 'join_hero'] as const
 export type PageVideoSlot = (typeof PAGE_VIDEO_SLOTS)[number]
 
 export const PAGE_VIDEO_FIELDS = 'slot, source, provider, video_url, poster_url, orientation, updated_at'

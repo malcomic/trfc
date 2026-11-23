@@ -78,11 +78,13 @@ export async function walletCheckout(req: Request, res: Response) {
     if (req.body?.phone && !phone) {
       return res.status(400).json({ error: 'Enter a valid M-Pesa number, e.g. 07XX XXX XXX' })
     }
+    const rewardPoints = Number(req.body?.rewardPoints)
     const result = await payBatchesWithCredit(req.user!.id, {
       batchIds,
       useCredit: req.body?.useCredit !== false,
       phone,
       context: captureMetaContext(req),
+      rewardPoints: Number.isInteger(rewardPoints) && rewardPoints > 0 ? rewardPoints : undefined,
     })
     res.json(result)
   } catch (error) {
@@ -98,11 +100,13 @@ export async function walletCheckoutOrder(req: Request, res: Response) {
     if (req.body?.phone && !phone) {
       return res.status(400).json({ error: 'Enter a valid M-Pesa number, e.g. 07XX XXX XXX' })
     }
+    const rewardPoints = Number(req.body?.rewardPoints)
     const result = await payOrderWithCredit(req.user!.id, {
       orderId,
       useCredit: req.body?.useCredit !== false,
       phone,
       context: captureMetaContext(req),
+      rewardPoints: Number.isInteger(rewardPoints) && rewardPoints > 0 ? rewardPoints : undefined,
     })
     res.json(result)
   } catch (error) {

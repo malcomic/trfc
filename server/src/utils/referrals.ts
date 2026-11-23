@@ -77,6 +77,10 @@ export async function applyReferral(userId: string, code: unknown): Promise<Refe
   const normalized = normalizeReferralCode(code)
   if (!normalized) return null
   try {
+    // Member-to-member referral codes credit reward points when the fee clears; they do not set zone.
+    const { attachMemberReferral } = await import('./rewardLedger.js')
+    await attachMemberReferral(userId, normalized)
+
     const referral = await findReferralByCode(normalized)
     if (!referral) return null
     const result = await query(

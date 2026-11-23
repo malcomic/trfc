@@ -98,10 +98,29 @@ export function MemberPriceCard() {
 
 export function PointsCard() {
   const copy = DASHBOARD_COPY.points
+  const [total, setTotal] = useState<number | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    import('../../../api/points')
+      .then(({ getMyPoints }) => getMyPoints())
+      .then((s) => {
+        if (!cancelled) setTotal(s.total)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [])
   return (
     <div className={dashCard}>
       <h2 className={dashHeading}>{copy.heading}</h2>
       <p className={`${dashMuted} mt-2`}>{copy.body}</p>
+      {total != null && (
+        <p className="mt-3 font-bebas text-4xl text-chalk light:text-chalk-light">{total}</p>
+      )}
+      <CtaButton to="/dashboard/points" size="sm" className="mt-4">
+        Open My Points
+      </CtaButton>
     </div>
   )
 }

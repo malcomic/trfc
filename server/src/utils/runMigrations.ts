@@ -1938,6 +1938,295 @@ const MIGRATIONS: { name: string; sql: string }[] = [
         ON event_ticket_types(private_token) WHERE private_token IS NOT NULL;
     `,
   },
+  {
+    name: '076_season_points',
+    sql: `
+      CREATE TABLE IF NOT EXISTS seasons (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(80) NOT NULL,
+        starts_at TIMESTAMPTZ NOT NULL,
+        ends_at TIMESTAMPTZ NOT NULL,
+        frozen_at TIMESTAMPTZ,
+        status VARCHAR(20) NOT NULL DEFAULT 'active'
+          CHECK (status IN ('upcoming', 'active', 'frozen', 'closed')),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      INSERT INTO seasons (id, name, starts_at, ends_at, status)
+      SELECT 'a1000000-0000-4000-8000-000000000001'::uuid,
+             'Season 1',
+             '2027-01-02 00:00:00+03'::timestamptz,
+             '2027-07-31 23:59:59+03'::timestamptz,
+             'active'
+      WHERE NOT EXISTS (SELECT 1 FROM seasons WHERE name = 'Season 1');
+
+      CREATE TABLE IF NOT EXISTS points_settings (
+        id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+        zone_run_points INT NOT NULL DEFAULT 10,
+        common_run_points INT NOT NULL DEFAULT 15,
+        hike_fitfest_points INT NOT NULL DEFAULT 30,
+        marathon_points INT NOT NULL DEFAULT 30,
+        streak_bonus_points INT NOT NULL DEFAULT 10,
+        streak_length INT NOT NULL DEFAULT 4,
+        scan_grace_hours INT NOT NULL DEFAULT 2,
+        race_cutoff_at TIMESTAMPTZ NOT NULL DEFAULT '2027-03-31 20:59:59+00'::timestamptz,
+        mom_reward_points INT NOT NULL DEFAULT 100,
+        mombasa_min_saturdays INT NOT NULL DEFAULT 10,
+        consistent_min_saturdays INT NOT NULL DEFAULT 8,
+        zone_of_year_min_members INT NOT NULL DEFAULT 10,
+        top_referrer_min INT NOT NULL DEFAULT 3,
+        most_improved_min_finishes INT NOT NULL DEFAULT 10,
+        common_run_distance_km NUMERIC(5,2) NOT NULL DEFAULT 10,
+        spend_kes_per_point INT NOT NULL DEFAULT 50,
+        redeem_kes_per_point INT NOT NULL DEFAULT 2,
+        referral_reward_points INT NOT NULL DEFAULT 100,
+        reward_expiry_months INT NOT NULL DEFAULT 12,
+        rank_alert_gap INT NOT NULL DEFAULT 10,
+        missing_scan_report_days INT NOT NULL DEFAULT 7,
+        missing_scan_decide_days INT NOT NULL DEFAULT 7,
+        captain_weight_attendance NUMERIC(5,2) NOT NULL DEFAULT 40,
+        captain_weight_new_members NUMERIC(5,2) NOT NULL DEFAULT 30,
+        captain_weight_feedback NUMERIC(5,2) NOT NULL DEFAULT 20,
+        captain_weight_clean_scans NUMERIC(5,2) NOT NULL DEFAULT 10,
+        captain_support_threshold NUMERIC(5,2) NOT NULL DEFAULT 50,
+        trip_fee_set_aside_kes NUMERIC(10,2) NOT NULL DEFAULT 0,
+        updated_at TIMESTAMPTZ,
+        updated_by UUID REFERENCES users(id) ON DELETE SET NULL
+      );
+      INSERT INTO points_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS fully_paid_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_users_referral_code
+        ON users(referral_code) WHERE referral_code IS NOT NULL;
+      UPDATE users u SET fully_paid_at = sub.first_paid
+      FROM (
+        SELECT user_id, MIN(paid_at) AS first_paid
+        FROM memberships
+        WHERE status = 'paid' AND paid_at IS NOT NULL
+        GROUP BY user_id
+      ) sub
+      WHERE u.id = sub.user_id AND u.fully_paid_at IS NULL;
+
+      ALTER TABLE regions ADD COLUMN IF NOT EXISTS locked_at TIMESTAMPTZ;
+
+      ALTER TABLE events
+        ADD COLUMN IF NOT EXISTS season_id UUID REFERENCES seasons(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS points_kind VARCHAR(20) NOT NULL DEFAULT 'none'
+          CHECK (points_kind IN ('zone_run', 'common_run', 'hike', 'fit_fest', 'marathon', 'none')),
+        ADD COLUMN IF NOT EXISTS ends_at TIMESTAMPTZ;
+      UPDATE events SET season_id = (SELECT id FROM seasons WHERE name = 'Season 1' LIMIT 1)
+      WHERE season_id IS NULL
+        AND event_date >= '2027-01-02'::timestamptz
+        AND event_date < '2027-08-01'::timestamptz;
+      UPDATE events SET points_kind = 'common_run'
+      WHERE is_community_run = true AND points_kind = 'none';
+
+      CREATE TABLE IF NOT EXISTS points_ledger (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        season_id UUID NOT NULL REFERENCES seasons(id) ON DELETE RESTRICT,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        event_id UUID REFERENCES events(id) ON DELETE SET NULL,
+        checkin_id UUID REFERENCES event_checkins(id) ON DELETE SET NULL,
+        points INT NOT NULL,
+        kind VARCHAR(20) NOT NULL CHECK (kind IN ('scan', 'streak_bonus', 'adjustment')),
+        reason TEXT,
+        created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_points_ledger_user_season ON points_ledger(user_id, season_id);
+      CREATE INDEX IF NOT EXISTS idx_points_ledger_season ON points_ledger(season_id, created_at DESC);
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_points_ledger_scan_checkin
+        ON points_ledger(checkin_id) WHERE kind = 'scan' AND checkin_id IS NOT NULL;
+
+      CREATE TABLE IF NOT EXISTS qr_secrets (
+        user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        secret TEXT NOT NULL,
+        rotated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS event_headcounts (
+        event_id UUID PRIMARY KEY REFERENCES events(id) ON DELETE CASCADE,
+        count INT NOT NULL CHECK (count >= 0),
+        entered_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        entered_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS missing_scan_reports (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending'
+          CHECK (status IN ('pending', 'approved', 'rejected', 'expired')),
+        note TEXT,
+        decided_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        decided_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (user_id, event_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_missing_scan_pending
+        ON missing_scan_reports(status, created_at) WHERE status = 'pending';
+
+      CREATE TABLE IF NOT EXISTS points_flags (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        type VARCHAR(40) NOT NULL,
+        event_id UUID REFERENCES events(id) ON DELETE SET NULL,
+        captain_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        detail TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        resolved_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        resolved_at TIMESTAMPTZ
+      );
+      CREATE INDEX IF NOT EXISTS idx_points_flags_open ON points_flags(created_at DESC) WHERE resolved_at IS NULL;
+
+      CREATE TABLE IF NOT EXISTS zone_lock_snapshots (
+        season_id UUID NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        zone_id UUID NOT NULL REFERENCES regions(id) ON DELETE CASCADE,
+        captain_id UUID REFERENCES captains(user_id) ON DELETE SET NULL,
+        locked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (season_id, user_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS zone_changes (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        old_captain_id UUID REFERENCES captains(user_id) ON DELETE SET NULL,
+        new_captain_id UUID REFERENCES captains(user_id) ON DELETE SET NULL,
+        old_zone_id UUID REFERENCES regions(id) ON DELETE SET NULL,
+        new_zone_id UUID REFERENCES regions(id) ON DELETE SET NULL,
+        changed_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        reason TEXT,
+        changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS reward_ledger (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        points INT NOT NULL,
+        kind VARCHAR(20) NOT NULL
+          CHECK (kind IN ('earn_spend', 'referral', 'redeem', 'expire', 'adjustment', 'mom_prize')),
+        source_ref VARCHAR(100),
+        expires_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        reason TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_reward_ledger_user ON reward_ledger(user_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_reward_ledger_expire
+        ON reward_ledger(expires_at) WHERE kind IN ('earn_spend', 'referral', 'adjustment', 'mom_prize') AND points > 0;
+
+      CREATE TABLE IF NOT EXISTS member_referrals (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        referrer_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        referred_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending'
+          CHECK (status IN ('pending', 'cleared', 'cancelled')),
+        cleared_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (referred_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_member_referrals_referrer ON member_referrals(referrer_id, status);
+
+      CREATE TABLE IF NOT EXISTS award_entries (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        season_id UUID NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+        award VARCHAR(40) NOT NULL,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        source VARCHAR(20) NOT NULL DEFAULT 'self'
+          CHECK (source IN ('self', 'nomination')),
+        payload JSONB,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_award_entries_season ON award_entries(season_id, award);
+
+      CREATE TABLE IF NOT EXISTS captain_feedback (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        captain_id UUID NOT NULL REFERENCES captains(user_id) ON DELETE CASCADE,
+        month CHAR(7) NOT NULL,
+        rating_1 SMALLINT NOT NULL CHECK (rating_1 BETWEEN 1 AND 5),
+        rating_2 SMALLINT NOT NULL CHECK (rating_2 BETWEEN 1 AND 5),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (user_id, captain_id, month)
+      );
+
+      CREATE TABLE IF NOT EXISTS captain_scores (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        season_id UUID NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+        zone_id UUID NOT NULL REFERENCES regions(id) ON DELETE CASCADE,
+        month CHAR(7) NOT NULL,
+        attendance_growth NUMERIC(8,2) NOT NULL DEFAULT 0,
+        new_members NUMERIC(8,2) NOT NULL DEFAULT 0,
+        feedback NUMERIC(8,2) NOT NULL DEFAULT 0,
+        clean_scans NUMERIC(8,2) NOT NULL DEFAULT 0,
+        total NUMERIC(8,2) NOT NULL DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (season_id, zone_id, month)
+      );
+
+      CREATE TABLE IF NOT EXISTS finish_times (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        seconds INT NOT NULL CHECK (seconds > 0),
+        recorded_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (event_id, user_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_finish_times_user ON finish_times(user_id, created_at);
+    `,
+  },
+  {
+    name: '077_points_gaps',
+    sql: `
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS points_disqualified_season_id UUID REFERENCES seasons(id) ON DELETE SET NULL;
+
+      ALTER TABLE orders
+        ADD COLUMN IF NOT EXISTS reward_points_applied INT NOT NULL DEFAULT 0;
+
+      ALTER TABLE announcements
+        ADD COLUMN IF NOT EXISTS target_user_id UUID REFERENCES users(id) ON DELETE CASCADE;
+
+      CREATE INDEX IF NOT EXISTS idx_announcements_target_user
+        ON announcements(target_user_id) WHERE target_user_id IS NOT NULL;
+
+      CREATE TABLE IF NOT EXISTS points_alert_claims (
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        kind VARCHAR(40) NOT NULL,
+        period_key VARCHAR(40) NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (user_id, kind, period_key)
+      );
+
+      CREATE TABLE IF NOT EXISTS points_disputes (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        season_id UUID NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+        body TEXT NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending'
+          CHECK (status IN ('pending', 'approved', 'rejected')),
+        decided_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        decided_at TIMESTAMPTZ,
+        coach_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        other_captain_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        decision_note TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_points_disputes_pending
+        ON points_disputes(status, created_at) WHERE status = 'pending';
+
+      CREATE TABLE IF NOT EXISTS award_winners (
+        season_id UUID NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+        award VARCHAR(40) NOT NULL,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        decided_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        decided_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (season_id, award)
+      );
+    `,
+  },
 ]
 
 export async function runMigrations() {

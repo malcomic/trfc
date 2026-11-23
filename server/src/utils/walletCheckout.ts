@@ -11,6 +11,8 @@ import {
 import { reportMetaPurchase, saveMetaContext, type MetaBrowserContext } from './metaConversions.js'
 import { commitHolds, createPendingMpesaTx, holdCredit, poolDb, releaseHolds, roundKes, withWallet } from './wallet.js'
 import { startMpesaForTx } from './walletMpesa.js'
+import { appendRewardPoints, redeemRewardPoints } from './rewardLedger.js'
+import { resolveRewardKes } from './rewardRedeem.js'
 import type { PoolClient } from 'pg'
 
 export class WalletCheckoutError extends Error {
@@ -54,12 +56,19 @@ interface Batch {
  */
 export async function payBatchesWithCredit(
   userId: string,
-  opts: { batchIds: string[]; useCredit?: boolean; phone?: string | null; context?: MetaBrowserContext }
+  opts: {
+    batchIds: string[]
+    useCredit?: boolean
+    phone?: string | null
+    context?: MetaBrowserContext
+    rewardPoints?: number
+  }
 ): Promise<CreditCheckoutResult> {
   const uniqueIds = [...new Set(opts.batchIds.filter((id) => typeof id === 'string' && id))]
   if (uniqueIds.length === 0) throw new WalletCheckoutError('Choose at least one booking to pay for')
   if (uniqueIds.length > 20) throw new WalletCheckoutError('You can pay for at most 20 bookings at once')
   const useCredit = opts.useCredit !== false
+  const rewardSourceRef = `batch-redeem:${uniqueIds.slice().sort().join(',')}`
 
   const prepared = await withWallet(userId, async (client) => {
     const batches: Batch[] = []
@@ -87,11 +96,24 @@ export async function payBatchesWithCredit(
         title: rows[0].event_title,
       })
     }
+    const gross = roundKes(batches.reduce((sum, b) => sum + b.total, 0))
+    const reward = await resolveRewardKes(Number(opts.rewardPoints) || 0, gross)
+    if (reward.points > 0) {
+      const err = await redeemRewardPoints(userId, reward.points, rewardSourceRef, client)
+      if (err) throw new WalletCheckoutError(err, 400)
+    }
+    let rewardLeft = reward.kes
+    for (const batch of batches) {
+      const cut = Math.min(batch.total, rewardLeft)
+      batch.total = roundKes(batch.total - cut)
+      rewardLeft = roundKes(rewardLeft - cut)
+    }
     const total = roundKes(batches.reduce((sum, b) => sum + b.total, 0))
 
     let creditUsed = 0
-    if (useCredit) {
+    if (useCredit && total > 0) {
       for (const batch of batches) {
+        if (batch.total <= 0) continue
         const hold = await holdCredit(client, userId, { maxAmount: batch.total, purchaseBatchId: batch.id })
         creditUsed = roundKes(creditUsed + hold.held)
         if (hold.regionId) {
@@ -120,7 +142,7 @@ export async function payBatchesWithCredit(
         )
         references.push(reference)
       }
-      return { kind: 'paid' as const, references, total, creditUsed }
+      return { kind: 'paid' as const, references, total, creditUsed, rewardPoints: reward.points }
     }
 
     if (!opts.phone) throw new WalletCheckoutError('Enter your M-Pesa number to pay the rest')
@@ -137,7 +159,7 @@ export async function payBatchesWithCredit(
        WHERE purchase_batch_id = ANY($2::uuid[]) AND status = 'held' AND payment_tx_id IS NULL`,
       [txId, uniqueIds]
     )
-    return { kind: 'mpesa' as const, txId, total, creditUsed, mpesaAmount }
+    return { kind: 'mpesa' as const, txId, total, creditUsed, mpesaAmount, rewardPoints: reward.points, rewardSourceRef }
   })
 
   if (prepared.kind === 'paid') {
@@ -156,6 +178,15 @@ export async function payBatchesWithCredit(
     stk = await startMpesaForTx(prepared.txId, opts.phone!, prepared.mpesaAmount, `WALLET-${prepared.txId}`)
   } catch (error) {
     await releaseHolds(poolDb, { paymentTxId: prepared.txId })
+    if (prepared.rewardPoints > 0 && prepared.rewardSourceRef) {
+      await appendRewardPoints({
+        userId,
+        points: prepared.rewardPoints,
+        kind: 'adjustment',
+        sourceRef: `reverse:${prepared.rewardSourceRef}`,
+        reason: 'Payment start failed — restore reward points',
+      }).catch(() => undefined)
+    }
     throw error
   }
   await query(
@@ -274,14 +305,22 @@ async function reholdLapsedCredit(client: PoolClient, userId: string, paymentTxI
  */
 export async function payOrderWithCredit(
   userId: string,
-  opts: { orderId: string; useCredit?: boolean; phone?: string | null; context?: MetaBrowserContext }
+  opts: {
+    orderId: string
+    useCredit?: boolean
+    phone?: string | null
+    context?: MetaBrowserContext
+    rewardPoints?: number
+  }
 ): Promise<CreditCheckoutResult> {
   if (!opts.orderId) throw new WalletCheckoutError('Choose an order to pay for')
   const useCredit = opts.useCredit !== false
+  const rewardSourceRef = `order-redeem:${opts.orderId}`
 
   const prepared = await withWallet(userId, async (client) => {
     const orderResult = await client.query(
-      `SELECT id, user_id, payment_status, checkout_request_id, total_amount::float AS total_amount
+      `SELECT id, user_id, payment_status, checkout_request_id, total_amount::float AS total_amount,
+              COALESCE(reward_points_applied, 0)::int AS reward_points_applied
        FROM orders WHERE id = $1 FOR UPDATE`,
       [opts.orderId]
     )
@@ -293,11 +332,32 @@ export async function payOrderWithCredit(
     if (order.checkout_request_id) {
       throw new WalletCheckoutError('An M-Pesa payment was already started for this order. Complete it or place a new order.', 409)
     }
-    const total = roundKes(Number(order.total_amount))
-    if (!(total > 0)) throw new WalletCheckoutError('This order has nothing left to pay', 400)
+    const gross = roundKes(Number(order.total_amount))
+    if (!(gross > 0) && !(Number(opts.rewardPoints) > 0) && !(order.reward_points_applied > 0)) {
+      throw new WalletCheckoutError('This order has nothing left to pay', 400)
+    }
+
+    let redeemedNow = 0
+    let total = gross
+    if (order.reward_points_applied > 0) {
+      // Already deducted + redeemed on createOrder
+      total = gross
+    } else if (Number(opts.rewardPoints) > 0) {
+      const reward = await resolveRewardKes(Number(opts.rewardPoints), gross)
+      if (reward.points > 0) {
+        const err = await redeemRewardPoints(userId, reward.points, rewardSourceRef, client)
+        if (err) throw new WalletCheckoutError(err, 400)
+        redeemedNow = reward.points
+        total = roundKes(gross - reward.kes)
+        await client.query(
+          `UPDATE orders SET total_amount = $2, reward_points_applied = $3 WHERE id = $1`,
+          [opts.orderId, total, redeemedNow]
+        )
+      }
+    }
 
     let creditUsed = 0
-    if (useCredit) {
+    if (useCredit && total > 0) {
       const hold = await holdCredit(client, userId, { maxAmount: total, orderId: opts.orderId })
       creditUsed = hold.held
     }
@@ -314,7 +374,7 @@ export async function payOrderWithCredit(
         `UPDATE orders SET payment_status = 'paid', checkout_request_id = $1 WHERE id = $2`,
         [reference, opts.orderId]
       )
-      return { kind: 'paid' as const, references: [reference], total, creditUsed }
+      return { kind: 'paid' as const, references: [reference], total, creditUsed, rewardPoints: redeemedNow }
     }
 
     if (!opts.phone) throw new WalletCheckoutError('Enter your M-Pesa number to pay the rest')
@@ -331,7 +391,15 @@ export async function payOrderWithCredit(
        WHERE order_id = $2 AND status = 'held' AND payment_tx_id IS NULL`,
       [txId, opts.orderId]
     )
-    return { kind: 'mpesa' as const, txId, total, creditUsed, mpesaAmount }
+    return {
+      kind: 'mpesa' as const,
+      txId,
+      total,
+      creditUsed,
+      mpesaAmount,
+      rewardPoints: redeemedNow,
+      rewardSourceRef: redeemedNow > 0 ? rewardSourceRef : undefined,
+    }
   })
 
   if (prepared.kind === 'paid') {
@@ -349,6 +417,15 @@ export async function payOrderWithCredit(
     stk = await startMpesaForTx(prepared.txId, opts.phone!, prepared.mpesaAmount, `WALLET-${prepared.txId}`)
   } catch (error) {
     await releaseHolds(poolDb, { paymentTxId: prepared.txId })
+    if (prepared.rewardPoints > 0 && prepared.rewardSourceRef) {
+      await appendRewardPoints({
+        userId,
+        points: prepared.rewardPoints,
+        kind: 'adjustment',
+        sourceRef: `reverse:${prepared.rewardSourceRef}`,
+        reason: 'Payment start failed — restore reward points',
+      }).catch(() => undefined)
+    }
     throw error
   }
   await query(

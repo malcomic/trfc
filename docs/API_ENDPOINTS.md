@@ -1,5 +1,22 @@
 # TRFC Payment API Documentation
 
+## Season points (member)
+
+Base: `/api/points` (JWT required)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/me` | Season total, ranks, streak, attendance, rewards, countdowns |
+| GET | `/me/ledger` | Paginated season ledger (`limit`, `offset`) |
+| POST | `/me/missing-scan` | Report a missing finish scan (`eventId`, optional `note`) |
+| GET | `/leaderboards` | Top 10 overall, month, zones, referrers |
+
+Captain check-in awards season points via existing `/api/checkins/admit`. Headcount: `PUT /api/checkins/events/:id/headcount` `{ count }`.
+
+Admin: `/api/admin/points/settings`, `/adjustments`, `/flags`, `/missing-scans`, `/in-the-race`, `/awards-preview`, `/freeze`, `/lock-zones`, `/open-season-2`.
+
+---
+
 ## Base URL
 
 ```

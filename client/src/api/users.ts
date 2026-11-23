@@ -100,8 +100,12 @@ export const getMyDashboard = async (): Promise<MemberDashboard> => {
 export interface MemberPass {
   name: string | null;
   code: string;
-  /** PNG data URL of the `member:<code>` QR code. */
+  avatarUrl?: string | null;
+  /** PNG data URL of the rotating member pass QR. */
   qrDataUrl: string;
+  expiresInSeconds?: number;
+  windowSeconds?: number;
+  stableQrDataUrl?: string;
 }
 
 export const getMyPass = async (): Promise<MemberPass> => {

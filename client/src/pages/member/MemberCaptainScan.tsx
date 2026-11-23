@@ -12,6 +12,8 @@ import {
   listScannedMembers,
   lookupMemberCheckin,
   MEMBER_STATUS_LABELS,
+  recordFinishTime,
+  setCheckinHeadcount,
   type CheckinEvent,
   type MemberCheckinResult,
   type ScannedMember,
@@ -58,6 +60,13 @@ function CaptainScanContent() {
   const [manualOpen, setManualOpen] = useState(false)
   const [manualCode, setManualCode] = useState('')
   const [scanned, setScanned] = useState<ScannedMember[] | null>(null)
+  const [headcountInput, setHeadcountInput] = useState('')
+  const [headcountMsg, setHeadcountMsg] = useState('')
+  const [finishFor, setFinishFor] = useState<{ id: string; name: string | null } | null>(null)
+  const [finishMm, setFinishMm] = useState('')
+  const [finishSs, setFinishSs] = useState('')
+  const [finishMsg, setFinishMsg] = useState('')
+  const [finishTimes, setFinishTimes] = useState<Record<string, number>>({})
   const busyRef = useRef(false)
   const eventIdRef = useRef('')
   const resetTimeoutRef = useRef<number | undefined>(undefined)
@@ -195,7 +204,45 @@ function CaptainScanContent() {
                 </option>
               ))}
             </select>
-            {selected && <p className="text-xs text-gray-400 mt-1.5">{selected.checked_in} checked in so far</p>}
+            {selected && (
+              <p className="text-xs text-gray-400 mt-1.5">
+                {selected.checked_in} checked in so far
+                {selected.headcount != null ? ` · headcount ${selected.headcount}` : ''}
+              </p>
+            )}
+            {selected && (
+              <div className="mt-3 flex gap-2 items-end">
+                <label className="flex-1 text-xs text-gray-400">
+                  Headcount
+                  <input
+                    type="number"
+                    min={0}
+                    value={headcountInput}
+                    onChange={(e) => setHeadcountInput(e.target.value)}
+                    className="mt-1 w-full min-h-[40px] rounded-lg bg-gray-800 border border-gray-700 px-3 text-white"
+                    placeholder={String(selected.headcount ?? selected.checked_in)}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="min-h-[40px] px-4 rounded-lg bg-emerald-700 font-semibold text-sm"
+                  onClick={async () => {
+                    try {
+                      const count = Number(headcountInput)
+                      await setCheckinHeadcount(selected.id, count)
+                      setHeadcountMsg('Headcount saved')
+                      const list = await listCheckinEvents()
+                      setEvents(list)
+                    } catch {
+                      setHeadcountMsg('Could not save headcount')
+                    }
+                  }}
+                >
+                  Save
+                </button>
+              </div>
+            )}
+            {headcountMsg && <p className="text-xs text-gray-400 mt-1">{headcountMsg}</p>}
           </div>
 
           <ScannerView
@@ -215,16 +262,11 @@ function CaptainScanContent() {
               <Keyboard size={18} />
               Type a code
             </button>
-            <button
-              type="button"
-              disabled
-              title="Coming soon"
-              className="flex items-center gap-2 min-h-[48px] px-5 rounded-lg bg-gray-800 border border-gray-700 font-semibold opacity-50 cursor-not-allowed"
-            >
-              <Timer size={18} />
-              Record finish time
-              <span className="text-[10px] uppercase tracking-wider text-gray-400">Coming soon</span>
-            </button>
+            {selected?.points_kind === 'common_run' && (
+              <p className="w-full text-center text-xs text-gray-400">
+                Common run: tap a scanned member below to record a finish time.
+              </p>
+            )}
           </div>
 
           <div className="w-full max-w-md mx-auto">
@@ -247,7 +289,24 @@ function CaptainScanContent() {
                       <p className="font-semibold truncate">{entry.name || 'Member'}</p>
                       <p className="text-xs text-gray-500">
                         {entry.saturdays_attended} Saturday{entry.saturdays_attended === 1 ? '' : 's'} attended
+                        {finishTimes[entry.id] != null
+                          ? ` · finish ${Math.floor(finishTimes[entry.id] / 60)}:${String(finishTimes[entry.id] % 60).padStart(2, '0')}`
+                          : ''}
                       </p>
+                      {selected?.points_kind === 'common_run' && (
+                        <button
+                          type="button"
+                          className="mt-1 text-xs text-emerald-400 underline inline-flex items-center gap-1"
+                          onClick={() => {
+                            setFinishFor({ id: entry.id, name: entry.name })
+                            setFinishMm('')
+                            setFinishSs('')
+                            setFinishMsg('')
+                          }}
+                        >
+                          <Timer size={12} /> Record finish
+                        </button>
+                      )}
                     </div>
                     <p className="text-xs text-gray-500 shrink-0">
                       {new Date(entry.scanned_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -256,6 +315,60 @@ function CaptainScanContent() {
                 ))}
               </ul>
             )}
+          </div>
+        </div>
+      )}
+
+      {finishFor && selected && (
+        <div className="fixed inset-0 z-40 bg-black/70 flex items-end sm:items-center justify-center p-4">
+          <div className="w-full max-w-md bg-gray-900 text-white rounded-2xl p-5 border border-gray-700">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-lg">Finish time · {finishFor.name || 'Member'}</h2>
+              <button type="button" onClick={() => setFinishFor(null)} className="p-2" aria-label="Close">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex gap-3 mb-4">
+              <label className="flex-1 text-xs text-gray-400">
+                Minutes
+                <input
+                  type="number"
+                  min={0}
+                  value={finishMm}
+                  onChange={(e) => setFinishMm(e.target.value)}
+                  className="mt-1 w-full min-h-[44px] rounded-lg bg-gray-800 border border-gray-700 px-3"
+                />
+              </label>
+              <label className="flex-1 text-xs text-gray-400">
+                Seconds
+                <input
+                  type="number"
+                  min={0}
+                  max={59}
+                  value={finishSs}
+                  onChange={(e) => setFinishSs(e.target.value)}
+                  className="mt-1 w-full min-h-[44px] rounded-lg bg-gray-800 border border-gray-700 px-3"
+                />
+              </label>
+            </div>
+            {finishMsg && <p className="text-sm text-gray-400 mb-3">{finishMsg}</p>}
+            <button
+              type="button"
+              className="w-full min-h-[48px] rounded-lg bg-emerald-600 font-bold"
+              onClick={async () => {
+                const seconds = Number(finishMm) * 60 + Number(finishSs)
+                try {
+                  await recordFinishTime(selected.id, finishFor.id, seconds)
+                  setFinishTimes((prev) => ({ ...prev, [finishFor.id]: seconds }))
+                  setFinishMsg('Saved')
+                  setTimeout(() => setFinishFor(null), 600)
+                } catch {
+                  setFinishMsg('Could not save finish time')
+                }
+              }}
+            >
+              Save finish time
+            </button>
           </div>
         </div>
       )}

@@ -118,6 +118,9 @@ export default function EventCheckout() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('full')
   const [ticketValue, setTicketValue] = useState(0)
   const [useCredit, setUseCredit] = useState(true)
+  const [rewardBalance, setRewardBalance] = useState(0)
+  const [useRewards, setUseRewards] = useState(false)
+  const [rewardPointsInput, setRewardPointsInput] = useState(0)
   const [planDates, setPlanDates] = useState<string[]>([])
   const [preview, setPreview] = useState<PlanPreview | null>(null)
   const [previewError, setPreviewError] = useState('')
@@ -130,13 +133,21 @@ export default function EventCheckout() {
   const unitPrice = selectedType ? Number(selectedType.price) : 0
   const totalPrice = unitPrice * Number(quantity || 0)
   const moving = Boolean(user && pendingMove && pendingMove.eventId !== eventId && totalPrice > 0)
+  const REDEEM_KES_PER_POINT = 2
+  const maxRewardPoints = Math.min(rewardBalance, Math.floor(Math.max(0, totalPrice) / REDEEM_KES_PER_POINT))
+  const rewardPoints =
+    user && useRewards && paymentMethod === 'full' && !moving
+      ? Math.max(0, Math.min(maxRewardPoints, Math.floor(rewardPointsInput) || 0))
+      : 0
+  const rewardKes = rewardPoints * REDEEM_KES_PER_POINT
+  const afterRewards = Math.max(0, totalPrice - rewardKes)
   const plansAllowed = Number(event?.installments_allowed ?? 0) > 0 && !moving
   const creditApplied = moving
     ? Math.min(ticketValue + (pendingMove?.amountPaid ?? 0), totalPrice)
     : user && paymentMethod === 'full' && useCredit
-      ? Math.min(ticketValue, totalPrice)
+      ? Math.min(ticketValue, afterRewards)
       : 0
-  const mpesaDue = Math.max(0, totalPrice - creditApplied)
+  const mpesaDue = Math.max(0, afterRewards - creditApplied)
 
   const refreshWallet = useCallback(() => {
     if (!user) return
@@ -146,6 +157,13 @@ export default function EventCheckout() {
         if (w.ticketValue > 0) setDepositSource('credit')
       })
       .catch(() => setTicketValue(0))
+    import('../api/points')
+      .then(({ getMyPoints }) => getMyPoints())
+      .then((p) => {
+        setRewardBalance(p.rewards.balance)
+        if (p.rewards.balance > 0) setUseRewards(true)
+      })
+      .catch(() => setRewardBalance(0))
   }, [user])
 
   useEffect(() => {
@@ -308,7 +326,12 @@ export default function EventCheckout() {
   }
 
   const payInFull = async (booking: PendingBooking, contact: { phone: string; email: string }) => {
-    const result = await payWithCredit({ purchaseBatchIds: [booking.batchId], useCredit, phone: contact.phone })
+    const result = await payWithCredit({
+      purchaseBatchIds: [booking.batchId],
+      useCredit,
+      phone: contact.phone,
+      ...(rewardPoints > 0 ? { rewardPoints } : {}),
+    })
     setPendingBooking(null)
     if (result.status === 'paid') {
       const params = new URLSearchParams(contact)
@@ -687,6 +710,33 @@ export default function EventCheckout() {
                 ))}
               </div>
 
+              {paymentMethod === 'full' && rewardBalance > 0 && !moving && (
+                <div className="mt-3 space-y-2">
+                  <label className="flex items-start gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={useRewards}
+                      onChange={(e) => {
+                        setUseRewards(e.target.checked)
+                        if (e.target.checked && rewardPointsInput <= 0) setRewardPointsInput(maxRewardPoints)
+                      }}
+                    />
+                    <span>Use reward points ({rewardBalance} pts · {REDEEM_KES_PER_POINT} KSh each)</span>
+                  </label>
+                  {useRewards && (
+                    <input
+                      type="number"
+                      min={0}
+                      max={maxRewardPoints}
+                      value={rewardPoints}
+                      onChange={(e) => setRewardPointsInput(Number(e.target.value))}
+                      className={`w-full px-3 py-1.5 text-sm ${inputField}`}
+                    />
+                  )}
+                </div>
+              )}
+
               {paymentMethod === 'full' && ticketValue > 0 && (
                 <label className="flex items-start gap-2 text-sm mt-3">
                   <input type="checkbox" className="mt-1" checked={useCredit} onChange={(e) => setUseCredit(e.target.checked)} />
@@ -821,9 +871,14 @@ export default function EventCheckout() {
           <p className="font-bebas text-3xl text-accent light:text-accent-light">
             {totalPrice === 0 ? 'FREE' : `KES ${totalPrice.toLocaleString()}`}
           </p>
-          {creditApplied > 0 && method === 'full' && (moving || useCredit) && (
+          {method === 'full' && (rewardKes > 0 || creditApplied > 0) && (
             <div className="text-xs mt-2 space-y-1">
-              <p className="flex justify-between"><span>Ticket value</span><span>−{formatKes(creditApplied)}</span></p>
+              {rewardKes > 0 && (
+                <p className="flex justify-between"><span>Reward points</span><span>−{formatKes(rewardKes)}</span></p>
+              )}
+              {creditApplied > 0 && (moving || useCredit) && (
+                <p className="flex justify-between"><span>Ticket value</span><span>−{formatKes(creditApplied)}</span></p>
+              )}
               <p className="flex justify-between font-semibold"><span>M-Pesa</span><span>{formatKes(mpesaDue)}</span></p>
             </div>
           )}

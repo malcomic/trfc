@@ -19,14 +19,20 @@ import { hashIp, setMarketing } from '../utils/consents.js'
 const MEMBER_LIST_LIMIT = 30
 const ADMIN_LIST_LIMIT = 50
 
-/** Announcements this user can see: targeted at them, sent after they joined, and not archived. */
+/** Announcements this user can see: broadcast or personally targeted, after they joined, not archived. */
 const VISIBLE_TO_USER = `
   a.archived_at IS NULL
   AND a.published_at >= u.created_at
   AND (
-    a.audience = 'all'
-    OR (a.audience = 'members' AND ${audienceSql('members')})
-    OR (a.audience = 'free' AND ${audienceSql('free')})
+    (a.target_user_id IS NOT NULL AND a.target_user_id = $1)
+    OR (
+      a.target_user_id IS NULL
+      AND (
+        a.audience = 'all'
+        OR (a.audience = 'members' AND ${audienceSql('members')})
+        OR (a.audience = 'free' AND ${audienceSql('free')})
+      )
+    )
   )`
 
 export async function createAnnouncement(req: Request, res: Response) {

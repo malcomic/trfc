@@ -27,6 +27,7 @@ import { useAuth } from '../../context/AuthContext'
 import {
   exportMyTeam,
   getMyCaptainProfile,
+  getMyCaptainScorecard,
   getMyCommissions,
   getMyLinkStats,
   getMyPayouts,
@@ -42,6 +43,7 @@ import {
   type CaptainProfile,
   type CaptainReferral,
   type CaptainReferralQr,
+  type CaptainScorecard,
   type CaptainTeamExportRow,
   type CaptainTeamMember,
   type CaptainZoneOverview,
@@ -123,6 +125,7 @@ function CaptainContent() {
   const [scanEventId, setScanEventId] = useState<string | null>(null)
   const [tabLoading, setTabLoading] = useState(false)
   const [overview, setOverview] = useState<CaptainZoneOverview | null>(null)
+  const [scorecard, setScorecard] = useState<CaptainScorecard | null>(null)
   const [linkStats, setLinkStats] = useState<CaptainLinkStats | null>(null)
   const [teamSearch, setTeamSearch] = useState('')
   const [teamQuery, setTeamQuery] = useState('')
@@ -141,6 +144,9 @@ function CaptainContent() {
         getMyZoneOverview()
           .then(setOverview)
           .catch(() => setOverview(null))
+        getMyCaptainScorecard()
+          .then(setScorecard)
+          .catch(() => setScorecard(null))
         getMyLinkStats(30)
           .then(setLinkStats)
           .catch(() => setLinkStats(null))
@@ -297,6 +303,31 @@ function CaptainContent() {
         {profile && (
           <>
             {overview && <ZoneOverviewCard overview={overview} zoneName={profile.zone.name} />}
+            {scorecard && (
+              <div className={`${cardSurface} p-4 text-sm space-y-2`}>
+                <h3 className="font-semibold">Captain scorecard</h3>
+                {scorecard.scores[0] ? (
+                  <p>
+                    Latest ({scorecard.scores[0].month}): total{' '}
+                    <strong>{Number(scorecard.scores[0].total).toFixed(1)}</strong>
+                    {' · '}attendance {Number(scorecard.scores[0].attendance_growth).toFixed(0)}
+                    {' · '}new members {Number(scorecard.scores[0].new_members).toFixed(0)}
+                    {' · '}feedback {Number(scorecard.scores[0].feedback).toFixed(0)}
+                    {' · '}clean {Number(scorecard.scores[0].clean_scans).toFixed(0)}
+                  </p>
+                ) : (
+                  <p className="text-fog light:text-fog-light">Scores appear after each month closes.</p>
+                )}
+                {scorecard.cotyAverage != null && (
+                  <p>Your Jan–Jul average: <strong>{scorecard.cotyAverage}</strong></p>
+                )}
+                {scorecard.captainOfTheYear && (
+                  <p className="text-fog light:text-fog-light">
+                    CotY preview: {scorecard.captainOfTheYear.zoneName} ({scorecard.captainOfTheYear.avg})
+                  </p>
+                )}
+              </div>
+            )}
 
             <CaptainPhotoCard
               name={profile.name.trim().split(/\s+/)[0] || 'Captain'}

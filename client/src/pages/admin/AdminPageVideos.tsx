@@ -87,6 +87,17 @@ const GROUPS: { heading: string; slots: SlotConfig[] }[] = [
       },
     ],
   },
+  {
+    heading: 'Become a Member',
+    slots: [
+      {
+        slot: 'join_hero',
+        title: 'Membership VSL',
+        description: 'Top of the /join membership page. Starts on its own, muted, with a "Tap to hear" button.',
+        withCover: false,
+      },
+    ],
+  },
 ]
 
 const inputClass =

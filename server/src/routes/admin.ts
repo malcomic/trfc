@@ -42,6 +42,7 @@ import * as programs from '../controllers/adminProgramsController.js'
 import * as hiring from '../controllers/adminHiringController.js'
 import * as adminCoaches from '../controllers/adminCoachesController.js'
 import * as membership from '../controllers/adminMembershipController.js'
+import * as points from '../controllers/adminPointsController.js'
 import * as guides from '../controllers/adminGuidesController.js'
 import * as liveQa from '../controllers/adminLiveQaController.js'
 import * as polls from '../controllers/adminPollsController.js'
@@ -236,5 +237,26 @@ router.put('/membership/polls/:id', polls.updatePoll)
 router.post('/membership/polls/:id/close', polls.closePoll)
 router.delete('/membership/polls/:id', polls.deletePoll)
 router.post('/membership/:id/cancel', membership.cancel)
+
+router.get('/points/settings', points.getSettings)
+router.put('/points/settings', points.putSettings)
+router.post('/points/adjustments', points.postAdjustment)
+router.post('/points/reward-adjustments', points.postRewardAdjustment)
+router.get('/points/flags', points.listFlags)
+router.post('/points/flags/:id/resolve', points.resolveFlag)
+router.get('/points/missing-scans', points.listMissingScans)
+router.post('/points/missing-scans/:id/decide', points.decideMissingScan)
+router.get('/points/in-the-race', points.listInTheRace)
+router.get('/points/awards-preview', points.getAwardsPreview)
+router.post('/points/freeze', points.postFreeze)
+router.post('/points/lock-zones', points.postLockZones)
+router.post('/points/open-season-2', points.postOpenSeason2)
+router.post('/points/zone-change', points.postZoneChange)
+router.post('/points/disqualify', points.postDisqualify)
+router.get('/points/disputes', points.listDisputes)
+router.post('/points/disputes/:id/decide', points.decideDispute)
+router.get('/points/award-entries', points.listAwardEntries)
+router.post('/points/awards/winner', points.postAwardWinner)
+router.get('/points/captain-scores', points.listCaptainScores)
 
 export default router

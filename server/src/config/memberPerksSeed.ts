@@ -13,7 +13,7 @@ export interface MemberPerkSeed {
 
 /** Member-only benefits from the membership brief, in the order they are listed there. */
 export const MEMBER_PERKS: MemberPerkSeed[] = [
-  { key: 'points', title: 'Points and season awards', description: 'Earn points for showing up and win awards at the end of the season. The earning rules are coming soon.', status: 'on', icon: 'Star' },
+  { key: 'points', title: 'Points and season awards', description: 'Earn season points for Saturday finishes and streaks. Reward points from spending stay separate. See My Points for ranks and awards.', status: 'on', icon: 'Star', linkUrl: '/dashboard/points', buttonLabel: 'Open My Points' },
   { key: 'badge', title: 'Member badge', description: 'Your member badge shows on your dashboard and your member pass.', status: 'on', icon: 'BadgeCheck' },
   { key: 'program_discount', title: '15% off one paid program a year', description: 'Use your member price on one paid program each membership year.', status: 'on', icon: 'Percent', settings: { percent: 15 } },
   { key: 'clothes_discount', title: 'KSh 300 off one shop order a year', description: 'Take KSh 300 off one shop order each membership year on marked items.', status: 'on', icon: 'Shirt', settings: { amount: 300 } },

@@ -26,8 +26,11 @@ function defaultPathForRole(role?: string) {
 
 export default function RegisterLoginPanel({
   defaultEmail = '',
+  redirectTo: redirectOverride,
 }: {
   defaultEmail?: string
+  /** When set, wins over `?redirect=` (e.g. membership funnel stays on `/join`). */
+  redirectTo?: string
 }) {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -44,17 +47,18 @@ export default function RegisterLoginPanel({
   const [errorMessage, setErrorMessage] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
+  const redirectParam = redirectOverride ?? searchParams.get('redirect')
+
   const getRedirectPath = (role?: string) => {
     const fallback = defaultPathForRole(role)
-    const target = safeRedirect(searchParams.get('redirect'), fallback)
+    const target = safeRedirect(redirectParam, fallback)
     if (role === 'scanner' && !target.startsWith('/admin/scan')) return '/admin/scan'
     return target
   }
 
-  const redirectParam = searchParams.get('redirect')
   const { handleCredential, handleGoogleError, googleLoading, googleError } = useGoogleSignIn({
     redirectFor: getRedirectPath,
-    completeSearch: redirectParam ? `?redirect=${encodeURIComponent(redirectParam)}` : '',
+    completeSearch: redirectParam ? `?redirect=${encodeURIComponent(safeRedirect(redirectParam, '/dashboard'))}` : '',
     onLinkRequired: (email) => {
       if (email) setValue('email', email)
     },

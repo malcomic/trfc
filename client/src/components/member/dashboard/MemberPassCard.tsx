@@ -50,23 +50,28 @@ export default function MemberPassCard({
 
   useEffect(() => {
     let cancelled = false
-    getMyPass()
-      .then((data) => {
-        if (cancelled) return
-        setPass(data)
-        writeCache(userId, data)
-        setFromCache(false)
-      })
-      .catch(() => {
-        if (cancelled) return
-        if (readCache(userId)) setFromCache(true)
-        else setError(copy.failed)
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
+    const load = () =>
+      getMyPass()
+        .then((data) => {
+          if (cancelled) return
+          setPass(data)
+          writeCache(userId, data)
+          setFromCache(false)
+        })
+        .catch(() => {
+          if (cancelled) return
+          if (readCache(userId)) setFromCache(true)
+          else setError(copy.failed)
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false)
+        })
+    void load()
+    // Refresh the rotating QR before the 30s window expires.
+    const timer = window.setInterval(() => void load(), 25_000)
     return () => {
       cancelled = true
+      window.clearInterval(timer)
     }
   }, [userId])
 
@@ -114,6 +119,22 @@ export default function MemberPassCard({
         </div>
       ) : pass ? (
         <>
+          <div className="flex flex-col items-center mb-3">
+            {pass.avatarUrl ? (
+              <img
+                src={pass.avatarUrl}
+                alt=""
+                className="w-16 h-16 rounded-full object-cover border-2 border-cta/40"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-cta/20 text-cta font-bebas text-2xl flex items-center justify-center">
+                {(pass.name || '?').trim().charAt(0).toUpperCase()}
+              </div>
+            )}
+            {pass.name && (
+              <p className="mt-2 font-semibold text-chalk light:text-chalk-light">{pass.name}</p>
+            )}
+          </div>
           <button
             type="button"
             onClick={() => setFullScreen(true)}
@@ -125,6 +146,11 @@ export default function MemberPassCard({
           <p className="text-center mt-3 font-mono text-lg tracking-widest text-chalk light:text-chalk-light">
             {displayCode(pass.code)}
           </p>
+          {pass.expiresInSeconds != null && (
+            <p className={`${dashMuted} text-center mt-1 text-xs`}>
+              QR refreshes in {pass.expiresInSeconds}s (typed code stays valid)
+            </p>
+          )}
           {fromCache && <p className={`${dashMuted} text-center mt-1`}>{copy.offline}</p>}
 
           <div className="flex flex-wrap items-center justify-center gap-4 mt-4">
@@ -174,6 +200,14 @@ export default function MemberPassCard({
           aria-modal="true"
           onClick={() => setFullScreen(false)}
         >
+          {pass.avatarUrl ? (
+            <img src={pass.avatarUrl} alt="" className="w-20 h-20 rounded-full object-cover mb-4" />
+          ) : (
+            <div className="w-20 h-20 rounded-full bg-gray-200 text-gray-700 font-bebas text-3xl flex items-center justify-center mb-4">
+              {(pass.name || '?').trim().charAt(0).toUpperCase()}
+            </div>
+          )}
+          {pass.name && <p className="mb-2 text-lg font-semibold text-gray-900">{pass.name}</p>}
           <button
             type="button"
             onClick={() => setFullScreen(false)}

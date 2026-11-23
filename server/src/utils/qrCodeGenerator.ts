@@ -158,6 +158,7 @@ export type ParsedScanPayload =
   | { kind: 'ticket'; ticketId: string; eventId?: string }
   | { kind: 'medal'; purchaseId: string }
   | { kind: 'member'; code: string }
+  | { kind: 'memberpass'; userId: string; token: string }
   | { kind: 'order'; orderId: string; sig?: string }
 
 const UUID_RE =
@@ -192,6 +193,15 @@ export function parseScanPayload(raw: string): ParsedScanPayload | null {
   if (receiptMatch) {
     const sigMatch = trimmed.match(/[?&]t=([0-9a-f]+)/i)
     return { kind: 'order', orderId: receiptMatch[1], sig: sigMatch ? sigMatch[1] : undefined }
+  }
+
+  if (trimmed.toLowerCase().startsWith('memberpass:')) {
+    const parts = trimmed.split(':')
+    if (parts.length !== 3) return null
+    const userId = parts[1]
+    const token = parts[2].toLowerCase()
+    if (!UUID_RE.test(userId) || !/^[0-9a-f]{12}$/.test(token)) return null
+    return { kind: 'memberpass', userId, token }
   }
 
   if (trimmed.toLowerCase().startsWith('member:')) {

@@ -84,6 +84,7 @@ export const adminNavEntries: AdminNavEntry[] = [
     icon: UsersRound,
     children: [
       { path: '/admin/membership', label: 'Membership', icon: Crown },
+      { path: '/admin/points', label: 'Points', icon: Award },
       { path: '/admin/programs', label: 'Programs', icon: Dumbbell },
       { path: '/admin/signups', label: 'Signups', icon: UserPlus },
       { path: '/admin/reach-out', label: 'Reach Out', icon: HeartHandshake },
