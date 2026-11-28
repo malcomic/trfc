@@ -6,12 +6,11 @@ import { Eyebrow } from '../programs/SectionHeading'
 import VideoBlock from '../media/VideoBlock'
 
 interface FindHeroProps {
-  onFind: () => void
   video?: PageVideo
   loading?: boolean
 }
 
-export default function FindHero({ onFind, video, loading }: FindHeroProps) {
+export default function FindHero({ video, loading }: FindHeroProps) {
   const copy = FIND_COPY.hero
   return (
     <section className="bg-ink light:bg-ink-light px-4 md:px-6 pt-10 md:pt-12 pb-14 md:pb-20">
@@ -22,7 +21,7 @@ export default function FindHero({ onFind, video, loading }: FindHeroProps) {
         </h1>
         <p className="m-0 text-[19px] md:text-[21px] max-w-[640px] text-chalk/85 light:text-chalk-light/80">{copy.subline}</p>
         <VideoBlock video={video} loading={loading} placeholder={copy.video} hearLabel={copy.hear} />
-        <CtaButton onClick={onFind} className="max-sm:w-full">
+        <CtaButton to="/find-my-program/start" className="max-sm:w-full">
           {copy.button} <ArrowRight size={20} aria-hidden="true" />
         </CtaButton>
         <div className="text-base text-fog light:text-fog-light">{copy.trust}</div>

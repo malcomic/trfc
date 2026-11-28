@@ -1,9 +1,11 @@
 import { query } from '../config/db.js'
 import { ELITE_DAYS, PROGRAM_NAMES, isProgramId } from '../config/onboarding.js'
+import { sanitizeQuizAnswers } from './sanitizeFinderAnswers.js'
 import { sendSignupWelcome } from './whatsapp.js'
 
 /**
- * Marks a pending signup as paid and grants the purchased tier to its user.
+ * Marks a pending signup as paid, grants the purchased tier, and enrolls the user
+ * in the signup program with any stored finder answers.
  * Returns the number of signups updated (0 if it was already processed).
  */
 export async function activateSignup(
@@ -17,13 +19,28 @@ export async function activateSignup(
          mpesa_receipt = COALESCE($2, mpesa_receipt),
          checkout_request_id = COALESCE($3, checkout_request_id)
      WHERE id = $1 AND payment_status = 'pending'
-     RETURNING user_id, tier`,
+     RETURNING user_id, tier, program, amount, quiz_answers`,
     [signupId, mpesaReceipt, checkoutRequestId]
   )
   if (result.rows.length === 0) return 0
 
-  const { user_id: userId, tier } = result.rows[0]
-  if (userId) await grantTier(userId, tier)
+  const { user_id: userId, tier, program, amount, quiz_answers: quizAnswers } = result.rows[0]
+  if (userId) {
+    await grantTier(userId, tier)
+    if (typeof program === 'string' && program) {
+      const answers = sanitizeQuizAnswers(quizAnswers)
+      await query(
+        `INSERT INTO program_enrollments (user_id, program, amount, quiz_answers, status)
+         VALUES ($1, $2, $3, $4, 'active')
+         ON CONFLICT (user_id, program)
+         DO UPDATE SET
+           status = 'active',
+           amount = EXCLUDED.amount,
+           quiz_answers = COALESCE(EXCLUDED.quiz_answers, program_enrollments.quiz_answers)`,
+        [userId, program, Number(amount) || 0, answers ? JSON.stringify(answers) : null]
+      )
+    }
+  }
   return result.rowCount || 0
 }
 

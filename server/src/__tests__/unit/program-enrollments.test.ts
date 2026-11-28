@@ -118,6 +118,19 @@ describe('sanitizeQuizAnswers', () => {
   it('drops overly long values', () => {
     expect(sanitizeQuizAnswers({ goal: 'x'.repeat(50), days: 'most' })).toEqual({ days: 'most' })
   })
+
+  it('keeps a versioned finder payload and strips medical answers', () => {
+    expect(
+      sanitizeQuizAnswers({
+        version: 2,
+        answers: { goal: 'lose_fat', h5: 'yes', name: 'Amina' },
+        heartLung: 'yes',
+      })
+    ).toEqual({
+      version: 2,
+      answers: { goal: 'lose_fat', name: 'Amina' },
+    })
+  })
 })
 
 describe('getMyPrograms', () => {

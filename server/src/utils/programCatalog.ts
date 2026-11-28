@@ -21,6 +21,7 @@ export interface CatalogEntry {
   weekCount: number;
   page: ProgramContent['page'];
   card: ProgramContent['card'];
+  quiz?: ProgramContent['quiz'];
 }
 
 const CACHE_MS = process.env.NODE_ENV === 'test' ? 0 : 60_000;
@@ -82,6 +83,7 @@ export function toCatalogEntry(row: ProgramRow, content: ProgramContent): Catalo
     weekCount: content.weeks?.length ?? 0,
     page: content.page,
     card: content.card,
+    ...(content.quiz ? { quiz: content.quiz } : {}),
   };
 }
 

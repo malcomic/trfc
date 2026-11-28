@@ -10,12 +10,18 @@ vi.mock('../../utils/whatsapp.js', () => ({
   isWhatsAppConfigured: vi.fn().mockReturnValue(true),
 }))
 
+vi.mock('../../utils/programCatalog.js', () => ({
+  findProgram: vi.fn(),
+  getPublishedContent: vi.fn(),
+}))
+
 import { query } from '../../config/db.js'
 import { toKenyanMsisdn, phonesMatch } from '../../utils/phone.js'
 import { priceFor, resolveProgram, PRICES } from '../../config/onboarding.js'
 import { createSignup } from '../../controllers/signupsController.js'
 import { validatePaymentReference } from '../../utils/paymentValidation.js'
 import { activateSignup, activateSignupsByCheckoutId } from '../../utils/signupActivation.js'
+import { findProgram, getPublishedContent } from '../../utils/programCatalog.js'
 
 const mockQuery = vi.mocked(query)
 
@@ -74,6 +80,8 @@ describe('onboarding pricing rules', () => {
 describe('createSignup', () => {
   beforeEach(() => {
     mockQuery.mockReset()
+    vi.mocked(findProgram).mockReset()
+    vi.mocked(getPublishedContent).mockReset()
   })
 
   it('rejects an invalid phone number', async () => {
@@ -87,6 +95,15 @@ describe('createSignup', () => {
   })
 
   it('forces Foundations when Free is chosen for a paid program and creates a new user', async () => {
+    vi.mocked(findProgram).mockResolvedValue({
+      id: 'hiking',
+      slug: 'hiking',
+      name: 'Hiking',
+      status: 'published',
+      is_core: true,
+      sort_order: 4,
+    } as any)
+    vi.mocked(getPublishedContent).mockResolvedValue({ page: { price: 997 } } as any)
     mockQuery
       .mockResolvedValueOnce({ rows: [] } as any) // user lookup
       .mockResolvedValueOnce({ rows: [{ id: 'user-1' }] } as any) // user insert
@@ -120,7 +137,16 @@ describe('createSignup', () => {
     expect(String(mockQuery.mock.calls[1][0])).toContain("'onboarding'")
   })
 
-  it('charges the returning-member price when the phone exists in users', async () => {
+  it('charges the catalog price when the phone exists in users', async () => {
+    vi.mocked(findProgram).mockResolvedValue({
+      id: 'fat_loss',
+      slug: 'fat-loss',
+      name: 'Fat Loss',
+      status: 'published',
+      is_core: true,
+      sort_order: 2,
+    } as any)
+    vi.mocked(getPublishedContent).mockResolvedValue({ page: { price: 3497 } } as any)
     mockQuery
       .mockResolvedValueOnce({ rows: [{ id: 'user-9', whatsapp: '254700000000' }] } as any)
       .mockResolvedValueOnce({ rows: [{ id: 'signup-2' }] } as any)
@@ -132,12 +158,21 @@ describe('createSignup', () => {
     )
 
     expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ amount: 197, isReturning: true, program: 'fat_loss', tier: 'plus' })
+      expect.objectContaining({ amount: 3497, isReturning: true, program: 'fat_loss', tier: 'plus' })
     )
     expect(sqlCalls().some((sql) => sql.includes('INSERT INTO users'))).toBe(false)
   })
 
-  it('charges the new-member price for an unknown phone', async () => {
+  it('charges the catalog price for an unknown phone', async () => {
+    vi.mocked(findProgram).mockResolvedValue({
+      id: 'endurance',
+      slug: 'endurance',
+      name: 'Endurance',
+      status: 'published',
+      is_core: true,
+      sort_order: 3,
+    } as any)
+    vi.mocked(getPublishedContent).mockResolvedValue({ page: { price: 1697 } } as any)
     mockQuery
       .mockResolvedValueOnce({ rows: [] } as any)
       .mockResolvedValueOnce({ rows: [{ id: 'user-2' }] } as any)
@@ -149,7 +184,7 @@ describe('createSignup', () => {
       res
     )
 
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ amount: 497, isReturning: false }))
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ amount: 1697, isReturning: false }))
   })
 })
 
@@ -218,7 +253,11 @@ describe('signup activation', () => {
 
   it('grants TRFC+ without downgrading an existing Elite member', async () => {
     mockQuery
-      .mockResolvedValueOnce({ rows: [{ user_id: 'user-1', tier: 'plus' }], rowCount: 1 } as any)
+      .mockResolvedValueOnce({
+        rows: [{ user_id: 'user-1', tier: 'plus', program: 'fat_loss', amount: 497, quiz_answers: null }],
+        rowCount: 1,
+      } as any)
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 } as any)
       .mockResolvedValueOnce({ rows: [], rowCount: 1 } as any)
 
     const count = await activateSignup('signup-1', 'chk-1', 'RCPT1')
@@ -227,11 +266,16 @@ describe('signup activation', () => {
     const userUpdate = String(mockQuery.mock.calls[1][0])
     expect(userUpdate).toContain("WHEN access_tier = 'elite' THEN 'elite' ELSE 'plus'")
     expect(userUpdate).toContain('plus_purchased_at')
+    expect(String(mockQuery.mock.calls[2][0])).toContain('program_enrollments')
   })
 
   it('extends an Elite pass from the later of now and the current expiry', async () => {
     mockQuery
-      .mockResolvedValueOnce({ rows: [{ user_id: 'user-1', tier: 'elite' }], rowCount: 1 } as any)
+      .mockResolvedValueOnce({
+        rows: [{ user_id: 'user-1', tier: 'elite', program: 'fat_loss', amount: 2000, quiz_answers: null }],
+        rowCount: 1,
+      } as any)
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 } as any)
       .mockResolvedValueOnce({ rows: [], rowCount: 1 } as any)
 
     await activateSignup('signup-1', 'chk-1', 'RCPT1')

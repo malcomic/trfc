@@ -2,13 +2,17 @@ import { Request, Response } from 'express'
 import { query } from '../config/db.js'
 import { toKenyanMsisdn } from '../utils/phone.js'
 import {
-  isProgramId,
+  FREE_PROGRAM_ID,
   isTier,
   priceFor,
   resolveProgram,
+  type ProgramId,
 } from '../config/onboarding.js'
+import { findProgram, getPublishedContent, listPublishedCatalog } from '../utils/programCatalog.js'
+import { isPlausibleFinderProgram } from '../utils/matchFinder.js'
 import { notifySignupWelcome } from '../utils/signupActivation.js'
 import { applyReferral } from '../utils/referrals.js'
+import { sanitizeQuizAnswers } from '../utils/sanitizeFinderAnswers.js'
 
 async function findOrCreateUser(name: string, phone: string, whatsapp: string) {
   const existing = await query(
@@ -50,17 +54,44 @@ export async function createSignup(req: Request, res: Response) {
       return res.status(400).json({ error: 'Enter a valid WhatsApp number' })
     }
 
-    if (!isProgramId(program) || !isTier(tier)) {
-      return res.status(400).json({ error: 'Invalid program or access tier' })
+    if (!isTier(tier)) {
+      return res.status(400).json({ error: 'Invalid access tier' })
     }
 
-    const finalProgram = resolveProgram(program, tier)
+    const row = await findProgram(program)
+    const content = row ? await getPublishedContent(row.id) : null
+    if (!row || row.status !== 'published' || !content) {
+      return res.status(400).json({ error: 'Invalid program' })
+    }
+
+    const catalogPrice = Number(content.page?.price ?? 0)
+    let finalProgram =
+      tier === 'free' && catalogPrice > 0
+        ? FREE_PROGRAM_ID
+        : ['foundations', 'fat_loss', 'endurance', 'hiking'].includes(row.id)
+          ? resolveProgram(row.id as ProgramId, tier)
+          : row.id
+
+    const sanitizedQuiz = sanitizeQuizAnswers(quizAnswers)
+    if (
+      sanitizedQuiz?.version === 2 &&
+      sanitizedQuiz.answers &&
+      typeof sanitizedQuiz.answers === 'object' &&
+      tier !== 'free' &&
+      finalProgram !== FREE_PROGRAM_ID
+    ) {
+      const catalog = await listPublishedCatalog()
+      if (!isPlausibleFinderProgram(finalProgram, sanitizedQuiz.answers as Record<string, unknown>, catalog)) {
+        return res.status(400).json({ error: 'That program does not match your answers' })
+      }
+    }
+
     const { userId, isReturning } = await findOrCreateUser(trimmedName, msisdn, whatsappMsisdn)
     if (referralCode) {
       await applyReferral(userId, referralCode)
     }
-    const amount = priceFor(tier, isReturning)
-    const paymentStatus = tier === 'free' ? 'n/a' : 'pending'
+    const amount = tier === 'free' ? 0 : catalogPrice > 0 ? catalogPrice : priceFor(tier, isReturning)
+    const paymentStatus = tier === 'free' || amount === 0 ? 'n/a' : 'pending'
 
     const inserted = await query(
       `INSERT INTO signups (user_id, program, tier, is_returning, amount, payment_status, quiz_answers)
@@ -73,7 +104,7 @@ export async function createSignup(req: Request, res: Response) {
         isReturning,
         amount,
         paymentStatus,
-        quizAnswers && typeof quizAnswers === 'object' ? JSON.stringify(quizAnswers) : null,
+        sanitizedQuiz ? JSON.stringify(sanitizedQuiz) : null,
       ]
     )
     const signupId = inserted.rows[0].id as string

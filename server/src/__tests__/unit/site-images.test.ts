@@ -33,7 +33,36 @@ describe('isSiteImageSlot', () => {
     expect(isSiteImageSlot('coach')).toBe(true)
     expect(isSiteImageSlot('program_hiking')).toBe(true)
     expect(isSiteImageSlot('find_results_cover')).toBe(true)
+    expect(isSiteImageSlot('finder_body_women_1')).toBe(true)
+    expect(isSiteImageSlot('finder_body_men_5')).toBe(true)
+    expect(isSiteImageSlot('find_client_1')).toBe(true)
+    expect(isSiteImageSlot('find_client_3')).toBe(true)
     expect(isSiteImageSlot('home_hero')).toBe(false)
     expect(isSiteImageSlot(undefined)).toBe(false)
+  })
+})
+
+describe('parseSiteImageInput client stories', () => {
+  it('requires category, quote, name and result for find_client slots', () => {
+    expect(parseSiteImageInput({ image_url: IMAGE_URL }, 'find_client_1')).toMatch(/Category/)
+    expect(
+      parseSiteImageInput(
+        {
+          image_url: IMAGE_URL,
+          category: 'Fat loss',
+          quote: 'I finally stuck with a plan.',
+          client_name: 'Amina',
+          result: 'Lost 8 kg in 12 weeks',
+        },
+        'find_client_1'
+      )
+    ).toEqual({
+      imageUrl: IMAGE_URL,
+      altText: 'Amina, Lost 8 kg in 12 weeks',
+      category: 'Fat loss',
+      quote: 'I finally stuck with a plan.',
+      clientName: 'Amina',
+      result: 'Lost 8 kg in 12 weeks',
+    })
   })
 })

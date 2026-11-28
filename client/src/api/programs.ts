@@ -1,4 +1,5 @@
 import api from './index';
+import type { FinderAnswers } from '../content/finder/types';
 import type { ProgramId } from '../content/programs';
 import type { DaysAnswer, ExperienceAnswer, GoalAnswer } from '../content/quiz';
 
@@ -15,9 +16,13 @@ export interface EnrollQuizAnswers {
   days: DaysAnswer;
 }
 
+export type EnrollQuizPayload =
+  | EnrollQuizAnswers
+  | { version: number; answers: FinderAnswers | Record<string, unknown>; derived?: unknown }
+
 export const enrollProgram = async (
   program: ProgramId,
-  quizAnswers?: EnrollQuizAnswers | null
+  quizAnswers?: EnrollQuizPayload | null
 ): Promise<ProgramEnrollment> => {
   const response = await api.post('/programs/enroll', { program, quizAnswers: quizAnswers ?? undefined });
   return response.data;

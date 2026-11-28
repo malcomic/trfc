@@ -99,6 +99,13 @@ export const CORE_PROGRAMS: CatalogSeedProgram[] = [
       },
       plan: COUCH_TO_5K_PLAN,
       weeks: COUCH_TO_5K_WEEKS,
+      quiz: {
+        goals: ['start_running'],
+        sex: 'any',
+        levels: ['beginner'],
+        raceDistances: ['10k'],
+        priority: 10,
+      },
     },
   },
   {
@@ -177,6 +184,13 @@ export const CORE_PROGRAMS: CatalogSeedProgram[] = [
       },
       plan: defaultPlan(12),
       weeks: placeholderWeeks(12),
+      quiz: {
+        goals: ['lose_fat', 'build_muscle', 'get_stronger'],
+        sex: 'any',
+        levels: ['beginner', 'intermediate', 'advanced'],
+        trainWhere: ['home', 'gym', 'outside', 'mix'],
+        priority: 20,
+      },
     },
   },
   {
@@ -256,6 +270,13 @@ export const CORE_PROGRAMS: CatalogSeedProgram[] = [
       },
       plan: defaultPlan(10),
       weeks: placeholderWeeks(10),
+      quiz: {
+        goals: ['start_running', 'longer_race'],
+        sex: 'any',
+        levels: ['beginner', 'intermediate', 'advanced'],
+        raceDistances: ['10k', '15k', '21k', '42k'],
+        priority: 30,
+      },
     },
   },
   {
@@ -332,6 +353,12 @@ export const CORE_PROGRAMS: CatalogSeedProgram[] = [
       },
       plan: defaultPlan(6),
       weeks: placeholderWeeks(6),
+      quiz: {
+        goals: ['hike'],
+        sex: 'any',
+        hikeTargets: ['day_hikes', 'satima', 'kenya', 'unsure'],
+        priority: 20,
+      },
     },
   },
 ];

@@ -4,6 +4,7 @@ import type {
   ProgramContent,
   ProgramPageContent,
   ProgramPlanContent,
+  ProgramQuizMatching,
   ProgramWeekContent,
 } from '../../types/programContent'
 
@@ -72,12 +73,14 @@ export interface ProgramVersion {
   updated_by_name: string | null
 }
 
-export type DraftSection = 'page' | 'card' | 'plan'
+export type DraftSection = 'page' | 'card' | 'plan' | 'quiz'
 export type SectionValue<S extends DraftSection> = S extends 'page'
   ? ProgramPageContent
   : S extends 'card'
     ? ProgramCardContent
-    : ProgramPlanContent
+    : S extends 'quiz'
+      ? ProgramQuizMatching
+      : ProgramPlanContent
 
 /** expectedUpdatedAt is the draft time the editor last saw, so a stale tab cannot overwrite newer work. */
 type Guard = { expectedUpdatedAt: string | null }

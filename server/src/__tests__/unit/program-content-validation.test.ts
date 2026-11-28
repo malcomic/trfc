@@ -45,8 +45,16 @@ describe('cleanContent', () => {
   })
 
   it('keeps the reserved quiz slot', () => {
-    const result = cleanContent({ ...couch(), quiz: { goals: ['move'], experience: [] } })
-    expect(result.ok && result.value.quiz).toEqual({ goals: ['move'], experience: [] })
+    const result = cleanContent({
+      ...couch(),
+      quiz: { goals: ['lose_fat', 'start_running'], sex: 'any', priority: 5, eliteOffer: true },
+    })
+    expect(result.ok && result.value.quiz).toEqual({
+      goals: ['lose_fat', 'start_running'],
+      sex: 'any',
+      priority: 5,
+      eliteOffer: true,
+    })
   })
 })
 

@@ -4,6 +4,7 @@ import { ArrowLeft, ExternalLink, Loader, RefreshCw, Send, Undo2 } from 'lucide-
 import AdminConfirmDialog from '../../components/AdminConfirmDialog'
 import BrowseCardTab from '../../components/admin/programs/BrowseCardTab'
 import CheckinQuestionsTab from '../../components/admin/programs/CheckinQuestionsTab'
+import FinderMatchingTab from '../../components/admin/programs/FinderMatchingTab'
 import HistoryTab from '../../components/admin/programs/HistoryTab'
 import PublicPageTab from '../../components/admin/programs/PublicPageTab'
 import PublishDialog from '../../components/admin/programs/PublishDialog'
@@ -20,6 +21,7 @@ const TABS = [
   { id: 'checkin', label: 'Check-in questions' },
   { id: 'page', label: 'Public page' },
   { id: 'card', label: 'Browse card' },
+  { id: 'finder', label: 'Finder matching' },
   { id: 'settings', label: 'Settings' },
   { id: 'history', label: 'History' },
 ] as const
@@ -167,6 +169,7 @@ export default function AdminProgramEditor() {
         {tab === 'checkin' && <CheckinQuestionsTab {...tabProps} />}
         {tab === 'page' && <PublicPageTab {...tabProps} />}
         {tab === 'card' && <BrowseCardTab {...tabProps} />}
+        {tab === 'finder' && <FinderMatchingTab {...tabProps} />}
         {tab === 'settings' && <SettingsTab {...tabProps} onChanged={() => void reloadCatalog()} />}
         {tab === 'history' && <HistoryTab api={api} hasUnsaved={dirty} />}
       </div>
@@ -185,7 +188,6 @@ export default function AdminProgramEditor() {
           }}
         />
       )}
-
       <AdminConfirmDialog
         open={pendingAction !== null}
         title="Discard unsaved changes?"

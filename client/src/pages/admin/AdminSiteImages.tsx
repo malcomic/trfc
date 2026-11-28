@@ -3,12 +3,30 @@ import { AlertCircle, ImageIcon, Loader } from 'lucide-react'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import AdminConfirmDialog from '../../components/AdminConfirmDialog'
 import { uploadPageMedia } from '../../api/pageVideos'
-import { deleteSiteImage, getSiteImages, saveSiteImage, type SiteImage, type SiteImages, type SiteImageSlot } from '../../api/siteImages'
+import {
+  FIND_CLIENT_SLOTS,
+  FINDER_BODY_SLOTS,
+  deleteSiteImage,
+  getSiteImages,
+  saveSiteImage,
+  type SiteImage,
+  type SiteImages,
+  type SiteImageSlot,
+} from '../../api/siteImages'
 import { COACH_PHOTO, CORE_PROGRAMS } from '../../content/programs'
 import { FIND_COPY } from '../../content/quiz'
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 const MAX_ALT_LENGTH = 255
+
+const CLIENT_STORY_DEFAULTS: Record<
+  (typeof FIND_CLIENT_SLOTS)[number],
+  { title: string; category: string; resultHint: string }
+> = {
+  find_client_1: { title: 'Past client 1', category: 'Fat loss', resultHint: 'Lost 8 kg in 12 weeks' },
+  find_client_2: { title: 'Past client 2', category: 'Running', resultHint: 'First 5K in 8 weeks' },
+  find_client_3: { title: 'Past client 3', category: 'Hiking', resultHint: 'Reached the summit in 6 weeks' },
+}
 
 interface SlotConfig {
   slot: SiteImageSlot
@@ -17,6 +35,10 @@ interface SlotConfig {
   /** Shown on the site when no image is saved. Null means the site shows a text placeholder. */
   fallback: string | null
   defaultAlt: string
+  bodyFat?: boolean
+  clientStory?: boolean
+  defaultCategory?: string
+  resultHint?: string
 }
 
 interface SlotGroup {
@@ -57,7 +79,43 @@ const GROUPS: SlotGroup[] = [
         fallback: FIND_COPY.results.cover,
         defaultAlt: FIND_COPY.results.coverAlt,
       },
+      ...FIND_CLIENT_SLOTS.map((slot) => {
+        const defaults = CLIENT_STORY_DEFAULTS[slot]
+        return {
+          slot,
+          title: defaults.title,
+          description:
+            'Shown in “What past clients say” on Find My Program. Upload a photo and fill in category, quote, name and result.',
+          fallback: null,
+          defaultAlt: defaults.title,
+          clientStory: true,
+          defaultCategory: defaults.category,
+          resultHint: defaults.resultHint,
+        }
+      }),
     ],
+  },
+  {
+    heading: 'Program Finder body photos — women',
+    slots: FINDER_BODY_SLOTS.filter((slot) => slot.includes('_women_')).map((slot, index) => ({
+      slot,
+      title: `Women body type ${index + 1}`,
+      description: 'Shown in the Find my program body photo carousel for the women’s path.',
+      fallback: null,
+      defaultAlt: `Women body type ${index + 1}`,
+      bodyFat: true,
+    })),
+  },
+  {
+    heading: 'Program Finder body photos — men',
+    slots: FINDER_BODY_SLOTS.filter((slot) => slot.includes('_men_')).map((slot, index) => ({
+      slot,
+      title: `Men body type ${index + 1}`,
+      description: 'Shown in the Find my program body photo carousel for the men’s path.',
+      fallback: null,
+      defaultAlt: `Men body type ${index + 1}`,
+      bodyFat: true,
+    })),
   },
   {
     heading: 'Coach with us',
@@ -83,6 +141,12 @@ const secondaryButton =
 function SlotEditor({ config, initial, onChanged }: { config: SlotConfig; initial?: SiteImage; onChanged: () => void }) {
   const [imageUrl, setImageUrl] = useState(initial?.image_url ?? '')
   const [altText, setAltText] = useState(initial?.alt_text ?? '')
+  const [bfMin, setBfMin] = useState(initial?.bf_min != null ? String(initial.bf_min) : '')
+  const [bfMax, setBfMax] = useState(initial?.bf_max != null ? String(initial.bf_max) : '')
+  const [category, setCategory] = useState(initial?.category ?? config.defaultCategory ?? '')
+  const [quote, setQuote] = useState(initial?.quote ?? '')
+  const [clientName, setClientName] = useState(initial?.client_name ?? '')
+  const [result, setResult] = useState(initial?.result ?? '')
   const [progress, setProgress] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -90,7 +154,19 @@ function SlotEditor({ config, initial, onChanged }: { config: SlotConfig; initia
   const [confirmRemove, setConfirmRemove] = useState(false)
 
   const previewUrl = imageUrl || config.fallback
-  const unchanged = imageUrl === (initial?.image_url ?? '') && altText.trim() === (initial?.alt_text ?? '')
+  const unchanged =
+    imageUrl === (initial?.image_url ?? '') &&
+    altText.trim() === (initial?.alt_text ?? '') &&
+    bfMin === (initial?.bf_min != null ? String(initial.bf_min) : '') &&
+    bfMax === (initial?.bf_max != null ? String(initial.bf_max) : '') &&
+    category.trim() === (initial?.category ?? config.defaultCategory ?? '') &&
+    quote.trim() === (initial?.quote ?? '') &&
+    clientName.trim() === (initial?.client_name ?? '') &&
+    result.trim() === (initial?.result ?? '')
+
+  const clientStoryReady =
+    !config.clientStory ||
+    (category.trim() !== '' && quote.trim() !== '' && clientName.trim() !== '' && result.trim() !== '')
 
   const chooseImage = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -115,10 +191,31 @@ function SlotEditor({ config, initial, onChanged }: { config: SlotConfig; initia
   const save = async () => {
     setError('')
     setNotice('')
+    if (config.clientStory && !clientStoryReady) {
+      setError('Fill in category, quote, client name and result before saving.')
+      return
+    }
     setSaving(true)
     try {
-      await saveSiteImage(config.slot, { image_url: imageUrl, alt_text: altText.trim() || null })
-      setNotice('Saved. The site now shows this image.')
+      await saveSiteImage(config.slot, {
+        image_url: imageUrl,
+        alt_text: altText.trim() || null,
+        ...(config.bodyFat
+          ? {
+              bf_min: bfMin.trim() === '' ? null : Number(bfMin),
+              bf_max: bfMax.trim() === '' ? null : Number(bfMax),
+            }
+          : {}),
+        ...(config.clientStory
+          ? {
+              category: category.trim(),
+              quote: quote.trim(),
+              client_name: clientName.trim(),
+              result: result.trim(),
+            }
+          : {}),
+      })
+      setNotice(config.clientStory ? 'Saved. This client story is live on Find My Program.' : 'Saved. The site now shows this image.')
       onChanged()
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to save the image')
@@ -134,7 +231,19 @@ function SlotEditor({ config, initial, onChanged }: { config: SlotConfig; initia
       await deleteSiteImage(config.slot)
       setImageUrl('')
       setAltText('')
-      setNotice(config.fallback ? 'Removed. The site shows the default image again.' : 'Removed. The site shows the placeholder again.')
+      setBfMin('')
+      setBfMax('')
+      setCategory(config.defaultCategory ?? '')
+      setQuote('')
+      setClientName('')
+      setResult('')
+      setNotice(
+        config.fallback
+          ? 'Removed. The site shows the default image again.'
+          : config.clientStory
+            ? 'Removed. This card no longer shows on Find My Program.'
+            : 'Removed. The site shows the placeholder again.'
+      )
       onChanged()
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to remove the image')
@@ -196,8 +305,107 @@ function SlotEditor({ config, initial, onChanged }: { config: SlotConfig; initia
         />
         <p className="text-xs text-gray-500 dark:text-gray-400">
           A short description for screen readers and search engines. Leave empty to use "{config.defaultAlt}".
+          {config.bodyFat ? ' For finder photos, this label also shows under the carousel photo.' : ''}
         </p>
       </div>
+
+      {config.bodyFat && (
+        <div className="grid grid-cols-2 gap-3 max-w-sm">
+          <div className="space-y-1">
+            <label htmlFor={`bf-min-${config.slot}`} className="block text-sm font-semibold">
+              Body fat min %
+            </label>
+            <input
+              id={`bf-min-${config.slot}`}
+              type="number"
+              min={0}
+              max={100}
+              step={0.1}
+              value={bfMin}
+              onChange={(e) => setBfMin(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor={`bf-max-${config.slot}`} className="block text-sm font-semibold">
+              Body fat max %
+            </label>
+            <input
+              id={`bf-max-${config.slot}`}
+              type="number"
+              min={0}
+              max={100}
+              step={0.1}
+              value={bfMax}
+              onChange={(e) => setBfMax(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+        </div>
+      )}
+
+      {config.clientStory && (
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <label htmlFor={`category-${config.slot}`} className="block text-sm font-semibold">
+              Category
+            </label>
+            <input
+              id={`category-${config.slot}`}
+              type="text"
+              maxLength={60}
+              placeholder={config.defaultCategory || 'Fat loss'}
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor={`quote-${config.slot}`} className="block text-sm font-semibold">
+              Quote
+            </label>
+            <textarea
+              id={`quote-${config.slot}`}
+              rows={3}
+              maxLength={800}
+              placeholder="2 or 3 sentences in their own words about what changed for them."
+              value={quote}
+              onChange={(e) => setQuote(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label htmlFor={`name-${config.slot}`} className="block text-sm font-semibold">
+                Client name
+              </label>
+              <input
+                id={`name-${config.slot}`}
+                type="text"
+                maxLength={120}
+                placeholder="Client name"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor={`result-${config.slot}`} className="block text-sm font-semibold">
+                Result
+              </label>
+              <input
+                id={`result-${config.slot}`}
+                type="text"
+                maxLength={160}
+                placeholder={config.resultHint || 'Lost 8 kg in 12 weeks'}
+                value={result}
+                onChange={(e) => setResult(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="flex gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-700 dark:text-red-400">
@@ -207,8 +415,13 @@ function SlotEditor({ config, initial, onChanged }: { config: SlotConfig; initia
       {notice && <p className="text-sm text-green-600 dark:text-green-400">{notice}</p>}
 
       <div className="flex flex-wrap gap-3">
-        <button type="button" onClick={save} disabled={!imageUrl || unchanged || saving || progress != null} className={primaryButton}>
-          {saving ? 'Saving…' : 'Save image'}
+        <button
+          type="button"
+          onClick={save}
+          disabled={!imageUrl || !clientStoryReady || unchanged || saving || progress != null}
+          className={primaryButton}
+        >
+          {saving ? 'Saving…' : config.clientStory ? 'Save story' : 'Save image'}
         </button>
         {initial && (
           <button type="button" onClick={() => setConfirmRemove(true)} className={secondaryButton}>
@@ -223,7 +436,9 @@ function SlotEditor({ config, initial, onChanged }: { config: SlotConfig; initia
         message={
           config.fallback
             ? 'The site will show the default image until a new one is saved.'
-            : 'The site will show a text placeholder until a new image is saved.'
+            : config.clientStory
+              ? 'This card will no longer appear on Find My Program until a new story is saved.'
+              : 'The site will show a text placeholder until a new image is saved.'
         }
         confirmLabel="Remove"
         variant="danger"

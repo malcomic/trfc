@@ -4,7 +4,7 @@ import { FREE_PROGRAM_SLUG, dashboardProgramPath, formatKsh, programPath } from 
 import { usePrograms } from '../../../context/ProgramsContext'
 import { DASHBOARD_COPY } from '../../../content/dashboard'
 import { PROGRAM_COPY, dayName, programPercent } from '../../../content/programPages'
-import { loadQuizResult } from '../../../content/quiz'
+import { loadFinderProgramHint } from '../../../content/finder/resultHint'
 import { useMemberDashboard } from '../../../context/MemberDashboardContext'
 import { useProgramWeek } from '../../../hooks/useProgramWeek'
 import CtaButton from '../../programs/CtaButton'
@@ -79,8 +79,8 @@ function EnrolledCard({ enrolled }: { enrolled: EnrolledProgram }) {
 
 function NotEnrolledCard() {
   const { byId } = usePrograms()
-  const quiz = loadQuizResult()
-  const match = quiz ? byId(quiz.program) : undefined
+  const matchId = loadFinderProgramHint()
+  const match = matchId ? byId(matchId) : undefined
   return (
     <div className={dashCard}>
       <h2 className={dashHeading}>{copy.noneHeading}</h2>

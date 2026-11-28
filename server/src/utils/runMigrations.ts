@@ -2227,6 +2227,33 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       );
     `,
   },
+  {
+    name: '078_finder_body_photo_meta',
+    sql: `
+      CREATE TABLE IF NOT EXISTS finder_body_photo_meta (
+        slot VARCHAR(40) PRIMARY KEY,
+        label TEXT NOT NULL,
+        bf_min NUMERIC(4,1),
+        bf_max NUMERIC(4,1),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_by UUID REFERENCES users(id) ON DELETE SET NULL
+      );
+    `,
+  },
+  {
+    name: '079_find_client_story_meta',
+    sql: `
+      CREATE TABLE IF NOT EXISTS find_client_story_meta (
+        slot VARCHAR(40) PRIMARY KEY,
+        category VARCHAR(60) NOT NULL,
+        quote TEXT NOT NULL,
+        client_name VARCHAR(120) NOT NULL,
+        result VARCHAR(160) NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_by UUID REFERENCES users(id) ON DELETE SET NULL
+      );
+    `,
+  },
 ]
 
 export async function runMigrations() {

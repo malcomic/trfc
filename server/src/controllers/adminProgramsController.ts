@@ -12,6 +12,7 @@ import {
   cleanContent,
   cleanPage,
   cleanPlan,
+  cleanQuiz,
   cleanWeek,
   idFromSlug,
   slugify,
@@ -261,7 +262,7 @@ export const createAdminProgram = async (req: Request, res: Response) => {
   }
 };
 
-const SECTION_CLEANERS = { page: cleanPage, card: cleanCard, plan: cleanPlan } as const;
+const SECTION_CLEANERS = { page: cleanPage, card: cleanCard, plan: cleanPlan, quiz: cleanQuiz } as const;
 type Section = keyof typeof SECTION_CLEANERS;
 
 export const saveDraftSection = async (req: Request, res: Response) => {

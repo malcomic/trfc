@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { enrollProgram } from '../../api/programs'
 import { programPath, type Program } from '../../content/programs'
-import { loadQuizResult } from '../../content/quiz'
+import { loadFinderDraft } from '../../content/finder/storage'
 
 export const JOIN_ANCHOR = 'join'
 
@@ -31,10 +31,12 @@ export function useProgramJoin(program: Program) {
       setJoining(true)
       setJoinError('')
       try {
-        const quiz = loadQuizResult()
+        const draft = loadFinderDraft()
         await enrollProgram(
           program.id,
-          quiz ? { goal: quiz.goal, experience: quiz.experience, days: quiz.days } : null
+          draft
+            ? { version: 2, answers: draft.answers, derived: draft.derived }
+            : null
         )
         navigate('/dashboard', { state: { joined: program.id, joinedName: program.name } })
       } catch (err: any) {

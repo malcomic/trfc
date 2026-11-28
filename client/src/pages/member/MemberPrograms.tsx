@@ -2,9 +2,9 @@ import { Link } from 'react-router-dom'
 import { Loader } from 'lucide-react'
 import { useMemberDashboard } from '../../context/MemberDashboardContext'
 import { DASHBOARD_COPY } from '../../content/dashboard'
-import { FREE_PROGRAM_SLUG, coreProgramName, dashboardProgramPath, formatKsh, programPath } from '../../content/programs'
+import { FREE_PROGRAM_SLUG, dashboardProgramPath, formatKsh, programPath } from '../../content/programs'
 import { usePrograms } from '../../context/ProgramsContext'
-import { loadQuizResult } from '../../content/quiz'
+import { loadFinderProgramHint } from '../../content/finder/resultHint'
 import { formatDate } from '../../utils/captainDisplay'
 import MemberPageHeader from '../../components/member/MemberPageHeader'
 import ProgramProgressCard from '../../components/member/dashboard/ProgramProgressCard'
@@ -16,10 +16,10 @@ const copy = DASHBOARD_COPY.programs
 export default function MemberPrograms() {
   const { data, loading } = useMemberDashboard()
   const enrolled = data?.program ?? null
-  const quiz = loadQuizResult()
+  const matchId = loadFinderProgramHint()
   const { programs, byId } = usePrograms()
   const others = programs.filter((p) => p.id !== enrolled?.id)
-  const nameOf = (id: string) => byId(id)?.name ?? coreProgramName(id)
+  const match = matchId ? byId(matchId) : undefined
 
   return (
     <>
@@ -60,11 +60,13 @@ export default function MemberPrograms() {
             </div>
           )}
 
-          {quiz && (
+          {match && (
             <div className={dashCard}>
               <h2 className={dashHeading}>{copy.quizHeading}</h2>
-              <p className="mt-2 text-chalk light:text-chalk-light">{copy.quizMatch(nameOf(quiz.program))}</p>
-              {quiz.nextUp && <p className={`${dashMuted} mt-1`}>{copy.nextUp(nameOf(quiz.nextUp))}</p>}
+              <p className="mt-2 text-chalk light:text-chalk-light">{copy.quizMatch(match.name)}</p>
+              <Link to="/find-my-program/start" className={`${dashLink} text-sm mt-2 inline-block`}>
+                Continue finder
+              </Link>
             </div>
           )}
 

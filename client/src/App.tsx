@@ -46,6 +46,7 @@ import Gallery from './pages/Gallery'
 import Programs from './pages/Programs'
 import ProgramPage from './pages/ProgramPage'
 import FindMyProgram from './pages/FindMyProgram'
+import FinderFlow from './pages/FinderFlow'
 import Testimonials from './pages/Testimonials'
 import Contact from './pages/Contact'
 import Privacy from './pages/Privacy'
@@ -288,6 +289,8 @@ const router = createBrowserRouter(
         <Route path="/account/medals" element={<Navigate to="/dashboard/medals" replace />} />
         <Route path="/account/*" element={<Navigate to="/dashboard" replace />} />
         <Route path="/captain" element={<Navigate to="/dashboard/captain" replace />} />
+
+        <Route path="/find-my-program/start" element={<FinderFlow />} />
 
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Home />} />

@@ -1,3 +1,5 @@
+import type { ProgramQuizMatching } from '../types/programContent'
+
 /** Program ids are set by admins; the four below ship with the site and drive the quiz and signups. */
 export type ProgramId = string
 export type CoreProgramId = 'foundations' | 'fat_loss' | 'endurance' | 'hiking'
@@ -77,6 +79,7 @@ export interface CatalogProgram {
   is_core: boolean
   sort_order: number
   weekCount: number
+  quiz?: ProgramQuizMatching
   page: {
     title: string
     tagline: string

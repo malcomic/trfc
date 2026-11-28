@@ -10,19 +10,8 @@ import {
   validateCheckinAnswers,
 } from '../utils/programProgress.js';
 import { notifyCaptainOfCheckin } from '../utils/programCheckinNotify.js';
-
-const QUIZ_KEYS = ['goal', 'experience', 'days'] as const;
-
-export function sanitizeQuizAnswers(value: unknown): Record<string, string> | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const source = value as Record<string, unknown>;
-  const clean: Record<string, string> = {};
-  for (const key of QUIZ_KEYS) {
-    const v = source[key];
-    if (typeof v === 'string' && v.length > 0 && v.length <= 20) clean[key] = v;
-  }
-  return Object.keys(clean).length > 0 ? clean : null;
-}
+export { sanitizeQuizAnswers } from '../utils/sanitizeFinderAnswers.js';
+import { sanitizeQuizAnswers } from '../utils/sanitizeFinderAnswers.js';
 
 /** Free published programs can be joined straight away. Paid programs open with M-Pesa joining. */
 export function isEnrollable(row: ProgramRow, content: ProgramContent | null): boolean {

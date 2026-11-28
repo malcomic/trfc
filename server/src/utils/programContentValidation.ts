@@ -1,15 +1,28 @@
 import { TO_BE_ADDED } from '../config/programSeed.js';
 import {
   DAY_KINDS,
+  FINDER_GOALS,
+  FINDER_HIKE_TARGETS,
+  FINDER_LEVELS,
+  FINDER_RACE_DISTANCES,
+  FINDER_SEXES,
+  FINDER_TRAIN_WHERE,
   QUESTION_TYPES,
   type CheckinQuestion,
   type DayKind,
   type DaySteps,
+  type FinderGoal,
+  type FinderHikeTarget,
+  type FinderLevel,
+  type FinderRaceDistance,
+  type FinderSex,
+  type FinderTrainWhere,
   type ProgramCardContent,
   type ProgramContent,
   type ProgramDay,
   type ProgramPageContent,
   type ProgramPlanContent,
+  type ProgramQuizMatching,
   type ProgramWeekContent,
   type QuestionType,
 } from '../types/programContent.js';
@@ -247,9 +260,54 @@ function readWeek(v: unknown, path: string, weekNumber?: number): ProgramWeekCon
   };
 }
 
+function enumList<T extends string>(
+  v: unknown,
+  path: string,
+  allowed: readonly T[],
+  max = MAX_LIST
+): T[] {
+  const values = textList(v, path, 40);
+  if (values.length > max) fail(path, `can have at most ${max} items`);
+  const out: T[] = [];
+  for (const value of values) {
+    if (!(allowed as readonly string[]).includes(value)) {
+      fail(path, `"${value}" is not allowed`);
+    }
+    if (!out.includes(value as T)) out.push(value as T);
+  }
+  return out;
+}
+
+function readQuiz(v: unknown): ProgramQuizMatching {
+  const q = obj(v, 'quiz');
+  const goals = enumList(q.goals, 'quiz.goals', FINDER_GOALS) as FinderGoal[];
+  const sexRaw = text(q.sex, 'quiz.sex', 20);
+  if (!(FINDER_SEXES as readonly string[]).includes(sexRaw)) {
+    fail('quiz.sex', 'must be women, men, or any');
+  }
+  const quiz: ProgramQuizMatching = {
+    goals,
+    sex: sexRaw as FinderSex,
+  };
+  const levels = enumList(q.levels, 'quiz.levels', FINDER_LEVELS) as FinderLevel[];
+  if (levels.length) quiz.levels = levels;
+  const raceDistances = enumList(q.raceDistances, 'quiz.raceDistances', FINDER_RACE_DISTANCES) as FinderRaceDistance[];
+  if (raceDistances.length) quiz.raceDistances = raceDistances;
+  const hikeTargets = enumList(q.hikeTargets, 'quiz.hikeTargets', FINDER_HIKE_TARGETS) as FinderHikeTarget[];
+  if (hikeTargets.length) quiz.hikeTargets = hikeTargets;
+  const trainWhere = enumList(q.trainWhere, 'quiz.trainWhere', FINDER_TRAIN_WHERE) as FinderTrainWhere[];
+  if (trainWhere.length) quiz.trainWhere = trainWhere;
+  if (q.eliteOffer === true) quiz.eliteOffer = true;
+  if (q.priority !== undefined && q.priority !== null && q.priority !== '') {
+    quiz.priority = int(q.priority, 'quiz.priority', 0, 1000);
+  }
+  return quiz;
+}
+
 export const cleanPage = (v: unknown) => wrap(() => readPage(v));
 export const cleanCard = (v: unknown) => wrap(() => readCard(v));
 export const cleanPlan = (v: unknown) => wrap(() => readPlan(v));
+export const cleanQuiz = (v: unknown) => wrap(() => readQuiz(v));
 export const cleanWeek = (v: unknown, weekNumber: number) => wrap(() => readWeek(v, `weeks[${weekNumber - 1}]`, weekNumber));
 
 /** Weeks are renumbered 1..N in order, so a removed week never leaves a gap. */
@@ -266,10 +324,7 @@ export function cleanContent(v: unknown): Clean<ProgramContent> {
       weeks,
     };
     if (isObject(c.quiz)) {
-      content.quiz = {
-        goals: textList(c.quiz.goals, 'quiz.goals', 30),
-        experience: textList(c.quiz.experience, 'quiz.experience', 30),
-      };
+      content.quiz = readQuiz(c.quiz);
     }
     return content;
   });
@@ -302,6 +357,12 @@ export function checkForPublish(content: ProgramContent): PublishCheck {
   if (!card.blurb) errors.push({ where: 'Browse card', message: 'Add a short description' });
   if (!card.button) errors.push({ where: 'Browse card', message: 'Add the button text' });
   if (weeks.length === 0) errors.push({ where: 'Weekly plan', message: 'Add at least one week' });
+  if (!content.quiz || content.quiz.goals.length === 0) {
+    warnings.push({
+      where: 'Finder matching',
+      message: 'No finder goals are set, so this program will not match in Find my program (except as a fallback).',
+    });
+  }
   if (plan.checkinQuestions.length === 0) {
     errors.push({ where: 'Check-in questions', message: 'Add at least one question' });
   }

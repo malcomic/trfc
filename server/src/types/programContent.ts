@@ -80,11 +80,47 @@ export interface ProgramPlanContent {
   checkinQuestions: CheckinQuestion[];
 }
 
+export const FINDER_GOALS = [
+  'lose_fat',
+  'build_muscle',
+  'get_stronger',
+  'start_running',
+  'longer_race',
+  'hike',
+] as const;
+export type FinderGoal = (typeof FINDER_GOALS)[number];
+
+export const FINDER_SEXES = ['women', 'men', 'any'] as const;
+export type FinderSex = (typeof FINDER_SEXES)[number];
+
+export const FINDER_LEVELS = ['beginner', 'intermediate', 'advanced'] as const;
+export type FinderLevel = (typeof FINDER_LEVELS)[number];
+
+export const FINDER_RACE_DISTANCES = ['10k', '15k', '21k', '42k'] as const;
+export type FinderRaceDistance = (typeof FINDER_RACE_DISTANCES)[number];
+
+export const FINDER_HIKE_TARGETS = ['day_hikes', 'satima', 'kenya', 'unsure'] as const;
+export type FinderHikeTarget = (typeof FINDER_HIKE_TARGETS)[number];
+
+export const FINDER_TRAIN_WHERE = ['home', 'gym', 'outside', 'mix'] as const;
+export type FinderTrainWhere = (typeof FINDER_TRAIN_WHERE)[number];
+
+/** Admin-chosen tags used by the Program Finder matcher. */
+export interface ProgramQuizMatching {
+  goals: FinderGoal[];
+  sex: FinderSex;
+  levels?: FinderLevel[];
+  raceDistances?: FinderRaceDistance[];
+  hikeTargets?: FinderHikeTarget[];
+  trainWhere?: FinderTrainWhere[];
+  eliteOffer?: boolean;
+  priority?: number;
+}
+
 export interface ProgramContent {
   page: ProgramPageContent;
   card: ProgramCardContent;
   plan: ProgramPlanContent;
   weeks: ProgramWeekContent[];
-  /** Reserved for admin-chosen quiz matching; nothing reads it yet. */
-  quiz?: { goals?: string[]; experience?: string[] };
+  quiz?: ProgramQuizMatching;
 }
